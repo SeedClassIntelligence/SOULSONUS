@@ -1,0 +1,15 @@
+{
+  "songTitle": "SoulSonus E2E Anthem",
+  "bpm": 110,
+  "key": "C Minor",
+  "workspaceTopology": "6-ROOM-V1",
+  "masterLufs": -14.0,
+  "truePeakDb": -1.0,
+  "masterFormat": "PCM 24-bit @ 48000Hz",
+  "streamFormat": "PCM 24-bit @ 44100Hz",
+  "losslessFormat": "FLAC",
+  "seedSignatureRootHash": "deaf5867b86e6b9be9c17ec074098f025fe00a247ea78de5115cb86132133aba",
+  "collaboratorSplits": {
+    "Creator": 100
+  }
+}
