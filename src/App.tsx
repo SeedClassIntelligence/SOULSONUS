@@ -86,6 +86,8 @@ const AppInner: React.FC = () => {
   const [isNativeBrainOpen, setIsNativeBrainOpen] = useState(false);
   const [isCandidateDrawerOpen, setIsCandidateDrawerOpen] = useState(false);
   const [activeCandidate, setActiveCandidate] = useState<GenerationCandidate | null>(null);
+  const [isRealizationPending, setIsRealizationPending] = useState(false);
+  const [realizationError, setRealizationError] = useState<string | null>(null);
 
   const handleOpenProposal = useCallback((trackId?: string) => {
     const targetTrack = tracks.find((t) => t.id === trackId) || tracks[0];
@@ -189,15 +191,28 @@ const AppInner: React.FC = () => {
         const route: RealizationRoute = typeof detail === 'object' && detail?.route ? detail.route : 'ACE_PERFORMANCE_TRANSFER';
         const targetTrack = tracks.find((t) => t.id === trId) || tracks[0];
         if (targetTrack) {
-          const candidate = RealizationRouter.createCandidate({
+          // createCandidate now genuinely calls a self-hosted ACE-Step server
+          // and waits on a real result -- this can take real seconds
+          // (GPU) to real tens-of-seconds (CPU self-host), not a synchronous
+          // hardcoded-literal return like before. Surface failures to the
+          // creator rather than swallowing them into a fake "success".
+          setIsRealizationPending(true);
+          RealizationRouter.createCandidate({
             sourceTrack: targetTrack,
             targetRole: targetTrack.instrument || 'kick',
             route,
             prompt: typeof detail === 'object' ? detail?.prompt : `Realize ${targetTrack.name} with ${route}`,
             projectVersion: dawState.projectVersion || 'v1.0.0',
-          });
-          setActiveCandidate(candidate);
-          setIsCandidateDrawerOpen(true);
+          })
+            .then((candidate) => {
+              setActiveCandidate(candidate);
+              setIsCandidateDrawerOpen(true);
+            })
+            .catch((err) => {
+              console.error('[Realization] Failed to generate candidate:', err);
+              setRealizationError(err instanceof Error ? err.message : String(err));
+            })
+            .finally(() => setIsRealizationPending(false));
         } else {
           handleOpenProposal();
         }
@@ -404,6 +419,24 @@ const AppInner: React.FC = () => {
         onCommitCandidate={handleCommitCandidate}
         onRejectCandidate={() => setIsCandidateDrawerOpen(false)}
       />
+
+      {isRealizationPending && (
+        <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-neutral-900 border border-neutral-700 px-4 py-2 text-sm text-neutral-200 shadow-lg">
+          Generating realization candidate&hellip; this calls your self-hosted ACE-Step server and can take a few seconds to a minute.
+        </div>
+      )}
+      {realizationError && (
+        <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-red-950 border border-red-700 px-4 py-3 text-sm text-red-200 shadow-lg max-w-sm">
+          <div className="font-medium mb-1">Realization failed</div>
+          <div className="text-red-300 text-xs mb-2">{realizationError}</div>
+          <button
+            className="text-xs underline text-red-200 hover:text-white"
+            onClick={() => setRealizationError(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Modals */}
       <QuickHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />

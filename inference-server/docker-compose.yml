@@ -1,0 +1,66 @@
+version: "3.8"
+
+# SoulSonus self-hosted AI inference stack.
+#
+# Two real, open-source, MIT-licensed services -- no fabricated stand-ins:
+#   - ace-step:  music generation / performance transfer (github.com/ace-step/ACE-Step-1.5)
+#   - demucs:    stem separation (github.com/adefossez/demucs)
+#
+# Quick start:
+#   cp .env.example .env        # edit if you want an API key / different ports
+#   docker compose up -d
+#   docker compose logs -f      # first ACE-Step request downloads ~10GB of
+#                                # model weights -- this is normal, be patient
+#
+# Then in SoulSonus's Native Brain / inference settings, point:
+#   ACE_STEP_ENDPOINT   -> http://localhost:8001
+#   DEMUCS_ENDPOINT      -> http://localhost:8010
+#
+# No GPU? The demucs service works fine on CPU automatically (slower).
+# For ace-step with no GPU, or on Mac/AMD, see README.md "Native install" --
+# don't use the ace-step container in that case, run it natively instead.
+
+services:
+  ace-step:
+    build: ./ace-step
+    ports:
+      - "${ACE_STEP_PORT:-8001}:8001"
+    environment:
+      - ACESTEP_API_KEY=${ACESTEP_API_KEY:-}
+      - ACESTEP_INIT_LLM=${ACESTEP_INIT_LLM:-auto}
+      - ACESTEP_DOWNLOAD_SOURCE=${ACESTEP_DOWNLOAD_SOURCE:-auto}
+    volumes:
+      - ace-step-checkpoints:/app/checkpoints
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  demucs:
+    build: ./demucs-service
+    ports:
+      - "${DEMUCS_PORT:-8010}:8010"
+    environment:
+      - DEMUCS_MODEL=${DEMUCS_MODEL:-htdemucs}
+    volumes:
+      - demucs-stems:/data/stems
+    # No GPU reservation here on purpose: Demucs runs acceptably on CPU,
+    # and requiring a GPU for this service would break the
+    # "anyone can self-host" goal for CPU-only machines. Remove the
+    # comment below to force GPU use if you have one and want it faster.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  ace-step-checkpoints:
+  demucs-stems:

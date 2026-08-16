@@ -1,0 +1,7 @@
+# Real Demucs v4 (htdemucs), MIT licensed -- github.com/adefossez/demucs
+demucs>=4.0.1
+torch>=2.1.0
+torchaudio>=2.1.0
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9

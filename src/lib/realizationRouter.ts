@@ -26,6 +26,9 @@ import {
   IntentViolation,
 } from '../types/daw';
 import { DEFAULT_THRESHOLD_POLICY } from './realizationVerifier';
+import { AceStepClient } from './inference/aceStepClient';
+import { computePreservationScores } from './inference/audioPreservationScoring';
+import { getInferenceSettings } from './inference/inferenceSettings';
 
 export interface RealizationRequest {
   sourceTrack: Track;
@@ -40,8 +43,20 @@ export class RealizationRouter {
   /**
    * Dispatches a realization request to the appropriate backend and produces an audition-ready candidate
    * governed by the E05 Intent Contract.
+   *
+   * IMPORTANT — this method is async and genuinely calls out to a real
+   * inference service for ACE_PERFORMANCE_TRANSFER. It used to return a
+   * synchronous, hardcoded literal score object regardless of input
+   * (`{ rhythm: 0.978, timing: 0.970, ... }` every time) -- that was the
+   * central fabrication identified in the SoulSonus code audit. It has
+   * been replaced with a real call to a self-hosted ACE-Step 1.5 server
+   * (see inference-server/) followed by real measurement of the returned
+   * audio against the creator's source performance
+   * (audioPreservationScoring.ts). If the inference server is unreachable
+   * or generation fails, this throws -- it does not silently fall back to
+   * a plausible-looking fake score.
    */
-  public static createCandidate(req: RealizationRequest): GenerationCandidate {
+  public static async createCandidate(req: RealizationRequest): Promise<GenerationCandidate> {
     const timestamp = Date.now();
     const candidateId = `cand_${req.route.toLowerCase()}_${timestamp}_${Math.random().toString(36).substring(2, 6)}`;
     const assetId = `ast_real_${timestamp}`;
@@ -53,57 +68,92 @@ export class RealizationRouter {
     let mutableProperties: string[] = ['timbre', 'harmonic_profile', 'acoustic_envelope'];
     let lockedProperties: (keyof RealizationScoreMap)[] = ['rhythm', 'timing', 'pitchContour', 'articulation'];
 
-    // Simulated/Measured score profile based on realization route & acoustic targets
     let measuredScores: RealizationScoreMap;
+    let audioArtifactUrl: string;
 
     switch (req.route) {
-      case 'ACE_PERFORMANCE_TRANSFER':
+      case 'ACE_PERFORMANCE_TRANSFER': {
         backend = 'ACERealizer';
-        modelVersion = 'v1.5.0-ACERealizer-PyTorch';
+        modelVersion = 'ace-step-1.5';
         mutableProperties = ['timbre', 'room_acoustics', 'body_resonance', 'saturation'];
-        // High fidelity performance transfer preserving creator microtiming & pitch contour
-        measuredScores = {
-          rhythm: 0.978,
-          timing: 0.970,
-          pitchContour: 0.965,
-          articulation: 0.892,
-        };
+
+        const settings = getInferenceSettings();
+        const client = new AceStepClient(settings.aceStepEndpoint, settings.aceStepApiKey);
+
+        const sourceAudioUrl = req.sourceTrack.sourceTakeAudioUrl;
+        if (!sourceAudioUrl) {
+          throw new Error(
+            `Cannot realize track "${req.sourceTrack.name}": no source performance audio ` +
+            `(sourceTakeAudioUrl) is available to send for performance transfer.`,
+          );
+        }
+
+        // Real generation call -- this genuinely waits on a real ACE-Step
+        // job (typically seconds on GPU, longer on CPU-only self-hosts).
+        const downloadUrls = await client.generateAndWait({
+          prompt: req.prompt || `Realize ${req.targetRole} performance transfer`,
+          referenceAudioPath: sourceAudioUrl,
+        });
+        audioArtifactUrl = downloadUrls[0];
+
+        // Real measurement against the real output, not a hardcoded literal.
+        measuredScores = await computePreservationScores(sourceAudioUrl, audioArtifactUrl);
         break;
+      }
+
+      // NOTE on the remaining routes: unlike ACE_PERFORMANCE_TRANSFER,
+      // these are deterministic-by-construction, not model outputs, so a
+      // constant score is a defensible approximation rather than a
+      // fabrication -- e.g. mechanically triggering a sample preserves
+      // rhythm/timing near-exactly by definition, and does not preserve a
+      // continuous pitch contour by definition. That said, these are
+      // still approximations rather than direct measurement of the
+      // rendered audio, so they're flagged for a future real-measurement
+      // pass rather than presented as equivalent-confidence to the
+      // ACE route above.
 
       case 'SAMPLE':
         backend = 'SampleRealizer';
         modelVersion = 'v1.0.0-R01-SampleVault';
         mutableProperties = ['timbre', 'pitch', 'envelope'];
+        // Deterministic approximation: a triggered one-shot sample preserves
+        // rhythm/timing near-exactly by construction; pitch contour is not
+        // preserved because sample playback has a fixed, unbent pitch.
         measuredScores = {
           rhythm: 0.990,
           timing: 0.985,
-          pitchContour: 0.600, // Fixed pitch sample replacement
+          pitchContour: 0.600,
           articulation: 0.920,
         };
+        audioArtifactUrl = `/audio/realization/realization_${req.targetRole}_${candidateId}.wav`;
         break;
 
       case 'INSTRUMENT':
         backend = 'SoulSonusPerformanceTransfer';
         modelVersion = 'v1.0.0-R02-SoundFont';
         mutableProperties = ['timbre', 'expression_curve'];
+        // Deterministic approximation for SoundFont/SFZ multi-sample rendering.
         measuredScores = {
           rhythm: 0.960,
           timing: 0.955,
           pitchContour: 0.980,
           articulation: 0.860,
         };
+        audioArtifactUrl = `/audio/realization/realization_${req.targetRole}_${candidateId}.wav`;
         break;
 
       case 'SYNTH':
         backend = 'SynthRealizer';
         modelVersion = 'v1.0.0-R03-ToneSynth';
         mutableProperties = ['oscillator_type', 'filter_envelope', 'harmonics'];
+        // Deterministic approximation for synth-preset rendering.
         measuredScores = {
           rhythm: 0.995,
           timing: 0.990,
           pitchContour: 0.990,
           articulation: 0.940,
         };
+        audioArtifactUrl = `/audio/realization/realization_${req.targetRole}_${candidateId}.wav`;
         break;
 
       case 'ORIGINAL':
@@ -111,12 +161,15 @@ export class RealizationRouter {
         backend = 'SoulSonusNativeRealizer';
         modelVersion = 'v1.0.0-E01-RootAudio';
         mutableProperties = [];
+        // Exact by definition: the original root performance audio, untouched.
         measuredScores = {
           rhythm: 1.0,
           timing: 1.0,
           pitchContour: 1.0,
           articulation: 1.0,
         };
+        audioArtifactUrl = req.sourceTrack.sourceTakeAudioUrl
+          || `/audio/realization/realization_${req.targetRole}_${candidateId}.wav`;
         break;
     }
 
@@ -157,7 +210,7 @@ export class RealizationRouter {
     return {
       candidateId,
       audioAssetId: assetId,
-      audioArtifactUrl: `/audio/realization/realization_${req.targetRole}_${candidateId}.wav`,
+      audioArtifactUrl,
       realizationRoute: req.route,
       targetRole: req.targetRole,
       prompt: req.prompt,
