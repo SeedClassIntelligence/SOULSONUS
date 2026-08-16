@@ -1,4 +1,14 @@
-export interface ClapMatchResult {
+/**
+ * SoulSonus Sound Vault Keyword & Semantic Token Matcher
+ * 
+ * NOTE: This is a fast, zero-dependency in-browser semantic tag and acoustic
+ * keyword matching engine that indexes sound presets across the sound vault.
+ * It is NOT an active neural LAION CLAP ONNX model (which requires ~600MB weights);
+ * it uses normalized multi-dimensional character-n-gram and keyword token vectors
+ * to rank acoustic presets by query relevance.
+ */
+
+export interface SoundVaultMatchResult {
   presetId: string;
   name: string;
   category: string;
@@ -16,14 +26,13 @@ export interface VaultAcousticEntry {
   tags: string[];
   sampleUrl: string;
   license: 'R01_ADMITTED' | 'R02_ADMITTED' | 'R03_ADMITTED';
-  // Precomputed 512-dim normalized CLAP embedding vector
-  embedding512: number[];
+  featureVector: number[];
 }
 
 /**
- * Generates deterministic 512-dim unit-normalized semantic embedding vector from text.
+ * Generates deterministic 512-dim unit-normalized token feature vector from text.
  */
-function textTo512Embedding(text: string): number[] {
+function textToFeatureVector(text: string): number[] {
   const vec = new Array(512).fill(0);
   const words = text.toLowerCase().split(/\s+/);
   
@@ -62,7 +71,7 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
   return Math.max(0, Math.min(1.0, dotProduct / denom));
 }
 
-// Pre-indexed R01–R03 Sound Vault with 512-dim acoustic embeddings
+// Pre-indexed R01–R03 Sound Vault entries
 const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
   {
     id: 'vault_kick_punch_01',
@@ -71,7 +80,7 @@ const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
     tags: ['punchy', 'fat', 'heavy', 'analog', 'sub', 'low-end', 'thump', 'kick'],
     sampleUrl: '/samples/drums/kick_heavy_punch.wav',
     license: 'R01_ADMITTED',
-    embedding512: textTo512Embedding('punchy fat heavy analog sub low-end thump acoustic kick drum transient'),
+    featureVector: textToFeatureVector('punchy fat heavy analog sub low-end thump acoustic kick drum transient'),
   },
   {
     id: 'vault_808_saturated_01',
@@ -80,7 +89,7 @@ const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
     tags: ['808', 'sub', 'distorted', 'warm', 'glide', 'analog', 'saturated', 'bass'],
     sampleUrl: '/samples/bass/808_tube_saturated.wav',
     license: 'R01_ADMITTED',
-    embedding512: textTo512Embedding('808 sub bass distorted warm glide analog saturated low frequency 40hz'),
+    featureVector: textToFeatureVector('808 sub bass distorted warm glide analog saturated low frequency 40hz'),
   },
   {
     id: 'vault_snare_crisp_01',
@@ -89,7 +98,7 @@ const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
     tags: ['crisp', 'tight', 'acoustic', 'bright', 'crack', 'transient', 'snare', 'clap'],
     sampleUrl: '/samples/drums/snare_tight_studio.wav',
     license: 'R01_ADMITTED',
-    embedding512: textTo512Embedding('crisp tight acoustic bright crack transient studio snare clap high presence'),
+    featureVector: textToFeatureVector('crisp tight acoustic bright crack transient studio snare clap high presence'),
   },
   {
     id: 'vault_keys_rhodes_01',
@@ -98,63 +107,50 @@ const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
     tags: ['warm', 'rhodes', 'electric', 'piano', 'vintage', 'dark', 'soul', 'keys'],
     sampleUrl: '/samples/keys/rhodes_warm_vintage.wav',
     license: 'R02_ADMITTED',
-    embedding512: textTo512Embedding('warm vintage electric rhodes piano dark neo soul jazz electric piano keys'),
+    featureVector: textToFeatureVector('warm rhodes electric piano vintage dark soul jazz keys soundfont'),
   },
   {
     id: 'vault_synth_saw_lead_01',
-    name: 'Cyberpunk Detuned Saw Lead',
+    name: 'Hyper-Saw Polyphonic Lead',
     category: 'synths',
-    tags: ['saw', 'lead', 'cyberpunk', 'bright', 'polyphonic', 'synth', 'energetic'],
-    sampleUrl: '/samples/synths/saw_lead_cyber.wav',
+    tags: ['bright', 'saw', 'lead', 'polyphonic', 'edm', 'future-bass', 'detuned', 'synths'],
+    sampleUrl: '/samples/synths/saw_lead_hyper.wav',
     license: 'R03_ADMITTED',
-    embedding512: textTo512Embedding('cyberpunk detuned saw lead bright polyphonic analog synthesizer energetic synth'),
+    featureVector: textToFeatureVector('bright supersaw lead polyphonic edm future bass detuned analog synthesizer patch'),
   },
   {
-    id: 'vault_strings_orchestral_01',
-    name: 'Cinematic Orchestral Cello & Strings',
-    category: 'synths',
-    tags: ['strings', 'cello', 'cinematic', 'orchestral', 'legato', 'acoustic', 'warm'],
-    sampleUrl: '/samples/strings/orchestral_cello.wav',
-    license: 'R02_ADMITTED',
-    embedding512: textTo512Embedding('cinematic orchestral cello ensemble acoustic strings legato warm vibrato'),
+    id: 'vault_vocal_airy_01',
+    name: 'Airy Soul Breath Vocal Chop',
+    category: 'vocals',
+    tags: ['airy', 'soul', 'breath', 'vocal', 'lush', 'reverb', 'r&b', 'vocals'],
+    sampleUrl: '/samples/vocals/vocal_chop_airy.wav',
+    license: 'R01_ADMITTED',
+    featureVector: textToFeatureVector('airy soul breath vocal chop lush reverb r&b female singer top line'),
   },
 ];
 
-export class ClapEmbeddingMatcher {
+export class SoundVaultSemanticMatcher {
   /**
-   * Generates a 512-dim embedding vector from a natural language query and performs Cosine Distance ranking.
+   * Matches a query prompt against sound vault entries using semantic token cosine similarity.
    */
-  public async searchSoundVault(
-    queryText: string,
-    categoryFilter?: string,
-    limit: number = 3
-  ): Promise<ClapMatchResult[]> {
-    const queryEmbedding = textTo512Embedding(queryText);
+  public static matchSoundByPrompt(
+    prompt: string,
+    categoryFilter?: 'drums' | 'bass' | 'synths' | 'keys' | 'vocals',
+    topK: number = 3
+  ): SoundVaultMatchResult[] {
+    const promptVec = textToFeatureVector(prompt);
 
-    const scoredEntries = VAULT_ACOUSTIC_INDEX.filter((entry) => {
-      if (categoryFilter && categoryFilter !== 'all' && entry.category !== categoryFilter) {
-        return false;
-      }
-      return true;
-    }).map((entry) => {
-      // Calculate true 512-dim Cosine Vector Similarity
-      const vectorSim = cosineSimilarity(queryEmbedding, entry.embedding512);
+    const candidates = categoryFilter
+      ? VAULT_ACOUSTIC_INDEX.filter((item) => item.category === categoryFilter)
+      : VAULT_ACOUSTIC_INDEX;
 
-      // Category semantic boost
-      const queryLower = queryText.toLowerCase();
-      let boost = 0;
-      if (queryLower.includes(entry.category)) boost += 0.15;
-      entry.tags.forEach((tag) => {
-        if (queryLower.includes(tag)) boost += 0.08;
-      });
-
-      const finalScore = Math.min(0.99, Math.max(0.40, vectorSim * 0.7 + boost));
-
+    const scored = candidates.map((entry) => {
+      const similarity = cosineSimilarity(promptVec, entry.featureVector);
       return {
         presetId: entry.id,
         name: entry.name,
         category: entry.category,
-        similarityScore: Math.round(finalScore * 100) / 100,
+        similarityScore: Math.round(similarity * 1000) / 1000,
         tags: entry.tags,
         sampleUrl: entry.sampleUrl,
         licenseStatus: entry.license,
@@ -162,10 +158,14 @@ export class ClapEmbeddingMatcher {
       };
     });
 
-    // Sort descending by similarity score
-    scoredEntries.sort((a, b) => b.similarityScore - a.similarityScore);
-    return scoredEntries.slice(0, limit);
+    scored.sort((a, b) => b.similarityScore - a.similarityScore);
+    return scored.slice(0, topK);
   }
 }
 
-export const clapEmbeddingMatcher = new ClapEmbeddingMatcher();
+// Backward-compatibility aliases for legacy test scripts
+export type ClapMatchResult = SoundVaultMatchResult;
+export const clapEmbeddingMatcher = {
+  matchSample: (prompt: string, category?: any, topK?: number) => SoundVaultSemanticMatcher.matchSoundByPrompt(prompt, category, topK),
+  searchSoundVault: (prompt: string, category?: any, topK?: number) => SoundVaultSemanticMatcher.matchSoundByPrompt(prompt, category, topK),
+};

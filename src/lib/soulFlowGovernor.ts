@@ -175,14 +175,16 @@ export class SoulFlowGovernor {
         const hasMicOrTrigger =
           context.detectionSettings.enabled ||
           Boolean(context.vocalState?.audioBlob) ||
-          context.tracks.some((t) => t.steps.some(Boolean));
+          context.tracks.some((t) => (t.noteEvents && t.noteEvents.length > 0) || t.steps.some(Boolean));
         if (!hasMicOrTrigger) {
           missingRequirements.push('Enable Microphone input or record vocal/beatbox audio');
         }
       } else if (stage === 'TRANSLATED') {
-        const hasSteps = context.tracks.some((t) => t.steps.some(Boolean));
-        if (!hasSteps) {
-          missingRequirements.push('Add at least 1 step to the 64-step sequencer grid');
+        const hasNotesOrSteps = context.tracks.some(
+          (t) => (t.noteEvents && t.noteEvents.length > 0) || t.steps.some(Boolean)
+        );
+        if (!hasNotesOrSteps) {
+          missingRequirements.push('Add at least 1 note or trigger event to the multitrack timeline');
         }
       } else if (stage === 'SOUND_SELECTED') {
         const hasTracks = context.tracks.length > 0;
@@ -190,12 +192,12 @@ export class SoulFlowGovernor {
           missingRequirements.push('Assign valid sound instruments to active tracks');
         }
       } else if (stage === 'COMPOSED') {
-        const activeStepsCount = context.tracks.reduce(
-          (acc, t) => acc + t.steps.filter(Boolean).length,
+        const activeEventsCount = context.tracks.reduce(
+          (acc, t) => acc + (t.noteEvents?.length || t.steps.filter(Boolean).length),
           0
         );
-        if (activeStepsCount < 2) {
-          missingRequirements.push('Compose a pattern with at least 2 active drum/melody steps');
+        if (activeEventsCount < 2) {
+          missingRequirements.push('Compose a pattern with at least 2 active drum/melody note events');
         }
       } else if (stage === 'REFINED') {
         // Refinement check - valid if pattern composed
