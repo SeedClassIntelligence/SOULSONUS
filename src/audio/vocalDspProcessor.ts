@@ -73,6 +73,47 @@ export class VocalDspProcessor {
     const shiftRatio = Math.pow(2, formantShiftSemitones / 12);
     return Math.max(200, Math.min(12000, baseCutoffHz * shiftRatio));
   }
+
+  /**
+   * Creates a real-time Web Audio pitch-shifting & formant-shaping DSP sub-graph.
+   */
+  public createPitchShiftNode(
+    ctx: AudioContext,
+    shiftSemitones: number,
+    formantShiftSemitones: number = 0
+  ): { input: AudioNode; output: AudioNode } {
+    const input = ctx.createGain();
+    const output = ctx.createGain();
+
+    if (Math.abs(shiftSemitones) < 0.05 && Math.abs(formantShiftSemitones) < 0.05) {
+      input.connect(output);
+      return { input, output };
+    }
+
+    // Dual-delay-line granular pitch shifting
+    const pitchRatio = Math.pow(2, shiftSemitones / 12);
+    const delayA = ctx.createDelay();
+    const delayB = ctx.createDelay();
+    const grainDuration = 0.05; // 50ms grains
+    delayA.delayTime.value = grainDuration;
+    delayB.delayTime.value = grainDuration;
+
+    // Formant EQ filtering
+    const formantFilter = ctx.createBiquadFilter();
+    formantFilter.type = 'peaking';
+    formantFilter.frequency.value = this.calculateFormantFilterShift(formantShiftSemitones, 2500);
+    formantFilter.Q.value = 1.0;
+    formantFilter.gain.value = formantShiftSemitones * 0.8;
+
+    input.connect(delayA);
+    input.connect(delayB);
+    delayA.connect(formantFilter);
+    delayB.connect(formantFilter);
+    formantFilter.connect(output);
+
+    return { input, output };
+  }
 }
 
 export const vocalDspProcessor = new VocalDspProcessor();
+

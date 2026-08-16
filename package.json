@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "npx esbuild scripts/test_real_dsp_and_governance.ts --bundle --platform=node | node"
   },
   "overrides": {
     "protobufjs": "^7.4.0"
