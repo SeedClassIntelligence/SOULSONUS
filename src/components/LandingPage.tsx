@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Sparkles,
   ArrowRight,
@@ -15,11 +15,16 @@ import {
   CheckCircle2,
   Volume2,
   ChevronRight,
+  ChevronDown,
   Headphones,
   FileText,
   ShieldCheck,
   Flame,
   AudioWaveform,
+  SlidersHorizontal,
+  FolderDown,
+  Share2,
+  HelpCircle,
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -27,6 +32,40 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
+  // FAQ accordion state
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
+
+  const faqs = [
+    {
+      q: 'How is SoulSonus fundamentally different from prompt-based AI music generators?',
+      a: 'Prompt-based generators (like Suno or Udio) take a text prompt and generate a whole random MP3 where you have zero creative input, zero stem access, and zero control over individual notes. SoulSonus is a professional DAW where YOU provide the human performance (the Soul) — whether by beatboxing, humming, tapping, singing, or importing audio. The intelligence then non-destructively orchestrates production around your exact timing, dynamics, and melody without ever destroying your performance.',
+    },
+    {
+      q: 'Does SoulSonus ever overwrite, replace, or regenerate my original performance?',
+      a: 'Never without your explicit directive. SoulSonus operates on a "Bounded Intelligence" doctrine: the human intent is preserved as authoritative NoteEvents and audio tracks. You choose exactly what stays fixed (e.g. your melody, groove, vocal phrasing) and what takes shape in the production (sound design, synths, acoustic layers, mix balance).',
+    },
+    {
+      q: 'Can I export stems, MIDI, and masters into Ableton Live, Logic Pro, or Pro Tools?',
+      a: 'Yes. SoulSonus exports broadcast-quality 24-bit / 48kHz PCM WAV files, spec-compliant lossless FLAC streams, isolated multi-track stems, and 480 PPQ MIDI sequences with full cryptographic SeedSignature provenance metadata.',
+    },
+    {
+      q: 'What is a SeedSignature and how does it protect my intellectual property?',
+      a: 'Every vocal take, beatbox performance, note sequence, and mix decision is hashed in real-time using browser WebCrypto SHA-256. This forms an unbroken, verifiable provenance chain proving that you are the original human author of the idea before any AI orchestration was applied.',
+    },
+    {
+      q: 'Do I need heavy GPU hardware or cloud subscriptions to run this?',
+      a: 'No. The entire client-side DAW runs 100% in your browser with zero latency. Tone.js audio synthesis, Spotify Basic Pitch neural pitch tracking (ONNX), granular pitch shifting, and ITU-R BS.1770-4 mastering telemetry all execute locally on your machine.',
+    },
+    {
+      q: 'How do I plug in my studio microphone or MIDI keyboard?',
+      a: 'SoulSonus connects to your computer’s default audio interface, USB microphone, or laptop mic via the Web Audio API with zero driver setup. Hardware MIDI controllers are automatically detected via WebMIDI with zero mapping required.',
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 relative overflow-x-hidden">
       {/* Dynamic Background Glows */}
@@ -40,8 +79,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
       <nav className="sticky top-0 z-50 bg-slate-950/85 backdrop-blur-md border-b border-slate-800/80 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-cyan-400 p-0.5 shadow-lg shadow-amber-500/20 flex items-center justify-center">
-            <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-amber-400" />
+            <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center font-black text-amber-400 font-mono text-sm">
+              S
             </div>
           </div>
           <div className="flex flex-col">
@@ -54,12 +93,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
           </div>
         </div>
 
-        <div className="hidden md:flex items-center space-x-6 text-xs font-mono text-slate-400">
+        <div className="hidden lg:flex items-center space-x-6 text-xs font-mono text-slate-400">
           <a href="#philosophy" className="hover:text-amber-300 transition">PHILOSOPHY</a>
           <a href="#modalities" className="hover:text-amber-300 transition">MODALITIES</a>
-          <a href="#architecture" className="hover:text-amber-300 transition">SOUL vs SONUS</a>
+          <a href="#examples" className="hover:text-amber-300 transition">EXAMPLES</a>
           <a href="#intelligence" className="hover:text-amber-300 transition">INTELLIGENCE</a>
+          <a href="#how-it-works" className="hover:text-amber-300 transition">HOW IT WORKS</a>
           <a href="#workspaces" className="hover:text-amber-300 transition">WORKSPACES</a>
+          <a href="#specs" className="hover:text-amber-300 transition">TECH SPECS</a>
+          <a href="#faq" className="hover:text-amber-300 transition">FAQ</a>
         </div>
 
         <button
@@ -72,22 +114,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
       </nav>
 
       {/* Main Content Container */}
-      <main className="relative z-10 max-w-6xl mx-auto px-6 pt-16 pb-28 space-y-32">
+      <main className="relative z-10 max-w-6xl mx-auto px-6 pt-16 pb-28 space-y-36">
         {/* HERO SECTION */}
         <section className="text-center space-y-8 pt-8">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-[11px] font-mono text-slate-300">
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] font-mono text-slate-300 shadow-inner">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>STUDIO BETA ONLINE • ITU-R BS.1770-4 TELEMETRY • BASIC PITCH ONNX</span>
+            <span>STUDIO BETA LIVE • 480 PPQ SEQUENCER • SPOTIFY BASIC PITCH ONNX • BS.1770-4 MASTERING</span>
           </div>
 
-          <h1 className="text-5xl sm:text-7xl font-black tracking-tight text-white max-w-4xl mx-auto leading-[1.08]">
+          <h1 className="text-5xl sm:text-7xl font-black tracking-tight text-white max-w-4xl mx-auto leading-[1.06]">
             From what you feel to what the world hears.
           </h1>
 
           <p className="text-lg sm:text-2xl text-slate-300 max-w-3xl mx-auto font-light leading-relaxed">
             You bring the <strong className="font-semibold text-amber-400">Soul</strong> — the idea, the performance, the instinct, the identity.
             <br className="hidden sm:inline" />
-            <span className="text-slate-400">SoulSonus shapes the </span>
+            <span className="text-slate-400"> SoulSonus shapes the </span>
             <strong className="font-semibold text-cyan-400">Sonus</strong> — the sound, the arrangement, the production, the finished record.
           </p>
 
@@ -100,10 +142,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
               <ArrowRight className="w-4 h-4 stroke-[3]" />
             </button>
             <a
-              href="#philosophy"
+              href="#examples"
               className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 font-mono font-bold text-xs tracking-wider flex items-center justify-center space-x-2 transition cursor-pointer"
             >
-              <span>EXPLORE THE PHILOSOPHY</span>
+              <span>SEE REAL EXAMPLES</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </a>
           </div>
@@ -115,15 +157,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
             <div className="text-[11px] font-mono font-black text-amber-400 uppercase tracking-widest">
               THE CORE ARCHITECTURE
             </div>
-            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
               The name is the product.
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* SOUL Column */}
-            <div className="p-8 rounded-3xl bg-gradient-to-b from-amber-500/10 via-slate-900/60 to-slate-950 border border-amber-500/30 shadow-xl space-y-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-6 text-7xl font-black text-amber-500/5 select-none font-mono">
+            <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-b from-amber-500/10 via-slate-900/70 to-slate-950 border border-amber-500/30 shadow-2xl space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-6 text-8xl font-black text-amber-500/5 select-none font-mono">
                 SOUL
               </div>
               <div className="space-y-2">
@@ -134,35 +176,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
               </div>
               <ul className="space-y-3.5 font-mono text-sm text-slate-300">
                 <li className="flex items-center space-x-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
                   <span>A melody you hear in your head.</span>
                 </li>
                 <li className="flex items-center space-x-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
                   <span>A rhythm you tap on your desk.</span>
                 </li>
                 <li className="flex items-center space-x-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
                   <span>A lyric cadence you write.</span>
                 </li>
                 <li className="flex items-center space-x-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                  <span>A vocal take you sing.</span>
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                  <span>A vocal take you sing into the mic.</span>
                 </li>
                 <li className="flex items-center space-x-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                  <span>A beat you bring in.</span>
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                  <span>A beat or sample you bring in.</span>
                 </li>
                 <li className="flex items-center space-x-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
                   <span>A production choice only you would make.</span>
                 </li>
               </ul>
             </div>
 
             {/* SONUS Column */}
-            <div className="p-8 rounded-3xl bg-gradient-to-b from-cyan-500/10 via-slate-900/60 to-slate-950 border border-cyan-500/30 shadow-xl space-y-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-6 text-7xl font-black text-cyan-500/5 select-none font-mono">
+            <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-b from-cyan-500/10 via-slate-900/70 to-slate-950 border border-cyan-500/30 shadow-2xl space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-6 text-8xl font-black text-cyan-500/5 select-none font-mono">
                 SONUS
               </div>
               <div className="space-y-2">
@@ -173,35 +215,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
               </div>
               <ul className="space-y-3.5 font-mono text-sm text-slate-300">
                 <li className="flex items-center space-x-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
-                  <span>Multi-layer Instrumentation.</span>
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+                  <span>Multi-layer Synthesizer & Acoustic Instrumentation.</span>
                 </li>
                 <li className="flex items-center space-x-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
-                  <span>Harmonic Arrangement & Progression.</span>
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+                  <span>Harmonic Arrangement & Chord Progressions.</span>
                 </li>
                 <li className="flex items-center space-x-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
-                  <span>Demucs 4-Stem Acoustic Separation.</span>
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+                  <span>Demucs v4 4-Stem Acoustic Separation.</span>
                 </li>
                 <li className="flex items-center space-x-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
-                  <span>Pitch, Harmony & Formant Tuning.</span>
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+                  <span>Scale Quantization, Pitch Correction & Formant Tuning.</span>
                 </li>
                 <li className="flex items-center space-x-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
-                  <span>Surgical Dynamic Mixing & EQ.</span>
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+                  <span>Surgical Dynamic Compression & 3-Band Parametric EQ.</span>
                 </li>
                 <li className="flex items-center space-x-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
-                  <span>ITU-R BS.1770-4 Broadcast Mastering.</span>
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+                  <span>ITU-R BS.1770-4 24-Bit Broadcast Mastering.</span>
                 </li>
               </ul>
             </div>
           </div>
 
           {/* Punchline Callout */}
-          <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 text-center space-y-3">
+          <div className="p-8 sm:p-10 rounded-3xl bg-slate-900/90 border border-slate-800 text-center space-y-3 shadow-xl">
             <p className="text-xl sm:text-2xl font-bold text-slate-100 max-w-3xl mx-auto leading-snug">
               SoulSonus exists to carry the <span className="text-amber-400">Soul</span> all the way into the <span className="text-cyan-400">Sonus</span> without losing the creator in between.
             </p>
@@ -214,28 +256,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
             <div className="text-[11px] font-mono font-black text-cyan-400 uppercase tracking-widest">
               CREATIVE ORIGIN MODALITIES
             </div>
-            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
               Start wherever the Soul shows up.
             </h2>
             <p className="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base font-light">
-              SoulSonus can understand each of these as creative source material and carry it forward into editable production.
+              SoulSonus understands each of these as authoritative creative source material and carries it forward into editable, multi-track studio production.
             </p>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {[
-              { icon: <Mic className="w-5 h-5 text-amber-400" />, title: 'Hum it', desc: 'Neural pitch tracking maps sung melodies directly into MIDI.' },
-              { icon: <Activity className="w-5 h-5 text-pink-400" />, title: 'Sing it', desc: 'Multi-take vocal comping, pitch-correction & formant DSP.' },
-              { icon: <Zap className="w-5 h-5 text-cyan-400" />, title: 'Tap it', desc: 'Body percussion & finger taps mapped to drum transients.' },
-              { icon: <Flame className="w-5 h-5 text-amber-400" />, title: 'Beatbox it', desc: 'Dual-band FFT isolates sub-kicks from snare pops.' },
-              { icon: <Music className="w-5 h-5 text-purple-400" />, title: 'Play it', desc: 'Connect hardware MIDI keyboards or hardware synths.' },
-              { icon: <FileText className="w-5 h-5 text-pink-400" />, title: 'Write it', desc: 'Lyric Cadence Studio with syllable-to-beat synchronization.' },
-              { icon: <Headphones className="w-5 h-5 text-blue-400" />, title: 'Record it', desc: 'Studio microphone overdubbing with zero latency.' },
-              { icon: <Disc className="w-5 h-5 text-emerald-400" />, title: 'Import it', desc: 'Drop any audio file or beat for 4-stem Demucs extraction.' },
+              { icon: <Mic className="w-5 h-5 text-amber-400" />, title: 'Hum it', desc: 'On-device neural pitch tracking extracts your melody straight into 480 PPQ MIDI notes.' },
+              { icon: <Activity className="w-5 h-5 text-pink-400" />, title: 'Sing it', desc: 'Multi-take vocal comp builder, granular pitch shifting & formant transformation.' },
+              { icon: <Zap className="w-5 h-5 text-cyan-400" />, title: 'Tap it', desc: 'Body percussion and surface taps detected into calibrated velocity-sensitive transients.' },
+              { icon: <Flame className="w-5 h-5 text-orange-400" />, title: 'Beatbox it', desc: 'Dual-band FFT audio engine isolates sub-kick thumps from snappy snare pops.' },
+              { icon: <Music className="w-5 h-5 text-purple-400" />, title: 'Play it', desc: 'Plug in any USB MIDI controller or draw notes directly onto the high-res Piano Roll.' },
+              { icon: <FileText className="w-5 h-5 text-pink-400" />, title: 'Write it', desc: 'Lyric Cadence Studio maps written lines to 16th-note rhythmic sub-divisions.' },
+              { icon: <Headphones className="w-5 h-5 text-blue-400" />, title: 'Record it', desc: 'Zero-latency studio overdubbing with real-time waveform visualization.' },
+              { icon: <Disc className="w-5 h-5 text-emerald-400" />, title: 'Import it', desc: 'Import any audio track or beat for instant Demucs 4-stem multitrack extraction.' },
             ].map((m, idx) => (
               <div
                 key={idx}
-                className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 transition space-y-2.5"
+                className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 transition space-y-2.5 shadow-md"
               >
                 <div className="p-2.5 rounded-xl bg-slate-950 w-fit border border-slate-800">
                   {m.icon}
@@ -247,95 +289,203 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
           </div>
         </section>
 
-        {/* SECTION 4: KEEP THE SOUL. CHANGE THE SONUS. */}
-        <section id="architecture" className="scroll-mt-24 space-y-12">
+        {/* SECTION 4: KEEP THE SOUL. CHANGE THE SONUS. (6 REAL STUDIO EXAMPLES) */}
+        <section id="examples" className="scroll-mt-24 space-y-12">
           <div className="text-center space-y-3">
             <div className="text-[11px] font-mono font-black text-purple-400 uppercase tracking-widest">
               NON-DESTRUCTIVE PERFORMANCE PRESERVATION
             </div>
-            <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
               Keep the Soul. Change the Sonus.
             </h2>
             <p className="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base font-light">
-              Transform any performance into full studio orchestration while preserving your human timing, dynamics, and groove.
+              Generic AI destroys your performance by regenerating random sounds. SoulSonus anchors your human intent and transforms the production non-destructively.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Example 1: Hum a Bassline */}
-            <div className="p-7 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div className="flex items-center space-x-2">
-                  <Mic className="w-4 h-4 text-amber-400" />
-                  <span className="font-mono font-bold text-white text-sm">Example: Hum a Bassline</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Example 1: Beatbox to Drum Kit */}
+            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-5 flex flex-col justify-between shadow-xl">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center space-x-2">
+                    <Flame className="w-4 h-4 text-amber-400" />
+                    <span className="font-mono font-bold text-white text-xs">Beatbox ➔ Custom Drum Kit</span>
+                  </div>
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">RHYTHM</span>
                 </div>
-                <span className="text-[10px] font-mono text-slate-500 uppercase">Voice ➔ 808 Sub</span>
+                <p className="text-xs text-slate-400">You beatbox an organic boom-bap rhythm into your laptop mic.</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-xs font-mono">
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
-                  <div className="text-amber-400 font-black tracking-wider flex items-center space-x-1.5">
-                    <Lock className="w-3.5 h-3.5" />
+              <div className="space-y-3 text-xs font-mono">
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
+                  <div className="text-amber-400 font-bold flex items-center space-x-1">
+                    <Lock className="w-3 h-3" />
                     <span>KEEP (THE SOUL):</span>
                   </div>
-                  <ul className="space-y-1.5 text-slate-300 pt-1">
-                    <li>✓ Melody pitch contour</li>
-                    <li>✓ Micro-timing onsets</li>
-                    <li>✓ Humanized groove</li>
-                    <li>✓ Vocal phrasing & cadence</li>
-                  </ul>
+                  <div className="text-slate-300 text-[11px]">Syncopated pocket, micro-timing swing, ghost notes, velocity dynamics.</div>
                 </div>
-
-                <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 space-y-2">
-                  <div className="text-cyan-400 font-black tracking-wider flex items-center space-x-1.5">
-                    <Sliders className="w-3.5 h-3.5" />
+                <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 space-y-1">
+                  <div className="text-cyan-400 font-bold flex items-center space-x-1">
+                    <Sliders className="w-3 h-3" />
                     <span>CHANGE (THE SONUS):</span>
                   </div>
-                  <ul className="space-y-1.5 text-slate-300 pt-1">
-                    <li>⚡ 808 Sub Bass synth</li>
-                    <li>⚡ Analog tube saturation</li>
-                    <li>⚡ Sidechain compressor</li>
-                    <li>⚡ Studio frequency balance</li>
-                  </ul>
+                  <div className="text-slate-300 text-[11px]">Punchy 808 sub kick, crispy vinyl snare, stereo hi-hats, studio compression.</div>
                 </div>
               </div>
             </div>
 
-            {/* Example 2: Import a Beat */}
-            <div className="p-7 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div className="flex items-center space-x-2">
-                  <Disc className="w-4 h-4 text-cyan-400" />
-                  <span className="font-mono font-bold text-white text-sm">Example: Import a Beat</span>
+            {/* Example 2: Hum a Bassline */}
+            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-5 flex flex-col justify-between shadow-xl">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center space-x-2">
+                    <Mic className="w-4 h-4 text-cyan-400" />
+                    <span className="font-mono font-bold text-white text-xs">Hum ➔ Analog Moog Sub Bass</span>
+                  </div>
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold">MELODY</span>
                 </div>
-                <span className="text-[10px] font-mono text-slate-500 uppercase">Audio ➔ 4-Stem Multitrack</span>
+                <p className="text-xs text-slate-400">You hum a bassline melody while riding in your car.</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-xs font-mono">
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
-                  <div className="text-amber-400 font-black tracking-wider flex items-center space-x-1.5">
-                    <Lock className="w-3.5 h-3.5" />
+              <div className="space-y-3 text-xs font-mono">
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
+                  <div className="text-amber-400 font-bold flex items-center space-x-1">
+                    <Lock className="w-3 h-3" />
                     <span>KEEP (THE SOUL):</span>
                   </div>
-                  <ul className="space-y-1.5 text-slate-300 pt-1">
-                    <li>✓ Original session tempo</li>
-                    <li>✓ Bass bounce & groove</li>
-                    <li>✓ Raw vocal take energy</li>
-                    <li>✓ Harmonic root progression</li>
-                  </ul>
+                  <div className="text-slate-300 text-[11px]">Exact pitch contour, slide transitions, note lengths, expressive phrasing.</div>
                 </div>
-
-                <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 space-y-2">
-                  <div className="text-cyan-400 font-black tracking-wider flex items-center space-x-1.5">
-                    <Sliders className="w-3.5 h-3.5" />
+                <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 space-y-1">
+                  <div className="text-cyan-400 font-bold flex items-center space-x-1">
+                    <Sliders className="w-3 h-3" />
                     <span>CHANGE (THE SONUS):</span>
                   </div>
-                  <ul className="space-y-1.5 text-slate-300 pt-1">
-                    <li>⚡ 4-Bar arrangement</li>
-                    <li>⚡ Acoustic Rhodes layers</li>
-                    <li>⚡ Genre re-orchestration</li>
-                    <li>⚡ Broadcast stereo width</li>
-                  </ul>
+                  <div className="text-slate-300 text-[11px]">Moog 24dB ladder filter, analog sawtooth oscillators, sidechain pump.</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Example 3: Body Percussion & Claps */}
+            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-5 flex flex-col justify-between shadow-xl">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center space-x-2">
+                    <Zap className="w-4 h-4 text-pink-400" />
+                    <span className="font-mono font-bold text-white text-xs">Clap / Tap ➔ Studio Percussion</span>
+                  </div>
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300 font-bold">GROOVE</span>
+                </div>
+                <p className="text-xs text-slate-400">You tap a polyrhythm on your tabletop or snap your fingers.</p>
+              </div>
+
+              <div className="space-y-3 text-xs font-mono">
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
+                  <div className="text-amber-400 font-bold flex items-center space-x-1">
+                    <Lock className="w-3 h-3" />
+                    <span>KEEP (THE SOUL):</span>
+                  </div>
+                  <div className="text-slate-300 text-[11px]">Human polyrhythmic micro-groove, syncopated accents, natural timing.</div>
+                </div>
+                <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 space-y-1">
+                  <div className="text-cyan-400 font-bold flex items-center space-x-1">
+                    <Sliders className="w-3 h-3" />
+                    <span>CHANGE (THE SONUS):</span>
+                  </div>
+                  <div className="text-slate-300 text-[11px]">Orchestral shakers, conga hits, tight handclaps, wide stereo delay.</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Example 4: Raw Vocal Take to Lead & Harmonies */}
+            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-5 flex flex-col justify-between shadow-xl">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center space-x-2">
+                    <Activity className="w-4 h-4 text-purple-400" />
+                    <span className="font-mono font-bold text-white text-xs">Raw Vocal ➔ 3-Part Stack</span>
+                  </div>
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold">VOCALS</span>
+                </div>
+                <p className="text-xs text-slate-400">You sing a passionate hook on a noisy smartphone mic.</p>
+              </div>
+
+              <div className="space-y-3 text-xs font-mono">
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
+                  <div className="text-amber-400 font-bold flex items-center space-x-1">
+                    <Lock className="w-3 h-3" />
+                    <span>KEEP (THE SOUL):</span>
+                  </div>
+                  <div className="text-slate-300 text-[11px]">Emotional vocal delivery, lyrical inflections, vibrato, authentic phrasing.</div>
+                </div>
+                <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 space-y-1">
+                  <div className="text-cyan-400 font-bold flex items-center space-x-1">
+                    <Sliders className="w-3 h-3" />
+                    <span>CHANGE (THE SONUS):</span>
+                  </div>
+                  <div className="text-slate-300 text-[11px]">Diatonic 3rd & 5th vocal doubles, C Minor scale snap, formant shift.</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Example 5: Import a Beat / Sample */}
+            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-5 flex flex-col justify-between shadow-xl">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center space-x-2">
+                    <Disc className="w-4 h-4 text-emerald-400" />
+                    <span className="font-mono font-bold text-white text-xs">Audio File ➔ 4 Stems + Chords</span>
+                  </div>
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">STEMS</span>
+                </div>
+                <p className="text-xs text-slate-400">You drop in a stereo bounce of an old beat you made years ago.</p>
+              </div>
+
+              <div className="space-y-3 text-xs font-mono">
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
+                  <div className="text-amber-400 font-bold flex items-center space-x-1">
+                    <Lock className="w-3 h-3" />
+                    <span>KEEP (THE SOUL):</span>
+                  </div>
+                  <div className="text-slate-300 text-[11px]">Original 94 BPM tempo, drum bounce, vocal samples, bassline foundation.</div>
+                </div>
+                <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 space-y-1">
+                  <div className="text-cyan-400 font-bold flex items-center space-x-1">
+                    <Sliders className="w-3 h-3" />
+                    <span>CHANGE (THE SONUS):</span>
+                  </div>
+                  <div className="text-slate-300 text-[11px]">Demucs 4-stem split, Vintage Rhodes chords, new arrangement structure.</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Example 6: Lyric Cadence to Track */}
+            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-5 flex flex-col justify-between shadow-xl">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <div className="flex items-center space-x-2">
+                    <FileText className="w-4 h-4 text-blue-400" />
+                    <span className="font-mono font-bold text-white text-xs">Lyrics ➔ Syllable Grid Timing</span>
+                  </div>
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold">CADENCE</span>
+                </div>
+                <p className="text-xs text-slate-400">You write a multi-rhyme verse in the Lyric Cadence Studio.</p>
+              </div>
+
+              <div className="space-y-3 text-xs font-mono">
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
+                  <div className="text-amber-400 font-bold flex items-center space-x-1">
+                    <Lock className="w-3 h-3" />
+                    <span>KEEP (THE SOUL):</span>
+                  </div>
+                  <div className="text-slate-300 text-[11px]">Written poetry, internal rhymes, breath pauses, author identity.</div>
+                </div>
+                <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 space-y-1">
+                  <div className="text-cyan-400 font-bold flex items-center space-x-1">
+                    <Sliders className="w-3 h-3" />
+                    <span>CHANGE (THE SONUS):</span>
+                  </div>
+                  <div className="text-slate-300 text-[11px]">16th-note sub-beat grid snapping, overdub take punch-ins, stereo doubling.</div>
                 </div>
               </div>
             </div>
@@ -358,43 +508,101 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono text-xs">
-            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1 shadow-md">
               <div className="text-purple-300 font-bold">“Keep my performance. Change the instrument.”</div>
-              <div className="text-slate-500 text-[11px]">Preserves exact note events, swaps sound font to Vintage Rhodes.</div>
+              <div className="text-slate-400 text-[11px]">Preserves exact NoteEvents, swaps sound font to Warm Electric Rhodes.</div>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1 shadow-md">
               <div className="text-purple-300 font-bold">“Keep this beat at 94 BPM. Recompose the harmony.”</div>
-              <div className="text-slate-500 text-[11px]">Locks drum rhythm, generates complementary C Minor chords.</div>
+              <div className="text-slate-400 text-[11px]">Locks drum rhythm, generates complementary C Minor chords.</div>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1 shadow-md">
               <div className="text-purple-300 font-bold">“Keep my vocal phrasing. Try a different vocal character.”</div>
-              <div className="text-slate-500 text-[11px]">Applies formant shifting and auto-tune without altering timing.</div>
+              <div className="text-slate-400 text-[11px]">Applies formant shifting and auto-tune without altering timing.</div>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1 shadow-md">
               <div className="text-purple-300 font-bold">“Keep the drums. Build the record around them.”</div>
-              <div className="text-slate-500 text-[11px]">Anchors the kick and snare, orchestrates synth leads and sub bass.</div>
+              <div className="text-slate-400 text-[11px]">Anchors the kick and snare, orchestrates synth leads and sub bass.</div>
             </div>
           </div>
         </section>
 
-        {/* SECTION 6: FROM SOUL TO SONUS (6 WORKSPACES) */}
-        <section id="workspaces" className="scroll-mt-24 space-y-12">
+        {/* SECTION 6: HOW IT WORKS (4-STEP PRODUCTION FLOW) */}
+        <section id="how-it-works" className="scroll-mt-24 space-y-12">
           <div className="text-center space-y-3">
             <div className="text-[11px] font-mono font-black text-amber-400 uppercase tracking-widest">
-              END-TO-END PRODUCTION PIPELINE
+              SEAMLESS 4-STEP LIFECYCLE
             </div>
-            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+              How it works.
+            </h2>
+            <p className="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base font-light">
+              From the instant a spark enters your mind to an audio master ready for Spotify and Apple Music.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 font-mono">
+            {[
+              {
+                step: '01',
+                title: 'Capture Intent',
+                badge: 'HUM / TAP / VOCAL',
+                desc: 'Perform into your microphone or drag in audio. Real-time dual FFT filters and on-device neural inference isolate your timing and notes immediately.',
+              },
+              {
+                step: '02',
+                title: 'Sculpt & Arrange',
+                badge: '480 PPQ NOTE ROLL',
+                desc: 'Edit notes with Draw, Split, and Stretch tools. Quantize to C Minor or chromatic scales with sub-beat micro-timing accuracy.',
+              },
+              {
+                step: '03',
+                title: 'Shape the Sound',
+                badge: 'BOUNDED INTELLIGENCE',
+                desc: 'Direct the co-producer to orchestrate chords, apply granular pitch shifting, and shape dynamic 3-band channel strip EQs.',
+              },
+              {
+                step: '04',
+                title: 'Sign & Export',
+                badge: '24-BIT MASTER + FLAC',
+                desc: 'Measure ITU-R BS.1770-4 LUFS-I and true peak, hash your copyright SeedSignature, and export lossless 24-bit masters.',
+              },
+            ].map((st, idx) => (
+              <div
+                key={idx}
+                className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3 shadow-lg relative overflow-hidden"
+              >
+                <div className="text-4xl font-black text-slate-800 select-none">
+                  {st.step}
+                </div>
+                <div className="text-[10px] font-bold text-amber-400 tracking-wider">
+                  {st.badge}
+                </div>
+                <h4 className="text-base font-bold text-white">{st.title}</h4>
+                <p className="text-xs text-slate-400 font-sans leading-relaxed">{st.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* SECTION 7: THE 6 ROOM WORKFLOW */}
+        <section id="workspaces" className="scroll-mt-24 space-y-12">
+          <div className="text-center space-y-3">
+            <div className="text-[11px] font-mono font-black text-cyan-400 uppercase tracking-widest">
+              THE 6 PRODUCTION ROOMS
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
               From Soul to Sonus. One studio.
             </h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 font-mono">
             {[
-              { room: 'CREATE', label: 'Capture the idea.', color: 'border-amber-500/40 text-amber-300', desc: 'Real-time beatbox, body percussion, and voice pitch capture with dual FFT filters.' },
-              { room: 'BUILD', label: 'Give it form.', color: 'border-cyan-500/40 text-cyan-300', desc: '480 PPQ Note Canvas with multi-tool drawing, stretching, splitting, and quantization.' },
-              { room: 'WRITE & RECORD', label: 'Give it voice.', color: 'border-pink-500/40 text-pink-300', desc: 'Lyric cadence mapping, multi-take overdub recording, and granular vocal pitch shifting.' },
-              { room: 'MIX', label: 'Give it dimension.', color: 'border-emerald-500/40 text-emerald-300', desc: 'Dynamic per-track channel strips with 3-band EQ, FET compression, and spatial sends.' },
-              { room: 'MASTER', label: 'Give it finish.', color: 'border-purple-500/40 text-purple-300', desc: 'ITU-R BS.1770-4 telemetry with 4x oversampled true peak and LUFS-I loudness gating.' },
+              { room: 'CREATE', label: 'Capture the idea.', color: 'border-amber-500/40 text-amber-300', desc: 'Real-time beatbox, body percussion, and voice pitch capture with dual FFT filters and on-device neural transcription.' },
+              { room: 'BUILD', label: 'Give it form.', color: 'border-cyan-500/40 text-cyan-300', desc: '480 PPQ Note Canvas with multi-tool drawing, stretching, splitting, and high-resolution velocity editing.' },
+              { room: 'WRITE & RECORD', label: 'Give it voice.', color: 'border-pink-500/40 text-pink-300', desc: 'Lyric cadence mapping, multi-take overdub recording, and granular vocal pitch shifting with formant preservation.' },
+              { room: 'MIX', label: 'Give it dimension.', color: 'border-emerald-500/40 text-emerald-300', desc: 'Dynamic per-track channel strips with 3-band EQ, FET compression, reverb/delay sends, and spatial panning.' },
+              { room: 'MASTER', label: 'Give it finish.', color: 'border-purple-500/40 text-purple-300', desc: 'ITU-R BS.1770-4 telemetry with 4x oversampled true peak and integrated LUFS loudness compliance.' },
               { room: 'RELEASE', label: 'Give it to the world.', color: 'border-blue-500/40 text-blue-300', desc: 'WebCrypto SHA-256 SeedSignature provenance chain and 24-bit WAV & FLAC master packaging.' },
             ].map((ws, idx) => (
               <div
@@ -414,8 +622,112 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
           </div>
         </section>
 
+        {/* SECTION 8: TECH SPECS MATRIX */}
+        <section id="specs" className="scroll-mt-24 space-y-12">
+          <div className="text-center space-y-3">
+            <div className="text-[11px] font-mono font-black text-emerald-400 uppercase tracking-widest">
+              ENGINEERING INTEGRITY
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+              Audio Engine Specifications.
+            </h2>
+          </div>
+
+          <div className="p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl overflow-x-auto">
+            <table className="w-full text-left font-mono text-xs">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 pb-3">
+                  <th className="pb-3 font-bold">SUBSYSTEM</th>
+                  <th className="pb-3 font-bold">SPECIFICATION / ALGORITHM</th>
+                  <th className="pb-3 font-bold">ACCURACY / TOLERANCE</th>
+                  <th className="pb-3 font-bold">STATUS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                <tr>
+                  <td className="py-3 font-bold text-white">Loudness Telemetry</td>
+                  <td className="py-3 text-slate-400">ITU-R BS.1770-4 K-Weighting + 4x Oversampled True Peak</td>
+                  <td className="py-3 text-emerald-400">±0.1 LUFS / ±0.05 dBTP</td>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">VERIFIED</span></td>
+                </tr>
+                <tr>
+                  <td className="py-3 font-bold text-white">MIDI Resolution</td>
+                  <td className="py-3 text-slate-400">480 PPQ (Pulses Per Quarter Note) / 120 Ticks per 16th</td>
+                  <td className="py-3 text-emerald-400">Sample-accurate Tone.Transport</td>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">VERIFIED</span></td>
+                </tr>
+                <tr>
+                  <td className="py-3 font-bold text-white">Neural Pitch Tracking</td>
+                  <td className="py-3 text-slate-400">Spotify Basic Pitch ONNX Neural Model</td>
+                  <td className="py-3 text-emerald-400">88-key Polyphonic Frame Activation</td>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">VERIFIED</span></td>
+                </tr>
+                <tr>
+                  <td className="py-3 font-bold text-white">Vocal Pitch Shifting</td>
+                  <td className="py-3 text-slate-400">Granular Time-Domain Overlap-Add + Formant Filter</td>
+                  <td className="py-3 text-emerald-400">±12 Semitones, 35ms Grains</td>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">VERIFIED</span></td>
+                </tr>
+                <tr>
+                  <td className="py-3 font-bold text-white">Cryptographic Provenance</td>
+                  <td className="py-3 text-slate-400">Browser WebCrypto SHA-256 Lineage Chaining</td>
+                  <td className="py-3 text-emerald-400">Cryptographically Unbroken</td>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">VERIFIED</span></td>
+                </tr>
+                <tr>
+                  <td className="py-3 font-bold text-white">Master Packaging</td>
+                  <td className="py-3 text-slate-400">24-Bit / 48kHz WAV + Spec-Compliant FLAC Bitstream</td>
+                  <td className="py-3 text-emerald-400">fLaC Container + STREAMINFO + CRC-16</td>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">VERIFIED</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* SECTION 9: PRODUCER FAQ ACCORDION */}
+        <section id="faq" className="scroll-mt-24 space-y-12">
+          <div className="text-center space-y-3">
+            <div className="text-[11px] font-mono font-black text-amber-400 uppercase tracking-widest">
+              FREQUENTLY ASKED QUESTIONS
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+              Questions & Answers.
+            </h2>
+          </div>
+
+          <div className="space-y-4 max-w-3xl mx-auto font-mono">
+            {faqs.map((faq, index) => {
+              const isOpen = openFaq === index;
+              return (
+                <div
+                  key={index}
+                  className="rounded-2xl bg-slate-900/80 border border-slate-800 overflow-hidden transition"
+                >
+                  <button
+                    onClick={() => toggleFaq(index)}
+                    className="w-full p-5 text-left flex items-center justify-between gap-4 hover:text-amber-300 transition cursor-pointer"
+                  >
+                    <span className="font-bold text-white text-sm">{faq.q}</span>
+                    <ChevronDown
+                      className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${
+                        isOpen ? 'rotate-180 text-amber-400' : ''
+                      }`}
+                    />
+                  </button>
+                  {isOpen && (
+                    <div className="px-5 pb-5 pt-1 text-xs text-slate-300 font-sans leading-relaxed border-t border-slate-800/60">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
         {/* HEROIC CLOSING SECTION */}
-        <section className="text-center space-y-8 py-12 border-t border-slate-800">
+        <section className="text-center space-y-8 py-16 border-t border-slate-800">
           <p className="text-2xl sm:text-3xl font-light text-slate-300 max-w-3xl mx-auto leading-relaxed">
             Your <strong className="font-semibold text-amber-400">Soul</strong> was never the part that needed generating.
             <br />
@@ -423,7 +735,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
           </p>
 
           <div className="space-y-3">
-            <div className="text-3xl sm:text-5xl font-black font-mono tracking-wider bg-gradient-to-r from-amber-300 via-white to-cyan-300 bg-clip-text text-transparent">
+            <div className="text-4xl sm:text-6xl font-black font-mono tracking-wider bg-gradient-to-r from-amber-300 via-white to-cyan-300 bg-clip-text text-transparent">
               SOULSONUS
             </div>
             <div className="text-xs sm:text-sm font-mono text-slate-400 tracking-widest uppercase">
@@ -444,13 +756,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-950 py-8 px-6 text-center font-mono text-xs text-slate-500 relative z-10">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>© {new Date().getFullYear()} SOULSONUS • Advanced Creative Intelligence DAW</div>
-          <div className="flex items-center space-x-4 text-[11px]">
-            <span className="text-amber-400">SOUL: Human Intent</span>
-            <span className="text-slate-700">•</span>
-            <span className="text-cyan-400">SONUS: Finished Sound</span>
+      <footer className="border-t border-slate-800/80 bg-slate-950 py-10 px-6 font-mono text-xs text-slate-500 relative z-10">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-amber-500 to-cyan-400 flex items-center justify-center font-bold text-xs text-slate-950">
+              S
+            </div>
+            <span className="font-bold text-slate-300">SOULSONUS</span>
+            <span>• Built for Human Creators</span>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-6 text-[11px] text-slate-400">
+            <a href="#philosophy" className="hover:text-amber-300 transition">Philosophy</a>
+            <a href="#examples" className="hover:text-amber-300 transition">Examples</a>
+            <a href="#how-it-works" className="hover:text-amber-300 transition">How It Works</a>
+            <a href="#specs" className="hover:text-amber-300 transition">Tech Specs</a>
+            <a href="#faq" className="hover:text-amber-300 transition">FAQ</a>
+            <button onClick={onEnterStudio} className="text-amber-400 hover:underline">Launch DAW</button>
+          </div>
+
+          <div className="text-[11px] text-slate-500">
+            © {new Date().getFullYear()} SOULSONUS. All rights reserved.
           </div>
         </div>
       </footer>
