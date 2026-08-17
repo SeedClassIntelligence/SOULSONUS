@@ -119,12 +119,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
             <span>6-ROOM PRODUCTION DAW • 32-CH MIX DESK • 7-STAGE MASTERING • SHA-256 PROVENANCE</span>
           </div>
 
-          <h1 className="text-5xl sm:text-7xl font-black tracking-tight text-white max-w-4xl mx-auto leading-[1.06]">
-            From what you feel to what the world hears.
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white max-w-5xl mx-auto leading-[1.08]">
+            SoulSonus preserves the creator’s musical soul while giving it finished sound.
           </h1>
 
           <p className="text-lg sm:text-2xl text-slate-300 max-w-3xl mx-auto font-light leading-relaxed">
-            You bring the <strong className="font-semibold text-amber-400">Soul</strong> — the idea, the performance, the instinct, the identity.
+            From what you feel to what the world hears. You bring the <strong className="font-semibold text-amber-400">Soul</strong> — the idea, the performance, the instinct, the identity.
             <br className="hidden sm:inline" />
             <span className="text-slate-400"> SoulSonus shapes the </span>
             <strong className="font-semibold text-cyan-400">Sonus</strong> — the sound, the arrangement, the production, the finished record.
@@ -165,11 +165,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
               <div className="absolute top-0 right-0 p-6 text-8xl font-black text-amber-500/5 select-none font-mono">
                 SOUL
               </div>
-              <div className="space-y-2">
-                <span className="px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-mono font-bold text-xs border border-amber-500/40">
-                  THE HUMAN ORIGIN
-                </span>
-                <h3 className="text-3xl font-black text-white pt-2 font-mono">SOUL</h3>
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono text-xs font-bold leading-relaxed">
+                  <span className="text-amber-400">SOUL:</span> creator-originated intent, performance, phrasing, authorship, seed.
+                </div>
+                <h3 className="text-3xl font-black text-white pt-1 font-mono">SOUL</h3>
               </div>
               <ul className="space-y-3.5 font-mono text-sm text-slate-300">
                 <li className="flex items-center space-x-3">
@@ -204,11 +204,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
               <div className="absolute top-0 right-0 p-6 text-8xl font-black text-cyan-500/5 select-none font-mono">
                 SONUS
               </div>
-              <div className="space-y-2">
-                <span className="px-3 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-mono font-bold text-xs border border-cyan-500/40">
-                  THE SOUND THAT TAKES SHAPE
-                </span>
-                <h3 className="text-3xl font-black text-white pt-2 font-mono">SONUS</h3>
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-xl bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold leading-relaxed">
+                  <span className="text-cyan-400">SONUS:</span> the produced sound, realization, engineering, and finished sonic result.
+                </div>
+                <h3 className="text-3xl font-black text-white pt-1 font-mono">SONUS</h3>
               </div>
               <ul className="space-y-3.5 font-mono text-sm text-slate-300">
                 <li className="flex items-center space-x-3">
