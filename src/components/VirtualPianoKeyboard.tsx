@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Volume2, Music, Sparkles, ChevronLeft, ChevronRight, Piano } from 'lucide-react';
-import { useStudioSession } from '../app/StudioSessionContext';
-import { audioEngine } from '../lib/audioEngine';
-import { midiToNoteName, noteNameToMidi } from '../lib/audioUtils';
+import { audioEngine } from '../audio/audioEngine';
+import { midiToNoteName, noteNameToMidi } from '../utils/musicMath';
 
 interface VirtualPianoKeyboardProps {
   isOpen: boolean;
