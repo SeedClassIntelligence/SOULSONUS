@@ -33,6 +33,7 @@ import { SeedSignatureModal } from './components/SeedSignatureModal';
 import { ExportModal } from './components/ExportModal';
 import { AiControlRoomModal } from './components/AiControlRoomModal';
 import { VirtualPianoKeyboard } from './components/VirtualPianoKeyboard';
+import { AudioStemImportModal } from './components/AudioStemImportModal';
 
 import { audioEngine } from './audio/audioEngine';
 import { detectionEngine } from './audio/detectionEngine';
@@ -87,6 +88,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isAiControlRoomOpen, setIsAiControlRoomOpen] = useState(false);
   const [isPianoOpen, setIsPianoOpen] = useState(false);
+  const [isAudioImportOpen, setIsAudioImportOpen] = useState(false);
 
   // Drawers
   const [isStudioIntelligenceOpen, setIsStudioIntelligenceOpen] = useState(false);
@@ -198,6 +200,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       if (detail === 'collab' || detail === 'collaboration') setIsCollaborationOpen(true);
       if (detail === 'export') setIsExportOpen(true);
       if (detail === 'piano' || detail === 'keyboard') setIsPianoOpen((prev) => !prev);
+      if (detail === 'audio_import' || detail === 'stems' || detail === 'import') setIsAudioImportOpen(true);
 
       if (detail === 'proposal' || detail === 'realization' || (typeof detail === 'object' && detail?.type === 'realization')) {
         const trId = typeof detail === 'object' ? detail?.trackId : undefined;
@@ -517,6 +520,10 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       <VirtualPianoKeyboard
         isOpen={isPianoOpen}
         onClose={() => setIsPianoOpen(false)}
+      />
+      <AudioStemImportModal
+        isOpen={isAudioImportOpen}
+        onClose={() => setIsAudioImportOpen(false)}
       />
     </div>
   );

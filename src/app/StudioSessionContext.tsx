@@ -712,6 +712,45 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     tracksRef.current = tracks;
     detectionEngine.setTracks(tracks);
+    detectionEngine.setCallbacks({
+      onTrackTrigger: (trackId, pitch) => {
+        const tr = tracksRef.current.find((t) => t.id === trackId);
+        if (!tr) return;
+        const currentStep = currentStepRef.current;
+        const currentTick = currentStep * 120;
+        const targetMidi = pitch ? noteNameToMidi(pitch) : noteNameToMidi(tr.pitch || 'C3');
+
+        // Trigger live audio sound
+        const pitchName = pitch || tr.pitch || 'C3';
+        if (tr.instrument === 'kick') audioEngine.triggerKick(pitchName, undefined, 0.9, tr, 0.3);
+        else if (tr.instrument === 'snare') audioEngine.triggerSnare(undefined, 0.9, tr, 0.3);
+        else if (tr.instrument === 'hihat') audioEngine.triggerHiHat(undefined, 0.8, tr, 0.2);
+        else if (tr.instrument === 'bass') audioEngine.triggerBass(pitchName, undefined, 0.9, tr, 0.4);
+        else audioEngine.triggerMelody(pitchName, undefined, 0.9, tr, 0.4);
+
+        // Record note into track noteEvents & steps
+        setTracks((prev) =>
+          prev.map((t) => {
+            if (t.id !== trackId) return t;
+            const newSteps = [...t.steps];
+            newSteps[currentStep] = true;
+            const existingNotes = t.noteEvents || [];
+            const newNote: NoteEvent = {
+              id: `rec_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+              startTick: currentTick,
+              durationTicks: 120,
+              midiNote: targetMidi,
+              velocity: 100,
+            };
+            return {
+              ...t,
+              steps: newSteps,
+              noteEvents: [...existingNotes, newNote],
+            };
+          })
+        );
+      },
+    });
   }, [tracks]);
 
   // Calibrating Track ID

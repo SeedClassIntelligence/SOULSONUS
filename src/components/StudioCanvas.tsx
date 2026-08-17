@@ -348,7 +348,7 @@ export const StudioCanvas: React.FC = () => {
         }));
       }
     } else if (modality === 'AUDIO') {
-      window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'seed' }));
+      window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'audio_import' }));
     }
   };
 

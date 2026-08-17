@@ -99,6 +99,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
     handleTransposeNotes,
     handleNudgeTrackPattern,
     handleClearTrack,
+    handleDeleteTrack,
     selectedNoteIds,
     setSelectedNoteIds,
     setSelectionContext,
@@ -438,6 +439,15 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
               >
                 S
               </button>
+
+              {/* Delete Track */}
+              <button
+                onClick={() => handleDeleteTrack(track.id)}
+                className="w-5 h-5 rounded bg-slate-900 hover:bg-rose-600 text-slate-500 hover:text-white border border-slate-800 flex items-center justify-center text-[10px] font-bold transition cursor-pointer"
+                title={`Delete ${track.name} track`}
+              >
+                ✕
+              </button>
             </div>
           </div>
 
@@ -597,10 +607,17 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
               <div className="w-px h-2 bg-slate-800 mx-0.5" />
               <button
                 onClick={() => handleClearTrack(track.id)}
-                className="p-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition cursor-pointer"
-                title="Clear Track Notes"
+                className="px-1 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-amber-400 border border-slate-800 transition cursor-pointer text-[8px]"
+                title="Clear Notes"
               >
-                <Trash2 className="w-2.5 h-2.5" />
+                Clear
+              </button>
+              <button
+                onClick={() => handleDeleteTrack(track.id)}
+                className="px-1 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 transition cursor-pointer text-[8px] font-bold"
+                title="Delete Track"
+              >
+                Delete
               </button>
             </div>
           </div>
