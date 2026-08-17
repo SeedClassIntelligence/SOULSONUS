@@ -3,6 +3,7 @@ import { useStudioSession } from '../app/StudioSessionContext';
 import { Track, PianoRollTool } from '../types/daw';
 import { UnifiedTrackLane } from './UnifiedTrackLane';
 import { TICKS_PER_16TH, TICKS_PER_BEAT } from '../utils/musicMath';
+import { detectionEngine } from '../audio/detectionEngine';
 import {
   Layers,
   Plus,
@@ -215,6 +216,8 @@ export const StudioCanvas: React.FC = () => {
     handleToggleTrackViewMode,
     handleTransposeNotes,
     handleQuantizeTrackNotes,
+    detectionSettings,
+    setDetectionSettings,
   } = useStudioSession();
 
   const [activeBarView, setActiveBarView] = useState<'all' | 1 | 2 | 3 | 4>('all');
@@ -329,6 +332,24 @@ export const StudioCanvas: React.FC = () => {
     setTracks((prev) => [...prev, newTrack]);
     setSelectionContext((prev) => ({ ...prev, selectedTrackId: id }));
     setIsAddTrackOpen(false);
+  };
+
+  const handleQuickPerformanceCapture = async (modality: 'MOUTH' | 'BODY' | 'KEYS' | 'AUDIO' | 'LYRICS') => {
+    handleCreateSourceTrack(modality);
+    if (modality === 'MOUTH' || modality === 'BODY' || modality === 'KEYS') {
+      if (!detectionSettings.enabled) {
+        await detectionEngine.start();
+        setDetectionSettings((prev) => ({
+          ...prev,
+          enabled: true,
+          micConnected: true,
+          kickThreshold: modality === 'MOUTH' ? 0.45 : 0.6,
+          snareThreshold: modality === 'MOUTH' ? 0.45 : 0.35,
+        }));
+      }
+    } else if (modality === 'AUDIO') {
+      window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'seed' }));
+    }
   };
 
   const getTrackTheme = (track: Track) => {
@@ -797,6 +818,69 @@ export const StudioCanvas: React.FC = () => {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* 2.5 CREATOR PERFORMANCE & SEED CAPTURE STRIP */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-gradient-to-r from-amber-500/15 via-slate-900/90 to-cyan-500/15 rounded-2xl border border-amber-500/40 text-xs font-mono mb-2 shadow-xl">
+              <div className="flex items-center space-x-2">
+                <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <Mic className="w-4 h-4 text-amber-400 animate-pulse" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-black text-amber-300 tracking-wider">
+                    CREATOR PERFORMANCE CAPTURE:
+                  </div>
+                  <div className="text-[9px] text-slate-400">
+                    Instantly create track & arm microphone transient detection
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {/* 1. BEATBOX BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => handleQuickPerformanceCapture('MOUTH')}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 font-black text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-md shadow-amber-500/10"
+                  title="Create Beatbox Track & Arm Mic (Kick & Snare Transient Capture)"
+                >
+                  <Drum className="w-3.5 h-3.5 text-amber-400" />
+                  <span>🎤 BEATBOX (MOUTH)</span>
+                </button>
+
+                {/* 2. CLAP / TAP BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => handleQuickPerformanceCapture('BODY')}
+                  className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 font-black text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-md shadow-cyan-500/10"
+                  title="Create Hand Clap & Body Percussion Track"
+                >
+                  <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>👏 CLAP / TAP (BODY)</span>
+                </button>
+
+                {/* 3. HUM / MELODY BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => handleQuickPerformanceCapture('KEYS')}
+                  className="px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/50 font-black text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-md shadow-purple-500/10"
+                  title="Create Voice Melody / Hum Track (Pitch Detection & Scale Snap)"
+                >
+                  <Music className="w-3.5 h-3.5 text-purple-400" />
+                  <span>🎹 HUM / VOICE (MELODY)</span>
+                </button>
+
+                {/* 4. IMPORT AUDIO BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => handleQuickPerformanceCapture('AUDIO')}
+                  className="px-3 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/50 font-black text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-md shadow-blue-500/10"
+                  title="Drop Audio File / Demucs 4-Stem Separation"
+                >
+                  <Disc className="w-3.5 h-3.5 text-blue-400" />
+                  <span>📁 IMPORT AUDIO / STEMS</span>
+                </button>
               </div>
             </div>
 
