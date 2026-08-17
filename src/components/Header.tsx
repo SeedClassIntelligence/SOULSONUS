@@ -177,6 +177,16 @@ export const Header: React.FC<HeaderProps> = ({
             <span>✦ BLANK CANVAS</span>
           </button>
 
+          {/* Virtual Piano Keyboard Toggle Button */}
+          <button
+            type="button"
+            onClick={() => (onOpenPiano ? onOpenPiano() : window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'piano' })))}
+            className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold transition cursor-pointer active:scale-95"
+            title="Open Interactive Virtual Piano Keyboard (Play with Computer Keys A-L / Z-X)"
+          >
+            <span>🎹 PIANO</span>
+          </button>
+
           {/* Time Signature */}
           <div
             className="hidden sm:flex items-center space-x-1 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 text-xs font-mono"

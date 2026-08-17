@@ -198,7 +198,9 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
       return;
     }
 
-    // Select note
+    // Select note and preview its sound immediately
+    previewHit(note.midiNote, 0.4);
+
     if (!selectedNoteIds.includes(note.id)) {
       if (e.shiftKey) setSelectedNoteIds((prev) => [...prev, note.id]);
       else setSelectedNoteIds([note.id]);
@@ -712,6 +714,15 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                   <div
                     key={note.id}
                     onMouseDown={(e) => handleNoteMouseDown(e, note, 'MOVE')}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteNotes(track.id, [note.id]);
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDeleteNotes(track.id, [note.id]);
+                    }}
                     style={{
                       left: `${leftPercent}%`,
                       width: `${widthPercent}%`,
@@ -719,23 +730,23 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                       height: `${heightPercent}%`,
                       backgroundColor: trackColor,
                     }}
-                    className={`absolute rounded-md shadow-md pointer-events-auto flex items-center justify-between px-1 text-[9px] font-mono font-bold text-slate-950 transition-all cursor-move overflow-hidden ${
+                    className={`absolute rounded-md shadow-md pointer-events-auto flex items-center justify-between px-1 text-[9px] font-mono font-bold text-slate-950 transition-all cursor-grab active:cursor-grabbing select-none overflow-hidden ${
                       isNoteSelected
                         ? 'ring-2 ring-white shadow-[0_0_12px_rgba(255,255,255,0.8)] z-20 brightness-110'
                         : 'hover:brightness-105 z-10'
                     }`}
-                    title={`${noteName} | Start: Bar ${Math.floor(liveStartTick / 1920) + 1}, Beat ${
-                      Math.floor((liveStartTick % 1920) / 480) + 1
-                    }.${Math.floor((liveStartTick % 480) / 120) + 1} | Dur: ${liveDuration} ticks`}
+                    title={`${noteName} | Drag to Move/Transpose | Drag Right Edge to Stretch | Double-Click to Delete`}
                   >
                     {/* Left Nudge Resize Handle */}
                     <div
                       onMouseDown={(e) => handleNoteMouseDown(e, note, 'RESIZE_LEFT')}
                       className="absolute left-0 top-0 bottom-0 w-2 hover:bg-white/40 cursor-ew-resize"
+                      title="Drag left to nudge start"
                     />
 
-                    {/* Note Label */}
-                    <div className="truncate flex items-center space-x-1">
+                    {/* Note Label & Grab Icon */}
+                    <div className="truncate flex items-center space-x-1 pl-1">
+                      <span className="text-[7.5px] opacity-70">⠿</span>
                       <span>{noteName}</span>
                       {note.lyric && (
                         <span className="px-1 py-0.2 rounded bg-black/40 text-white text-[8px] font-normal truncate">
@@ -748,9 +759,9 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                     <div
                       onMouseDown={(e) => handleNoteMouseDown(e, note, 'RESIZE_RIGHT')}
                       title="Drag to Stretch Duration"
-                      className="absolute right-0 top-0 bottom-0 w-3 hover:bg-white/60 cursor-ew-resize flex items-center justify-center"
+                      className="absolute right-0 top-0 bottom-0 w-3 hover:bg-white/60 cursor-ew-resize flex items-center justify-center group/stretch"
                     >
-                      <div className="w-0.5 h-3 bg-black/50 rounded-full" />
+                      <div className="w-1 h-3 bg-black/40 group-hover/stretch:bg-black/70 rounded-full" />
                     </div>
                   </div>
                 );

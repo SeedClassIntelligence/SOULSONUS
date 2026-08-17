@@ -32,6 +32,7 @@ import { CollaborationModal } from './components/CollaborationModal';
 import { SeedSignatureModal } from './components/SeedSignatureModal';
 import { ExportModal } from './components/ExportModal';
 import { AiControlRoomModal } from './components/AiControlRoomModal';
+import { VirtualPianoKeyboard } from './components/VirtualPianoKeyboard';
 
 import { audioEngine } from './audio/audioEngine';
 import { detectionEngine } from './audio/detectionEngine';
@@ -85,6 +86,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const [isSeedSignatureOpen, setIsSeedSignatureOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isAiControlRoomOpen, setIsAiControlRoomOpen] = useState(false);
+  const [isPianoOpen, setIsPianoOpen] = useState(false);
 
   // Drawers
   const [isStudioIntelligenceOpen, setIsStudioIntelligenceOpen] = useState(false);
@@ -195,6 +197,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       if (detail === 'vault' || detail === 'library') setIsSoundLibraryOpen(true);
       if (detail === 'collab' || detail === 'collaboration') setIsCollaborationOpen(true);
       if (detail === 'export') setIsExportOpen(true);
+      if (detail === 'piano' || detail === 'keyboard') setIsPianoOpen((prev) => !prev);
 
       if (detail === 'proposal' || detail === 'realization' || (typeof detail === 'object' && detail?.type === 'realization')) {
         const trId = typeof detail === 'object' ? detail?.trackId : undefined;
@@ -332,6 +335,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         onOpenDatasetRegistry={() => setIsDatasetRegistryOpen(true)}
         onOpenCollaboration={() => setIsCollaborationOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
+        onOpenPiano={() => setIsPianoOpen(true)}
         onBackToLanding={onBackToLanding}
         isMicActive={detectionSettings.enabled}
       />
@@ -509,6 +513,10 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       <AiControlRoomModal
         isOpen={isAiControlRoomOpen}
         onClose={() => setIsAiControlRoomOpen(false)}
+      />
+      <VirtualPianoKeyboard
+        isOpen={isPianoOpen}
+        onClose={() => setIsPianoOpen(false)}
       />
     </div>
   );
