@@ -15,6 +15,10 @@ import { VisualizationDrawer } from './components/inspectors/VisualizationDrawer
 import { RealizationCandidateDrawer } from './components/RealizationCandidateDrawer';
 import { StudioIntelligenceDrawer } from './components/StudioIntelligenceDrawer';
 import { NativeBrainDrawer } from './components/inspectors/NativeBrainDrawer';
+import { MixWorkspace } from './components/mix/MixWorkspace';
+import { FinishMasterWorkspace } from './components/finish/FinishMasterWorkspace';
+import { FinalizationGateAndSign } from './components/finish/FinalizationGateAndSign';
+import { WriteRecordWorkspace } from './components/workspaces/WriteRecordWorkspace';
 import { evaluateRealizationContract } from './lib/realizationVerifier';
 import { RealizationRouter } from './lib/realizationRouter';
 import { GenerationCandidate, RealizationRoute } from './types/daw';
@@ -339,9 +343,27 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         soulFlowStageLabel={dawState.soulFlowState}
       />
 
-      {/* Main Persistent Studio Canvas */}
+      {/* Main Studio Canvas & 6-Workspace Room Switching */}
       <main className="flex-1 p-3 md:p-4 max-w-[1440px] w-full mx-auto space-y-3">
-        {focusTrackId ? <FocusModeView /> : <StudioCanvas />}
+        {focusTrackId ? (
+          <FocusModeView />
+        ) : activeWorkspace === 'MIX' ? (
+          <MixWorkspace />
+        ) : activeWorkspace === 'MASTER' ? (
+          <FinishMasterWorkspace />
+        ) : activeWorkspace === 'RELEASE' ? (
+          <div className="w-full bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden p-4 space-y-4 font-mono text-xs">
+            <div className="px-4 py-2 bg-slate-900/90 border border-slate-800 rounded-xl flex items-center justify-between">
+              <span className="font-bold text-purple-300">ROOM 6: RELEASE & SEEDSIGNATURE PROVENANCE</span>
+              <span className="text-[10px] text-slate-400">5-Gate Quality Finalization • SHA-256 Ledger • 24-Bit / FLAC Export</span>
+            </div>
+            <FinalizationGateAndSign />
+          </div>
+        ) : activeWorkspace === 'WRITE_RECORD' ? (
+          <WriteRecordWorkspace />
+        ) : (
+          <StudioCanvas />
+        )}
       </main>
 
       {/* Bottom Master Studio Telemetry & Status Bar */}
