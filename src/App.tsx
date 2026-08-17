@@ -32,10 +32,14 @@ import { AiControlRoomModal } from './components/AiControlRoomModal';
 import { audioEngine } from './audio/audioEngine';
 import { detectionEngine } from './audio/detectionEngine';
 import { VoiceCommandResult } from './audio/voiceCommands';
-import { PRESETS } from './data/presets';
 import { Preset } from './types/daw';
+import { LandingPage } from './components/LandingPage';
 
-const AppInner: React.FC = () => {
+interface AppInnerProps {
+  onBackToLanding?: () => void;
+}
+
+const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const {
     activeWorkspace,
     setActiveWorkspace,
@@ -323,6 +327,7 @@ const AppInner: React.FC = () => {
         onOpenDatasetRegistry={() => setIsDatasetRegistryOpen(true)}
         onOpenCollaboration={() => setIsCollaborationOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
+        onBackToLanding={onBackToLanding}
         isMicActive={detectionSettings.enabled}
       />
 
@@ -487,9 +492,37 @@ const AppInner: React.FC = () => {
 };
 
 export default function App() {
+  const [viewMode, setViewMode] = useState<'LANDING' | 'STUDIO'>(() => {
+    if (
+      typeof window !== 'undefined' &&
+      (window.location.hash === '#studio' || window.location.search.includes('view=studio'))
+    ) {
+      return 'STUDIO';
+    }
+    return 'LANDING';
+  });
+
+  const handleEnterStudio = () => {
+    setViewMode('STUDIO');
+    if (typeof window !== 'undefined') {
+      window.location.hash = 'studio';
+    }
+  };
+
+  const handleBackToLanding = () => {
+    setViewMode('LANDING');
+    if (typeof window !== 'undefined') {
+      window.location.hash = '';
+    }
+  };
+
+  if (viewMode === 'LANDING') {
+    return <LandingPage onEnterStudio={handleEnterStudio} />;
+  }
+
   return (
     <StudioSessionProvider>
-      <AppInner />
+      <AppInner onBackToLanding={handleBackToLanding} />
     </StudioSessionProvider>
   );
 }

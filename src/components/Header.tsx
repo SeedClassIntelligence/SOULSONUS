@@ -40,6 +40,7 @@ interface HeaderProps {
   onOpenCollaboration: () => void;
   onOpenExport: () => void;
   onOpenVault?: () => void;
+  onBackToLanding?: () => void;
   isMicActive: boolean;
 }
 
@@ -57,6 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenDatasetRegistry,
   onOpenCollaboration,
   onOpenExport,
+  onBackToLanding,
   isMicActive,
 }) => {
   const { setIsVaultModalOpen } = useStudioSession();
@@ -76,14 +78,28 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="px-4 py-2 border-b border-slate-900/80 flex flex-wrap items-center justify-between gap-3 bg-slate-950/80">
         {/* Brand & Project Name */}
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-rose-600 flex items-center justify-center font-black text-base text-slate-950 shadow-md shadow-amber-500/20">
+          <button
+            onClick={onBackToLanding}
+            className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-rose-600 flex items-center justify-center font-black text-base text-slate-950 shadow-md shadow-amber-500/20 hover:scale-105 transition cursor-pointer"
+            title="Return to SoulSonus Story & Landing Page"
+          >
             S
-          </div>
+          </button>
           <div className="flex items-center space-x-2">
-            <h1 className="text-sm font-black tracking-wider text-slate-100 uppercase">SOULSONUS</h1>
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold">
-              STUDIO
-            </span>
+            <button
+              onClick={onBackToLanding}
+              className="text-sm font-black tracking-wider text-slate-100 uppercase hover:text-amber-300 transition cursor-pointer"
+              title="Return to SoulSonus Story & Landing Page"
+            >
+              SOULSONUS
+            </button>
+            <button
+              onClick={onBackToLanding}
+              className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold hover:bg-amber-500/20 transition cursor-pointer"
+              title="View SoulSonus Philosophy & Story"
+            >
+              ✦ STORY / HOME
+            </button>
           </div>
 
           <div className="h-4 w-px bg-slate-800 hidden sm:block" />
