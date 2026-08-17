@@ -4,27 +4,17 @@ import {
   ArrowRight,
   Mic,
   Activity,
-  Music,
   Disc,
-  Layers,
   Sliders,
-  Radio,
   Lock,
-  Cpu,
   Zap,
   CheckCircle2,
-  Volume2,
   ChevronRight,
   ChevronDown,
-  Headphones,
   FileText,
   ShieldCheck,
   Flame,
-  AudioWaveform,
-  SlidersHorizontal,
-  FolderDown,
-  Share2,
-  HelpCircle,
+  Piano,
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -32,12 +22,21 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
-  // FAQ accordion state
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [activeInstrument, setActiveInstrument] = useState<string>('rhodes');
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index);
   };
+
+  const instruments = [
+    { id: 'rhodes', name: 'Vintage Rhodes', category: 'Keys', icon: '🎹', tag: 'Acoustic / Warm' },
+    { id: 'strings', name: 'Strings Section', category: 'Orchestral', icon: '🎻', tag: 'Budapest Cinema' },
+    { id: 'sub808', name: 'Analog 808 Sub', category: 'Bass', icon: '⚡', tag: 'Deep Punch' },
+    { id: 'drums', name: 'Vinyl Boom-Bap', category: 'Drums', icon: '🥁', tag: 'Fat Membrane' },
+    { id: 'brass', name: 'Soul Horns', category: 'Brass', icon: '🎺', tag: 'Expressive Stack' },
+    { id: 'guitar', name: 'Muted Electric', category: 'Guitar', icon: '🎸', tag: 'Stereo Groove' },
+  ];
 
   const faqs = [
     {
@@ -68,15 +67,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 relative overflow-x-hidden">
-      {/* Dynamic Background Glows */}
+      {/* Dynamic Ambient Background Glows */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute -top-40 left-1/4 w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[140px]" />
-        <div className="absolute top-1/3 right-10 w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-[140px]" />
-        <div className="absolute bottom-20 left-10 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[140px]" />
+        <div className="absolute -top-40 left-1/4 w-[700px] h-[700px] bg-amber-500/10 rounded-full blur-[160px]" />
+        <div className="absolute top-1/3 right-5 w-[700px] h-[700px] bg-cyan-500/10 rounded-full blur-[160px]" />
+        <div className="absolute bottom-20 left-10 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-[160px]" />
       </div>
 
-      {/* Sticky Header Nav */}
-      <nav className="sticky top-0 z-50 bg-slate-950/85 backdrop-blur-md border-b border-slate-800/80 px-6 py-4 flex items-center justify-between">
+      {/* Sticky Top Header Nav */}
+      <nav className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-cyan-400 p-0.5 shadow-lg shadow-amber-500/20 flex items-center justify-center">
             <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center font-black text-amber-400 font-mono text-sm">
@@ -95,12 +94,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
 
         <div className="hidden lg:flex items-center space-x-6 text-xs font-mono text-slate-400">
           <a href="#philosophy" className="hover:text-amber-300 transition">PHILOSOPHY</a>
-          <a href="#modalities" className="hover:text-amber-300 transition">MODALITIES</a>
-          <a href="#examples" className="hover:text-amber-300 transition">EXAMPLES</a>
-          <a href="#intelligence" className="hover:text-amber-300 transition">INTELLIGENCE</a>
-          <a href="#how-it-works" className="hover:text-amber-300 transition">HOW IT WORKS</a>
-          <a href="#workspaces" className="hover:text-amber-300 transition">WORKSPACES</a>
-          <a href="#features" className="hover:text-amber-300 transition">FEATURES</a>
+          <a href="#voice-cloning" className="hover:text-amber-300 transition">VOICE CLONING</a>
+          <a href="#instruments" className="hover:text-amber-300 transition">INSTRUMENTS</a>
+          <a href="#examples" className="hover:text-amber-300 transition">SOUL vs SONUS</a>
+          <a href="#songwriting" className="hover:text-amber-300 transition">SONGWRITING</a>
+          <a href="#generative-kits" className="hover:text-amber-300 transition">GENERATIVE KITS</a>
+          <a href="#provenance" className="hover:text-amber-300 transition">PROVENANCE</a>
           <a href="#faq" className="hover:text-amber-300 transition">FAQ</a>
         </div>
 
@@ -119,7 +118,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
         <section className="text-center space-y-8 pt-8">
           <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] font-mono text-slate-300 shadow-inner">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>STUDIO BETA LIVE • 480 PPQ SEQUENCER • SPOTIFY BASIC PITCH ONNX • BS.1770-4 MASTERING</span>
+            <span>STUDIO BETA LIVE • 480 PPQ SEQUENCER • ON-DEVICE NEURAL INFERENCE • BS.1770-4 MASTERING</span>
           </div>
 
           <h1 className="text-5xl sm:text-7xl font-black tracking-tight text-white max-w-4xl mx-auto leading-[1.06]">
@@ -142,16 +141,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
               <ArrowRight className="w-4 h-4 stroke-[3]" />
             </button>
             <a
-              href="#examples"
+              href="#voice-cloning"
               className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 font-mono font-bold text-xs tracking-wider flex items-center justify-center space-x-2 transition cursor-pointer"
             >
-              <span>SEE REAL EXAMPLES</span>
+              <span>SEE HOW IT WORKS</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </a>
           </div>
         </section>
 
-        {/* SECTION 2: THE NAME IS THE PRODUCT (THE CORE DUALITY) */}
+        {/* SECTION 1: THE NAME IS THE PRODUCT (THE CORE DUALITY) */}
         <section id="philosophy" className="scroll-mt-24 space-y-12">
           <div className="text-center space-y-3">
             <div className="text-[11px] font-mono font-black text-amber-400 uppercase tracking-widest">
@@ -242,7 +241,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
             </div>
           </div>
 
-          {/* Punchline Callout */}
           <div className="p-8 sm:p-10 rounded-3xl bg-slate-900/90 border border-slate-800 text-center space-y-3 shadow-xl">
             <p className="text-xl sm:text-2xl font-bold text-slate-100 max-w-3xl mx-auto leading-snug">
               SoulSonus exists to carry the <span className="text-amber-400">Soul</span> all the way into the <span className="text-cyan-400">Sonus</span> without losing the creator in between.
@@ -250,46 +248,171 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
           </div>
         </section>
 
-        {/* SECTION 3: START WHEREVER THE SOUL SHOWS UP */}
-        <section id="modalities" className="scroll-mt-24 space-y-12">
-          <div className="text-center space-y-3">
-            <div className="text-[11px] font-mono font-black text-cyan-400 uppercase tracking-widest">
-              CREATIVE ORIGIN MODALITIES
-            </div>
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
-              Start wherever the Soul shows up.
-            </h2>
-            <p className="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base font-light">
-              SoulSonus understands each of these as authoritative creative source material and carries it forward into editable, multi-track studio production.
-            </p>
-          </div>
+        {/* FEATURE SPOTLIGHT 1: CLONE YOUR OWN VOICE & SIGNATURE */}
+        <section id="voice-cloning" className="scroll-mt-24 space-y-10">
+          <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-b from-amber-500/10 via-slate-900/80 to-slate-950 border border-amber-500/30 shadow-2xl grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            <div className="lg:col-span-6 space-y-6">
+              <span className="px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-mono font-bold text-xs border border-amber-500/40">
+                VOICE IDENTITY & STYLE TRAINING
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+                Clone Your OWN VOICE.
+              </h2>
+              <p className="text-slate-300 text-sm sm:text-base font-light leading-relaxed">
+                Upload your vocal takes or hummed ideas and train your custom AI singing and rapping voice model in just a few clicks. Your timbre, pitch curve, and expressive style stay 100% yours — protected by verified biometric cryptographic consent.
+              </p>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[
-              { icon: <Mic className="w-5 h-5 text-amber-400" />, title: 'Hum it', desc: 'On-device neural pitch tracking extracts your melody straight into 480 PPQ MIDI notes.' },
-              { icon: <Activity className="w-5 h-5 text-pink-400" />, title: 'Sing it', desc: 'Multi-take vocal comp builder, granular pitch shifting & formant transformation.' },
-              { icon: <Zap className="w-5 h-5 text-cyan-400" />, title: 'Tap it', desc: 'Body percussion and surface taps detected into calibrated velocity-sensitive transients.' },
-              { icon: <Flame className="w-5 h-5 text-orange-400" />, title: 'Beatbox it', desc: 'Dual-band FFT audio engine isolates sub-kick thumps from snappy snare pops.' },
-              { icon: <Music className="w-5 h-5 text-purple-400" />, title: 'Play it', desc: 'Plug in any USB MIDI controller or draw notes directly onto the high-res Piano Roll.' },
-              { icon: <FileText className="w-5 h-5 text-pink-400" />, title: 'Write it', desc: 'Lyric Cadence Studio maps written lines to 16th-note rhythmic sub-divisions.' },
-              { icon: <Headphones className="w-5 h-5 text-blue-400" />, title: 'Record it', desc: 'Zero-latency studio overdubbing with real-time waveform visualization.' },
-              { icon: <Disc className="w-5 h-5 text-emerald-400" />, title: 'Import it', desc: 'Import any audio track or beat for instant Demucs 4-stem multitrack extraction.' },
-            ].map((m, idx) => (
-              <div
-                key={idx}
-                className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 transition space-y-2.5 shadow-md"
-              >
-                <div className="p-2.5 rounded-xl bg-slate-950 w-fit border border-slate-800">
-                  {m.icon}
+              <div className="space-y-3 pt-2 font-mono text-xs text-slate-300">
+                <div className="flex items-center space-x-3">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Timbre Blend & Breathiness Control (0–100%)</span>
                 </div>
-                <h4 className="font-mono font-bold text-white text-sm">{m.title}.</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">{m.desc}</p>
+                <div className="flex items-center space-x-3">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Peaking Formant Shifting (±12 Semitones)</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Private On-Device Neural Model Storage</span>
+                </div>
               </div>
-            ))}
+
+              <div className="pt-2">
+                <button
+                  onClick={onEnterStudio}
+                  className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono font-bold text-xs tracking-wider flex items-center space-x-2 transition cursor-pointer shadow-lg shadow-amber-500/20"
+                >
+                  <span>TRAIN YOUR SIGNATURE VOICE</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Visual DAW Mockup Card */}
+            <div className="lg:col-span-6 p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4 shadow-inner">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3 font-mono text-xs">
+                <div className="flex items-center space-x-2">
+                  <Mic className="w-4 h-4 text-amber-400" />
+                  <span className="font-bold text-slate-200">CREATOR VOICE LAB • prof_signature_01</span>
+                </div>
+                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                  VERIFIED BIOMETRIC
+                </span>
+              </div>
+
+              {/* Waveform & Voice Parameters UI */}
+              <div className="space-y-3 font-mono text-xs">
+                <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                  <div className="flex justify-between text-[11px] text-slate-400">
+                    <span>Acoustic Waveform Analysis</span>
+                    <span className="text-amber-400">48,000 Hz / 24-Bit</span>
+                  </div>
+                  <div className="h-12 bg-slate-950 rounded-lg p-2 flex items-center justify-between gap-1 overflow-hidden">
+                    {Array.from({ length: 32 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-1 bg-amber-400/80 rounded-full transition-all duration-300"
+                        style={{ height: `${Math.max(15, Math.sin(i * 0.4) * 80 + 20)}%` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
+                    <div className="text-[10px] text-slate-400">TIMBRE BLEND</div>
+                    <div className="text-base font-black text-amber-300">100% Signature</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
+                    <div className="text-[10px] text-slate-400">FORMANT SHIFT</div>
+                    <div className="text-base font-black text-cyan-300">+0.0 st (Locked)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* SECTION 4: KEEP THE SOUL. CHANGE THE SONUS. (6 REAL STUDIO EXAMPLES) */}
+        {/* FEATURE SPOTLIGHT 2: NEXT-GENERATION AI VIRTUAL INSTRUMENTS */}
+        <section id="instruments" className="scroll-mt-24 space-y-10">
+          <div className="text-center space-y-3">
+            <div className="text-[11px] font-mono font-black text-cyan-400 uppercase tracking-widest">
+              NEXT-GENERATION VIRTUAL INSTRUMENTS
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+              Acoustic Realism. Zero Bulk.
+            </h2>
+            <p className="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base font-light">
+              Say goodbye to 100GB sample libraries. Generate expressive, natural-sounding instrument performances from your voice, taps, or MIDI while retaining full multi-track control.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2 font-mono text-xs">
+              <span className="px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300">✦ Natural-Play</span>
+              <span className="px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300">✦ Auto-Expressive Dynamics</span>
+              <span className="px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300">✦ 100% Royalty-Free</span>
+            </div>
+          </div>
+
+          {/* Interactive Instrument Grid Selector */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {instruments.map((inst) => {
+              const isSelected = activeInstrument === inst.id;
+              return (
+                <button
+                  key={inst.id}
+                  onClick={() => setActiveInstrument(inst.id)}
+                  className={`p-4 rounded-2xl border text-left space-y-2 transition cursor-pointer ${
+                    isSelected
+                      ? 'bg-gradient-to-b from-cyan-500/20 to-slate-900 border-cyan-400 shadow-lg shadow-cyan-500/20 scale-[1.02]'
+                      : 'bg-slate-900/70 border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="text-2xl">{inst.icon}</div>
+                  <div>
+                    <div className="text-xs font-bold text-white">{inst.name}</div>
+                    <div className="text-[10px] text-slate-400 font-mono">{inst.tag}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Piano Roll & Ensemble Showcase */}
+          <div className="p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div className="lg:col-span-7 space-y-4">
+              <div className="flex items-center space-x-2 text-cyan-400 font-mono text-xs font-bold">
+                <Piano className="w-4 h-4" />
+                <span>480 PPQ HIGH-RESOLUTION NOTE CANVAS</span>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-black text-white">
+                Perform with Precision.
+              </h3>
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed font-light">
+                Sub-beat 16th-note ticks (120 ticks per step). Draw, stretch, split, and transpose individual notes across 88 keys with continuous velocity modulation and scale snapping in C Minor.
+              </p>
+            </div>
+
+            <div className="lg:col-span-5 p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">
+              <div className="text-slate-400 text-[10px] uppercase font-bold">Ensemble Stacking Mode</div>
+              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between text-slate-300">
+                  <span className="font-bold text-amber-300">Layer 1 (Lead)</span>
+                  <span className="text-[10px] text-slate-400">Vintage Rhodes (C3)</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-300">
+                  <span className="font-bold text-cyan-300">Layer 2 (Harmony)</span>
+                  <span className="text-[10px] text-slate-400">Strings Section (+3rd)</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-300">
+                  <span className="font-bold text-purple-300">Layer 3 (Sub)</span>
+                  <span className="text-[10px] text-slate-400">Analog 808 (-8ve)</span>
+                </div>
+              </div>
+              <div className="text-[10px] text-slate-500">All 3 instruments trigger in sample-accurate phase alignment.</div>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 3: KEEP THE SOUL. CHANGE THE SONUS. (6 REAL EXAMPLES) */}
         <section id="examples" className="scroll-mt-24 space-y-12">
           <div className="text-center space-y-3">
             <div className="text-[11px] font-mono font-black text-purple-400 uppercase tracking-widest">
@@ -492,274 +615,197 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
           </div>
         </section>
 
-        {/* SECTION 5: THE INTELLIGENCE UNDERSTANDS THE DIFFERENCE */}
-        <section id="intelligence" className="scroll-mt-24 p-8 sm:p-12 rounded-3xl bg-gradient-to-b from-purple-500/15 via-slate-900/80 to-slate-950 border border-purple-500/30 shadow-2xl space-y-8">
-          <div className="space-y-3">
-            <span className="px-3 py-1 rounded-lg bg-purple-500/20 text-purple-300 font-mono font-bold text-xs border border-purple-500/40">
-              BOUNDED CO-PRODUCER DOCTRINE
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-              The intelligence understands the difference.
-            </h2>
-            <p className="text-slate-300 text-sm sm:text-base font-light max-w-3xl leading-relaxed">
-              SoulSonus doesn’t assume that every part of a recording is fair game to regenerate.
-              The creator defines what carries the <strong className="text-amber-400">Soul</strong> and what may change in the <strong className="text-cyan-400">Sonus</strong>.
-            </p>
-          </div>
+        {/* FEATURE SPOTLIGHT 4: SONGWRITING SUITE & VOCAL BOOTH */}
+        <section id="songwriting" className="scroll-mt-24 space-y-10">
+          <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-b from-pink-500/10 via-slate-900/80 to-slate-950 border border-pink-500/30 shadow-2xl grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            <div className="lg:col-span-6 space-y-6">
+              <span className="px-3 py-1 rounded-lg bg-pink-500/20 text-pink-300 font-mono font-bold text-xs border border-pink-500/40">
+                LYRIC CADENCE & MULTI-TAKE VOCAL BOOTH
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+                Give Voice to Your Soul.
+              </h2>
+              <p className="text-slate-300 text-sm sm:text-base font-light leading-relaxed">
+                A dedicated environment for vocalists, songwriters, and rappers. Align words to 16th-note sub-beat subdivisions, record multiple takes with seamless punch-in regions, and build pristine vocal comps with granular pitch correction.
+              </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono text-xs">
-            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1 shadow-md">
-              <div className="text-purple-300 font-bold">“Keep my performance. Change the instrument.”</div>
-              <div className="text-slate-400 text-[11px]">Preserves exact NoteEvents, swaps sound font to Warm Electric Rhodes.</div>
+              <div className="grid grid-cols-2 gap-3 font-mono text-xs text-slate-300 pt-1">
+                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                  <div className="font-bold text-pink-400">Cadence Grid</div>
+                  <div className="text-[11px] text-slate-400">Syllable meter sync</div>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                  <div className="font-bold text-pink-400">Comp Builder</div>
+                  <div className="text-[11px] text-slate-400">Best-phrase comping</div>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                  <div className="font-bold text-pink-400">Scale Auto-Tune</div>
+                  <div className="text-[11px] text-slate-400">C Minor / Major Lock</div>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                  <div className="font-bold text-pink-400">3-Part Harmonies</div>
+                  <div className="text-[11px] text-slate-400">Diatonic intervals</div>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={onEnterStudio}
+                  className="px-6 py-3 rounded-xl bg-pink-500 hover:bg-pink-400 text-slate-950 font-mono font-bold text-xs tracking-wider flex items-center space-x-2 transition cursor-pointer shadow-lg shadow-pink-500/20"
+                >
+                  <span>LAUNCH SONGWRITING SUITE</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1 shadow-md">
-              <div className="text-purple-300 font-bold">“Keep this beat at 94 BPM. Recompose the harmony.”</div>
-              <div className="text-slate-400 text-[11px]">Locks drum rhythm, generates complementary C Minor chords.</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1 shadow-md">
-              <div className="text-purple-300 font-bold">“Keep my vocal phrasing. Try a different vocal character.”</div>
-              <div className="text-slate-400 text-[11px]">Applies formant shifting and auto-tune without altering timing.</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1 shadow-md">
-              <div className="text-purple-300 font-bold">“Keep the drums. Build the record around them.”</div>
-              <div className="text-slate-400 text-[11px]">Anchors the kick and snare, orchestrates synth leads and sub bass.</div>
+
+            {/* Vocal Comping Mockup */}
+            <div className="lg:col-span-6 p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <span className="font-bold text-pink-300">VOCAL COMP STACK • Lead Vocal</span>
+                <span className="text-[10px] text-slate-400">4 Takes Recorded</span>
+              </div>
+              <div className="space-y-2">
+                <div className="p-2.5 rounded-lg bg-pink-500/20 border border-pink-500/40 flex justify-between items-center text-pink-200">
+                  <span>Take 01 (Verse 1 - Line 1)</span>
+                  <span className="text-[10px] font-bold bg-pink-500 text-slate-950 px-1.5 py-0.5 rounded">ACTIVE COMP</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex justify-between items-center text-slate-400">
+                  <span>Take 02 (Verse 1 - Line 2)</span>
+                  <span className="text-[10px]">Audition</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-pink-500/20 border border-pink-500/40 flex justify-between items-center text-pink-200">
+                  <span>Take 03 (Hook Climax)</span>
+                  <span className="text-[10px] font-bold bg-pink-500 text-slate-950 px-1.5 py-0.5 rounded">ACTIVE COMP</span>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* SECTION 6: HOW IT WORKS (4-STEP PRODUCTION FLOW) */}
-        <section id="how-it-works" className="scroll-mt-24 space-y-12">
+        {/* FEATURE SPOTLIGHT 5: GENERATIVE KITS & CO-PRODUCER */}
+        <section id="generative-kits" className="scroll-mt-24 space-y-12">
           <div className="text-center space-y-3">
-            <div className="text-[11px] font-mono font-black text-amber-400 uppercase tracking-widest">
-              SEAMLESS 4-STEP LIFECYCLE
+            <div className="text-[11px] font-mono font-black text-purple-400 uppercase tracking-widest">
+              NEW WAY TO PRODUCE
             </div>
             <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
-              How it works.
+              Generative Co-Producer Kits.
             </h2>
             <p className="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base font-light">
-              From the instant a spark enters your mind to an audio master ready for Spotify and Apple Music.
+              Collaborate with an intelligent co-producer that respects your performance boundaries.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 font-mono">
-            {[
-              {
-                step: '01',
-                title: 'Capture Intent',
-                badge: 'HUM / TAP / VOCAL',
-                desc: 'Perform into your microphone or drag in audio. Real-time dual FFT filters and on-device neural inference isolate your timing and notes immediately.',
-              },
-              {
-                step: '02',
-                title: 'Sculpt & Arrange',
-                badge: '480 PPQ NOTE ROLL',
-                desc: 'Edit notes with Draw, Split, and Stretch tools. Quantize to C Minor or chromatic scales with sub-beat micro-timing accuracy.',
-              },
-              {
-                step: '03',
-                title: 'Shape the Sound',
-                badge: 'BOUNDED INTELLIGENCE',
-                desc: 'Direct the co-producer to orchestrate chords, apply granular pitch shifting, and shape dynamic 3-band channel strip EQs.',
-              },
-              {
-                step: '04',
-                title: 'Sign & Export',
-                badge: '24-BIT MASTER + FLAC',
-                desc: 'Measure ITU-R BS.1770-4 LUFS-I and true peak, hash your copyright SeedSignature, and export lossless 24-bit masters.',
-              },
-            ].map((st, idx) => (
-              <div
-                key={idx}
-                className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3 shadow-lg relative overflow-hidden"
-              >
-                <div className="text-4xl font-black text-slate-800 select-none">
-                  {st.step}
-                </div>
-                <div className="text-[10px] font-bold text-amber-400 tracking-wider">
-                  {st.badge}
-                </div>
-                <h4 className="text-base font-bold text-white">{st.title}</h4>
-                <p className="text-xs text-slate-400 font-sans leading-relaxed">{st.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* SECTION 7: THE 6 ROOM WORKFLOW */}
-        <section id="workspaces" className="scroll-mt-24 space-y-12">
-          <div className="text-center space-y-3">
-            <div className="text-[11px] font-mono font-black text-cyan-400 uppercase tracking-widest">
-              THE 6 PRODUCTION ROOMS
-            </div>
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
-              From Soul to Sonus. One studio.
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 font-mono">
-            {[
-              { room: 'CREATE', label: 'Capture the idea.', color: 'border-amber-500/40 text-amber-300', desc: 'Real-time beatbox, body percussion, and voice pitch capture with dual FFT filters and on-device neural transcription.' },
-              { room: 'BUILD', label: 'Give it form.', color: 'border-cyan-500/40 text-cyan-300', desc: '480 PPQ Note Canvas with multi-tool drawing, stretching, splitting, and high-resolution velocity editing.' },
-              { room: 'WRITE & RECORD', label: 'Give it voice.', color: 'border-pink-500/40 text-pink-300', desc: 'Lyric cadence mapping, multi-take overdub recording, and granular vocal pitch shifting with formant preservation.' },
-              { room: 'MIX', label: 'Give it dimension.', color: 'border-emerald-500/40 text-emerald-300', desc: 'Dynamic per-track channel strips with 3-band EQ, FET compression, reverb/delay sends, and spatial panning.' },
-              { room: 'MASTER', label: 'Give it finish.', color: 'border-purple-500/40 text-purple-300', desc: 'ITU-R BS.1770-4 telemetry with 4x oversampled true peak and integrated LUFS loudness compliance.' },
-              { room: 'RELEASE', label: 'Give it to the world.', color: 'border-blue-500/40 text-blue-300', desc: 'WebCrypto SHA-256 SeedSignature provenance chain and 24-bit WAV & FLAC master packaging.' },
-            ].map((ws, idx) => (
-              <div
-                key={idx}
-                className={`p-6 rounded-3xl bg-slate-900/80 border ${ws.color.split(' ')[0]} space-y-3 shadow-lg`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className={`text-xs font-black tracking-wider ${ws.color.split(' ')[1]}`}>
-                    {ws.room}
-                  </span>
-                  <span className="text-[10px] text-slate-500">ROOM 0{idx + 1}</span>
-                </div>
-                <h4 className="text-base font-bold text-white">{ws.label}</h4>
-                <p className="text-xs text-slate-400 font-sans leading-relaxed">{ws.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* SECTION 8: CREATOR POWERHOUSE FEATURES */}
-        <section id="features" className="scroll-mt-24 space-y-12">
-          <div className="text-center space-y-3">
-            <div className="text-[11px] font-mono font-black text-amber-400 uppercase tracking-widest">
-              EXCLUSIVE CREATOR CAPABILITIES
-            </div>
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
-              A studio engineered around you.
-            </h2>
-            <p className="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base font-light">
-              Explore the specialized modules built to empower your unique voice, protect your copyright, and elevate your production.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Feature 1: Signature Voice & Style Training */}
-            <div className="p-8 rounded-3xl bg-slate-900/90 border border-amber-500/30 space-y-5 shadow-2xl flex flex-col justify-between relative overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Inspire Me */}
+            <div className="p-8 rounded-3xl bg-slate-900/90 border border-purple-500/30 space-y-6 shadow-2xl flex flex-col justify-between">
               <div className="space-y-4">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-                  <Sparkles className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 font-bold">
+                  ✦
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-mono font-bold text-amber-400 tracking-wider">E13 SIGNATURE PILLARS</span>
-                  <h3 className="text-xl font-bold text-white">Train Your Voice & Style</h3>
-                </div>
-                <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                  Train a personalized neural voice profile and playing style model. Blend timbres, adjust formant profiles, and preserve your unique acoustic signature across all future records with verified biometric consent.
+                <h3 className="text-2xl font-bold text-white">Inspire Me</h3>
+                <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                  Spark your ideas with limitless generated track proposals that follow your exact tempo, key, and rhythm. Ask for complementary Rhodes chords, syncopated 808 sub fills, or melodic string counterpoints.
                 </p>
               </div>
-              <div className="pt-2 border-t border-slate-800 text-[11px] font-mono text-amber-300 flex items-center justify-between">
-                <span>✦ Voice Cloning Lab</span>
-                <span>Protected Identity</span>
+
+              {/* Prompt UI Mockup */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2 font-mono text-xs">
+                <div className="text-[10px] text-slate-500">NATURAL LANGUAGE CO-PRODUCER</div>
+                <div className="p-2.5 rounded-lg bg-slate-900 text-purple-300 border border-slate-800 text-[11px]">
+                  “Generate a warm neo-soul Rhodes progression in C Minor to support this beatbox rhythm.”
+                </div>
               </div>
             </div>
 
-            {/* Feature 2: Songwriting Suite & Lyric Cadence */}
-            <div className="p-8 rounded-3xl bg-slate-900/90 border border-pink-500/30 space-y-5 shadow-2xl flex flex-col justify-between relative overflow-hidden">
+            {/* Add a Layer */}
+            <div className="p-8 rounded-3xl bg-slate-900/90 border border-cyan-500/30 space-y-6 shadow-2xl flex flex-col justify-between">
               <div className="space-y-4">
-                <div className="w-10 h-10 rounded-2xl bg-pink-500/20 border border-pink-500/40 flex items-center justify-center text-pink-400">
-                  <Mic className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-bold">
+                  🎛️
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-mono font-bold text-pink-400 tracking-wider">VOCAL BOOTH & CADENCE</span>
-                  <h3 className="text-xl font-bold text-white">Songwriting Suite</h3>
-                </div>
-                <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                  Synchronize your lyrics directly to 16th-note sub-beat musical grids. Multi-take overdub recording, seamless vocal comp building, scale-locked auto-tuning, and diatonic 3-part vocal harmony generation.
+                <h3 className="text-2xl font-bold text-white">Add a Layer</h3>
+                <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                  Create layer by layer, note by note, sample by sample. Tell the studio what to keep (your drum swing and vocal take) and what to add (cinematic vinyl strings, orchestral brass, or analog sidechain pads).
                 </p>
               </div>
-              <div className="pt-2 border-t border-slate-800 text-[11px] font-mono text-pink-300 flex items-center justify-between">
-                <span>✦ Lyric Cadence Grid</span>
-                <span>Comp Builder</span>
-              </div>
-            </div>
 
-            {/* Feature 3: Native Studio Brain */}
-            <div className="p-8 rounded-3xl bg-slate-900/90 border border-purple-500/30 space-y-5 shadow-2xl flex flex-col justify-between relative overflow-hidden">
-              <div className="space-y-4">
-                <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400">
-                  <Cpu className="w-5 h-5" />
+              {/* Multi-Track Arranger Mockup */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2 font-mono text-xs">
+                <div className="text-[10px] text-slate-500">NON-DESTRUCTIVE MULTI-TRACK STACK</div>
+                <div className="space-y-1 text-[11px]">
+                  <div className="p-1.5 rounded bg-amber-500/15 text-amber-300 flex justify-between">
+                    <span>[🔒 KEPT] Kick + Snare (Mouth Beatbox)</span>
+                    <span className="text-[10px]">Author Intent</span>
+                  </div>
+                  <div className="p-1.5 rounded bg-cyan-500/15 text-cyan-300 flex justify-between">
+                    <span>[⚡ ADDED] Vintage Rhodes Chords</span>
+                    <span className="text-[10px]">Generated Layer</span>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-mono font-bold text-purple-400 tracking-wider">ON-DEVICE REASONING</span>
-                  <h3 className="text-xl font-bold text-white">Native Studio Brain</h3>
-                </div>
-                <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                  A bounded studio co-producer running 100% locally in your browser. Analyzes track keys, drum grooves, and chord tensions to propose harmonic arrangements, fills, and mix enhancements without sending audio to external clouds.
-                </p>
-              </div>
-              <div className="pt-2 border-t border-slate-800 text-[11px] font-mono text-purple-300 flex items-center justify-between">
-                <span>✦ Local Neural Sandbox</span>
-                <span>Zero Latency</span>
-              </div>
-            </div>
-
-            {/* Feature 4: Creative Resource Vault */}
-            <div className="p-8 rounded-3xl bg-slate-900/90 border border-emerald-500/30 space-y-5 shadow-2xl flex flex-col justify-between relative overflow-hidden">
-              <div className="space-y-4">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                  <Disc className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-mono font-bold text-emerald-400 tracking-wider">25,000+ CURATED ASSETS</span>
-                  <h3 className="text-xl font-bold text-white">Sound Vault & Dataset Registry</h3>
-                </div>
-                <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                  Access studio sound fonts, analog 808s, vintage electric Rhodes, acoustic drum sets, and synth presets. Filter by zero-shot semantic prompts with complete transparency into ethical licensing and attribution.
-                </p>
-              </div>
-              <div className="pt-2 border-t border-slate-800 text-[11px] font-mono text-emerald-300 flex items-center justify-between">
-                <span>✦ Open-Source Vault</span>
-                <span>100% Royalty Free</span>
-              </div>
-            </div>
-
-            {/* Feature 5: SeedSignature IP Provenance */}
-            <div className="p-8 rounded-3xl bg-slate-900/90 border border-blue-500/30 space-y-5 shadow-2xl flex flex-col justify-between relative overflow-hidden">
-              <div className="space-y-4">
-                <div className="w-10 h-10 rounded-2xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-mono font-bold text-blue-400 tracking-wider">WEBCRYPTO SHA-256</span>
-                  <h3 className="text-xl font-bold text-white">SeedSignature IP Protection</h3>
-                </div>
-                <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                  Every beatbox performance, hummed melody, and vocal take is cryptographically signed before any processing occurs. Establishes an unbroken, mathematically verifiable proof of human authorship for copyright and publishing.
-                </p>
-              </div>
-              <div className="pt-2 border-t border-slate-800 text-[11px] font-mono text-blue-300 flex items-center justify-between">
-                <span>✦ Cryptographic Ledger</span>
-                <span>Split Sheets Ready</span>
-              </div>
-            </div>
-
-            {/* Feature 6: Demucs 4-Stem Acoustic Separation */}
-            <div className="p-8 rounded-3xl bg-slate-900/90 border border-cyan-500/30 space-y-5 shadow-2xl flex flex-col justify-between relative overflow-hidden">
-              <div className="space-y-4">
-                <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
-                  <Layers className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-wider">DEMUCS V4 NEURAL SPLIT</span>
-                  <h3 className="text-xl font-bold text-white">4-Stem Multitrack Extraction</h3>
-                </div>
-                <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                  Drop any stereo mix, legacy beat, or live recording to isolate Vocals, Drums, Bass, and Other instruments into separate editable tracks with on-device neural transcription into 480 PPQ MIDI notes.
-                </p>
-              </div>
-              <div className="pt-2 border-t border-slate-800 text-[11px] font-mono text-cyan-300 flex items-center justify-between">
-                <span>✦ Stems + MIDI Isolation</span>
-                <span>Instant Remixing</span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* SECTION 9: PRODUCER FAQ ACCORDION */}
+        {/* FEATURE SPOTLIGHT 6: SEEDSIGNATURE PROVENANCE & COPYRIGHT */}
+        <section id="provenance" className="scroll-mt-24 space-y-10">
+          <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-b from-blue-500/10 via-slate-900/80 to-slate-950 border border-blue-500/30 shadow-2xl grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            <div className="lg:col-span-6 space-y-6">
+              <span className="px-3 py-1 rounded-lg bg-blue-500/20 text-blue-300 font-mono font-bold text-xs border border-blue-500/40">
+                PROVABLE INTELLECTUAL PROPERTY
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+                SeedSignature™ Provenance.
+              </h2>
+              <p className="text-slate-300 text-sm sm:text-base font-light leading-relaxed">
+                Your human idea is protected the moment you perform it. Every beatbox rhythm, vocal take, and note pattern is cryptographically signed via WebCrypto SHA-256 before any AI processing occurs — creating an immutable, court-ready ledger of your authorship.
+              </p>
+
+              <div className="space-y-2.5 font-mono text-xs text-slate-300 pt-1">
+                <div className="flex items-center space-x-3">
+                  <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span>Unbroken Parent-Child Cryptographic Lineage</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span>Automated Split Sheets & Collaborator Attribution</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span>Export JSON Provenance Manifest with Masters</span>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={onEnterStudio}
+                  className="px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-slate-950 font-mono font-bold text-xs tracking-wider flex items-center space-x-2 transition cursor-pointer shadow-lg shadow-blue-500/20"
+                >
+                  <span>EXPLORE SEEDSIGNATURE LEDGER</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Cryptographic Ledger Card */}
+            <div className="lg:col-span-6 p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <span className="font-bold text-blue-300">CRYPTOGRAPHIC PROVENANCE MANIFEST</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">VERIFIED</span>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2 text-[11px]">
+                <div className="text-slate-400">Root Take Hash:</div>
+                <div className="text-blue-300 break-all font-mono">0x15b53ba7a98ae0ae4a311a63f2f589e49ce646a5</div>
+                <div className="text-slate-400 pt-1">Dataset License Status:</div>
+                <div className="text-emerald-400 font-bold">100% COMPLIANT (Human Author Provenance)</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 7: PRODUCER FAQ ACCORDION */}
         <section id="faq" className="scroll-mt-24 space-y-12">
           <div className="text-center space-y-3">
             <div className="text-[11px] font-mono font-black text-amber-400 uppercase tracking-widest">
@@ -842,9 +888,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
 
           <div className="flex flex-wrap items-center justify-center gap-6 text-[11px] text-slate-400">
             <a href="#philosophy" className="hover:text-amber-300 transition">Philosophy</a>
-            <a href="#examples" className="hover:text-amber-300 transition">Examples</a>
-            <a href="#how-it-works" className="hover:text-amber-300 transition">How It Works</a>
-            <a href="#features" className="hover:text-amber-300 transition">Features</a>
+            <a href="#voice-cloning" className="hover:text-amber-300 transition">Voice Cloning</a>
+            <a href="#instruments" className="hover:text-amber-300 transition">AI Instruments</a>
+            <a href="#examples" className="hover:text-amber-300 transition">Soul vs Sonus</a>
+            <a href="#songwriting" className="hover:text-amber-300 transition">Songwriting</a>
+            <a href="#generative-kits" className="hover:text-amber-300 transition">Generative Kits</a>
+            <a href="#provenance" className="hover:text-amber-300 transition">SeedSignature</a>
             <a href="#faq" className="hover:text-amber-300 transition">FAQ</a>
             <button onClick={onEnterStudio} className="text-amber-400 hover:underline">Launch DAW</button>
           </div>
