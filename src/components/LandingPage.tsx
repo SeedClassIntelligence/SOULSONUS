@@ -114,53 +114,126 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
       <main className="relative z-10 max-w-6xl mx-auto px-6 pt-16 pb-28 space-y-36">
         {/* HERO SECTION */}
         <section className="text-center space-y-8 pt-4">
-          {/* 6-Step Creator Journey Flowchart (At Top of Page) */}
-          <div className="w-full max-w-5xl mx-auto overflow-x-auto no-scrollbar py-2">
-            <div className="inline-flex items-center justify-center gap-1.5 sm:gap-2.5 px-3.5 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-2xl font-mono text-left whitespace-nowrap">
+          {/* 6-Step Creator Journey Flowchart with Serif Curly Underbraces */}
+          <div className="w-full max-w-6xl mx-auto overflow-x-auto no-scrollbar py-4 px-2">
+            <div className="inline-flex items-center justify-center gap-2 sm:gap-4 px-6 py-5 rounded-3xl bg-slate-900/60 border border-slate-800/80 shadow-2xl backdrop-blur-sm whitespace-nowrap min-w-full">
               {/* 1. CREATE */}
-              <div className="flex flex-col p-2 rounded-xl bg-slate-950/90 border border-amber-500/30 shadow-inner">
-                <span className="text-[11px] font-black text-amber-400">1. CREATE</span>
-                <span className="text-[9px] text-slate-400">Hum • Beatbox • Notes</span>
+              <div className="flex flex-col items-center justify-start text-center shrink-0 px-2">
+                <span className="font-serif font-black text-base sm:text-lg lg:text-xl tracking-wider text-slate-100 uppercase select-none">
+                  CREATE
+                </span>
+                <svg className="w-full max-w-[130px] h-3.5 my-1 text-slate-300 overflow-visible" viewBox="0 0 100 12" preserveAspectRatio="none">
+                  <path d="M 2 1 C 6 1, 8 6, 12 6 L 42 6 C 46 6, 48 11, 50 11 C 52 11, 54 6, 58 6 L 88 6 C 92 6, 94 1, 98 1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+                <div className="font-serif text-[11px] sm:text-xs text-slate-300 leading-tight select-none mt-0.5">
+                  <div>Hum / Beatbox /</div>
+                  <div>MIDI Note Capture</div>
+                </div>
               </div>
 
-              <span className="text-slate-600 font-bold text-xs px-0.5">➔</span>
+              {/* Arrow */}
+              <div className="flex items-center justify-center px-1 pb-6 shrink-0 text-slate-400">
+                <svg className="w-6 sm:w-10 h-4" viewBox="0 0 40 16" fill="none">
+                  <path d="M 2 8 L 36 8 M 30 3 L 37 8 L 30 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
 
               {/* 2. BUILD */}
-              <div className="flex flex-col p-2 rounded-xl bg-slate-950/90 border border-cyan-500/30 shadow-inner">
-                <span className="text-[11px] font-black text-cyan-400">2. BUILD</span>
-                <span className="text-[9px] text-slate-400">Arranger • Piano Roll</span>
+              <div className="flex flex-col items-center justify-start text-center shrink-0 px-2">
+                <span className="font-serif font-black text-base sm:text-lg lg:text-xl tracking-wider text-slate-100 uppercase select-none">
+                  BUILD
+                </span>
+                <svg className="w-full max-w-[130px] h-3.5 my-1 text-slate-300 overflow-visible" viewBox="0 0 100 12" preserveAspectRatio="none">
+                  <path d="M 2 1 C 6 1, 8 6, 12 6 L 42 6 C 46 6, 48 11, 50 11 C 52 11, 54 6, 58 6 L 88 6 C 92 6, 94 1, 98 1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+                <div className="font-serif text-[11px] sm:text-xs text-slate-300 leading-tight select-none mt-0.5">
+                  <div>Arrangement Timeline</div>
+                  <div>& Piano Roll</div>
+                </div>
               </div>
 
-              <span className="text-slate-600 font-bold text-xs px-0.5">➔</span>
+              {/* Arrow */}
+              <div className="flex items-center justify-center px-1 pb-6 shrink-0 text-slate-400">
+                <svg className="w-6 sm:w-10 h-4" viewBox="0 0 40 16" fill="none">
+                  <path d="M 2 8 L 36 8 M 30 3 L 37 8 L 30 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
 
               {/* 3. WRITE & RECORD */}
-              <div className="flex flex-col p-2 rounded-xl bg-slate-950/90 border border-pink-500/30 shadow-inner">
-                <span className="text-[11px] font-black text-pink-400">3. WRITE & RECORD</span>
-                <span className="text-[9px] text-slate-400">Lyric Cadence • Comps</span>
+              <div className="flex flex-col items-center justify-start text-center shrink-0 px-2">
+                <span className="font-serif font-black text-base sm:text-lg lg:text-xl tracking-wider text-slate-100 uppercase select-none">
+                  WRITE & RECORD
+                </span>
+                <svg className="w-full max-w-[170px] h-3.5 my-1 text-slate-300 overflow-visible" viewBox="0 0 100 12" preserveAspectRatio="none">
+                  <path d="M 2 1 C 6 1, 8 6, 12 6 L 42 6 C 46 6, 48 11, 50 11 C 52 11, 54 6, 58 6 L 88 6 C 92 6, 94 1, 98 1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+                <div className="font-serif text-[11px] sm:text-xs text-slate-300 leading-tight select-none mt-0.5">
+                  <div>Lyric Cadence &</div>
+                  <div>Vocal Take Comping</div>
+                </div>
               </div>
 
-              <span className="text-slate-600 font-bold text-xs px-0.5">➔</span>
+              {/* Arrow */}
+              <div className="flex items-center justify-center px-1 pb-6 shrink-0 text-slate-400">
+                <svg className="w-6 sm:w-10 h-4" viewBox="0 0 40 16" fill="none">
+                  <path d="M 2 8 L 36 8 M 30 3 L 37 8 L 30 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
 
               {/* 4. MIX */}
-              <div className="flex flex-col p-2 rounded-xl bg-slate-950/90 border border-emerald-500/30 shadow-inner">
-                <span className="text-[11px] font-black text-emerald-400">4. MIX</span>
-                <span className="text-[9px] text-slate-400">32-Ch Console • Buses</span>
+              <div className="flex flex-col items-center justify-start text-center shrink-0 px-2">
+                <span className="font-serif font-black text-base sm:text-lg lg:text-xl tracking-wider text-slate-100 uppercase select-none">
+                  MIX
+                </span>
+                <svg className="w-full max-w-[110px] h-3.5 my-1 text-slate-300 overflow-visible" viewBox="0 0 100 12" preserveAspectRatio="none">
+                  <path d="M 2 1 C 6 1, 8 6, 12 6 L 42 6 C 46 6, 48 11, 50 11 C 52 11, 54 6, 58 6 L 88 6 C 92 6, 94 1, 98 1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+                <div className="font-serif text-[11px] sm:text-xs text-slate-300 leading-tight select-none mt-0.5">
+                  <div>32-Channel Console</div>
+                  <div>& Sub-Buses</div>
+                </div>
               </div>
 
-              <span className="text-slate-600 font-bold text-xs px-0.5">➔</span>
+              {/* Arrow */}
+              <div className="flex items-center justify-center px-1 pb-6 shrink-0 text-slate-400">
+                <svg className="w-6 sm:w-10 h-4" viewBox="0 0 40 16" fill="none">
+                  <path d="M 2 8 L 36 8 M 30 3 L 37 8 L 30 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
 
               {/* 5. MASTER */}
-              <div className="flex flex-col p-2 rounded-xl bg-slate-950/90 border border-indigo-500/30 shadow-inner">
-                <span className="text-[11px] font-black text-indigo-400">5. MASTER</span>
-                <span className="text-[9px] text-slate-400">BS.1770-4 LUFS • Peak</span>
+              <div className="flex flex-col items-center justify-start text-center shrink-0 px-2">
+                <span className="font-serif font-black text-base sm:text-lg lg:text-xl tracking-wider text-slate-100 uppercase select-none">
+                  MASTER
+                </span>
+                <svg className="w-full max-w-[130px] h-3.5 my-1 text-slate-300 overflow-visible" viewBox="0 0 100 12" preserveAspectRatio="none">
+                  <path d="M 2 1 C 6 1, 8 6, 12 6 L 42 6 C 46 6, 48 11, 50 11 C 52 11, 54 6, 58 6 L 88 6 C 92 6, 94 1, 98 1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+                <div className="font-serif text-[11px] sm:text-xs text-slate-300 leading-tight select-none mt-0.5">
+                  <div>BS.1770-4 LUFS</div>
+                  <div>& True Peak</div>
+                </div>
               </div>
 
-              <span className="text-slate-600 font-bold text-xs px-0.5">➔</span>
+              {/* Arrow */}
+              <div className="flex items-center justify-center px-1 pb-6 shrink-0 text-slate-400">
+                <svg className="w-6 sm:w-10 h-4" viewBox="0 0 40 16" fill="none">
+                  <path d="M 2 8 L 36 8 M 30 3 L 37 8 L 30 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
 
               {/* 6. RELEASE */}
-              <div className="flex flex-col p-2 rounded-xl bg-slate-950/90 border border-purple-500/30 shadow-inner">
-                <span className="text-[11px] font-black text-purple-400">6. RELEASE</span>
-                <span className="text-[9px] text-slate-400">SeedSignature • 24-Bit</span>
+              <div className="flex flex-col items-center justify-start text-center shrink-0 px-2">
+                <span className="font-serif font-black text-base sm:text-lg lg:text-xl tracking-wider text-slate-100 uppercase select-none">
+                  RELEASE
+                </span>
+                <svg className="w-full max-w-[130px] h-3.5 my-1 text-slate-300 overflow-visible" viewBox="0 0 100 12" preserveAspectRatio="none">
+                  <path d="M 2 1 C 6 1, 8 6, 12 6 L 42 6 C 46 6, 48 11, 50 11 C 52 11, 54 6, 58 6 L 88 6 C 92 6, 94 1, 98 1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+                <div className="font-serif text-[11px] sm:text-xs text-slate-300 leading-tight select-none mt-0.5">
+                  <div>SeedSignature Sign</div>
+                  <div>& 24-Bit Export</div>
+                </div>
               </div>
             </div>
           </div>
