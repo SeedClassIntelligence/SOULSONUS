@@ -131,10 +131,10 @@ export function isNoteInScale(midi: number, rootKey: string = 'C', scale: string
  */
 export function snapMidiToScale(midi: number, rootKey: string = 'C', scale: string = 'minor'): number {
   if (isNoteInScale(midi, rootKey, scale)) return midi;
-  // Check +1, -1, +2, -2
+  // Check -1, +1, -2, +2 (preference for downward flatted interval in minor keys)
   for (let offset = 1; offset <= 6; offset++) {
-    if (isNoteInScale(midi + offset, rootKey, scale)) return midi + offset;
     if (isNoteInScale(midi - offset, rootKey, scale)) return midi - offset;
+    if (isNoteInScale(midi + offset, rootKey, scale)) return midi + offset;
   }
   return midi;
 }

@@ -129,23 +129,45 @@ const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
   },
 ];
 
+function computeRelevanceScore(prompt: string, entry: VaultAcousticEntry): number {
+  const promptWords = prompt.toLowerCase().split(/[\s,._\-]+/).filter(Boolean);
+  const entryName = entry.name.toLowerCase();
+  const entryTags = entry.tags.map((t) => t.toLowerCase());
+  const entryCategory = entry.category.toLowerCase();
+
+  let matchScore = 0;
+  for (const word of promptWords) {
+    if (entryCategory === word || entryCategory.includes(word)) {
+      matchScore += 3.0;
+    }
+    if (entryName.includes(word)) {
+      matchScore += 2.5;
+    }
+    if (entryTags.includes(word)) {
+      matchScore += 2.0;
+    }
+  }
+
+  const maxScore = promptWords.length * 3.0;
+  const normalized = maxScore > 0 ? matchScore / maxScore : 0;
+  return Math.min(0.999, Math.max(0.01, normalized));
+}
+
 export class SoundVaultSemanticMatcher {
   /**
-   * Matches a query prompt against sound vault entries using semantic token cosine similarity.
+   * Matches a query prompt against sound vault entries using semantic token and keyword relevance.
    */
   public static matchSoundByPrompt(
     prompt: string,
     categoryFilter?: 'drums' | 'bass' | 'synths' | 'keys' | 'vocals',
     topK: number = 3
   ): SoundVaultMatchResult[] {
-    const promptVec = textToFeatureVector(prompt);
-
     const candidates = categoryFilter
       ? VAULT_ACOUSTIC_INDEX.filter((item) => item.category === categoryFilter)
       : VAULT_ACOUSTIC_INDEX;
 
     const scored = candidates.map((entry) => {
-      const similarity = cosineSimilarity(promptVec, entry.featureVector);
+      const similarity = computeRelevanceScore(prompt, entry);
       return {
         presetId: entry.id,
         name: entry.name,

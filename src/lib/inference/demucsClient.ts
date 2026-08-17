@@ -26,7 +26,11 @@ export interface DemucsSeparationResult {
 }
 
 export class DemucsClient {
-  constructor(private endpoint: string) {}
+  private endpoint: string;
+
+  constructor(endpoint: string) {
+    this.endpoint = endpoint;
+  }
 
   async health(): Promise<{ ok: boolean; device?: string; model?: string }> {
     try {
