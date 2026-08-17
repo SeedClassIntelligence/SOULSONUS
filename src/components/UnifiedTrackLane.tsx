@@ -102,6 +102,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
     selectedNoteIds,
     setSelectedNoteIds,
     setSelectionContext,
+    setTracks,
   } = useStudioSession();
 
   const isDrum =
@@ -337,12 +338,20 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
           className="w-72 shrink-0 p-2.5 border-r border-slate-800/80 flex flex-col justify-between gap-1.5 bg-slate-950/80 font-mono text-xs select-none"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Top: Icon, Name, Notes Count, Mute, Solo, DSP, Expand/Zoom */}
+          {/* Top: Icon (Click to Audition), Name, Notes Count, Mute, Solo, DSP, Expand/Zoom */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 overflow-hidden">
-              <div className="p-1 rounded-lg bg-slate-900 border border-slate-800">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  previewHit(defaultMidi, 0.6);
+                }}
+                className="p-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/40 transition cursor-pointer active:scale-95 group"
+                title={`Click to audition / preview ${track.name} sound`}
+              >
                 {INSTRUMENT_ICONS[track.instrument] || <Activity className="w-3.5 h-3.5 text-amber-400" />}
-              </div>
+              </button>
               <div>
                 <div className="flex items-center gap-1">
                   <span className="font-bold text-slate-100 text-xs truncate max-w-[95px]" title={track.name}>
@@ -444,7 +453,13 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
               <span className="text-slate-500 font-bold">SOUND:</span>
               <select
                 value={track.vaultLabel || currentSoundList[0]}
-                onChange={() => previewHit(defaultMidi, 0.4)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setTracks((prev) =>
+                    prev.map((t) => (t.id === track.id ? { ...t, vaultLabel: val } : t))
+                  );
+                  previewHit(defaultMidi, 0.5);
+                }}
                 className="bg-slate-900 text-cyan-300 text-[9px] font-bold px-1 py-0.5 rounded border border-slate-800 focus:outline-none cursor-pointer max-w-[90px] truncate"
               >
                 {currentSoundList.map((s) => (
