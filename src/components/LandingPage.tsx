@@ -113,10 +113,56 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
       {/* Main Content Container */}
       <main className="relative z-10 max-w-6xl mx-auto px-6 pt-16 pb-28 space-y-36">
         {/* HERO SECTION */}
-        <section className="text-center space-y-8 pt-8">
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] font-mono text-slate-300 shadow-inner">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>6-ROOM PRODUCTION DAW • 32-CH MIX DESK • 7-STAGE MASTERING • SHA-256 PROVENANCE</span>
+        <section className="text-center space-y-8 pt-4">
+          {/* 6-Step Creator Journey Flowchart (At Top of Page) */}
+          <div className="w-full max-w-5xl mx-auto overflow-x-auto no-scrollbar py-2">
+            <div className="inline-flex items-center justify-center gap-1.5 sm:gap-2.5 px-3.5 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-2xl font-mono text-left whitespace-nowrap">
+              {/* 1. CREATE */}
+              <div className="flex flex-col p-2 rounded-xl bg-slate-950/90 border border-amber-500/30 shadow-inner">
+                <span className="text-[11px] font-black text-amber-400">1. CREATE</span>
+                <span className="text-[9px] text-slate-400">Hum • Beatbox • Notes</span>
+              </div>
+
+              <span className="text-slate-600 font-bold text-xs px-0.5">➔</span>
+
+              {/* 2. BUILD */}
+              <div className="flex flex-col p-2 rounded-xl bg-slate-950/90 border border-cyan-500/30 shadow-inner">
+                <span className="text-[11px] font-black text-cyan-400">2. BUILD</span>
+                <span className="text-[9px] text-slate-400">Arranger • Piano Roll</span>
+              </div>
+
+              <span className="text-slate-600 font-bold text-xs px-0.5">➔</span>
+
+              {/* 3. WRITE & RECORD */}
+              <div className="flex flex-col p-2 rounded-xl bg-slate-950/90 border border-pink-500/30 shadow-inner">
+                <span className="text-[11px] font-black text-pink-400">3. WRITE & RECORD</span>
+                <span className="text-[9px] text-slate-400">Lyric Cadence • Comps</span>
+              </div>
+
+              <span className="text-slate-600 font-bold text-xs px-0.5">➔</span>
+
+              {/* 4. MIX */}
+              <div className="flex flex-col p-2 rounded-xl bg-slate-950/90 border border-emerald-500/30 shadow-inner">
+                <span className="text-[11px] font-black text-emerald-400">4. MIX</span>
+                <span className="text-[9px] text-slate-400">32-Ch Console • Buses</span>
+              </div>
+
+              <span className="text-slate-600 font-bold text-xs px-0.5">➔</span>
+
+              {/* 5. MASTER */}
+              <div className="flex flex-col p-2 rounded-xl bg-slate-950/90 border border-indigo-500/30 shadow-inner">
+                <span className="text-[11px] font-black text-indigo-400">5. MASTER</span>
+                <span className="text-[9px] text-slate-400">BS.1770-4 LUFS • Peak</span>
+              </div>
+
+              <span className="text-slate-600 font-bold text-xs px-0.5">➔</span>
+
+              {/* 6. RELEASE */}
+              <div className="flex flex-col p-2 rounded-xl bg-slate-950/90 border border-purple-500/30 shadow-inner">
+                <span className="text-[11px] font-black text-purple-400">6. RELEASE</span>
+                <span className="text-[9px] text-slate-400">SeedSignature • 24-Bit</span>
+              </div>
+            </div>
           </div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white max-w-5xl mx-auto leading-[1.08]">
@@ -130,7 +176,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
             <strong className="font-semibold text-cyan-400">Sonus</strong> — the sound, the arrangement, the production, the finished record.
           </p>
 
-          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={onEnterStudio}
               className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 text-slate-950 font-mono font-black text-sm tracking-wider flex items-center justify-center space-x-3 shadow-xl shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-105 active:scale-95 transition cursor-pointer"
@@ -145,6 +191,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
               <span>EXPLORE MIX & MASTERING</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </a>
+          </div>
+
+          {/* Technical Badge Pill (Moved Below CTA) */}
+          <div className="pt-2">
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-[11px] font-mono text-slate-300 shadow-inner">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>6-ROOM PRODUCTION DAW • 32-CH MIX DESK • 7-STAGE MASTERING • SHA-256 PROVENANCE</span>
+            </div>
           </div>
         </section>
 
