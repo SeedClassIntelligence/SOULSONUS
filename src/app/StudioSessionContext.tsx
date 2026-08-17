@@ -68,6 +68,7 @@ import { audioEngine } from '../audio/audioEngine';
 import { detectionEngine } from '../audio/detectionEngine';
 import { signatureService } from '../lib/seedSignature';
 import { CreativeResourceVaultModal } from '../components/CreativeResourceVaultModal';
+import { AudioStemImportModal } from '../components/AudioStemImportModal';
 
 const INITIAL_GROUP_BUSES: MixBusChannel[] = [
   {
@@ -356,6 +357,8 @@ export interface StudioSessionState {
   setIsVisualizationOpen: (open: boolean) => void;
   isVaultModalOpen: boolean;
   setIsVaultModalOpen: (open: boolean) => void;
+  isAudioImportModalOpen: boolean;
+  setIsAudioImportModalOpen: (open: boolean) => void;
   isVoiceCloneDrawerOpen: boolean;
   setIsVoiceCloneDrawerOpen: (open: boolean) => void;
 
@@ -530,6 +533,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isCalibrationOpen, setIsCalibrationOpen] = useState(false);
   const [isVisualizationOpen, setIsVisualizationOpen] = useState(false);
   const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
+  const [isAudioImportModalOpen, setIsAudioImportModalOpen] = useState(false);
   const [isVoiceCloneDrawerOpen, setIsVoiceCloneDrawerOpen] = useState(false);
 
 
@@ -2671,6 +2675,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsVisualizationOpen,
       isVaultModalOpen,
       setIsVaultModalOpen,
+      isAudioImportModalOpen,
+      setIsAudioImportModalOpen,
       isVoiceCloneDrawerOpen,
       setIsVoiceCloneDrawerOpen,
 
@@ -2811,6 +2817,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       isCalibrationOpen,
       isVisualizationOpen,
       isVaultModalOpen,
+      isAudioImportModalOpen,
       dawState,
       tracks,
       sections,
@@ -2930,6 +2937,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       <CreativeResourceVaultModal
         isOpen={isVaultModalOpen}
         onClose={() => setIsVaultModalOpen(false)}
+      />
+      <AudioStemImportModal
+        isOpen={isAudioImportModalOpen}
+        onClose={() => setIsAudioImportModalOpen(false)}
       />
     </StudioSessionContext.Provider>
   );

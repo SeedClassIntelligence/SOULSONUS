@@ -218,6 +218,7 @@ export const StudioCanvas: React.FC = () => {
     handleQuantizeTrackNotes,
     detectionSettings,
     setDetectionSettings,
+    setIsAudioImportModalOpen,
   } = useStudioSession();
 
   const [activeBarView, setActiveBarView] = useState<'all' | 1 | 2 | 3 | 4>('all');
@@ -336,7 +337,7 @@ export const StudioCanvas: React.FC = () => {
 
   const handleQuickPerformanceCapture = async (modality: 'MOUTH' | 'BODY' | 'KEYS' | 'AUDIO' | 'LYRICS') => {
     if (modality === 'AUDIO') {
-      window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'audio_import' }));
+      setIsAudioImportModalOpen(true);
       return;
     }
     handleCreateSourceTrack(modality);
@@ -876,7 +877,7 @@ export const StudioCanvas: React.FC = () => {
                 {/* 4. IMPORT AUDIO BUTTON */}
                 <button
                   type="button"
-                  onClick={() => handleQuickPerformanceCapture('AUDIO')}
+                  onClick={() => setIsAudioImportModalOpen(true)}
                   className="px-3 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/50 font-black text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-md shadow-blue-500/10"
                   title="Drop Audio File / Demucs 4-Stem Separation"
                 >
