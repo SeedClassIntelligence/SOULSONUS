@@ -118,7 +118,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
           <div className="w-full max-w-6xl mx-auto py-2">
             <div className="w-full flex items-center justify-between gap-1 sm:gap-2 px-3 sm:px-5 py-4 rounded-2xl sm:rounded-3xl bg-slate-900/60 border border-slate-800/80 shadow-2xl backdrop-blur-sm">
               {/* 1. CREATE (Amber) */}
-              <div className="flex-1 flex flex-col items-center justify-start text-center min-w-0">
+              <div className="flex-1 flex flex-col items-center justify-start text-center min-w-0 px-1">
                 <span className="font-serif font-black text-xs sm:text-sm md:text-base lg:text-lg tracking-wider text-amber-400 uppercase select-none truncate w-full">
                   CREATE
                 </span>
@@ -131,15 +131,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
                 </div>
               </div>
 
-              {/* Arrow */}
-              <div className="flex items-center justify-center pb-5 shrink-0 text-slate-500">
-                <svg className="w-3 sm:w-6 md:w-8 h-3 sm:h-4" viewBox="0 0 32 16" fill="none">
-                  <path d="M 2 8 L 28 8 M 22 3 L 29 8 L 22 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-
               {/* 2. BUILD (Cyan) */}
-              <div className="flex-1 flex flex-col items-center justify-start text-center min-w-0">
+              <div className="flex-1 flex flex-col items-center justify-start text-center min-w-0 px-1">
                 <span className="font-serif font-black text-xs sm:text-sm md:text-base lg:text-lg tracking-wider text-cyan-400 uppercase select-none truncate w-full">
                   BUILD
                 </span>
@@ -152,15 +145,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
                 </div>
               </div>
 
-              {/* Arrow */}
-              <div className="flex items-center justify-center pb-5 shrink-0 text-slate-500">
-                <svg className="w-3 sm:w-6 md:w-8 h-3 sm:h-4" viewBox="0 0 32 16" fill="none">
-                  <path d="M 2 8 L 28 8 M 22 3 L 29 8 L 22 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-
               {/* 3. WRITE & RECORD (Pink) */}
-              <div className="flex-1 flex flex-col items-center justify-start text-center min-w-0">
+              <div className="flex-1 flex flex-col items-center justify-start text-center min-w-0 px-1">
                 <span className="font-serif font-black text-xs sm:text-sm md:text-base lg:text-lg tracking-wider text-pink-400 uppercase select-none truncate w-full">
                   WRITE & RECORD
                 </span>
@@ -173,15 +159,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
                 </div>
               </div>
 
-              {/* Arrow */}
-              <div className="flex items-center justify-center pb-5 shrink-0 text-slate-500">
-                <svg className="w-3 sm:w-6 md:w-8 h-3 sm:h-4" viewBox="0 0 32 16" fill="none">
-                  <path d="M 2 8 L 28 8 M 22 3 L 29 8 L 22 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-
               {/* 4. MIX (Emerald) */}
-              <div className="flex-1 flex flex-col items-center justify-start text-center min-w-0">
+              <div className="flex-1 flex flex-col items-center justify-start text-center min-w-0 px-1">
                 <span className="font-serif font-black text-xs sm:text-sm md:text-base lg:text-lg tracking-wider text-emerald-400 uppercase select-none truncate w-full">
                   MIX
                 </span>
@@ -194,15 +173,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
                 </div>
               </div>
 
-              {/* Arrow */}
-              <div className="flex items-center justify-center pb-5 shrink-0 text-slate-500">
-                <svg className="w-3 sm:w-6 md:w-8 h-3 sm:h-4" viewBox="0 0 32 16" fill="none">
-                  <path d="M 2 8 L 28 8 M 22 3 L 29 8 L 22 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-
               {/* 5. MASTER (Indigo) */}
-              <div className="flex-1 flex flex-col items-center justify-start text-center min-w-0">
+              <div className="flex-1 flex flex-col items-center justify-start text-center min-w-0 px-1">
                 <span className="font-serif font-black text-xs sm:text-sm md:text-base lg:text-lg tracking-wider text-indigo-400 uppercase select-none truncate w-full">
                   MASTER
                 </span>
@@ -215,15 +187,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
                 </div>
               </div>
 
-              {/* Arrow */}
-              <div className="flex items-center justify-center pb-5 shrink-0 text-slate-500">
-                <svg className="w-3 sm:w-6 md:w-8 h-3 sm:h-4" viewBox="0 0 32 16" fill="none">
-                  <path d="M 2 8 L 28 8 M 22 3 L 29 8 L 22 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-
               {/* 6. RELEASE (Purple) */}
-              <div className="flex-1 flex flex-col items-center justify-start text-center min-w-0">
+              <div className="flex-1 flex flex-col items-center justify-start text-center min-w-0 px-1">
                 <span className="font-serif font-black text-xs sm:text-sm md:text-base lg:text-lg tracking-wider text-purple-400 uppercase select-none truncate w-full">
                   RELEASE
                 </span>
