@@ -61,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
   onBackToLanding,
   isMicActive,
 }) => {
-  const { setIsVaultModalOpen } = useStudioSession();
+  const { setIsVaultModalOpen, handleTransposeAllTracks } = useStudioSession();
   const [isLooping, setIsLooping] = useState(true);
   const [metronomeOn, setMetronomeOn] = useState(true);
   const [quantizeSetting, setQuantizeSetting] = useState<'1/16' | '1/8' | 'OFF'>('1/16');
@@ -118,15 +118,64 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Global Musical Metadata & Modal Launchers */}
         <div className="flex items-center space-x-2">
-          {/* Key Signature */}
+          {/* Interactive Project Key Signature & Transpose */}
           <div
-            className="flex items-center space-x-1 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 text-xs font-mono"
-            title="Project Root Key & Scale (C Natural Minor)"
+            className="flex items-center space-x-1 bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-800 text-xs font-mono"
+            title="Project Root Key & Global Transposition"
           >
             <Music2 className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-slate-400">KEY:</span>
-            <span className="text-cyan-300 font-bold">C MIN</span>
+            <span className="text-slate-400 text-[10px]">KEY:</span>
+            <span className="text-cyan-300 font-bold text-xs">C MIN</span>
+
+            {/* Quick Transpose Steppers for All Tracks */}
+            <div className="flex items-center space-x-0.5 ml-1 border-l border-slate-800 pl-1">
+              <button
+                type="button"
+                onClick={() => handleTransposeAllTracks(-1)}
+                className="px-1 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-amber-300 text-[9px] font-bold cursor-pointer"
+                title="Transpose all melodic notes down 1 semitone (-1 st)"
+              >
+                -1
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTransposeAllTracks(1)}
+                className="px-1 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-amber-300 text-[9px] font-bold cursor-pointer"
+                title="Transpose all melodic notes up 1 semitone (+1 st)"
+              >
+                +1
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTransposeAllTracks(-12)}
+                className="px-1 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-amber-300 text-[9px] font-bold cursor-pointer"
+                title="Transpose all melodic notes down 1 octave (-12 st)"
+              >
+                -8ve
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTransposeAllTracks(12)}
+                className="px-1 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-amber-300 text-[9px] font-bold cursor-pointer"
+                title="Transpose all melodic notes up 1 octave (+12 st)"
+              >
+                +8ve
+              </button>
+            </div>
           </div>
+
+          {/* Blank Canvas Creator Button */}
+          <button
+            type="button"
+            onClick={() => {
+              const emptyPreset = PRESETS.find((p) => p.id === 'empty');
+              if (emptyPreset) onSelectPreset(emptyPreset);
+            }}
+            className="hidden sm:flex items-center space-x-1 px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold transition cursor-pointer"
+            title="Start a clean, empty multi-track canvas for live mic recording"
+          >
+            <span>✦ BLANK CANVAS</span>
+          </button>
 
           {/* Time Signature */}
           <div

@@ -164,17 +164,12 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     setIsCandidateDrawerOpen(false);
   }, [handleCommitCandidateTransaction]);
 
-  // Auto-sync side panels on top-level workspace tab navigation
+  // Sync side panels on top-level workspace tab navigation
   useEffect(() => {
     if (activeWorkspace === 'BUILD') {
       setIsTrackWorkstationOpen(true);
-      setIsSongwritingSuiteOpen(false);
     } else if (activeWorkspace === 'WRITE_RECORD') {
       setIsSongwritingSuiteOpen(true);
-      setIsTrackWorkstationOpen(false);
-    } else {
-      setIsTrackWorkstationOpen(false);
-      setIsSongwritingSuiteOpen(false);
     }
   }, [activeWorkspace]);
 
@@ -185,21 +180,27 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       if (detail === 'inspector') setIsInspectorOpen((prev) => !prev);
       if (detail === 'workstation') setIsTrackWorkstationOpen((prev) => !prev);
       if (detail === 'songwriting' || detail === 'vocal') setIsSongwritingSuiteOpen((prev) => !prev);
+      if (detail === 'voiceclone' || detail === 'voice') setIsVoiceCloneDrawerOpen((prev) => !prev);
       if (detail === 'hardware' || detail === 'midi') setIsHardwareMidiOpen((prev) => !prev);
       if (detail === 'intelligence') setIsStudioIntelligenceOpen((prev) => !prev);
       if (detail === 'nativebrain' || detail === 'brain') setIsNativeBrainOpen((prev) => !prev);
       if (detail === 'calibration') setIsCalibrationOpen((prev) => !prev);
-      if (detail === 'visualization') setIsVisualizationOpen((prev) => !prev);
+      if (detail === 'visualization' || detail === 'radar') setIsVisualizationOpen((prev) => !prev);
+      if (detail === 'seed' || detail === 'signature') setIsSeedSignatureOpen(true);
+      if (detail === 'training') setIsTrainingOpen(true);
+      if (detail === 'vault' || detail === 'library') setIsSoundLibraryOpen(true);
+      if (detail === 'collab' || detail === 'collaboration') setIsCollaborationOpen(true);
+      if (detail === 'export') setIsExportOpen(true);
+
       if (detail === 'proposal' || detail === 'realization' || (typeof detail === 'object' && detail?.type === 'realization')) {
         const trId = typeof detail === 'object' ? detail?.trackId : undefined;
-        const route: RealizationRoute = typeof detail === 'object' && detail?.route ? detail.route : 'ACE_PERFORMANCE_TRANSFER';
         const targetTrack = tracks.find((t) => t.id === trId) || tracks[0];
+        const route: RealizationRoute = typeof detail === 'object' && detail?.route
+          ? detail.route
+          : targetTrack?.sourceTakeAudioUrl
+          ? 'ACE_PERFORMANCE_TRANSFER'
+          : 'INSTRUMENT';
         if (targetTrack) {
-          // createCandidate now genuinely calls a self-hosted ACE-Step server
-          // and waits on a real result -- this can take real seconds
-          // (GPU) to real tens-of-seconds (CPU self-host), not a synchronous
-          // hardcoded-literal return like before. Surface failures to the
-          // creator rather than swallowing them into a fake "success".
           setIsRealizationPending(true);
           RealizationRouter.createCandidate({
             sourceTrack: targetTrack,

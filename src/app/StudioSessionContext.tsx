@@ -461,8 +461,8 @@ export interface StudioSessionState {
   handleSplitNote: (trackId: string, noteId: string, splitAtTick: number) => void;
   handleDeleteNotes: (trackId: string, noteIds: string[]) => void;
   handleSetNoteVelocity: (trackId: string, noteId: string, velocity: number) => void;
-  handleSetNoteLyric: (trackId: string, noteId: string, lyric: string) => void;
-  handleTransposeNotes: (trackId: string, noteIds: string[], semitones: number) => void;
+  handleTransposeNotes: (trackId: string, noteIdsOrSemitones: string[] | number, semitones?: number) => void;
+  handleTransposeAllTracks: (semitones: number) => void;
   handleQuantizeTrackNotes: (trackId: string, noteIds: string[], divisionTicks?: number) => void;
   handleToggleTrackViewMode: (trackId: string, viewMode?: TrackViewMode) => void;
 
@@ -1029,7 +1029,18 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const handleTransposeNotes = useCallback(
-    (trackId: string, noteIds: string[], semitones: number) => {
+    (trackId: string, noteIdsOrSemitones: string[] | number, maybeSemitones?: number) => {
+      let noteIds: string[] = [];
+      let semitones: number = 0;
+
+      if (typeof noteIdsOrSemitones === 'number') {
+        semitones = noteIdsOrSemitones;
+        noteIds = [];
+      } else {
+        noteIds = noteIdsOrSemitones || [];
+        semitones = maybeSemitones ?? 0;
+      }
+
       if (semitones === 0) return;
       updateTracksWithHistory((prevTracks) =>
         prevTracks.map((track) => {
@@ -1040,6 +1051,25 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
                 return { ...note, midiNote: newMidi, provenance: { ...note.provenance, creatorEdited: true } };
               }
               return note;
+            });
+            return { ...track, noteEvents: updatedNotes };
+          }
+          return track;
+        })
+      );
+    },
+    [updateTracksWithHistory]
+  );
+
+  const handleTransposeAllTracks = useCallback(
+    (semitones: number) => {
+      if (semitones === 0) return;
+      updateTracksWithHistory((prevTracks) =>
+        prevTracks.map((track) => {
+          if (track.instrument !== 'kick' && track.instrument !== 'snare' && track.instrument !== 'hihat' && track.noteEvents) {
+            const updatedNotes = track.noteEvents.map((note) => {
+              const newMidi = Math.max(0, Math.min(127, note.midiNote + semitones));
+              return { ...note, midiNote: newMidi, provenance: { ...note.provenance, creatorEdited: true } };
             });
             return { ...track, noteEvents: updatedNotes };
           }
@@ -2728,6 +2758,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       handleSetNoteVelocity,
       handleSetNoteLyric,
       handleTransposeNotes,
+      handleTransposeAllTracks,
       handleQuantizeTrackNotes,
       handleToggleTrackViewMode,
     }),
@@ -2847,6 +2878,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       handleSetNoteVelocity,
       handleSetNoteLyric,
       handleTransposeNotes,
+      handleTransposeAllTracks,
       handleQuantizeTrackNotes,
       handleToggleTrackViewMode,
     ]

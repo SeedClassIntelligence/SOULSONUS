@@ -456,7 +456,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
             </div>
           </div>
 
-          {/* SONUS + Octave Shift + LEVEL Fader */}
+          {/* SONUS + Transpose + LEVEL Fader */}
           <div className="flex items-center justify-between pt-1 border-t border-slate-900 text-[9px]">
             <div className="flex items-center gap-1">
               <span className="text-slate-500 font-bold">SONUS:</span>
@@ -464,9 +464,14 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                 type="button"
                 onClick={() => {
                   setSelectionContext((prev) => ({ ...prev, selectedTrackId: track.id }));
+                  const targetRoute = track.sourceTakeAudioUrl
+                    ? 'ACE_PERFORMANCE_TRANSFER'
+                    : isDrum
+                    ? 'SAMPLE'
+                    : 'INSTRUMENT';
                   window.dispatchEvent(
                     new CustomEvent('soulsonus:openDrawer', {
-                      detail: { type: 'realization', trackId: track.id, route: 'ACE_PERFORMANCE_TRANSFER' },
+                      detail: { type: 'realization', trackId: track.id, route: targetRoute },
                     })
                   );
                 }}
@@ -477,9 +482,26 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                 <span>SONUS</span>
               </button>
 
-              {/* Quick Track Octave Transposition Buttons */}
+              {/* Quick Track Semitone & Octave Transposition Buttons */}
               {!isDrum && (
                 <div className="flex items-center gap-0.5 bg-slate-900 px-1 py-0.2 rounded border border-slate-800 ml-1">
+                  <button
+                    type="button"
+                    onClick={() => handleTransposeNotes(track.id, -1)}
+                    className="text-[8px] font-mono text-slate-300 hover:text-amber-400 px-0.5 cursor-pointer"
+                    title="Transpose all track notes down 1 semitone (-1 st)"
+                  >
+                    -1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTransposeNotes(track.id, 1)}
+                    className="text-[8px] font-mono text-slate-300 hover:text-amber-400 px-0.5 cursor-pointer"
+                    title="Transpose all track notes up 1 semitone (+1 st)"
+                  >
+                    +1
+                  </button>
+                  <span className="text-slate-700">|</span>
                   <button
                     type="button"
                     onClick={() => handleTransposeNotes(track.id, -12)}
@@ -488,7 +510,6 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                   >
                     -8ve
                   </button>
-                  <span className="text-slate-600">|</span>
                   <button
                     type="button"
                     onClick={() => handleTransposeNotes(track.id, 12)}
