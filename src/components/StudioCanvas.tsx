@@ -335,6 +335,10 @@ export const StudioCanvas: React.FC = () => {
   };
 
   const handleQuickPerformanceCapture = async (modality: 'MOUTH' | 'BODY' | 'KEYS' | 'AUDIO' | 'LYRICS') => {
+    if (modality === 'AUDIO') {
+      window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'audio_import' }));
+      return;
+    }
     handleCreateSourceTrack(modality);
     if (modality === 'MOUTH' || modality === 'BODY' || modality === 'KEYS') {
       if (!detectionSettings.enabled) {
@@ -347,8 +351,6 @@ export const StudioCanvas: React.FC = () => {
           snareThreshold: modality === 'MOUTH' ? 0.45 : 0.35,
         }));
       }
-    } else if (modality === 'AUDIO') {
-      window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'audio_import' }));
     }
   };
 
