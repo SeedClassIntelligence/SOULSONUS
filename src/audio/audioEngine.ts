@@ -1,6 +1,7 @@
 import * as Tone from 'tone';
 import { Track, InstrumentType } from '../types/daw';
 import { vocalRecorder } from './vocalRecorder';
+import { vocalDspProcessor } from './vocalDspProcessor';
 import { tickToStep, midiToNoteName } from '../utils/musicMath';
 
 interface TrackChannelNodes {
@@ -34,6 +35,7 @@ export class AudioEngine {
   private stepCallback: ((step: number) => void) | null = null;
   private vocalPlayer: Tone.Player | null = null;
   private vocalVolumeNode: Tone.Volume | null = null;
+  private vocalPitchShiftNode: ReturnType<typeof vocalDspProcessor.createPitchShiftNode> | null = null;
 
   private isVocalRecording = false;
   private vocalRecordStepCount = 0;
@@ -324,6 +326,24 @@ export class AudioEngine {
   public setVocalVolume(volumeDb: number) {
     if (this.vocalVolumeNode) {
       this.vocalVolumeNode.volume.value = volumeDb;
+    }
+  }
+
+  public setVocalPitchShift(semitones: number, formantShift: number = 0) {
+    const rawCtx = Tone.getContext().rawContext;
+    if (rawCtx && this.vocalVolumeNode && this.masterCompressor) {
+      if (!this.vocalPitchShiftNode) {
+        this.vocalPitchShiftNode = vocalDspProcessor.createPitchShiftNode(
+          rawCtx as AudioContext,
+          semitones,
+          formantShift
+        );
+        Tone.connect(this.vocalVolumeNode, this.vocalPitchShiftNode.input);
+        Tone.connect(this.vocalPitchShiftNode.output, this.masterCompressor);
+      } else {
+        this.vocalPitchShiftNode.setPitchShift(semitones);
+        this.vocalPitchShiftNode.setFormantShift(formantShift);
+      }
     }
   }
 

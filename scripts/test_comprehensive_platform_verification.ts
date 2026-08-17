@@ -3,8 +3,8 @@
  * Exhaustively tests all 9 core subsystems end-to-end:
  * 1. BS.1770-4 Mastering Telemetry DSP
  * 2. High-Resolution (480 PPQ) NoteEvent Math & Musical Quantization
- * 3. Vocal Pitch & Scale Quantization DSP
- * 4. 24-Bit / 48kHz WAV & FLAC Audio Packaging
+ * 3. Vocal Pitch Quantization & Granular Time-Domain Pitch Shifting DSP
+ * 4. Spec-Compliant 24-Bit WAV & FLAC Audio Packaging (fLaC Framing + STREAMINFO)
  * 5. WebCrypto SHA-256 SeedSignature Provenance Chains
  * 6. SoulFlow 10-Stage State Governor Lifecycle
  * 7. Sound Vault Semantic Keyword Matcher
@@ -20,6 +20,7 @@ import { SoulFlowGovernor, SOULFLOW_STAGE_ORDER } from '../src/lib/soulFlowGover
 import { SoundVaultSemanticMatcher } from '../src/lib/clapEmbeddingMatcher';
 import { AceStepClient } from '../src/lib/inference/aceStepClient';
 import { DemucsClient } from '../src/lib/inference/demucsClient';
+import { autocorrelationPitchTrajectory } from '../src/lib/inference/audioPreservationScoring';
 import {
   tickToStep,
   stepToTick,
@@ -116,9 +117,9 @@ async function runComprehensiveVerification() {
   check(snapMidiToScale(64, 'C', 'minor') === 63, 'MUSIC_MATH', 'snapMidiToScale snaps out-of-scale E4 (64) down to Eb4 (63) in C minor');
 
   // ----------------------------------------------------------------------
-  // 3. VOCAL DSP PITCH QUANTIZATION & CORRECTION
+  // 3. VOCAL DSP PITCH QUANTIZATION & GRANULAR PITCH SHIFTING
   // ----------------------------------------------------------------------
-  console.log('\n--- 3. Vocal DSP Pitch Quantization ---');
+  console.log('\n--- 3. Vocal DSP Pitch Quantization & Shifting ---');
   const quantResultA4 = vocalDspProcessor.quantizePitch(440.0, {
     key: 'C',
     scale: 'minor',
@@ -142,22 +143,61 @@ async function runComprehensiveVerification() {
     `Shifted Cutoff: ${Math.round(formantCutoff)} Hz`
   );
 
+  // Real Granular Overlap-Add Pitch Shifter Execution
+  const testSine440 = generateSine(440, 48000, 0.5, 0.6);
+  const shiftedUp12 = vocalDspProcessor.shiftPitchBuffer(testSine440, 12, 48000);
+  const f0Up12 = autocorrelationPitchTrajectory(shiftedUp12, 48000);
+  const avgUp12 = f0Up12.slice(3, 8).reduce((a, b) => a + b, 0) / 5;
+
+  check(
+    avgUp12 > 830 && avgUp12 < 930,
+    'VOCAL_DSP',
+    'Granular pitch shifter shifts 440Hz fundamental up +12 semitones to ~880Hz',
+    `Measured f0: ${Math.round(avgUp12)} Hz (target: 880 Hz)`
+  );
+
+  const shiftedDown12 = vocalDspProcessor.shiftPitchBuffer(testSine440, -12, 48000);
+  const f0Down12 = autocorrelationPitchTrajectory(shiftedDown12, 48000);
+  const avgDown12 = f0Down12.slice(3, 8).reduce((a, b) => a + b, 0) / 5;
+
+  check(
+    avgDown12 > 200 && avgDown12 < 240,
+    'VOCAL_DSP',
+    'Granular pitch shifter shifts 440Hz fundamental down -12 semitones to ~220Hz',
+    `Measured f0: ${Math.round(avgDown12)} Hz (target: 220 Hz)`
+  );
+
   // ----------------------------------------------------------------------
-  // 4. 24-BIT / 48KHZ WAV & FLAC AUDIO ENCODING
+  // 4. 24-BIT / 48KHZ WAV & SPEC-COMPLIANT FLAC AUDIO ENCODING
   // ----------------------------------------------------------------------
   console.log('\n--- 4. Audio Encoders & Master Packaging ---');
   const encoders = new AudioEncoders();
   const testPcmL = generateSine(440, 48000, 0.1, 0.5);
   const testPcmR = generateSine(440, 48000, 0.1, 0.5);
-  const wavResult = encoders.encode24BitWav(testPcmL, testPcmR, 48000);
 
+  // WAV 24-bit
+  const wavResult = encoders.encode24BitWav(testPcmL, testPcmR, 48000);
   check(wavResult.format.includes('24-bit') && wavResult.bitDepth === 24, 'AUDIO_ENCODER', 'Encodes genuine 24-bit PCM WAV stream');
   check(wavResult.sampleRate === 48000 && wavResult.channels === 2, 'AUDIO_ENCODER', 'Preserves 48,000 Hz stereo sample formatting');
-  // 4800 samples * 2 channels * 3 bytes + 44 byte header = 28,844 bytes
   check(wavResult.byteLength === 44 + 4800 * 2 * 3, 'AUDIO_ENCODER', 'RIFF chunk byteLength matches exact PCM byte count formula', `ByteLength: ${wavResult.byteLength}`);
 
+  // WAV 16-bit Red Book
+  const redBookWav = encoders.encode16BitWav(testPcmL, testPcmR, 44100);
+  check(redBookWav.format.includes('16-bit') && redBookWav.bitDepth === 16, 'AUDIO_ENCODER', 'Encodes standard Red Book 16-bit / 44.1kHz WAV master');
+
+  // FLAC Spec-Compliant Bitstream
   const flacResult = encoders.encodeFlac(testPcmL, testPcmR, 48000);
-  check(flacResult.format.includes('FLAC') && flacResult.dataBlob.type === 'audio/flac', 'AUDIO_ENCODER', 'Packages lossless FLAC audio delivery artifact');
+  const flacBytes = new Uint8Array(await flacResult.dataBlob.arrayBuffer());
+  const magic = String.fromCharCode(flacBytes[0], flacBytes[1], flacBytes[2], flacBytes[3]);
+
+  check(magic === 'fLaC', 'AUDIO_ENCODER', 'FLAC bitstream begins with standard 4-byte "fLaC" stream marker', `Magic: ${magic}`);
+  check(flacBytes[4] === 0x80, 'AUDIO_ENCODER', 'FLAC contains valid STREAMINFO metadata block header (type 0, isLast 1)');
+
+  const streamInfoLen = (flacBytes[5] << 16) | (flacBytes[6] << 8) | flacBytes[7];
+  check(streamInfoLen === 34, 'AUDIO_ENCODER', 'FLAC STREAMINFO block has exact spec length of 34 bytes', `Length: ${streamInfoLen}`);
+
+  const frame1Sync = ((flacBytes[42] << 8) | flacBytes[43]) & 0xfff8;
+  check(frame1Sync === 0xfff8, 'AUDIO_ENCODER', 'FLAC audio frame starts with valid 14-bit sync word (0xFFF8)', `Sync: 0x${frame1Sync.toString(16).toUpperCase()}`);
 
   // ----------------------------------------------------------------------
   // 5. WEBCRYPTO SHA-256 SEEDSIGNATURE PROVENANCE

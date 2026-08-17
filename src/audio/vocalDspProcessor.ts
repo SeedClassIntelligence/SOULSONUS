@@ -1,6 +1,7 @@
 /**
  * SoulSonus E09 Vocal DSP & Pitch Correction Processor
- * Implements scale-quantized pitch correction and formant preservation/shifting.
+ * Implements scale-quantized pitch correction, granular time-domain pitch shifting,
+ * and peaking formant filter preservation/shifting.
  */
 
 export interface PitchCorrectionConfig {
@@ -27,7 +28,10 @@ export class VocalDspProcessor {
   /**
    * Quantizes an input pitch in Hz to the nearest allowed scale note in MIDI space.
    */
-  public quantizePitch(inputFreqHz: number, config: PitchCorrectionConfig): { targetMidi: number; targetFreqHz: number; correctionCents: number } {
+  public quantizePitch(
+    inputFreqHz: number,
+    config: PitchCorrectionConfig
+  ): { targetMidi: number; targetFreqHz: number; correctionCents: number } {
     if (inputFreqHz <= 20) {
       return { targetMidi: 60, targetFreqHz: 261.63, correctionCents: 0 };
     }
@@ -75,28 +79,80 @@ export class VocalDspProcessor {
   }
 
   /**
+   * Performs granular time-domain overlap-add pitch shifting on a Float32Array audio buffer.
+   * Shifts pitch by semitones while preserving playback duration.
+   */
+  public shiftPitchBuffer(
+    input: Float32Array,
+    semitones: number,
+    sampleRate: number = 48000
+  ): Float32Array {
+    if (Math.abs(semitones) < 0.01) return new Float32Array(input);
+    const pitchRatio = Math.pow(2, semitones / 12);
+    const grainSize = Math.round(sampleRate * 0.035); // 35ms grain
+    const hopSize = Math.round(grainSize / 4);
+    const numSamples = input.length;
+    const out = new Float32Array(numSamples);
+    const weights = new Float32Array(numSamples);
+
+    // Input Hann window
+    const inWindow = new Float32Array(grainSize);
+    for (let i = 0; i < grainSize; i++) {
+      inWindow[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (grainSize - 1)));
+    }
+
+    const outGrainSize = Math.round(grainSize / pitchRatio);
+    const outWindow = new Float32Array(outGrainSize);
+    for (let i = 0; i < outGrainSize; i++) {
+      outWindow[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (outGrainSize - 1)));
+    }
+
+    for (let pos = 0; pos + grainSize < numSamples; pos += hopSize) {
+      for (let m = 0; m < outGrainSize; m++) {
+        const srcPos = m * pitchRatio;
+        const srcIdx = Math.floor(srcPos);
+        const frac = srcPos - srcIdx;
+        if (srcIdx + 1 < grainSize) {
+          const s0 = input[pos + srcIdx] * inWindow[srcIdx];
+          const s1 = input[pos + srcIdx + 1] * inWindow[srcIdx + 1];
+          const sample = (s0 * (1 - frac) + s1 * frac) * outWindow[m];
+          const targetPos = pos + m;
+          if (targetPos < numSamples) {
+            out[targetPos] += sample;
+            weights[targetPos] += outWindow[m] * inWindow[Math.min(grainSize - 1, Math.round(srcPos))];
+          }
+        }
+      }
+    }
+
+    for (let i = 0; i < numSamples; i++) {
+      if (weights[i] > 1e-4) {
+        out[i] /= weights[i];
+      }
+    }
+
+    return out;
+  }
+
+  /**
    * Creates a real-time Web Audio pitch-shifting & formant-shaping DSP sub-graph.
    */
   public createPitchShiftNode(
-    ctx: AudioContext,
+    ctx: BaseAudioContext,
     shiftSemitones: number,
     formantShiftSemitones: number = 0
-  ): { input: AudioNode; output: AudioNode } {
+  ): {
+    input: GainNode;
+    output: GainNode;
+    formantFilter: BiquadFilterNode;
+    setPitchShift: (semitones: number) => void;
+    setFormantShift: (semitones: number) => void;
+  } {
     const input = ctx.createGain();
     const output = ctx.createGain();
 
-    if (Math.abs(shiftSemitones) < 0.05 && Math.abs(formantShiftSemitones) < 0.05) {
-      input.connect(output);
-      return { input, output };
-    }
-
-    // Dual-delay-line granular pitch shifting
-    const pitchRatio = Math.pow(2, shiftSemitones / 12);
-    const delayA = ctx.createDelay();
-    const delayB = ctx.createDelay();
-    const grainDuration = 0.05; // 50ms grains
-    delayA.delayTime.value = grainDuration;
-    delayB.delayTime.value = grainDuration;
+    let currentPitchShift = shiftSemitones;
+    let currentFormantShift = formantShiftSemitones;
 
     // Formant EQ filtering
     const formantFilter = ctx.createBiquadFilter();
@@ -105,15 +161,51 @@ export class VocalDspProcessor {
     formantFilter.Q.value = 1.0;
     formantFilter.gain.value = formantShiftSemitones * 0.8;
 
-    input.connect(delayA);
-    input.connect(delayB);
-    delayA.connect(formantFilter);
-    delayB.connect(formantFilter);
+    // Streaming granular pitch shift processor
+    // If ScriptProcessor is available in context, use live overlap-add buffer
+    if (typeof (ctx as any).createScriptProcessor === 'function') {
+      const bufferSize = 2048;
+      const processor = (ctx as any).createScriptProcessor(bufferSize, 1, 1);
+      const sampleRate = ctx.sampleRate || 48000;
+
+      processor.onaudioprocess = (e: AudioProcessingEvent) => {
+        const inputData = e.inputBuffer.getChannelData(0);
+        const outputData = e.outputBuffer.getChannelData(0);
+
+        if (Math.abs(currentPitchShift) < 0.05) {
+          outputData.set(inputData);
+        } else {
+          const shifted = this.shiftPitchBuffer(inputData, currentPitchShift, sampleRate);
+          outputData.set(shifted);
+        }
+      };
+
+      input.connect(processor);
+      processor.connect(formantFilter);
+    } else {
+      input.connect(formantFilter);
+    }
+
     formantFilter.connect(output);
 
-    return { input, output };
+    return {
+      input,
+      output,
+      formantFilter,
+      setPitchShift: (semitones: number) => {
+        currentPitchShift = semitones;
+      },
+      setFormantShift: (semitones: number) => {
+        currentFormantShift = semitones;
+        formantFilter.frequency.setTargetAtTime(
+          this.calculateFormantFilterShift(semitones, 2500),
+          ctx.currentTime,
+          0.05
+        );
+        formantFilter.gain.setTargetAtTime(semitones * 0.8, ctx.currentTime, 0.05);
+      },
+    };
   }
 }
 
 export const vocalDspProcessor = new VocalDspProcessor();
-

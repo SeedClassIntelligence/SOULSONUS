@@ -89,7 +89,7 @@ function pearsonCorrelation(a: Float32Array, b: Float32Array): number {
  * Autocorrelation-based pitch trajectory (F0 estimation) across frames.
  * Analyzes pitch fundamental frequencies in the human musical range (50Hz - 1200Hz).
  */
-function autocorrelationPitchTrajectory(samples: Float32Array, sampleRate: number, frameSize = 2048, hopSize = 512): Float32Array {
+export function autocorrelationPitchTrajectory(samples: Float32Array, sampleRate: number, frameSize = 2048, hopSize = 512): Float32Array {
   const numFrames = Math.floor((samples.length - frameSize) / hopSize);
   if (numFrames <= 0) return new Float32Array(0);
 
