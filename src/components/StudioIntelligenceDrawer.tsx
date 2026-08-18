@@ -36,6 +36,20 @@ import {
 } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { productionHistory, ProductionOperation } from '../lib/productionOperations';
+import type { Track, TrackDspSettings } from '../types/daw';
+
+/** Baseline used when a track has no DSP settings yet. */
+const DEFAULT_TRACK_DSP: TrackDspSettings = {
+  lowGain: 0,
+  midGain: 0,
+  highGain: 0,
+  compressorThreshold: -18,
+  compressorRatio: 3,
+  reverbSend: 0.15,
+  delaySend: 0.1,
+  pan: 0,
+  volume: 0,
+};
 import {
   StudioEmphasis,
   StudioIntelligenceConfig,
@@ -61,6 +75,17 @@ interface ProposalOption {
   operationType: string;
   lockedInvariants: string[];
   mutableParams: string[];
+  /**
+   * What committing this proposal actually changes. Without it there is
+   * nothing to apply, and the commit must say so rather than report success.
+   */
+  apply?: {
+    /** Which track to change; falls back to the instrument named here. */
+    targetInstrument?: Track['instrument'];
+    dspSettings?: Partial<TrackDspSettings>;
+    /** Human-readable summary of the change, used in the confirmation. */
+    summary: string;
+  };
 }
 
 const STUDIO_EMPHASES: { id: StudioEmphasis; label: string; icon: React.ReactNode; desc: string }[] = [
@@ -196,15 +221,52 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
   };
 
   const handleCommit = (option: ProposalOption) => {
+    // A proposal with nothing applicable behind it is reported as such. Saying
+    // "committed" over an unchanged session is worse than saying nothing.
+    if (!option.apply) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'intelligence',
+          text:
+            `I can't commit "${option.title}" yet — this suggestion has no change I can apply to the session. ` +
+            `It's a recommendation to carry out by hand for now.`,
+          timestamp: Date.now(),
+        },
+      ]);
+      return;
+    }
+
+    const target =
+      (option.apply.targetInstrument && tracks.find((t) => t.instrument === option.apply!.targetInstrument)) ||
+      selectedTrack;
+
+    if (!target) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'intelligence',
+          text: `I couldn't find a ${option.apply.targetInstrument || 'target'} track to apply "${option.title}" to.`,
+          timestamp: Date.now(),
+        },
+      ]);
+      return;
+    }
+
+    const previousDsp = target.dspSettings ? { ...target.dspSettings } : undefined;
+    const nextDsp = { ...(target.dspSettings || DEFAULT_TRACK_DSP), ...option.apply.dspSettings };
+
+    setTracks((prev) => prev.map((t) => (t.id === target.id ? { ...t, dspSettings: nextDsp } : t)));
+
     const op: ProductionOperation = {
       id: `op_${Date.now()}`,
       type: 'SET_DSP_PARAM',
-      trackId: selectedTrack.id,
+      trackId: target.id,
       description: `Committed: ${option.title}`,
       source: 'CO_PRODUCER_AI',
       timestamp: Date.now(),
-      undo: (trks) => trks,
-      redo: (trks) => trks,
+      undo: (trks) => trks.map((t) => (t.id === target.id ? { ...t, dspSettings: previousDsp } : t)),
+      redo: (trks) => trks.map((t) => (t.id === target.id ? { ...t, dspSettings: nextDsp } : t)),
     };
     productionHistory.recordOperation(op);
 
@@ -212,7 +274,7 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
       ...prev,
       {
         sender: 'intelligence',
-        text: `✔ Committed "${option.title}" onto ${selectedTrack.name}. All drum patterns and arrangement invariants preserved.`,
+        text: `Applied to ${target.name}: ${option.apply!.summary}. Nothing else in the session was changed.`,
         timestamp: Date.now(),
       },
     ]);
@@ -247,6 +309,11 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
           operationType: 'SIDECHAIN_EQ',
           lockedInvariants: ['Kick Pattern', '808 Groove', 'Master BPM'],
           mutableParams: ['808 EQ 60Hz Cut', 'Sidechain Trigger Envelope'],
+          apply: {
+            targetInstrument: 'bass',
+            dspSettings: { lowGain: -2.5 },
+            summary: 'low-band gain set to -2.5 dB',
+          },
         },
       ];
     } else if (lower.includes('chord') || lower.includes('chords')) {
