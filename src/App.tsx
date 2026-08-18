@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { StudioSessionProvider, useStudioSession } from './app/StudioSessionContext';
 import { Header } from './components/Header';
 import { WorkspaceNav } from './components/WorkspaceNav';
@@ -171,11 +171,18 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     setIsCandidateDrawerOpen(false);
   }, [handleCommitCandidateTransaction]);
 
-  // Sync side panels on top-level workspace tab navigation
+  // Open a room's side panel the first time the creator arrives there, as an
+  // introduction to it. Only the first time: re-opening it on every visit
+  // overrides an explicit decision to close it, which reads as the app
+  // ignoring you every time you step out of the room and back.
+  const autoOpenedRooms = useRef<Set<string>>(new Set());
   useEffect(() => {
+    if (autoOpenedRooms.current.has(activeWorkspace)) return;
     if (activeWorkspace === 'BUILD') {
+      autoOpenedRooms.current.add(activeWorkspace);
       setIsTrackWorkstationOpen(true);
     } else if (activeWorkspace === 'WRITE_RECORD') {
+      autoOpenedRooms.current.add(activeWorkspace);
       setIsSongwritingSuiteOpen(true);
     }
   }, [activeWorkspace]);

@@ -41,6 +41,21 @@ much faster than wall-clock, so treat elapsed-time assertions with care.
 | `test-12-content-discrimination` | Does the Case A / Case B suggestion discriminate — and does it admit when it can't? |
 | `test-13-failure-visibility` | Neither upload path may silently fall back to broadcasting. |
 | `test-14-upload-case-b` | A full mix routes to stem separation and produces distinct stems carrying real audio. |
+| `test-15-cross-room-persistence` | What survives a room switch: session data, open drawers, canvas component identity, playback, live capture. |
+| `test-16-drawer-triggers` | Every drawer trigger opens the drawer it claims to, and where each is reachable from. |
+| `test-17-drawer-contents` | Do the controls inside each drawer create audio or change state? |
+| `test-18-drawer-tabs` | Walks every tab inside the multi-tab workstations, not just the default one. |
+
+## Two harness traps these tests hit
+
+Both produced false "inert" verdicts before being fixed, so check them before
+believing a control is decorative:
+
+- **Snapshot too narrow.** Vocal drawers write `pitchSettings`, `harmonySettings`
+  and `voiceIdentitySettings` onto the *track*. A snapshot of only volume/mute/DSP
+  misses them. `test-18` snapshots the whole session.
+- **Wrong event.** Several sliders commit on `onPointerUp`, not `change`. Setting
+  `.value` and dispatching `input`/`change` alone leaves the commit unfired.
 
 ## MIDI and stem-separation dependencies
 
