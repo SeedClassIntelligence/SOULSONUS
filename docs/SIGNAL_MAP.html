@@ -1,0 +1,514 @@
+<title>SoulSonus Signal Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground: #f5f8f9;
+    --surface: #ffffff;
+    --ink: #0d1519;
+    --muted: #566a73;
+    --faint: #7d919b;
+    --rule: #d9e3e7;
+    --rule-strong: #b9c8cf;
+    --accent: #0e7490;
+    --accent-soft: #e2f1f5;
+
+    --s-work: #15803d;
+    --s-work-bg: #e6f4ea;
+    --s-dark: #b45309;
+    --s-dark-bg: #fbeee0;
+    --s-deco: #b3261e;
+    --s-deco-bg: #fbe9e7;
+    --s-none: #5b6b75;
+    --s-none-bg: #eaeef0;
+
+    --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --body: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0a1013;
+      --surface: #101a1f;
+      --ink: #e4edf1;
+      --muted: #93a7b1;
+      --faint: #6f858f;
+      --rule: #1d2b33;
+      --rule-strong: #2c3f49;
+      --accent: #2bd0e8;
+      --accent-soft: #10262d;
+
+      --s-work: #4ade80;
+      --s-work-bg: #10241a;
+      --s-dark: #fbbf24;
+      --s-dark-bg: #2a1f0c;
+      --s-deco: #fb8a83;
+      --s-deco-bg: #2c1512;
+      --s-none: #8b9aa3;
+      --s-none-bg: #1a242a;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0a1013;
+    --surface: #101a1f;
+    --ink: #e4edf1;
+    --muted: #93a7b1;
+    --faint: #6f858f;
+    --rule: #1d2b33;
+    --rule-strong: #2c3f49;
+    --accent: #2bd0e8;
+    --accent-soft: #10262d;
+
+    --s-work: #4ade80;
+    --s-work-bg: #10241a;
+    --s-dark: #fbbf24;
+    --s-dark-bg: #2a1f0c;
+    --s-deco: #fb8a83;
+    --s-deco-bg: #2c1512;
+    --s-none: #8b9aa3;
+    --s-none-bg: #1a242a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 4.5rem) clamp(1rem, 4vw, 2.5rem) 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead { display: flex; flex-direction: column; gap: 1rem; }
+  .masthead h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2.1rem, 5.5vw, 3.4rem);
+    line-height: 1.02;
+    letter-spacing: -0.028em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .standfirst {
+    max-width: 62ch;
+    font-size: 1.06rem;
+    color: var(--muted);
+    margin: 0;
+  }
+  .stamp {
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    color: var(--faint);
+    border-top: 1px solid var(--rule);
+    padding-top: 0.85rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.5rem;
+  }
+
+  /* ---------- meter bridge ---------- */
+  .bridge {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+    border: 1px solid var(--rule-strong);
+    background: var(--surface);
+  }
+  .cell {
+    padding: 1.1rem 1.25rem 1.2rem;
+    border-right: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .cell:last-child { border-right: none; }
+  .cell .fig {
+    font-family: var(--mono);
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .cell .lab {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .cell .note { font-size: 0.82rem; color: var(--muted); line-height: 1.45; }
+  .cell.work .fig, .cell.work .lab { color: var(--s-work); }
+  .cell.dark .fig, .cell.dark .lab { color: var(--s-dark); }
+  .cell.deco .fig, .cell.deco .lab { color: var(--s-deco); }
+  .cell.none .fig, .cell.none .lab { color: var(--s-none); }
+
+  /* ---------- generic section ---------- */
+  section { display: flex; flex-direction: column; gap: 1.1rem; }
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.55rem;
+    letter-spacing: -0.017em;
+    margin: 0;
+  }
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.05rem;
+    letter-spacing: -0.008em;
+    margin: 0;
+  }
+  p { margin: 0; max-width: 68ch; }
+  .lede { color: var(--muted); }
+
+  /* ---------- room ---------- */
+  .room { border-top: 2px solid var(--ink); padding-top: 1rem; }
+  .roomhead {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.9rem;
+    margin-bottom: 0.15rem;
+  }
+  .roomno {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+  .roomrole {
+    font-size: 0.9rem;
+    color: var(--muted);
+    flex: 1 1 240px;
+  }
+
+  .rows { display: flex; flex-direction: column; margin-top: 0.85rem; }
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) 148px minmax(0, 1.5fr);
+    gap: 0.5rem 1.25rem;
+    padding: 0.8rem 0;
+    border-top: 1px solid var(--rule);
+    align-items: start;
+  }
+  .row:first-child { border-top: none; }
+  .what { font-weight: 500; }
+  .what small {
+    display: block;
+    font-weight: 400;
+    font-size: 0.84rem;
+    color: var(--muted);
+    line-height: 1.45;
+    margin-top: 0.12rem;
+  }
+  .ev {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+  }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.665rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.24rem 0.5rem;
+    white-space: nowrap;
+    border: 1px solid currentColor;
+  }
+  .p-work { color: var(--s-work); background: var(--s-work-bg); }
+  .p-dark { color: var(--s-dark); background: var(--s-dark-bg); }
+  .p-deco { color: var(--s-deco); background: var(--s-deco-bg); }
+  .p-none { color: var(--s-none); background: var(--s-none-bg); }
+
+  @media (max-width: 680px) {
+    .row { grid-template-columns: 1fr; gap: 0.35rem; }
+    .row .pill { justify-self: start; }
+  }
+
+  /* ---------- callout ---------- */
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-left: 4px solid var(--s-dark);
+    padding: 1.15rem 1.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+  .scroller { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.88rem; min-width: 520px; }
+  th, td { text-align: left; padding: 0.5rem 1rem 0.5rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+    font-weight: 500;
+    border-bottom-color: var(--rule-strong);
+  }
+  td code, .ev code { font-family: var(--mono); }
+  code { font-family: var(--mono); font-size: 0.86em; }
+
+  ol.next { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 1rem; counter-reset: n; }
+  ol.next li {
+    counter-increment: n;
+    display: grid;
+    grid-template-columns: 2.1rem 1fr;
+    gap: 0.9rem;
+    border-top: 1px solid var(--rule);
+    padding-top: 0.85rem;
+  }
+  ol.next li::before {
+    content: counter(n, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent);
+    padding-top: 0.15rem;
+  }
+  ol.next strong { font-weight: 600; }
+  ol.next p { font-size: 0.92rem; color: var(--muted); margin-top: 0.2rem; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.1rem; align-items: center; font-size: 0.85rem; color: var(--muted); }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Platform Scope Report · consolidated</div>
+    <h1>SoulSonus Signal Map</h1>
+    <p class="standfirst">Every component in the six rooms, sorted by whether it actually processes anything. Consolidated from all prior verification passes and re-checked against the current branch, so there is one map to plan from instead of several.</p>
+    <div class="stamp">
+      <span>Branch <code>claude/soulsonus-app-verification-v7xqqh</code></span>
+      <span>Verified 18 Aug 2026</span>
+      <span>Method: live headless browser + synthetic mic + source read</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="bridge">
+      <div class="cell work">
+        <span class="fig">18</span>
+        <span class="lab">Working</span>
+        <span class="note">Processes real data end to end. Demonstrated, not assumed.</span>
+      </div>
+      <div class="cell dark">
+        <span class="fig">7</span>
+        <span class="lab">Real, unplugged</span>
+        <span class="note">Genuine implementation that nothing imports or reaches.</span>
+      </div>
+      <div class="cell deco">
+        <span class="fig">14</span>
+        <span class="lab">Decorative</span>
+        <span class="note">Presents literals as measurements, or the control does nothing.</span>
+      </div>
+      <div class="cell none">
+        <span class="fig">4</span>
+        <span class="lab">Not built</span>
+        <span class="note">The UI implies it; no implementation exists anywhere.</span>
+      </div>
+    </div>
+    <div class="legend">
+      <span><span class="pill p-work">Working</span></span>
+      <span><span class="pill p-dark">Unplugged</span></span>
+      <span><span class="pill p-deco">Decorative</span></span>
+      <span><span class="pill p-none">Not built</span></span>
+      <span>Evidence column cites the file and line, or the live test that produced the result.</span>
+    </div>
+  </section>
+
+  <section class="callout">
+    <h3>The single largest finding: seven real modules that nothing imports</h3>
+    <p>These are not stubs. They contain working implementations — in two cases the exact functionality the UI claims to be performing — and no file in the app references them. Wiring them is far cheaper than building the features they already implement.</p>
+    <div class="scroller">
+      <table>
+        <thead><tr><th>Module</th><th>What it actually contains</th><th>What the UI shows instead</th></tr></thead>
+        <tbody>
+          <tr><td><code>audio/masteringTelemetryEngine.ts</code></td><td>ITU-R BS.1770-4 K-weighting, 4× oversampled true peak, crest factor, phase correlation</td><td>Hardcoded <code>-14.1 LUFS</code> / <code>-1.0 dBTP</code> literals</td></tr>
+          <tr><td><code>lib/audioEncoders.ts</code></td><td>24-bit WAV, 16-bit WAV, FLAC and MP3 encoders</td><td>A <code>text/plain</code> blob named <code>.txt</code></td></tr>
+          <tr><td><code>audio/transcriptionEngine.ts</code></td><td>245 lines of audio-to-note transcription</td><td>Four literal <code>NoteEvent</code>s on audio import</td></tr>
+          <tr><td><code>audio/soundfontEngine.ts</code></td><td>SoundFont playback via <code>spessasynth_core</code></td><td>Synth presets only</td></tr>
+          <tr><td><code>lib/clapEmbeddingMatcher.ts</code></td><td>CLAP embedding similarity</td><td>Fixed <code>clapMatchScore</code> integers per sample</td></tr>
+          <tr><td><code>lib/inference/demucsClient.ts</code></td><td>Stem-separation client</td><td>Canned stem patterns</td></tr>
+          <tr><td><code>lib/studioIntelligenceRouter.ts</code></td><td>Intelligence request routing</td><td>Bypassed</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lede">Scan is reproducible: for each module under <code>src/audio</code> and <code>src/lib</code>, count files importing it.</p>
+  </section>
+
+  <!-- ROOM 1 -->
+  <section class="room">
+    <div class="roomhead">
+      <span class="roomno">Room 01</span>
+      <h2>Create</h2>
+      <span class="roomrole">Performance capture — the origin of everything downstream</span>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="what">Per-sound-type channel separation<small>One take, one channel per sound type performed</small></div><div><span class="pill p-work">Working</span></div><div class="ev">Live: kick/snare/hat clip → 11 / 11 / 18 on three channels, nothing elsewhere. Same take minus hat → zero notes on hat.</div></div>
+      <div class="row"><div class="what">Onset classifier<small>Band-ratio + centroid scoring, noise-floor subtracted</small></div><div><span class="pill p-work">Working</span></div><div class="ev">audio/performanceClassifier.ts · offline: 14/28/14 against a known 1:1:2 pattern</div></div>
+      <div class="row"><div class="what">Mic onset detection &amp; pitch tracking</div><div><span class="pill p-work">Working</span></div><div class="ev">audio/detectionEngine.ts · 440 Hz in → MIDI 69 out; sub-bass tracked to 45 Hz</div></div>
+      <div class="row"><div class="what">Velocity from performance dynamics</div><div><span class="pill p-work">Working</span></div><div class="ev">Measured onset RMS vs. decaying peak. Live range 39–127 across a take.</div></div>
+      <div class="row"><div class="what">Note timing from playhead</div><div><span class="pill p-work">Working</span></div><div class="ev">Fixed earlier: <code>App.tsx</code> bypassed <code>handleStepChange</code>, stamping every note <code>startTick: 0</code></div></div>
+      <div class="row"><div class="what">Capture provenance on notes</div><div><span class="pill p-work">Working</span></div><div class="ev">Each note carries origin MOUTH / BODY / MIDI_KEYS + detection confidence</div></div>
+      <div class="row"><div class="what">Extract Stems from Source<small>Turn a captured take into instrument stems</small></div><div><span class="pill p-deco">Decorative</span></div><div class="ev">StudioSessionContext.tsx:1427 — writes the same fixed step arrays as the demo preset, ignoring the recording entirely</div></div>
+      <div class="row"><div class="what">Audio / stem import</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">AudioStemImportModal.tsx:59 — four literal NoteEvents regardless of the file imported</div></div>
+      <div class="row"><div class="what">Sound vault CLAP match scores</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">TrackProductionStrip.tsx:56 — <code>clapMatchScore</code> is a fixed integer per sample</div></div>
+      <div class="row"><div class="what">MOUTH / BODY seed track<small>Created on capture as a lineage marker</small></div><div><span class="pill p-dark">Unplugged</span></div><div class="ev">Created with instrument <code>custom</code>, so separated notes route past it and it stays visibly empty. Lineage survives on note provenance.</div></div>
+      <div class="row"><div class="what">Default project pattern<small>The 16-note kick a new project opens with</small></div><div><span class="pill p-none">Not built</span></div><div class="ev">presets.ts:15 — a fixed demo pattern, not session data. No project persistence exists.</div></div>
+    </div>
+  </section>
+
+  <!-- ROOM 2 -->
+  <section class="room">
+    <div class="roomhead">
+      <span class="roomno">Room 02</span>
+      <h2>Build</h2>
+      <span class="roomrole">Sequencing and note editing</span>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="what">Piano-roll note editing<small>Move, resize, split, velocity, quantize, transpose</small></div><div><span class="pill p-work">Working</span></div><div class="ev">Live: moved 3 notes +240 ticks and set velocity 33 on one channel with the other two byte-identical</div></div>
+      <div class="row"><div class="what">Per-channel mute &amp; solo</div><div><span class="pill p-work">Working</span></div><div class="ev">Live toggle on/off/on, confirmed against both React state and rendered DOM</div></div>
+      <div class="row"><div class="what">64-step sequencer grid</div><div><span class="pill p-work">Working</span></div><div class="ev">Real step arrays derived from note events</div></div>
+      <div class="row"><div class="what">Per-track channel strip<small>Filter, compressor, pan, reverb send</small></div><div><span class="pill p-work">Working</span></div><div class="ev">audioEngine.ts:126 — real Tone.js nodes per track</div></div>
+      <div class="row"><div class="what">Virtual piano keyboard</div><div><span class="pill p-work">Working</span></div><div class="ev">Was crashing the entire studio on load via a missing import; fixed</div></div>
+      <div class="row"><div class="what">External MIDI hardware</div><div><span class="pill p-work">Working</span></div><div class="ev">audio/midiEngine.ts via Web MIDI. Not exercised live — no device available in this environment.</div></div>
+      <div class="row"><div class="what">Undo / redo history</div><div><span class="pill p-dark">Unplugged</span></div><div class="ev">Real stack, but captured notes bypass it entirely, so a take cannot be undone</div></div>
+      <div class="row"><div class="what">Arrangement sections<small>Intro / verse / chorus regions</small></div><div><span class="pill p-none">Not built</span></div><div class="ev">Initial state literal only; no add, rename or delete handler exists</div></div>
+    </div>
+  </section>
+
+  <!-- ROOM 3 -->
+  <section class="room">
+    <div class="roomhead">
+      <span class="roomno">Room 03</span>
+      <h2>Write &amp; Record</h2>
+      <span class="roomrole">Vocals, lyrics, takes</span>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="what">Vocal overdub recording</div><div><span class="pill p-work">Working</span></div><div class="ev">Live: 129 KB blob, 7.98 s decoded buffer, 200 non-zero waveform points. The button was inert until a prop-name mismatch was fixed.</div></div>
+      <div class="row"><div class="what">Vocal pitch-shift DSP</div><div><span class="pill p-work">Working</span></div><div class="ev">audio/vocalDspProcessor.ts, reached through audioEngine.ts:361</div></div>
+      <div class="row"><div class="what">Lyric sections &amp; versioning</div><div><span class="pill p-work">Working</span></div><div class="ev">Real add / update / version / restore handlers over real state, seeded with demo lyrics</div></div>
+      <div class="row"><div class="what">Vocal takes &amp; comping</div><div><span class="pill p-work">Working</span></div><div class="ev">State-level only: takes, ratings and comp segments are real records, with no audio bound to a take</div></div>
+      <div class="row"><div class="what">Voice cloning / identity synthesis</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">VoiceCloneDrawer.tsx:76 — <code>setTimeout</code> progress with no model behind it</div></div>
+      <div class="row"><div class="what">Take playback<small>Audition a recorded take</small></div><div><span class="pill p-none">Not built</span></div><div class="ev">No audio element or buffer is attached to any take record</div></div>
+    </div>
+  </section>
+
+  <!-- ROOM 4 -->
+  <section class="room">
+    <div class="roomhead">
+      <span class="roomno">Room 04</span>
+      <h2>Mix</h2>
+      <span class="roomrole">Balance, telemetry, scenes</span>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="what">Mix snapshots / scenes</div><div><span class="pill p-work">Working</span></div><div class="ev">Real save and recall of fader, insert and routing state</div></div>
+      <div class="row"><div class="what">Acoustic masking proposals<small>"99% Match", "68 Hz ducking"</small></div><div><span class="pill p-deco">Decorative</span></div><div class="ev">CoEngineerAnalysisSuite.tsx:40 — a literal array. Identical output on a full project and on an empty canvas with zero notes.</div></div>
+      <div class="row"><div class="what">AUDITION button</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">Zero WebAudio nodes constructed while auditioning; toggles a label only</div></div>
+      <div class="row"><div class="what">COMMIT button</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">Proposal 1 targets track id <code>t-808</code>, which does not exist. Proposal 2 writes an EQ gain nothing reads.</div></div>
+      <div class="row"><div class="what">Meter bridge<small>LUFS, true peak, phase correlation</small></div><div><span class="pill p-deco">Decorative</span></div><div class="ev">CoEngineerAnalysisSuite.tsx:213 — literals in JSX</div></div>
+      <div class="row"><div class="what">Reference track A/B deltas</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">Low-end delta, vocal presence and stereo width are all fixed strings</div></div>
+      <div class="row"><div class="what">Track EQ<small>Low / mid / high gain</small></div><div><span class="pill p-none">Not built</span></div><div class="ev">No EQ node exists in audioEngine; <code>lowGain</code>/<code>midGain</code>/<code>highGain</code> are stored and never read</div></div>
+    </div>
+  </section>
+
+  <!-- ROOM 5 -->
+  <section class="room">
+    <div class="roomhead">
+      <span class="roomno">Room 05</span>
+      <h2>Master</h2>
+      <span class="roomrole">Mastering chain and loudness compliance</span>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="what">Master candidate A/B switching</div><div><span class="pill p-work">Working</span></div><div class="ev">Real state switching — though the values it switches between are fixed</div></div>
+      <div class="row"><div class="what">Loudness telemetry engine</div><div><span class="pill p-dark">Unplugged</span></div><div class="ev">audio/masteringTelemetryEngine.ts — correct BS.1770-4 implementation, zero importers, never loaded by the running app</div></div>
+      <div class="row"><div class="what">7-stage mastering chain<small>EQ, dynamic EQ, bus comp, saturation, imager, clipper, limiter</small></div><div><span class="pill p-deco">Decorative</span></div><div class="ev">Live: drove every slider — 0 audio nodes constructed, 0 AudioParam automation calls, readouts unchanged</div></div>
+      <div class="row"><div class="what">Integrated LUFS / true-peak readouts</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">StudioSessionContext.tsx:2496 — <code>measuredLufs: -14.1</code> is a literal</div></div>
+      <div class="row"><div class="what">Mastering presets<small>Streaming / Club / Warm Analog</small></div><div><span class="pill p-deco">Decorative</span></div><div class="ev">Swap parameter numbers on a chain that processes nothing</div></div>
+    </div>
+  </section>
+
+  <!-- ROOM 6 -->
+  <section class="room">
+    <div class="roomhead">
+      <span class="roomno">Room 06</span>
+      <h2>Release</h2>
+      <span class="roomrole">Provenance, export, delivery</span>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="what">SeedSignature provenance</div><div><span class="pill p-work">Working</span></div><div class="ev">lib/seedSignature.ts — real <code>crypto.subtle</code> SHA-256 over project payload and lineage chain</div></div>
+      <div class="row"><div class="what">Footer signature status</div><div><span class="pill p-work">Working</span></div><div class="ev">Live: READY TO SIGN → VERIFIED after signing. Signing previously discarded the record it created.</div></div>
+      <div class="row"><div class="what">DAW interoperability bundle</div><div><span class="pill p-work">Working</span></div><div class="ev">lib/dawInteroperability.ts, reached from the hardware drawer. Content not audited.</div></div>
+      <div class="row"><div class="what">Export downloads<small>WAV / FLAC / MP3 / stems</small></div><div><span class="pill p-deco">Decorative</span></div><div class="ev">ExportModal.tsx:26 <code>handleSimulateDownload</code> — writes a <code>text/plain</code> blob, and stamps a hardcoded signature hash with status VERIFIED</div></div>
+      <div class="row"><div class="what">Master delivery manifest</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">Returns <code>/export/master.flac</code> and per-stem URLs that were never generated, plus a synthesised hash string</div></div>
+      <div class="row"><div class="what">Delivery package buttons</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">FinalizationGateAndSign.tsx:70 — <code>alert("Downloaded …")</code></div></div>
+    </div>
+  </section>
+
+  <!-- CROSS-CUTTING -->
+  <section class="room">
+    <div class="roomhead">
+      <span class="roomno">Across all rooms</span>
+      <h2>Engineering health</h2>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="what">Type checking is not in the build</div><div><span class="pill p-deco">Gap</span></div><div class="ev"><code>vite build</code> does not typecheck, so two crash-class errors shipped green and white-screened the studio. 23 type errors remain, all <code>NoteEvent.provenance</code> in the import modal.</div></div>
+      <div class="row"><div class="what">Side effects inside React state updaters</div><div><span class="pill p-dark">Partly fixed</span></div><div class="ev">Fixed in the history writer and the capture handler. Three remain: undo, redo, and monitoring-mode toggles all call <code>setState</code> from inside another updater, which StrictMode invokes twice.</div></div>
+      <div class="row"><div class="what">Project persistence</div><div><span class="pill p-none">Not built</span></div><div class="ev">No save or load anywhere. A reload discards the session, which is why every project opens on the same demo pattern.</div></div>
+      <div class="row"><div class="what">Verification harness</div><div><span class="pill p-work">Working</span></div><div class="ev">scripts/live-verification — nine tests driving real Chromium with a synthetic mic, reading committed React state</div></div>
+    </div>
+  </section>
+
+  <!-- NEXT -->
+  <section>
+    <h2>Where the leverage is</h2>
+    <p class="lede">Ordered by value returned per unit of work, given what already exists on disk.</p>
+    <ol class="next">
+      <li><div><strong>Plug in the loudness engine.</strong><p>The Master room's headline numbers become real measurements. The DSP is written and correct; it needs an audio-buffer render of the master bus and one call site. Nothing new to design.</p></div></li>
+      <li><div><strong>Plug in the encoders.</strong><p>Export stops writing text files. <code>audioEncoders.ts</code> already does 24-bit WAV and FLAC; it needs the same rendered buffer as above, which makes these two one project rather than two.</p></div></li>
+      <li><div><strong>Build the master bus graph.</strong><p>The seven mastering stages and the mix room's EQ commit both fail for the same reason: there is no processing chain on the master bus. One graph makes both real and turns the existing parameter UI into controls.</p></div></li>
+      <li><div><strong>Add project persistence.</strong><p>Capture now produces real performances, and a reload throws them away. Until this exists, nothing a creator makes survives, and the "16-note default" confusion recurs every session.</p></div></li>
+      <li><div><strong>Make Extract Stems use the take.</strong><p>The classifier already labels every onset by sound type. Stem extraction can read those labels instead of writing the demo pattern — this is now a small change rather than a new capability.</p></div></li>
+      <li><div><strong>Replace or remove the Mix advisor.</strong><p>The masking proposals cannot be repaired by tuning; they are literals. Either compute real cross-channel masking from the rendered buses, or take the panel out. Leaving confident percentages over an empty canvas is the costliest kind of wrong.</p></div></li>
+      <li><div><strong>Put <code>tsc --noEmit</code> in CI.</strong><p>Cheapest item on the list. It would have caught both crashes before deploy.</p></div></li>
+    </ol>
+  </section>
+
+  <section>
+    <h3>What "verified" means here</h3>
+    <p class="lede">Working means a live test drove the real app and observed real data changing — synthetic audio through Chromium's fake capture device, state read from React's committed fiber tree, cross-checked against the DOM. Decorative means the value shown is a literal in the source, or the control constructs no audio nodes when operated. Unplugged means a genuine implementation exists that no file imports. Not built means neither exists. Claims carried over from earlier passes were re-checked against the current branch rather than trusted.</p>
+  </section>
+
+</div>
