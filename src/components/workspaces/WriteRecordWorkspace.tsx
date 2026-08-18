@@ -194,11 +194,12 @@ export const WriteRecordWorkspace: React.FC = () => {
               <VocalLayer
                 vocalState={vocalState}
                 currentStep={dawState.currentStep}
-                onStartRecord={handleStartVocalRecording}
-                onStopRecord={handleStopVocalRecording}
-                onChangeVolume={(vol) => {
-                  audioEngine.setVocalVolume(vol);
-                  setVocalState((prev) => ({ ...prev, volume: vol }));
+                isPlayingSequencer={dawState.isPlaying}
+                onStartRecordVocal={handleStartVocalRecording}
+                onStopRecordVocal={handleStopVocalRecording}
+                onUpdateVocalState={(updates) => {
+                  if (typeof updates.volume === 'number') audioEngine.setVocalVolume(updates.volume);
+                  setVocalState((prev) => ({ ...prev, ...updates }));
                 }}
                 onClearVocal={() => {
                   audioEngine.setVocalBuffer(null);

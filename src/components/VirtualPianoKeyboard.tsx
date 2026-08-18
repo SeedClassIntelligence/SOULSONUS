@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Volume2, Music, Sparkles, ChevronLeft, ChevronRight, Piano } from 'lucide-react';
 import { audioEngine } from '../audio/audioEngine';
 import { midiToNoteName, noteNameToMidi } from '../utils/musicMath';
+import { useStudioSession } from '../app/StudioSessionContext';
 
 interface VirtualPianoKeyboardProps {
   isOpen: boolean;

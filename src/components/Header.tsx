@@ -41,6 +41,7 @@ interface HeaderProps {
   onOpenCollaboration: () => void;
   onOpenExport: () => void;
   onOpenVault?: () => void;
+  onOpenPiano?: () => void;
   onBackToLanding?: () => void;
   isMicActive: boolean;
 }
@@ -59,6 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenDatasetRegistry,
   onOpenCollaboration,
   onOpenExport,
+  onOpenPiano,
   onBackToLanding,
   isMicActive,
 }) => {

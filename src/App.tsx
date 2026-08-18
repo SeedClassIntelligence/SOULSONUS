@@ -59,6 +59,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     setIsVoiceCloneDrawerOpen,
     dawState,
     setDawState,
+    handleStepChange,
     tracks,
     setTracks,
     sections,
@@ -260,16 +261,17 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       await audioEngine.init();
       audioEngine.startSequencer(
         () => tracks,
-        (step) => setDawState((prev) => ({ ...prev, currentStep: step }))
+        (step) => handleStepChange(step)
       );
       setDawState((prev) => ({ ...prev, isPlaying: true }));
     }
-  }, [dawState.isPlaying, tracks, setDawState]);
+  }, [dawState.isPlaying, tracks, handleStepChange, setDawState]);
 
   const handleStop = useCallback(() => {
     audioEngine.stopSequencer();
-    setDawState((prev) => ({ ...prev, isPlaying: false, currentStep: 0 }));
-  }, [setDawState]);
+    handleStepChange(0);
+    setDawState((prev) => ({ ...prev, isPlaying: false }));
+  }, [handleStepChange, setDawState]);
 
   const handleToggleMic = useCallback(async () => {
     if (detectionSettings.enabled) {

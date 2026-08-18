@@ -2633,6 +2633,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         timestamp: Date.now(),
       }
     );
+    setSeedRecords((prev) => [signature, ...prev]);
     return signature;
   }, [masterCandidates, activeMasterCandidateId, tracks, dawState.bpm, creatorName, acceptedMixPrint]);
 
