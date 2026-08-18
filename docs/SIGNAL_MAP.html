@@ -311,7 +311,7 @@
     <p class="standfirst">Every component in the six rooms, sorted by whether it actually processes anything. Consolidated from all prior verification passes and re-checked against the current branch, so there is one map to plan from instead of several.</p>
     <div class="stamp">
       <span>Branch <code>claude/soulsonus-app-verification-v7xqqh</code></span>
-      <span>Updated 18 Aug 2026 · Layer 0 items 0.1, 0.2, 0.3, 0.7, 0.8 landed</span>
+      <span>Updated 18 Aug 2026 · Layer 0 complete — 0.1 through 0.8 landed</span>
       <span>Method: live headless browser + synthetic mic + source read</span>
     </div>
   </header>
@@ -319,7 +319,7 @@
   <section>
     <div class="bridge">
       <div class="cell work">
-        <span class="fig">27</span>
+        <span class="fig">33</span>
         <span class="lab">Working</span>
         <span class="note">Processes real data end to end. Demonstrated, not assumed.</span>
       </div>
@@ -329,12 +329,12 @@
         <span class="note">Genuine implementation that nothing imports or reaches.</span>
       </div>
       <div class="cell deco">
-        <span class="fig">13</span>
+        <span class="fig">9</span>
         <span class="lab">Decorative</span>
         <span class="note">Presents literals as measurements, or the control does nothing.</span>
       </div>
       <div class="cell none">
-        <span class="fig">5</span>
+        <span class="fig">3</span>
         <span class="lab">Not built</span>
         <span class="note">The UI implies it; no implementation exists anywhere.</span>
       </div>
@@ -380,11 +380,11 @@
       <div class="row"><div class="what">Velocity from performance dynamics</div><div><span class="pill p-work">Working</span></div><div class="ev">Measured onset RMS vs. decaying peak. Live range 39–127 across a take.</div></div>
       <div class="row"><div class="what">Note timing from playhead</div><div><span class="pill p-work">Working</span></div><div class="ev">Fixed earlier: <code>App.tsx</code> bypassed <code>handleStepChange</code>, stamping every note <code>startTick: 0</code></div></div>
       <div class="row"><div class="what">Capture provenance on notes</div><div><span class="pill p-work">Working</span></div><div class="ev">Each note carries origin MOUTH / BODY / MIDI_KEYS + detection confidence</div></div>
-      <div class="row"><div class="what">Extract Stems from Source<small>Turn a captured take into instrument stems</small></div><div><span class="pill p-deco">Decorative</span></div><div class="ev">StudioSessionContext.tsx:1427 — writes the same fixed step arrays as the demo preset, ignoring the recording entirely</div></div>
+      <div class="row"><div class="what">Extract Stems from Source<small>Turn a captured take into instrument stems</small></div><div><span class="pill p-work">Working</span></div><div class="ev">Works from what the seed holds: audio is analysed with the live classifier, an already-separated performance is consolidated by provenance, and a seed with neither says so. Two different takes give different stems; no hi-hat stem appears when none was played</div></div>
       <div class="row"><div class="what">Audio / stem import</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">AudioStemImportModal.tsx:59 — four literal NoteEvents regardless of the file imported</div></div>
       <div class="row"><div class="what">Sound vault CLAP match scores</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">TrackProductionStrip.tsx:56 — <code>clapMatchScore</code> is a fixed integer per sample</div></div>
       <div class="row"><div class="what">MOUTH / BODY seed track<small>Created on capture as a lineage marker</small></div><div><span class="pill p-dark">Unplugged</span></div><div class="ev">Created with instrument <code>custom</code>, so separated notes route past it and it stays visibly empty. Lineage survives on note provenance.</div></div>
-      <div class="row"><div class="what">Default project pattern<small>The 16-note kick a new project opens with</small></div><div><span class="pill p-none">Not built</span></div><div class="ev">presets.ts:15 — a fixed demo pattern, not session data. No project persistence exists.</div></div>
+      <div class="row"><div class="what">Project persistence<small>Save, autosave, reopen</small></div><div><span class="pill p-work">Working</span></div><div class="ev">IndexedDB, chosen because a session holds vocal takes as Blobs. Verified across a real reload: notes, tracks, bpm, fader moves, mastering chain, room and a recorded vocal take all survive. The demo pattern was never a bug in the pattern — there was simply nothing else to load</div></div>
     </div>
   </section>
 
@@ -433,10 +433,9 @@
     </div>
     <div class="rows">
       <div class="row"><div class="what">Mix snapshots / scenes</div><div><span class="pill p-work">Working</span></div><div class="ev">Real save and recall of fader, insert and routing state</div></div>
-      <div class="row"><div class="what">Acoustic masking proposals<small>"99% Match", "68 Hz ducking"</small></div><div><span class="pill p-deco">Decorative</span></div><div class="ev">CoEngineerAnalysisSuite.tsx:40 — a literal array. Identical output on a full project and on an empty canvas with zero notes.</div></div>
-      <div class="row"><div class="what">AUDITION button</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">Zero WebAudio nodes constructed while auditioning; toggles a label only</div></div>
-      <div class="row"><div class="what">COMMIT button</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">Proposal 1 targets track id <code>t-808</code>, which does not exist. Proposal 2 writes an EQ gain nothing reads.</div></div>
-      <div class="row"><div class="what">Meter bridge<small>LUFS, true peak, phase correlation</small></div><div><span class="pill p-deco">Decorative</span></div><div class="ev">CoEngineerAnalysisSuite.tsx:213 — literals in JSX</div></div>
+      <div class="row"><div class="what">Acoustic masking analysis<small>Where two tracks compete for a band</small></div><div><span class="pill p-work">Working</span></div><div class="ev">Rebuilt on measurement: each track is bounced on its own and compared frame by frame. Reports what it measured, with no confidence score — the fabricated percentage was the original fault. A full project names real track pairs; an empty canvas produces nothing and says why</div></div>
+      <div class="row"><div class="what">Proposal AUDITION / COMMIT buttons</div><div><span class="pill p-none">Removed</span></div><div class="ev">They existed to audition and commit the literal proposals. With the panel now reporting measurements rather than asserting fixes, there is nothing to audition — a suggestion engine on top of real analysis is separate work</div></div>
+      <div class="row"><div class="row"><div class="what">Meter bridge<small>LUFS, true peak, phase correlation</small></div><div><span class="pill p-deco">Decorative</span></div><div class="ev">CoEngineerAnalysisSuite.tsx:213 — literals in JSX</div></div>
       <div class="row"><div class="what">Reference track A/B deltas</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">Low-end delta, vocal presence and stereo width are all fixed strings</div></div>
       <div class="row"><div class="what">Track EQ<small>Low / mid / high gain</small></div><div><span class="pill p-none">Not built</span></div><div class="ev">Still unread at the <em>track</em> level. The master bus now has a real chain, but per-track <code>lowGain</code>/<code>midGain</code>/<code>highGain</code> reach no node — a separate gap from the bus graph</div></div>
     </div>
@@ -516,16 +515,16 @@
   <!-- NEXT -->
   <section>
     <h2>Where the leverage is</h2>
-    <p class="lede">Ordered by value returned per unit of work, given what already exists on disk.</p>
+    <p class="lede">Layer 0 is complete. What follows is ordered by value returned per unit of work, given what already exists on disk.</p>
     <ol class="next">
-      <li><div><strong>Add project persistence.</strong><p>Nothing saves or loads anywhere, so a reload discards the session — which is the real reason every project opens on the same demo pattern. Capture and the master chain are now real; without this, none of what a creator makes survives, and Train Signature can never accumulate anything across sessions. This is the largest remaining gap.</p></div></li>
-      <li><div><strong>Make Extract Stems use the take.</strong><p>It still writes the demo preset's fixed step arrays, ignoring the recording. The classifier already labels every onset by sound type, so this is now reading labels that exist rather than building a capability.</p></div></li>
-      <li><div><strong>Decide the Mix advisor: compute or remove.</strong><p>The masking proposals are literals — identical 99% confidence on a full project and an empty canvas — and cannot be fixed by tuning. Now that the master bus renders, real cross-channel masking analysis is finally possible; the alternative is removing the panel. Leaving confident percentages over an empty canvas is the costliest kind of wrong.</p></div></li>
-      <li><div><strong>Sweep the remaining decorative AUDITION controls.</strong><p>One shape, five known locations. Studio Intelligence shows what a real one looks like — it builds actual audio nodes — so this is a pattern to copy, not to design.</p></div></li>
+      <li><div><strong>Sweep the remaining decorative AUDITION controls.</strong><p>One shape, four known locations in the vocal suite: <code>setState(true)</code> → <code>setTimeout</code> → <code>setState(false)</code>, no audio. Studio Intelligence shows what a real one looks like — it builds actual audio nodes — so this is a pattern to copy, not to design.</p></div></li>
       <li><div><strong>Move the utility drawer row out of <code>StudioCanvas</code>.</strong><p>Eight workstations are unreachable from four of six rooms purely because of where the trigger row is rendered.</p></div></li>
-      <li><div><strong>Lift workspace-local UI state into context.</strong><p>Selected tool and bar view reset whenever the canvas unmounts. Narrower than the architecture implied — session data, playback and live capture already survive — so this is a small fix, not a re-architecture.</p></div></li>
-      <li><div><strong>Point the Room 6 export panel at the real bounce.</strong><p>The bounce, encoders and measurement all work now; <code>ExportModal</code> and the delivery manifest still write a text file and fabricate URLs.</p></div></li>
-      <li><div><strong>Per-track EQ.</strong><p>Distinct from the bus graph, which is done. <code>lowGain</code>/<code>midGain</code>/<code>highGain</code> are written by the Vocal DSP tab and the Mix commit, and read by nothing.</p></div></li>
+      <li><div><strong>Lift workspace-local UI state into context.</strong><p>Selected tool and bar view reset whenever the canvas unmounts on a switch to rooms 3–6. Narrower than the architecture implied — session data, playback and live capture already survive — so this is a small fix, not a re-architecture.</p></div></li>
+      <li><div><strong>Point the Room 6 export panel at the real bounce.</strong><p>The bounce, encoders and measurement all work; <code>ExportModal</code> and the delivery manifest still write a text file and fabricate URLs. Pure plumbing now.</p></div></li>
+      <li><div><strong>Per-track EQ.</strong><p>Distinct from the bus graph, which is done. <code>lowGain</code>/<code>midGain</code>/<code>highGain</code> are written by the Vocal DSP tab and read by nothing — and the masking analysis now says exactly which bands would need it.</p></div></li>
+      <li><div><strong>Captured notes bypass undo.</strong><p>A take currently cannot be undone. The history stack is real; capture writes around it.</p></div></li>
+      <li><div><strong>Bind audio to vocal takes.</strong><p>Takes, ratings and comp segments are real records with no audio attached, and take playback does not exist. Persistence now stores one take per session, so this is the next step to make comping mean anything.</p></div></li>
+      <li><div><strong>Arrangement sections.</strong><p>Confirmed not built — initial state literal only, no add, rename or delete handler anywhere.</p></div></li>
     </ol>
   </section>
 
