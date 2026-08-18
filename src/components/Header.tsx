@@ -20,7 +20,6 @@ import {
   Lock,
   BookOpen,
   Compass,
-  Disc,
 } from 'lucide-react';
 import { DAWState, Preset } from '../types/daw';
 import { PRESETS } from '../data/presets';
@@ -66,7 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
   onBackToLanding,
   isMicActive,
 }) => {
-  const { setIsVaultModalOpen, setIsAudioImportModalOpen, handleTransposeAllTracks } = useStudioSession();
+  const { setIsVaultModalOpen, handleTransposeAllTracks } = useStudioSession();
   const [isLooping, setIsLooping] = useState(true);
   const [metronomeOn, setMetronomeOn] = useState(true);
   const [quantizeSetting, setQuantizeSetting] = useState<'1/16' | '1/8' | 'OFF'>('1/16');
@@ -244,15 +243,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Database className="w-3.5 h-3.5 text-emerald-400" />
             <span className="hidden sm:inline">SOUND VAULT</span>
-          </button>
-
-          <button
-            onClick={() => setIsAudioImportModalOpen(true)}
-            className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/40 text-xs font-mono font-bold transition cursor-pointer active:scale-95"
-            title="Import Audio / 4-Stem Multitrack Separation (Demucs v4)"
-          >
-            <Disc className="w-3.5 h-3.5 text-blue-400" />
-            <span>IMPORT AUDIO</span>
           </button>
 
           <button
