@@ -218,6 +218,31 @@ export class AudioEngine {
     }
   }
 
+  /**
+   * Dispatches a live-monitoring hit for a track's instrument.
+   * `midiVelocity` is 1..127; the synths take a 0..1 gain.
+   */
+  public triggerForInstrument(
+    instrument: Track['instrument'],
+    pitchName: string,
+    midiVelocity: number,
+    targetTrack?: Track
+  ) {
+    const gain = Math.max(0.05, Math.min(1, midiVelocity / 127));
+    switch (instrument) {
+      case 'kick':
+        return this.triggerKick(pitchName, undefined, gain, targetTrack, 0.3);
+      case 'snare':
+        return this.triggerSnare(undefined, gain, targetTrack, 0.3);
+      case 'hihat':
+        return this.triggerHiHat(undefined, gain, targetTrack, 0.2);
+      case 'bass':
+        return this.triggerBass(pitchName, undefined, gain, targetTrack, 0.4);
+      default:
+        return this.triggerMelody(pitchName, undefined, gain, targetTrack, 0.4);
+    }
+  }
+
   public triggerKick(note = 'C1', time?: number, velocity = 1, targetTrack?: Track, duration: string | number = '8n') {
     if (!this.initialized || !this.kickSynth) return;
     try {

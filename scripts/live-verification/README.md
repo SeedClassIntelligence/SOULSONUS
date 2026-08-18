@@ -32,3 +32,16 @@ much faster than wall-clock, so treat elapsed-time assertions with care.
 | `test-03b-transport` | Do captured notes get a real `startTick` from the playhead? |
 | `test-04-overdub-and-chrome` | Page title, SEEDSIGNATURE footer state, vocal overdub. |
 | `test-05-overdub-detail` | Does the overdub produce a decodable, non-silent take? |
+| `test-06-classifier-offline` | Browser-free: does the classifier separate the sound types at all? Tells a detection failure apart from a routing failure. |
+| `test-07-channel-separation` | **The gate.** One clip with several sound types in, one channel per type out, nothing anywhere else. |
+| `test-08-event-dump` | Dumps every classified event's features, for sizing thresholds. |
+| `test-09-independent-editing` | After separation, can each channel be moved / re-velocitied / muted / soloed without touching the others? |
+
+## Reading state out of the app
+
+`lib.cjs` walks React's fiber tree to read live session state. It starts from
+`fiberRoot.current`, **not** from the container fiber: starting at the container
+can land on a stale alternate fiber and return an old context value, which makes
+edits look like they never applied. An earlier version of this harness had that
+bug and produced intermittent false failures — if a test reports that a state
+change did not take, confirm it against the DOM before believing it.

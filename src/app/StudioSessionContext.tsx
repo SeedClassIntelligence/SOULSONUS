@@ -66,6 +66,7 @@ import {
 import { PRESETS } from '../data/presets';
 import { audioEngine } from '../audio/audioEngine';
 import { detectionEngine } from '../audio/detectionEngine';
+import { resolveCaptureTarget } from '../audio/captureRouting';
 import { signatureService } from '../lib/seedSignature';
 import { CreativeResourceVaultModal } from '../components/CreativeResourceVaultModal';
 import { AudioStemImportModal } from '../components/AudioStemImportModal';
@@ -634,21 +635,36 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const [past, setPast] = useState<Track[][]>([]);
   const [future, setFuture] = useState<Track[][]>([]);
 
+  /**
+   * Snapshot taken before an edit, flushed into the undo stack by an effect.
+   * It must not be pushed from inside the setTracks updater: React invokes
+   * updaters twice under StrictMode and may re-run them, so a setState there
+   * duplicates history entries and can cost the edit itself.
+   */
+  const pendingUndoRef = useRef<Track[] | null>(null);
+
   const updateTracksWithHistory = useCallback((action: Track[] | ((prev: Track[]) => Track[])) => {
     setTracks((prevTracks) => {
       const nextTracks = typeof action === 'function' ? action(prevTracks) : action;
 
       if (JSON.stringify(prevTracks) !== JSON.stringify(nextTracks)) {
-        setPast((prevPast) => {
-          const updated = [...prevPast, prevTracks];
-          if (updated.length > 50) return updated.slice(1);
-          return updated;
-        });
-        setFuture([]);
+        // Guarded so a double-invoked updater records the snapshot only once.
+        if (pendingUndoRef.current === null) pendingUndoRef.current = prevTracks;
       }
       return nextTracks;
     });
   }, []);
+
+  useEffect(() => {
+    const snapshot = pendingUndoRef.current;
+    if (snapshot === null) return;
+    pendingUndoRef.current = null;
+    setPast((prevPast) => {
+      const updated = [...prevPast, snapshot];
+      return updated.length > 50 ? updated.slice(1) : updated;
+    });
+    setFuture([]);
+  }, [tracks]);
 
   const canUndo = past.length > 0;
   const canRedo = future.length > 0;
@@ -717,42 +733,79 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     tracksRef.current = tracks;
     detectionEngine.setTracks(tracks);
     detectionEngine.setCallbacks({
-      onTrackTrigger: (trackId, pitch) => {
-        const tr = tracksRef.current.find((t) => t.id === trackId);
-        if (!tr) return;
+      onCaptureEvent: (event) => {
         const currentStep = currentStepRef.current;
         const currentTick = currentStep * 120;
-        const targetMidi = pitch ? noteNameToMidi(pitch) : noteNameToMidi(tr.pitch || 'C3');
 
-        // Trigger live audio sound
-        const pitchName = pitch || tr.pitch || 'C3';
-        if (tr.instrument === 'kick') audioEngine.triggerKick(pitchName, undefined, 0.9, tr, 0.3);
-        else if (tr.instrument === 'snare') audioEngine.triggerSnare(undefined, 0.9, tr, 0.3);
-        else if (tr.instrument === 'hihat') audioEngine.triggerHiHat(undefined, 0.8, tr, 0.2);
-        else if (tr.instrument === 'bass') audioEngine.triggerBass(pitchName, undefined, 0.9, tr, 0.4);
-        else audioEngine.triggerMelody(pitchName, undefined, 0.9, tr, 0.4);
+        // Live monitoring is fired here, outside the state updater: updaters must
+        // stay pure, and React invokes them twice under StrictMode.
+        const monitorTarget = resolveCaptureTarget(tracksRef.current, event);
+        if (monitorTarget.kind === 'track') {
+          const t = tracksRef.current.find((x) => x.id === monitorTarget.trackId);
+          if (t) audioEngine.triggerForInstrument(t.instrument, event.pitch || t.pitch || 'C3', event.velocity, t);
+        } else if (monitorTarget.kind === 'create') {
+          const spec = monitorTarget.request;
+          audioEngine.triggerForInstrument(spec.instrument, event.pitch || spec.pitch, event.velocity);
+        }
 
-        // Record note into track noteEvents & steps
-        setTracks((prev) =>
-          prev.map((t) => {
-            if (t.id !== trackId) return t;
+        // Routing is resolved again inside the updater against the authoritative
+        // track list, so a channel created for a newly-heard sound type is
+        // immediately visible to the next event.
+        setTracks((prev) => {
+          const decision = resolveCaptureTarget(prev, event);
+          if (decision.kind === 'drop') return prev;
+
+          const provenance: NoteProvenance = {
+            origin: event.modality === 'KEYS' ? 'MIDI_KEYS' : event.modality === 'BODY' ? 'BODY' : 'MOUTH',
+            detectionConfidence: event.confidence,
+            creatorEdited: false,
+          };
+
+          const makeNote = (midiNote: number): NoteEvent => ({
+            id: `rec_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+            startTick: currentTick,
+            durationTicks: 120,
+            midiNote,
+            velocity: event.velocity,
+            provenance,
+          });
+
+          if (decision.kind === 'create') {
+            const spec = decision.request;
+            const midi = event.pitch ? noteNameToMidi(event.pitch) : noteNameToMidi(spec.pitch);
+            const steps = new Array(64).fill(false);
+            steps[currentStep] = true;
+            const channel: Track = {
+              id: `t-cap-${spec.klass}-${Date.now()}`,
+              name: spec.name,
+              instrument: spec.instrument,
+              steps,
+              noteEvents: [makeNote(midi)],
+              mute: false,
+              solo: false,
+              volume: 0,
+              pitch: spec.pitch,
+              color: spec.color,
+            };
+            return [...prev, channel];
+          }
+
+          const target = prev.find((t) => t.id === decision.trackId);
+          if (!target) return prev;
+
+          const pitchName = event.pitch || target.pitch || 'C3';
+
+          return prev.map((t) => {
+            if (t.id !== decision.trackId) return t;
             const newSteps = [...t.steps];
             newSteps[currentStep] = true;
-            const existingNotes = t.noteEvents || [];
-            const newNote: NoteEvent = {
-              id: `rec_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-              startTick: currentTick,
-              durationTicks: 120,
-              midiNote: targetMidi,
-              velocity: 100,
-            };
             return {
               ...t,
               steps: newSteps,
-              noteEvents: [...existingNotes, newNote],
+              noteEvents: [...(t.noteEvents || []), makeNote(noteNameToMidi(pitchName))],
             };
-          })
-        );
+          });
+        });
       },
     });
   }, [tracks]);

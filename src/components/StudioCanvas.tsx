@@ -342,6 +342,9 @@ export const StudioCanvas: React.FC = () => {
     }
     handleCreateSourceTrack(modality);
     if (modality === 'MOUTH' || modality === 'BODY' || modality === 'KEYS') {
+      // Arm the classifier for this kind of performance so captured sounds are
+      // scored only against the classes this modality can actually produce.
+      detectionEngine.setCaptureModality(modality);
       if (!detectionSettings.enabled) {
         await detectionEngine.start();
         setDetectionSettings((prev) => ({

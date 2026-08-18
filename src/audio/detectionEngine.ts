@@ -1,9 +1,45 @@
 import { Track, DetectionProfile } from '../types/daw';
+import {
+  BandEnergies,
+  PerformanceClass,
+  PERCUSSIVE_CLASSES,
+  PERFORMANCE_CLASSES,
+  TONAL_CLASSES,
+  classifyOnset,
+  extractFeatures,
+  rmsToVelocity,
+} from './performanceClassifier';
+
+/** Which capture button armed the mic. Constrains the eligible class taxonomy. */
+export type CaptureModality = 'MOUTH' | 'BODY' | 'KEYS';
+
+/** One detected, classified performance event. Routed to exactly one channel. */
+export interface CaptureEvent {
+  klass: PerformanceClass;
+  /** MIDI velocity 1..127, derived from the onset's measured RMS. */
+  velocity: number;
+  /** Classifier margin over the runner-up class, 0..1. */
+  confidence: number;
+  centroidHz: number;
+  /** Fundamental in Hz for tonal events, -1 otherwise. */
+  pitchHz: number;
+  /** Note name for tonal events, undefined for percussive ones. */
+  pitch?: string;
+  bands: BandEnergies;
+  /** Loudest single band, 0..1 — used to test calibrated profile thresholds. */
+  bandPeak: number;
+  /** Sum of band means — how much signal the frame actually carried. */
+  spectralEnergy: number;
+  rms: number;
+  modality: CaptureModality | null;
+  atMs: number;
+}
 
 export interface DetectionCallbacks {
   onKickTrigger?: () => void;
   onSnareTrigger?: () => void;
-  onTrackTrigger?: (trackId: string, pitch?: string) => void;
+  /** Fires once per detected onset, already classified. Routing is the caller's job. */
+  onCaptureEvent?: (event: CaptureEvent) => void;
   onMeterUpdate?: (lowLevel: number, highLevel: number) => void;
 }
 
@@ -21,11 +57,23 @@ export class DetectionEngine {
   private snareThreshold = 0.4;
   private micGain = 1.5;
 
-  private lastTriggerTimes: Record<string, number> = {};
-  private debounceMs = 110;
-
   private activeTracks: Track[] = [];
   private callbacks: DetectionCallbacks | null = null;
+
+  // --- onset detection state ---------------------------------------------
+  private captureModality: CaptureModality | null = null;
+  private prevRms = 0;
+  private lastOnsetAt = 0;
+  /** Minimum gap between two onsets. Below this, one hit reads as several. */
+  private onsetDebounceMs = 70;
+  /** Decaying running peak RMS, so velocity tracks this performance's dynamics. */
+  private peakRms = 0.05;
+  /** Last emitted MIDI note in tonal capture, so a held hum re-fires on pitch change. */
+  private lastTonalMidi: number | null = null;
+  private lastTonalEmitAt = 0;
+  private listeningSince = 0;
+  /** Bounded ring buffer of recent events, for diagnostics and verification. */
+  public readonly recentEvents: CaptureEvent[] = [];
 
   // Calibration state
   private isCalibrating = false;
@@ -37,6 +85,28 @@ export class DetectionEngine {
 
   public setTracks(tracks: Track[]) {
     this.activeTracks = tracks;
+  }
+
+  /**
+   * Arms the mic for a specific kind of performance. This is what makes
+   * separation tractable: a beatbox take is scored only against percussive
+   * classes, a hum take only against pitched ones.
+   */
+  public setCaptureModality(modality: CaptureModality | null) {
+    this.captureModality = modality;
+    this.lastTonalMidi = null;
+    this.prevRms = 0;
+  }
+
+  public getCaptureModality(): CaptureModality | null {
+    return this.captureModality;
+  }
+
+  /** Classes the armed modality is allowed to produce. */
+  private eligibleClasses(): PerformanceClass[] {
+    if (this.captureModality === 'KEYS') return TONAL_CLASSES;
+    if (this.captureModality === 'MOUTH' || this.captureModality === 'BODY') return PERCUSSIVE_CLASSES;
+    return [...PERFORMANCE_CLASSES];
   }
 
   public updateSettings(kickThresh: number, snareThresh: number, gain: number) {
@@ -74,6 +144,11 @@ export class DetectionEngine {
       this.gainNode.connect(this.analyser);
 
       this.isListening = true;
+      this.listeningSince = Date.now();
+      // Expose the diagnostic ring buffer so capture behaviour can be verified
+      // from outside the app (see scripts/live-verification).
+      (globalThis as unknown as Record<string, unknown>).__soulsonusCaptureEvents = this.recentEvents;
+      this.prevRms = 0;
       this.analyzeLoop();
       return true;
     } catch (err) {
@@ -279,7 +354,7 @@ export class DetectionEngine {
   }
 
   private freqToNoteName(freq: number): string {
-    if (freq < 50 || freq > 2000) return 'C3';
+    if (freq < 40 || freq > 2000) return 'C3';
     const noteNum = Math.round(12 * Math.log2(freq / 440) + 69);
     const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     const octave = Math.floor(noteNum / 12) - 1;
@@ -327,94 +402,97 @@ export class DetectionEngine {
 
     const now = Date.now();
 
-    // Omni-Take & Multi-Track Detection Loop
-    if (this.activeTracks.length > 0) {
-      let detectedPitchName: string | undefined = undefined;
+    // --- Single-onset detection -------------------------------------------
+    // One performed sound produces exactly one event. Previously every track
+    // thresholded its own band independently, so a single hit fired on all of
+    // them at once (and snare/hi-hat shared a band, making them inseparable).
+    let sumSq = 0;
+    for (let i = 0; i < timeData.length; i++) sumSq += timeData[i] * timeData[i];
+    const rms = Math.sqrt(sumSq / Math.max(1, timeData.length));
 
-      // Calculate pitch if any track is melodic or marked as isMelodic
-      const hasMelodicTrack = this.activeTracks.some(
-        (t) => t.instrument === 'melody' || t.instrument === 'vocal_synth' || t.detectionProfile?.isMelodic
+    const floor = Math.max(0.012, Math.min(this.kickThreshold, this.snareThreshold) * 0.12);
+    const rising = rms > this.prevRms * 1.35 || (this.prevRms < floor && rms >= floor);
+    const pastDebounce = now - this.lastOnsetAt >= this.onsetDebounceMs;
+    const isOnset = rms >= floor && rising && pastDebounce;
+
+    // Track this performance's dynamic range so velocity is relative, not absolute.
+    this.peakRms = Math.max(rms, this.peakRms * 0.999);
+
+    const tonalMode =
+      this.captureModality === 'KEYS' ||
+      (this.captureModality === null &&
+        this.activeTracks.some(
+          (t) => t.instrument === 'melody' || t.instrument === 'vocal_synth' || t.detectionProfile?.isMelodic
+        ));
+
+    let pitchHz = -1;
+    if (tonalMode && rms >= floor) {
+      pitchHz = this.autoCorrelate(timeData, sampleRate);
+      if (!(pitchHz > 45 && pitchHz < 1500)) pitchHz = -1;
+    }
+
+    // A sustained hum has one onset but many notes: re-fire when the pitch moves.
+    let tonalPitchChange = false;
+    if (tonalMode && pitchHz > 0 && rms >= floor) {
+      const midi = Math.round(12 * Math.log2(pitchHz / 440) + 69);
+      if (
+        this.lastTonalMidi !== null &&
+        midi !== this.lastTonalMidi &&
+        now - this.lastTonalEmitAt >= this.onsetDebounceMs + 20
+      ) {
+        tonalPitchChange = true;
+      }
+    }
+
+    if (isOnset || tonalPitchChange) {
+      this.lastOnsetAt = now;
+
+      const features = extractFeatures(freqData, timeData, sampleRate, this.analyser.fftSize, pitchHz);
+      const { klass, confidence } = classifyOnset(features, this.eligibleClasses());
+
+      const bandPeak = Math.max(
+        features.bands.sub,
+        features.bands.low,
+        features.bands.lowMid,
+        features.bands.mid,
+        features.bands.high,
+        features.bands.air
       );
-      if (hasMelodicTrack) {
-        const pitchHz = this.autoCorrelate(timeData, sampleRate);
-        if (pitchHz > 60 && pitchHz < 1500) {
-          detectedPitchName = this.freqToNoteName(pitchHz);
+
+      let pitchName: string | undefined;
+      if (klass === 'tonal_low' || klass === 'tonal_high') {
+        if (pitchHz > 0) {
+          pitchName = this.freqToNoteName(pitchHz);
+          this.lastTonalMidi = Math.round(12 * Math.log2(pitchHz / 440) + 69);
+          this.lastTonalEmitAt = now;
         }
       }
 
-      this.activeTracks.forEach((track) => {
-        if (track.mute) return;
+      const event: CaptureEvent = {
+        klass,
+        velocity: rmsToVelocity(rms, this.peakRms),
+        confidence,
+        centroidHz: features.centroidHz,
+        pitchHz,
+        pitch: pitchName,
+        bands: features.bands,
+        bandPeak,
+        spectralEnergy: features.spectralEnergy,
+        rms,
+        modality: this.captureModality,
+        atMs: now,
+      };
 
-        let trackEnergy = 0;
-        let thresh = 0.35;
+      if (this.recentEvents.length >= 200) this.recentEvents.shift();
+      this.recentEvents.push(event);
 
-        if (track.detectionProfile && track.detectionProfile.centerFreq > 0) {
-          const profile = track.detectionProfile;
-          thresh = profile.threshold;
+      this.callbacks?.onCaptureEvent?.(event);
 
-          // Band energy calculation around centerFreq
-          const bandWidthHz = profile.centerFreq / (profile.q || 2.0);
-          const startHz = Math.max(20, profile.centerFreq - bandWidthHz / 2);
-          const endHz = Math.min(10000, profile.centerFreq + bandWidthHz / 2);
-
-          const startBin = Math.floor(startHz / binHz);
-          const endBin = Math.ceil(endHz / binHz);
-
-          let sum = 0;
-          let count = 0;
-          for (let i = startBin; i <= endBin && i < bufferLength; i++) {
-            sum += freqData[i];
-            count++;
-          }
-          trackEnergy = count > 0 ? sum / count / 255 : 0;
-        } else {
-          // Fallback based on instrument type
-          if (track.instrument === 'kick') {
-            trackEnergy = lowEnergy;
-            thresh = this.kickThreshold;
-          } else if (track.instrument === 'snare') {
-            trackEnergy = highEnergy;
-            thresh = this.snareThreshold;
-          } else if (track.instrument === 'hihat') {
-            trackEnergy = highEnergy * 0.9;
-            thresh = Math.max(0.2, this.snareThreshold * 0.8);
-          } else {
-            // Mid-range energy for melody/bass/other
-            const midStartBin = Math.floor(250 / binHz);
-            const midEndBin = Math.ceil(2000 / binHz);
-            let midSum = 0;
-            let midCount = 0;
-            for (let i = midStartBin; i <= midEndBin && i < bufferLength; i++) {
-              midSum += freqData[i];
-              midCount++;
-            }
-            trackEnergy = midCount > 0 ? midSum / midCount / 255 : 0;
-            thresh = 0.3;
-          }
-        }
-
-        const lastTrigger = this.lastTriggerTimes[track.id] || 0;
-        if (trackEnergy >= thresh && now - lastTrigger > this.debounceMs) {
-          this.lastTriggerTimes[track.id] = now;
-
-          const triggerPitch =
-            track.instrument === 'melody' || track.instrument === 'vocal_synth' || track.detectionProfile?.isMelodic
-              ? detectedPitchName || track.pitch || 'C3'
-              : track.pitch;
-
-          if (this.callbacks?.onTrackTrigger) {
-            this.callbacks.onTrackTrigger(track.id, triggerPitch);
-          }
-
-          // Legacy fallbacks
-          if (track.instrument === 'kick' && this.callbacks?.onKickTrigger) {
-            this.callbacks.onKickTrigger();
-          } else if (track.instrument === 'snare' && this.callbacks?.onSnareTrigger) {
-            this.callbacks.onSnareTrigger();
-          }
-        }
-      });
+      if (klass === 'kick') this.callbacks?.onKickTrigger?.();
+      else if (klass === 'snare') this.callbacks?.onSnareTrigger?.();
     }
+
+    this.prevRms = rms;
 
     this.animFrameId = requestAnimationFrame(this.analyzeLoop);
   };

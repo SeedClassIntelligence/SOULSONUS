@@ -6,9 +6,14 @@ const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const READ_SESSION = `(() => {
   const root = document.getElementById('root');
   const key = Object.keys(root).find(k => k.startsWith('__reactContainer$'));
-  let fiber = root[key];
+  // root[key] is the HostRoot fiber; its stateNode is the FiberRoot, whose
+  // .current always points at the COMMITTED tree. Walking from root[key]
+  // directly can land on a stale alternate fiber and return an old context
+  // value, which silently reports edits as not having applied.
+  const fiberRoot = root[key] && root[key].stateNode;
+  const start = (fiberRoot && fiberRoot.current) || root[key];
   const seen = new Set();
-  const stack = [fiber];
+  const stack = [start];
   while (stack.length) {
     const f = stack.pop();
     if (!f || seen.has(f)) continue;

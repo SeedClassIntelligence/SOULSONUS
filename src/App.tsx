@@ -276,6 +276,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const handleToggleMic = useCallback(async () => {
     if (detectionSettings.enabled) {
       detectionEngine.stop();
+      detectionEngine.setCaptureModality(null);
       setDetectionSettings((prev) => ({ ...prev, enabled: false, micConnected: false }));
     } else {
       const success = await detectionEngine.start();
