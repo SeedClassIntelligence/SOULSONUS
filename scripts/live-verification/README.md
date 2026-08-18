@@ -36,6 +36,28 @@ much faster than wall-clock, so treat elapsed-time assertions with care.
 | `test-07-channel-separation` | **The gate.** One clip with several sound types in, one channel per type out, nothing anywhere else. |
 | `test-08-event-dump` | Dumps every classified event's features, for sizing thresholds. |
 | `test-09-independent-editing` | After separation, can each channel be moved / re-velocitied / muted / soloed without touching the others? |
+| `test-10-midi-separation` | MIDI notes land on the channel their note+channel names, and nowhere else. |
+| `test-11-upload-case-a` | An uploaded solo take separates the same way the live-mic'd take does. |
+| `test-12-content-discrimination` | Does the Case A / Case B suggestion discriminate — and does it admit when it can't? |
+| `test-13-failure-visibility` | Neither upload path may silently fall back to broadcasting. |
+| `test-14-upload-case-b` | A full mix routes to stem separation and produces distinct stems carrying real audio. |
+
+## MIDI and stem-separation dependencies
+
+`test-10` stubs the browser's Web MIDI transport (`navigator.requestMIDIAccess`)
+because no device exists here. Everything above the transport — byte parsing,
+the GM map, routing, note commit — is the app's own code.
+
+`test-14` needs a stem-separation service on `http://localhost:8010`. Run the
+real one from `inference-server/`, or the transport stub for CI:
+
+```bash
+python -m uvicorn stem-service-stub:app --host 0.0.0.0 --port 8010
+```
+
+The stub speaks the real protocol and returns real, input-derived audio, so it
+exercises the app's whole Case B path. It is **not** Demucs and proves nothing
+about separation quality.
 
 ## Reading state out of the app
 

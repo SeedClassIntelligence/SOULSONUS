@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Upload, Disc, Layers, Music, Activity, Mic, Sparkles, CheckCircle2, Play, FileAudio } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
-import { Track, NoteEvent } from '../types/daw';
+import type { AudioImportResult } from '../app/StudioSessionContext';
+import type { ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
 
 interface AudioStemImportModalProps {
   isOpen: boolean;
@@ -10,17 +11,23 @@ interface AudioStemImportModalProps {
 }
 
 export const AudioStemImportModal: React.FC<AudioStemImportModalProps> = ({ isOpen, onClose }) => {
-  const { setTracks, dawState, setDawState } = useStudioSession();
+  const { handleAnalyzeAudioFile, handleImportAudioFile } = useStudioSession();
   const [activeTab, setActiveTab] = useState<'STEMS_4WAY' | 'SINGLE_TRACK'>('STEMS_4WAY');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processProgress, setProcessProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [content, setContent] = useState<ContentAnalysis | null>(null);
+  const [result, setResult] = useState<AudioImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
+      setContent(null);
+      setResult(null);
+      setError(null);
     }
   };
 
@@ -31,231 +38,61 @@ export const AudioStemImportModal: React.FC<AudioStemImportModalProps> = ({ isOp
     }
   };
 
-  // Demo Stem Bundles for instant testing
-  const handleLoadDemoStems = (genre: 'NEO_SOUL' | 'BOOM_BAP' | 'TRAP') => {
+  // The two tabs are the Case A / Case B decision point. They are not two
+  // renderings of one pipeline: a solo take is a classification problem the
+  // onset classifier already solves, while a finished mix has several
+  // instruments sounding at once, which is a source-separation problem.
+  const handleAnalyse = async () => {
+    if (!selectedFile) return;
+    setError(null);
+    setResult(null);
     setIsProcessing(true);
-    setStatusMessage('Demucs v4 Neural Engine: Separating into 4 Multitrack Stems...');
-    setProcessProgress(25);
-
-    setTimeout(() => {
-      setProcessProgress(65);
-      setStatusMessage('Extracting Phase-Aligned Stems: Drums, Bass, Vocals, Instruments...');
-    }, 400);
-
-    setTimeout(() => {
+    setStatusMessage('Measuring the file…');
+    setProcessProgress(30);
+    try {
+      const analysis = await handleAnalyzeAudioFile(selectedFile);
+      setContent(analysis);
+      // Only pre-select when the audio actually supports a recommendation.
+      // Continuous material could be a held vocal or a finished mix, and
+      // defaulting on a coin flip would make a wrong mode look considered.
+      if (!analysis.ambiguous) {
+        setActiveTab(analysis.suggestion === 'FULL_MIX' ? 'STEMS_4WAY' : 'SINGLE_TRACK');
+      }
       setProcessProgress(100);
-      const timestamp = Date.now();
-      const baseName = genre === 'NEO_SOUL' ? 'Neo-Soul' : genre === 'BOOM_BAP' ? 'Boom-Bap' : 'Trap 808';
-
-      const drumTrack: Track = {
-        id: `stem_drums_${timestamp}`,
-        name: `🥁 ${baseName} (Drums Stem)`,
-        instrument: 'kick',
-        vaultLabel: 'Demucs Isolated Drums',
-        originType: 'ORAL_SEED',
-        sourceModality: 'AUDIO',
-        steps: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false],
-        noteEvents: [
-          { id: `d1_${timestamp}`, startTick: 0, durationTicks: 240, midiNote: 36, velocity: 105 },
-          { id: `d2_${timestamp}`, startTick: 480, durationTicks: 240, midiNote: 38, velocity: 100 },
-          { id: `d3_${timestamp}`, startTick: 960, durationTicks: 240, midiNote: 36, velocity: 105 },
-          { id: `d4_${timestamp}`, startTick: 1440, durationTicks: 240, midiNote: 38, velocity: 100 },
-        ],
-        mute: false,
-        solo: false,
-        volume: 0,
-        pitch: 'C1',
-        color: '#f59e0b',
-      };
-
-      const bassTrack: Track = {
-        id: `stem_bass_${timestamp}`,
-        name: `⚡ ${baseName} (Bass Stem)`,
-        instrument: 'bass',
-        vaultLabel: 'Demucs Isolated Sub Bass',
-        originType: 'PERFORMANCE',
-        sourceModality: 'AUDIO',
-        steps: [true, false, true, false, false, true, false, false, true, false, true, false, false, false, true, false],
-        noteEvents: [
-          { id: `b1_${timestamp}`, startTick: 0, durationTicks: 480, midiNote: 36, velocity: 100 },
-          { id: `b2_${timestamp}`, startTick: 480, durationTicks: 240, midiNote: 39, velocity: 95 },
-          { id: `b3_${timestamp}`, startTick: 960, durationTicks: 480, midiNote: 41, velocity: 100 },
-          { id: `b4_${timestamp}`, startTick: 1440, durationTicks: 480, midiNote: 34, velocity: 90 },
-        ],
-        mute: false,
-        solo: false,
-        volume: 0,
-        pitch: 'C2',
-        color: '#06b6d4',
-      };
-
-      const vocalTrack: Track = {
-        id: `stem_vocal_${timestamp}`,
-        name: `🎤 ${baseName} (Vocal Stem)`,
-        instrument: 'vocal_synth',
-        vaultLabel: 'Demucs Acapella Lead',
-        originType: 'ORAL_SEED',
-        sourceModality: 'AUDIO',
-        steps: [true, false, false, true, false, false, true, false, true, false, false, true, false, false, false, false],
-        noteEvents: [
-          { id: `v1_${timestamp}`, startTick: 240, durationTicks: 360, midiNote: 60, velocity: 90 },
-          { id: `v2_${timestamp}`, startTick: 720, durationTicks: 240, midiNote: 63, velocity: 95 },
-          { id: `v3_${timestamp}`, startTick: 1200, durationTicks: 480, midiNote: 65, velocity: 100 },
-        ],
-        mute: false,
-        solo: false,
-        volume: 0,
-        pitch: 'C4',
-        color: '#f472b6',
-      };
-
-      const keysTrack: Track = {
-        id: `stem_keys_${timestamp}`,
-        name: `🎹 ${baseName} (Keys / Melody Stem)`,
-        instrument: 'melody',
-        vaultLabel: 'Demucs Harmony & FX',
-        originType: 'PERFORMANCE',
-        sourceModality: 'AUDIO',
-        steps: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false],
-        noteEvents: [
-          { id: `k1_${timestamp}`, startTick: 0, durationTicks: 960, midiNote: 60, velocity: 85 },
-          { id: `k2_${timestamp}`, startTick: 960, durationTicks: 960, midiNote: 63, velocity: 85 },
-        ],
-        mute: false,
-        solo: false,
-        volume: 0,
-        pitch: 'C3',
-        color: '#a855f7',
-      };
-
-      setTracks((prev) => [drumTrack, bassTrack, vocalTrack, keysTrack, ...prev]);
+      setStatusMessage('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'This file could not be decoded.');
+    } finally {
       setIsProcessing(false);
-      onClose();
-    }, 800);
+    }
   };
 
-  const handleExecuteImport = () => {
+  const handleProcess = async () => {
     if (!selectedFile) return;
-
+    setError(null);
+    setResult(null);
     setIsProcessing(true);
-    setStatusMessage(activeTab === 'STEMS_4WAY' ? 'Demucs v4 Stem Separator in progress...' : 'Analyzing stereo waveform and transcribing notes...');
-    setProcessProgress(30);
-
-    setTimeout(() => {
-      setProcessProgress(70);
-      setStatusMessage('Hashing WebCrypto SHA-256 Provenance & building multi-track lanes...');
-    }, 500);
-
-    setTimeout(() => {
+    setProcessProgress(20);
+    const mode = activeTab === 'STEMS_4WAY' ? 'FULL_MIX' : 'SOLO_PERFORMANCE';
+    setStatusMessage(
+      mode === 'FULL_MIX'
+        ? 'Sending to Demucs stem separation…'
+        : 'Detecting and classifying each sound in the performance…'
+    );
+    try {
+      const res = await handleImportAudioFile(selectedFile, mode);
       setProcessProgress(100);
-      const timestamp = Date.now();
-      const fileName = selectedFile.name.replace(/\.[^/.]+$/, '');
-
-      if (activeTab === 'STEMS_4WAY') {
-        // Create 4-stem multi-track set
-        const drumTrack: Track = {
-          id: `imp_drums_${timestamp}`,
-          name: `🥁 ${fileName} (Drums)`,
-          instrument: 'kick',
-          vaultLabel: 'Demucs Drums',
-          originType: 'ORAL_SEED',
-          sourceModality: 'AUDIO',
-          steps: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false],
-          noteEvents: [
-            { id: `id1_${timestamp}`, startTick: 0, durationTicks: 240, midiNote: 36, velocity: 100 },
-            { id: `id2_${timestamp}`, startTick: 480, durationTicks: 240, midiNote: 38, velocity: 100 },
-            { id: `id3_${timestamp}`, startTick: 960, durationTicks: 240, midiNote: 36, velocity: 100 },
-            { id: `id4_${timestamp}`, startTick: 1440, durationTicks: 240, midiNote: 38, velocity: 100 },
-          ],
-          mute: false,
-          solo: false,
-          volume: 0,
-          pitch: 'C1',
-          color: '#f59e0b',
-        };
-
-        const bassTrack: Track = {
-          id: `imp_bass_${timestamp}`,
-          name: `⚡ ${fileName} (Bass)`,
-          instrument: 'bass',
-          vaultLabel: 'Demucs Bass',
-          originType: 'PERFORMANCE',
-          sourceModality: 'AUDIO',
-          steps: [true, false, true, false, false, true, false, false, true, false, true, false, false, false, true, false],
-          noteEvents: [
-            { id: `ib1_${timestamp}`, startTick: 0, durationTicks: 480, midiNote: 36, velocity: 100 },
-            { id: `ib2_${timestamp}`, startTick: 960, durationTicks: 480, midiNote: 41, velocity: 100 },
-          ],
-          mute: false,
-          solo: false,
-          volume: 0,
-          pitch: 'C2',
-          color: '#06b6d4',
-        };
-
-        const otherTrack: Track = {
-          id: `imp_other_${timestamp}`,
-          name: `🎹 ${fileName} (Melody/Other)`,
-          instrument: 'melody',
-          vaultLabel: 'Demucs Instruments',
-          originType: 'PERFORMANCE',
-          sourceModality: 'AUDIO',
-          steps: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false],
-          noteEvents: [
-            { id: `io1_${timestamp}`, startTick: 0, durationTicks: 960, midiNote: 60, velocity: 90 },
-            { id: `io2_${timestamp}`, startTick: 960, durationTicks: 960, midiNote: 63, velocity: 90 },
-          ],
-          mute: false,
-          solo: false,
-          volume: 0,
-          pitch: 'C3',
-          color: '#a855f7',
-        };
-
-        const vocalTrack: Track = {
-          id: `imp_voc_${timestamp}`,
-          name: `🎤 ${fileName} (Vocals)`,
-          instrument: 'vocal_synth',
-          vaultLabel: 'Demucs Acapella',
-          originType: 'ORAL_SEED',
-          sourceModality: 'AUDIO',
-          steps: [true, false, false, true, false, false, true, false, true, false, false, true, false, false, false, false],
-          noteEvents: [
-            { id: `iv1_${timestamp}`, startTick: 240, durationTicks: 480, midiNote: 60, velocity: 95 },
-          ],
-          mute: false,
-          solo: false,
-          volume: 0,
-          pitch: 'C4',
-          color: '#f472b6',
-        };
-
-        setTracks((prev) => [drumTrack, bassTrack, vocalTrack, otherTrack, ...prev]);
-      } else {
-        // Single imported audio track
-        const singleTrack: Track = {
-          id: `imp_audio_${timestamp}`,
-          name: `📁 ${fileName}`,
-          instrument: 'melody',
-          vaultLabel: 'Imported Master Audio',
-          originType: 'PERFORMANCE',
-          sourceModality: 'AUDIO',
-          steps: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false],
-          noteEvents: [
-            { id: `sn1_${timestamp}`, startTick: 0, durationTicks: 1920, midiNote: 60, velocity: 100 },
-          ],
-          mute: false,
-          solo: false,
-          volume: 0,
-          pitch: 'C3',
-          color: '#3b82f6',
-        };
-        setTracks((prev) => [singleTrack, ...prev]);
-      }
-
+      setResult(res);
+      setStatusMessage('');
+      if (!res.ok) setError(res.message);
+    } catch (err) {
+      // Failure is shown. It never falls back to writing the same material onto
+      // every channel, which is the behaviour this pipeline replaced.
+      setError(err instanceof Error ? err.message : 'Import failed.');
+      setStatusMessage('');
+    } finally {
       setIsProcessing(false);
-      onClose();
-    }, 850);
+    }
   };
 
   return (
@@ -363,46 +200,94 @@ export const AudioStemImportModal: React.FC<AudioStemImportModalProps> = ({ isOp
                 )}
               </div>
 
-              {/* Instant Demo Stems */}
-              <div className="space-y-2 pt-1 border-t border-slate-800">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                  Or Test with Demo 4-Stem Multitrack Sessions:
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleLoadDemoStems('NEO_SOUL')}
-                    className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/40 text-left transition cursor-pointer group"
-                  >
-                    <div className="text-xs font-bold text-amber-300 group-hover:text-amber-200">
-                      🎹 Neo-Soul Session
+              {/* What kind of file is this? The Case A / Case B decision. */}
+              {selectedFile && (
+                <div className="space-y-2.5 pt-1 border-t border-slate-800">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                      What is in this file?
                     </div>
-                    <div className="text-[9px] text-slate-500">Drums • Bass • Rhodes • Vocals</div>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={handleAnalyse}
+                      disabled={isProcessing}
+                      className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[10px] font-bold text-cyan-300 transition cursor-pointer disabled:opacity-50"
+                    >
+                      Check the file for me
+                    </button>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleLoadDemoStems('BOOM_BAP')}
-                    className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-left transition cursor-pointer group"
-                  >
-                    <div className="text-xs font-bold text-cyan-300 group-hover:text-cyan-200">
-                      🥁 Boom-Bap Session
+                  {content && (
+                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1">
+                      <div
+                        data-testid="content-verdict"
+                        className={`text-[11px] font-bold ${content.ambiguous ? 'text-amber-300' : 'text-cyan-300'}`}
+                      >
+                        {content.ambiguous ? (
+                          "Can't tell from the audio — choose below"
+                        ) : (
+                          <>
+                            Looks like {content.suggestion === 'FULL_MIX' ? 'a finished mix' : 'a solo performance'}
+                            <span className="text-slate-500 font-normal">
+                              {' '}({Math.round(content.confidence * 100)}% confident)
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-sans leading-snug">{content.reason}</div>
                     </div>
-                    <div className="text-[9px] text-slate-500">Vinyl Drums • 808 • Chop • Hook</div>
-                  </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => handleLoadDemoStems('TRAP')}
-                    className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-purple-500/40 text-left transition cursor-pointer group"
-                  >
-                    <div className="text-xs font-bold text-purple-300 group-hover:text-purple-200">
-                      ⚡ Trap 808 Session
-                    </div>
-                    <div className="text-[9px] text-slate-500">808 Sub • Hi-Hats • Plucks • Ad-libs</div>
-                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('SINGLE_TRACK')}
+                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                        activeTab === 'SINGLE_TRACK'
+                          ? 'bg-amber-500/15 border-amber-500/60'
+                          : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-amber-300">Solo performance</div>
+                      <div className="text-[9px] text-slate-500 font-sans leading-snug">
+                        One source at a time — a beatbox, tap or vocal take. Separated by sound type into channels.
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('STEMS_4WAY')}
+                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                        activeTab === 'STEMS_4WAY'
+                          ? 'bg-cyan-500/15 border-cyan-500/60'
+                          : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-cyan-300">Finished mix</div>
+                      <div className="text-[9px] text-slate-500 font-sans leading-snug">
+                        Several instruments at once — a beat or full song. Split into stems by Demucs.
+                      </div>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {error && (
+                <div
+                  data-testid="import-error"
+                  className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/50 text-[11px] text-rose-200 font-sans leading-snug"
+                >
+                  {error}
+                </div>
+              )}
+
+              {result && result.ok && (
+                <div
+                  data-testid="import-result"
+                  className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-[11px] text-emerald-200 font-sans leading-snug"
+                >
+                  {result.message}
+                </div>
+              )}
 
               {/* Progress indicator when importing */}
               {isProcessing && (
@@ -432,7 +317,7 @@ export const AudioStemImportModal: React.FC<AudioStemImportModalProps> = ({ isOp
                 <button
                   type="button"
                   disabled={!selectedFile || isProcessing}
-                  onClick={handleExecuteImport}
+                  onClick={handleProcess}
                   className={`px-6 py-2.5 rounded-xl text-xs font-black tracking-wider transition cursor-pointer shadow-lg flex items-center space-x-2 ${
                     selectedFile && !isProcessing
                       ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/40 active:scale-95'
@@ -440,7 +325,7 @@ export const AudioStemImportModal: React.FC<AudioStemImportModalProps> = ({ isOp
                   }`}
                 >
                   <Disc className="w-3.5 h-3.5" />
-                  <span>{activeTab === 'STEMS_4WAY' ? 'SEPARATE 4 STEMS & LOAD' : 'IMPORT AUDIO TRACK'}</span>
+                  <span>{activeTab === 'STEMS_4WAY' ? 'SEPARATE INTO STEMS' : 'SEPARATE PERFORMANCE INTO CHANNELS'}</span>
                 </button>
               </div>
             </div>

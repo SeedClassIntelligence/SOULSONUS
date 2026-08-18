@@ -8,6 +8,10 @@ import {
   classifyOnset,
   extractFeatures,
   rmsToVelocity,
+  autoCorrelate,
+  freqToNoteName,
+  MIN_TRACKABLE_HZ,
+  MAX_TRACKABLE_HZ,
 } from './performanceClassifier';
 
 /** Which capture button armed the mic. Constrains the eligible class taxonomy. */
@@ -33,6 +37,12 @@ export interface CaptureEvent {
   rms: number;
   modality: CaptureModality | null;
   atMs: number;
+  /** How this event was produced. Live mic events are positioned by the playhead. */
+  source?: 'MIC' | 'FILE' | 'MIDI';
+  /** Position within the source material, for events that carry their own timeline. */
+  atSeconds?: number;
+  /** Explicit MIDI note number, when the source already knows the exact pitch. */
+  midiNote?: number;
 }
 
 export interface DetectionCallbacks {
@@ -294,72 +304,11 @@ export class DetectionEngine {
   }
 
   private autoCorrelate(buf: Float32Array, sampleRate: number): number {
-    let SIZE = buf.length;
-    let rms = 0;
-    for (let i = 0; i < SIZE; i++) {
-      const val = buf[i];
-      rms += val * val;
-    }
-    rms = Math.sqrt(rms / SIZE);
-    if (rms < 0.01) return -1;
-
-    let r1 = 0;
-    let r2 = SIZE - 1;
-    const thres = 0.2;
-    for (let i = 0; i < SIZE / 2; i++) {
-      if (Math.abs(buf[i]) < thres) {
-        r1 = i;
-        break;
-      }
-    }
-    for (let i = 1; i < SIZE / 2; i++) {
-      if (Math.abs(buf[SIZE - i]) < thres) {
-        r2 = SIZE - i;
-        break;
-      }
-    }
-
-    const sliced = buf.slice(r1, r2);
-    SIZE = sliced.length;
-
-    const c = new Float32Array(SIZE);
-    for (let i = 0; i < SIZE; i++) {
-      for (let j = 0; j < SIZE - i; j++) {
-        c[i] = c[i] + sliced[j] * sliced[j + i];
-      }
-    }
-
-    let d = 0;
-    while (c[d] > c[d + 1]) d++;
-    let maxval = -1;
-    let maxpos = -1;
-    for (let i = d; i < SIZE; i++) {
-      if (c[i] > maxval) {
-        maxval = c[i];
-        maxpos = i;
-      }
-    }
-    let T0 = maxpos;
-
-    if (T0 <= 0 || T0 >= SIZE - 1) return -1;
-
-    const x1 = c[T0 - 1];
-    const x2 = c[T0];
-    const x3 = c[T0 + 1];
-    const a = (x1 + x3 - 2 * x2) / 2;
-    const b = (x3 - x1) / 2;
-    if (a) T0 = T0 - b / (2 * a);
-
-    return sampleRate / T0;
+    return autoCorrelate(buf, sampleRate);
   }
 
   private freqToNoteName(freq: number): string {
-    if (freq < 40 || freq > 2000) return 'C3';
-    const noteNum = Math.round(12 * Math.log2(freq / 440) + 69);
-    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-    const octave = Math.floor(noteNum / 12) - 1;
-    const noteName = noteNames[((noteNum % 12) + 12) % 12];
-    return `${noteName}${Math.max(1, Math.min(6, octave))}`;
+    return freqToNoteName(freq);
   }
 
   private analyzeLoop = () => {
@@ -428,7 +377,7 @@ export class DetectionEngine {
     let pitchHz = -1;
     if (tonalMode && rms >= floor) {
       pitchHz = this.autoCorrelate(timeData, sampleRate);
-      if (!(pitchHz > 45 && pitchHz < 1500)) pitchHz = -1;
+      if (!(pitchHz > MIN_TRACKABLE_HZ && pitchHz < MAX_TRACKABLE_HZ)) pitchHz = -1;
     }
 
     // A sustained hum has one onset but many notes: re-fire when the pitch moves.

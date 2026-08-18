@@ -65,8 +65,28 @@ import {
 
 import { PRESETS } from '../data/presets';
 import { audioEngine } from '../audio/audioEngine';
-import { detectionEngine } from '../audio/detectionEngine';
+import { detectionEngine, CaptureEvent } from '../audio/detectionEngine';
 import { resolveCaptureTarget } from '../audio/captureRouting';
+import { midiNoteToCaptureEvent } from '../audio/midiCapture';
+import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
+import { toMono } from '../audio/fft';
+import { midiEngine } from '../audio/midiEngine';
+import { DemucsClient } from '../lib/inference/demucsClient';
+import { getInferenceSettings } from '../lib/inference/inferenceSettings';
+
+export type AudioImportMode = 'SOLO_PERFORMANCE' | 'FULL_MIX';
+
+export interface AudioImportResult {
+  ok: boolean;
+  mode: AudioImportMode;
+  message: string;
+  eventCount?: number;
+  /** Hits detected past the four-bar note grid, reported rather than clamped. */
+  droppedBeyondGrid?: number;
+  classes?: string[];
+  content?: ContentAnalysis;
+  stems?: { role: string; durationSec: number; peakAmplitude: number; url: string }[];
+}
 import { signatureService } from '../lib/seedSignature';
 import { CreativeResourceVaultModal } from '../components/CreativeResourceVaultModal';
 import { AudioStemImportModal } from '../components/AudioStemImportModal';
@@ -417,6 +437,12 @@ export interface StudioSessionState {
 
   // Source Track Creation & Extraction
   handleCreateSourceTrack: (modality: SourceModality) => void;
+
+  // Capture inputs that share one router: mic, uploaded file, MIDI hardware
+  isMidiCaptureArmed: boolean;
+  handleToggleMidiCapture: () => Promise<boolean>;
+  handleAnalyzeAudioFile: (file: File) => Promise<ContentAnalysis>;
+  handleImportAudioFile: (file: File, mode: AudioImportMode) => Promise<AudioImportResult>;
   handleExtractStemsFromSource: (sourceTrackId: string) => void;
   handleExtractSingleInstrument: (sourceTrackId: string, targetInstrument: InstrumentType) => void;
 
@@ -729,54 +755,80 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Ref to tracks for live playback callbacks
   const tracksRef = useRef(tracks);
+  const bpmRef = useRef(dawState.bpm);
   useEffect(() => {
-    tracksRef.current = tracks;
-    detectionEngine.setTracks(tracks);
-    detectionEngine.setCallbacks({
-      onCaptureEvent: (event) => {
-        const currentStep = currentStepRef.current;
-        const currentTick = currentStep * 120;
+    bpmRef.current = dawState.bpm;
+  }, [dawState.bpm]);
 
-        // Live monitoring is fired here, outside the state updater: updaters must
-        // stay pure, and React invokes them twice under StrictMode.
-        const monitorTarget = resolveCaptureTarget(tracksRef.current, event);
-        if (monitorTarget.kind === 'track') {
-          const t = tracksRef.current.find((x) => x.id === monitorTarget.trackId);
-          if (t) audioEngine.triggerForInstrument(t.instrument, event.pitch || t.pitch || 'C3', event.velocity, t);
-        } else if (monitorTarget.kind === 'create') {
-          const spec = monitorTarget.request;
-          audioEngine.triggerForInstrument(spec.instrument, event.pitch || spec.pitch, event.velocity);
-        }
+  /**
+   * Commits classified capture events onto their channels.
+   *
+   * Every input source — live mic, uploaded file, MIDI hardware — funnels
+   * through here, so all three get the same routing, the same one-channel-per
+   * -sound-type guarantee, real velocity and real provenance. Events are folded
+   * in one state update so a channel created for a newly-heard sound type is
+   * visible to the events that follow it in the same batch.
+   */
+  const commitCaptureEvents = useCallback((events: CaptureEvent[]) => {
+    if (!events.length) return;
 
-        // Routing is resolved again inside the updater against the authoritative
-        // track list, so a channel created for a newly-heard sound type is
-        // immediately visible to the next event.
-        setTracks((prev) => {
-          const decision = resolveCaptureTarget(prev, event);
-          if (decision.kind === 'drop') return prev;
+    const playheadStep = currentStepRef.current;
+    const bpm = bpmRef.current || 110;
+    const ticksPerSecond = (bpm / 60) * 480;
 
-          const provenance: NoteProvenance = {
-            origin: event.modality === 'KEYS' ? 'MIDI_KEYS' : event.modality === 'BODY' ? 'BODY' : 'MOUTH',
-            detectionConfidence: event.confidence,
-            creatorEdited: false,
-          };
+    setTracks((prev) => {
+      let next = prev;
 
-          const makeNote = (midiNote: number): NoteEvent => ({
-            id: `rec_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-            startTick: currentTick,
-            durationTicks: 120,
-            midiNote,
-            velocity: event.velocity,
-            provenance,
-          });
+      for (const event of events) {
+        const decision = resolveCaptureTarget(next, event);
+        if (decision.kind === 'drop') continue;
 
-          if (decision.kind === 'create') {
-            const spec = decision.request;
-            const midi = event.pitch ? noteNameToMidi(event.pitch) : noteNameToMidi(spec.pitch);
-            const steps = new Array(64).fill(false);
-            steps[currentStep] = true;
-            const channel: Track = {
-              id: `t-cap-${spec.klass}-${Date.now()}`,
+        // A file carries its own timeline; live mic and MIDI are positioned by
+        // the playhead at the moment they arrive.
+        const startTick =
+          typeof event.atSeconds === 'number'
+            ? Math.max(0, Math.min(TICKS_PER_4_BARS - 120, Math.round(event.atSeconds * ticksPerSecond)))
+            : playheadStep * 120;
+        const step = Math.max(0, Math.min(63, Math.floor(startTick / 120)));
+
+        const origin: NoteProvenance['origin'] =
+          event.source === 'MIDI'
+            ? 'MIDI_KEYS'
+            : event.modality === 'KEYS'
+              ? 'MIDI_KEYS'
+              : event.modality === 'BODY'
+                ? 'BODY'
+                : 'MOUTH';
+
+        const provenance: NoteProvenance = {
+          origin,
+          detectionConfidence: event.confidence,
+          creatorEdited: false,
+        };
+
+        const makeNote = (midiNote: number): NoteEvent => ({
+          id: `rec_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+          startTick,
+          durationTicks: 120,
+          midiNote,
+          velocity: event.velocity,
+          provenance,
+        });
+
+        if (decision.kind === 'create') {
+          const spec = decision.request;
+          const midi =
+            typeof event.midiNote === 'number'
+              ? event.midiNote
+              : event.pitch
+                ? noteNameToMidi(event.pitch)
+                : noteNameToMidi(spec.pitch);
+          const steps = new Array(64).fill(false);
+          steps[step] = true;
+          next = [
+            ...next,
+            {
+              id: `t-cap-${spec.klass}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
               name: spec.name,
               instrument: spec.instrument,
               steps,
@@ -786,29 +838,234 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
               volume: 0,
               pitch: spec.pitch,
               color: spec.color,
-            };
-            return [...prev, channel];
-          }
+            } as Track,
+          ];
+          continue;
+        }
 
-          const target = prev.find((t) => t.id === decision.trackId);
-          if (!target) return prev;
+        const target = next.find((t) => t.id === decision.trackId);
+        if (!target) continue;
 
-          const pitchName = event.pitch || target.pitch || 'C3';
+        const pitchName = event.pitch || target.pitch || 'C3';
+        const midi = typeof event.midiNote === 'number' ? event.midiNote : noteNameToMidi(pitchName);
 
-          return prev.map((t) => {
-            if (t.id !== decision.trackId) return t;
-            const newSteps = [...t.steps];
-            newSteps[currentStep] = true;
-            return {
-              ...t,
-              steps: newSteps,
-              noteEvents: [...(t.noteEvents || []), makeNote(noteNameToMidi(pitchName))],
-            };
-          });
+        next = next.map((t) => {
+          if (t.id !== decision.trackId) return t;
+          const newSteps = [...t.steps];
+          newSteps[step] = true;
+          return { ...t, steps: newSteps, noteEvents: [...(t.noteEvents || []), makeNote(midi)] };
         });
+      }
+
+      return next;
+    });
+  }, []);
+
+  /** Live monitoring for a single event. Kept out of state updaters, which must stay pure. */
+  const monitorCaptureEvent = useCallback((event: CaptureEvent) => {
+    const target = resolveCaptureTarget(tracksRef.current, event);
+    if (target.kind === 'track') {
+      const t = tracksRef.current.find((x) => x.id === target.trackId);
+      if (t) audioEngine.triggerForInstrument(t.instrument, event.pitch || t.pitch || 'C3', event.velocity, t);
+    } else if (target.kind === 'create') {
+      const spec = target.request;
+      audioEngine.triggerForInstrument(spec.instrument, event.pitch || spec.pitch, event.velocity);
+    }
+  }, []);
+
+  // --- MIDI hardware capture -------------------------------------------
+  // MIDI needs no spectral classification: the note number and channel already
+  // state what was played, so events are named directly and handed to the same
+  // router the mic path uses.
+  const [isMidiCaptureArmed, setIsMidiCaptureArmed] = useState(false);
+
+  const handleToggleMidiCapture = useCallback(async (): Promise<boolean> => {
+    if (isMidiCaptureArmed) {
+      setIsMidiCaptureArmed(false);
+      return false;
+    }
+    const ok = await midiEngine.init();
+    setIsMidiCaptureArmed(ok);
+    return ok;
+  }, [isMidiCaptureArmed]);
+
+  useEffect(() => {
+    if (!isMidiCaptureArmed) return;
+    const unsubscribe = midiEngine.addListener((event) => {
+      if (event.type !== 'note_on' || !event.note || !event.velocity) return;
+      const captureEvent = midiNoteToCaptureEvent({
+        note: event.note,
+        velocity: event.velocity,
+        channel: event.channel ?? 1,
+      });
+      monitorCaptureEvent(captureEvent);
+      commitCaptureEvents([captureEvent]);
+    });
+    return () => unsubscribe();
+  }, [isMidiCaptureArmed, monitorCaptureEvent, commitCaptureEvents]);
+
+  // --- Audio file import ------------------------------------------------
+  const decodeAudioFile = useCallback(async (file: File): Promise<AudioBuffer> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const ctx = new (window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    try {
+      return await ctx.decodeAudioData(arrayBuffer);
+    } finally {
+      if (ctx.state !== 'closed') ctx.close();
+    }
+  }, []);
+
+  /** Measures an uploaded file so the creator can be shown what it looks like. */
+  const handleAnalyzeAudioFile = useCallback(
+    async (file: File): Promise<ContentAnalysis> => {
+      const buffer = await decodeAudioFile(file);
+      return analyzePerformanceBuffer(buffer, null).content;
+    },
+    [decodeAudioFile]
+  );
+
+  const handleImportAudioFile = useCallback(
+    async (file: File, mode: AudioImportMode): Promise<AudioImportResult> => {
+      if (mode === 'SOLO_PERFORMANCE') {
+        const buffer = await decodeAudioFile(file);
+        // Identical pipeline to the live mic take, sourced from the file.
+        const { events: allEvents, content } = analyzePerformanceBuffer(buffer, 'MOUTH');
+
+        // The note grid is four bars. Anything past that is reported as left
+        // behind rather than clamped onto the final step, which would silently
+        // pile the tail of a long file into one place.
+        const ticksPerSecond = ((bpmRef.current || 110) / 60) * 480;
+        const gridSeconds = TICKS_PER_4_BARS / ticksPerSecond;
+        const events = allEvents.filter((e) => (e.atSeconds ?? 0) < gridSeconds);
+        const droppedBeyondGrid = allEvents.length - events.length;
+
+        if (!events.length) {
+          // Nothing detected is reported as nothing detected. It never falls
+          // back to writing the same material onto every channel.
+          return {
+            ok: false,
+            mode,
+            message:
+              'No distinct sounds were detected in this file. Check that it contains a performance, ' +
+              'or import it as a full mix if several instruments play at once.',
+            content,
+          };
+        }
+        commitCaptureEvents(events);
+        const classes = [...new Set(events.map((e) => e.klass))];
+        const truncation = droppedBeyondGrid
+          ? ` ${droppedBeyondGrid} hits past the four-bar grid were left out — trim the file or raise the project length to keep them.`
+          : '';
+        return {
+          ok: true,
+          mode,
+          message:
+            `Separated ${events.length} hits across ${classes.length} sound ` +
+            `${classes.length === 1 ? 'type' : 'types'}.${truncation}`,
+          eventCount: events.length,
+          droppedBeyondGrid,
+          classes,
+          content,
+        };
+      }
+
+      // FULL_MIX: several instruments are already playing at once, which is a
+      // source-separation problem, not a classification one.
+      const settings = getInferenceSettings();
+      const client = new DemucsClient(settings.demucsEndpoint);
+
+      const health = await client.health();
+      if (!health.ok) {
+        throw new Error(
+          `Stem separation service is not reachable at ${settings.demucsEndpoint}. ` +
+            'Start the Demucs service (inference-server/docker-compose.yml) or change the endpoint in inference settings.'
+        );
+      }
+
+      const result = await client.separate(file, file.name);
+      const baseName = file.name.replace(/\.[^/.]+$/, '');
+      const roles: Record<string, { instrument: InstrumentType; pitch: string; color: string; label: string }> = {
+        drums: { instrument: 'kick', pitch: 'C1', color: '#f59e0b', label: 'Drums' },
+        bass: { instrument: 'bass', pitch: 'C1', color: '#f43f5e', label: 'Bass' },
+        vocals: { instrument: 'vocal_synth', pitch: 'C3', color: '#ec4899', label: 'Vocals' },
+        other: { instrument: 'melody', pitch: 'C3', color: '#a855f7', label: 'Other' },
+      };
+
+      const created: Track[] = [];
+      const stemSummaries: AudioImportResult['stems'] = [];
+      const timestamp = Date.now();
+
+      for (const [role, stem] of Object.entries(result.stems)) {
+        const spec = roles[role] || { instrument: 'melody' as InstrumentType, pitch: 'C3', color: '#64748b', label: role };
+        const url = client.resolveStemUrl(stem);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Stem "${role}" could not be downloaded (${res.status}).`);
+        const stemBuffer = await decodeAudioFile(new File([await res.blob()], `${role}.wav`));
+
+        // Real peaks from the real returned audio, so a stem that came back
+        // empty is visibly empty rather than decorated with a stock waveform.
+        const mono = toMono(stemBuffer);
+        const points = 128;
+        const block = Math.max(1, Math.floor(mono.length / points));
+        const waveformData: number[] = [];
+        for (let i = 0; i < points; i++) {
+          let peak = 0;
+          for (let j = 0; j < block; j++) {
+            const v = Math.abs(mono[i * block + j] || 0);
+            if (v > peak) peak = v;
+          }
+          waveformData.push(peak);
+        }
+
+        created.push({
+          id: `stem_${role}_${timestamp}`,
+          name: `${baseName} (${spec.label})`,
+          instrument: spec.instrument,
+          steps: new Array(64).fill(false),
+          mute: false,
+          solo: false,
+          volume: 0,
+          pitch: spec.pitch,
+          color: spec.color,
+          sourceModality: 'AUDIO',
+          sourceTakeAudioUrl: url,
+          waveformTakes: [
+            { id: `stemtake_${role}_${timestamp}`, name: `${spec.label} stem`, duration: stemBuffer.duration, waveformData },
+          ],
+        });
+
+        stemSummaries.push({
+          role,
+          durationSec: Number(stemBuffer.duration.toFixed(2)),
+          peakAmplitude: Number(Math.max(...waveformData).toFixed(4)),
+          url,
+        });
+      }
+
+      if (!created.length) throw new Error('Stem separation returned no stems.');
+
+      setTracks((prev) => [...created, ...prev]);
+      return {
+        ok: true,
+        mode,
+        message: `Separated into ${created.length} stems with ${result.model} on ${result.device}.`,
+        stems: stemSummaries,
+      };
+    },
+    [decodeAudioFile, commitCaptureEvents]
+  );
+
+  useEffect(() => {
+    tracksRef.current = tracks;
+    detectionEngine.setTracks(tracks);
+    detectionEngine.setCallbacks({
+      onCaptureEvent: (event) => {
+        monitorCaptureEvent(event);
+        commitCaptureEvents([event]);
       },
     });
-  }, [tracks]);
+  }, [tracks, monitorCaptureEvent, commitCaptureEvents]);
 
   // Calibrating Track ID
   const [calibratingTrackId, setCalibratingTrackId] = useState<string | null>(null);
@@ -2777,6 +3034,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       creatorName,
       coproducerContext,
       handleCreateSourceTrack,
+      isMidiCaptureArmed,
+      handleToggleMidiCapture,
+      handleAnalyzeAudioFile,
+      handleImportAudioFile,
       handleExtractStemsFromSource,
       handleExtractSingleInstrument,
       handleAddTrackLayer,
@@ -2909,6 +3170,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       creatorName,
       coproducerContext,
       handleCreateSourceTrack,
+      isMidiCaptureArmed,
+      handleToggleMidiCapture,
+      handleAnalyzeAudioFile,
+      handleImportAudioFile,
       handleExtractStemsFromSource,
       handleExtractSingleInstrument,
       handleAddTrackLayer,

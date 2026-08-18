@@ -108,6 +108,53 @@ function melody(notes, secondsEach) {
   return out;
 }
 
+/**
+ * A finished multi-instrument mix: kick, sustained bass, a chord pad and hats
+ * all sounding at once and continuously. This is Case B — several instruments
+ * playing simultaneously, which no onset classifier can pull apart.
+ */
+function fullMix(seconds) {
+  const n = SR * seconds;
+  const out = new Float32Array(n);
+
+  // Continuous chord pad (three voices) — keeps mids busy the whole time.
+  const chord = [220, 277.18, 329.63];
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    let v = 0;
+    for (const f of chord) v += Math.sin(2 * Math.PI * f * t) + 0.3 * Math.sin(4 * Math.PI * f * t);
+    out[i] += (v / chord.length) * 0.16;
+  }
+
+  // Sustained bass line, changing note every bar — keeps lows busy throughout.
+  const bassNotes = [55, 55, 73.42, 65.41];
+  const barLen = Math.floor(SR * 2);
+  for (let b = 0; b * barLen < n; b++) {
+    const f = bassNotes[b % bassNotes.length];
+    for (let i = 0; i < barLen && b * barLen + i < n; i++) {
+      const t = i / SR;
+      out[b * barLen + i] += 0.3 * Math.sin(2 * Math.PI * f * t) * (1 - Math.exp(-t * 40));
+    }
+  }
+
+  // Drums over the top.
+  const step = Math.floor(SR * 0.25);
+  for (let e = 0; e * step < n; e++) {
+    const start = e * step;
+    const voices = e % 4 === 0 ? [kick, hat] : e % 4 === 2 ? [snare, hat] : [hat];
+    for (const v of voices) {
+      const sample = v();
+      for (let i = 0; i < sample.length && start + i < n; i++) out[start + i] += sample[i] * 0.55;
+    }
+  }
+
+  // Normalise to avoid clipping the sum.
+  let peak = 0;
+  for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(out[i]));
+  if (peak > 0) for (let i = 0; i < n; i++) out[i] = (out[i] / peak) * 0.9;
+  return out;
+}
+
 const dir = process.argv[2] || process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 fs.mkdirSync(dir, { recursive: true });
 
@@ -121,6 +168,8 @@ writeWav(`${dir}/body_taps.wav`, pattern(14, 300, [() => kick(72), snare]));
 writeWav(`${dir}/hum_melody.wav`, melody([440, 523.25, 659.25, 523.25], 1.2));
 // Pitched material, low register.
 writeWav(`${dir}/hum_bass.wav`, melody([55, 65.41, 82.41, 65.41], 1.2));
+// Case B: a finished multi-instrument mix.
+writeWav(`${dir}/full_mix.wav`, fullMix(12));
 // Legacy clips kept so earlier tests still run.
 writeWav(`${dir}/hum_A4.wav`, melody([440], 10));
 writeWav(`${dir}/beatbox_A.wav`, pattern(12, 500, [kick, hat]));

@@ -30,7 +30,7 @@ export const ExternalHardwareMidiDrawer: React.FC<ExternalHardwareMidiDrawerProp
   isOpen,
   onClose,
 }) => {
-  const { dawState, tracks, sections, setTracks, setDawState, setSections } = useStudioSession();
+  const { dawState, tracks, sections, setTracks, setDawState, setSections, isMidiCaptureArmed, handleToggleMidiCapture } = useStudioSession();
   const [devices, setDevices] = useState<MidiDevice[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [lastMidiEvent, setLastMidiEvent] = useState<string>('Waiting for MIDI performance...');
@@ -58,7 +58,10 @@ export const ExternalHardwareMidiDrawer: React.FC<ExternalHardwareMidiDrawerProp
 
       const unsubscribe = midiEngine.addListener((event) => {
         if (event.type === 'note_on') {
-          setLastMidiEvent(`NOTE ON: ${event.noteName} (Vel: ${event.velocity}) via [${event.deviceName}] Ch:${event.channel}`);
+          setLastMidiEvent(
+            `NOTE ON: ${event.noteName} (Vel: ${event.velocity}) via [${event.deviceName}] Ch:${event.channel}` +
+              (isMidiCaptureArmed ? ' → recorded' : '')
+          );
         } else if (event.type === 'cc') {
           setLastMidiEvent(`CC #${event.ccNumber} = ${event.ccValue} via [${event.deviceName}]`);
         } else if (event.type === 'pitch_bend') {
@@ -68,7 +71,14 @@ export const ExternalHardwareMidiDrawer: React.FC<ExternalHardwareMidiDrawerProp
 
       return () => unsubscribe();
     }
-  }, [isOpen]);
+  }, [isOpen, isMidiCaptureArmed]);
+
+  const handleArmCapture = async () => {
+    const ok = await handleToggleMidiCapture();
+    if (!ok && !isMidiCaptureArmed) {
+      setLastMidiEvent('Web MIDI is unavailable in this browser — capture could not be armed.');
+    }
+  };
 
   const handleTestHardwareNote = () => {
     if (!selectedOutputDevice) return;
@@ -204,6 +214,18 @@ export const ExternalHardwareMidiDrawer: React.FC<ExternalHardwareMidiDrawerProp
                 </button>
               </div>
               <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 font-mono text-[11px] text-cyan-300 truncate">
+                <button
+                  type="button"
+                  data-testid="arm-midi-capture"
+                  onClick={handleArmCapture}
+                  className={`w-full mb-2 px-3 py-2 rounded-xl text-xs font-black tracking-wide transition cursor-pointer border ${
+                    isMidiCaptureArmed
+                      ? 'bg-rose-600 text-white border-rose-500 animate-pulse'
+                      : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-rose-500/50'
+                  }`}
+                >
+                  {isMidiCaptureArmed ? '■ MIDI CAPTURE ARMED — RECORDING TO CHANNELS' : '● ARM MIDI CAPTURE'}
+                </button>
                 {lastMidiEvent}
               </div>
             </div>

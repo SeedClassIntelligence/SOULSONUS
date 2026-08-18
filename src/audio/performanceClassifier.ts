@@ -215,3 +215,71 @@ export function rmsToVelocity(rms: number, referencePeak: number): number {
   const shaped = Math.pow(norm, 0.7);
   return Math.max(1, Math.min(127, Math.round(12 + shaped * 115)));
 }
+
+
+/**
+ * Autocorrelation pitch detector. Returns the fundamental in Hz, or -1 when the
+ * frame is too quiet or too noisy to give a confident answer.
+ *
+ * Lives here so the live mic path and the offline file path use one
+ * implementation rather than drifting copies.
+ */
+export function autoCorrelate(buf: Float32Array, sampleRate: number): number {
+  let SIZE = buf.length;
+  let rms = 0;
+  for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
+  rms = Math.sqrt(rms / SIZE);
+  if (rms < 0.01) return -1;
+
+  let r1 = 0;
+  let r2 = SIZE - 1;
+  const thres = 0.2;
+  for (let i = 0; i < SIZE / 2; i++) {
+    if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+  }
+  for (let i = 1; i < SIZE / 2; i++) {
+    if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
+  }
+
+  const sliced = buf.slice(r1, r2);
+  SIZE = sliced.length;
+  if (SIZE < 8) return -1;
+
+  const c = new Float32Array(SIZE);
+  for (let i = 0; i < SIZE; i++) {
+    for (let j = 0; j < SIZE - i; j++) c[i] = c[i] + sliced[j] * sliced[j + i];
+  }
+
+  let d = 0;
+  while (d < SIZE - 1 && c[d] > c[d + 1]) d++;
+  let maxval = -1;
+  let maxpos = -1;
+  for (let i = d; i < SIZE; i++) {
+    if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+  }
+  let T0 = maxpos;
+  if (T0 <= 0 || T0 >= SIZE - 1) return -1;
+
+  const x1 = c[T0 - 1];
+  const x2 = c[T0];
+  const x3 = c[T0 + 1];
+  const a = (x1 + x3 - 2 * x2) / 2;
+  const b = (x3 - x1) / 2;
+  if (a) T0 = T0 - b / (2 * a);
+
+  return sampleRate / T0;
+}
+
+/** Lowest fundamental worth trusting from `autoCorrelate` at typical frame sizes. */
+export const MIN_TRACKABLE_HZ = 45;
+export const MAX_TRACKABLE_HZ = 1500;
+
+/** Converts a frequency to the nearest note name, clamped to the playable range. */
+export function freqToNoteName(freq: number): string {
+  if (freq < 40 || freq > 2000) return 'C3';
+  const noteNum = Math.round(12 * Math.log2(freq / 440) + 69);
+  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const octave = Math.floor(noteNum / 12) - 1;
+  const noteName = noteNames[((noteNum % 12) + 12) % 12];
+  return `${noteName}${Math.max(1, Math.min(6, octave))}`;
+}

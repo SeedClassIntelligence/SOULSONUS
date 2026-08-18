@@ -31,6 +31,7 @@ from typing import Dict
 import torch
 import torchaudio
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 import demucs.api
@@ -41,6 +42,20 @@ OUTPUT_DIR = Path(os.environ.get("DEMUCS_OUTPUT_DIR", "/data/stems"))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="SoulSonus Demucs Stem-Separation Service", version="1.0.0")
+
+# The client for this service runs in the browser, so without CORS every
+# request from the app is rejected before it reaches an endpoint. Self-hosted
+# deployments serve the studio from a different origin (and port) than this
+# service by design, so permissive origins are the working default here; narrow
+# it with DEMUCS_ALLOWED_ORIGINS when the deployment origin is known.
+_allowed = os.environ.get("DEMUCS_ALLOWED_ORIGINS", "*")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _allowed.split(",")] if _allowed != "*" else ["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 _separator: demucs.api.Separator | None = None
 
