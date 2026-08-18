@@ -237,7 +237,12 @@ export class AudioEncoders {
     buffer[offset++] = (sr >> 12) & 0xff;
     buffer[offset++] = (sr >> 4) & 0xff;
     buffer[offset++] = ((sr & 0x0f) << 4) | (ch << 1) | ((bps >> 4) & 0x1);
-    buffer[offset++] = ((bps & 0x0f) << 4) | ((numSamples >> 32) & 0x0f);
+    // JavaScript's >> takes its shift count mod 32, so `numSamples >> 32` is a
+    // no-op that returns numSamples itself and leaks its low nibble into the
+    // top of the 36-bit total-samples field. Every FLAC this encoder produced
+    // declared a wildly wrong length in its header.
+    const totalSamplesHigh = Math.floor(numSamples / 0x100000000) & 0x0f;
+    buffer[offset++] = ((bps & 0x0f) << 4) | totalSamplesHigh;
     buffer[offset++] = (numSamples >> 24) & 0xff;
     buffer[offset++] = (numSamples >> 16) & 0xff;
     buffer[offset++] = (numSamples >> 8) & 0xff;

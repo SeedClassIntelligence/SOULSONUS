@@ -3,6 +3,9 @@ import { Track, InstrumentType } from '../types/daw';
 import { vocalRecorder } from './vocalRecorder';
 import { vocalDspProcessor } from './vocalDspProcessor';
 import { tickToStep, midiToNoteName } from '../utils/musicMath';
+import { createInstrumentVoices, defaultFilterFreqFor, HIHAT_FREQUENCY } from './instrumentVoices';
+import { BuiltMasteringChain, buildMasteringChain } from './masteringChain';
+import { MasteringDspChain } from '../types/daw';
 
 interface TrackChannelNodes {
   filter: Tone.Filter;
@@ -23,6 +26,8 @@ export class AudioEngine {
 
   // Master Bus Phase 11 DSP Chain
   private masterLimiter: Tone.Limiter | null = null;
+  /** The seven-stage mastering chain, sitting on the master bus. */
+  private masteringChain: BuiltMasteringChain | null = null;
   private masterVolume: Tone.Volume | null = null;
   private masterCompressor: Tone.Compressor | null = null;
   private masterReverb: Tone.Reverb | null = null;
@@ -48,9 +53,13 @@ export class AudioEngine {
 
     await Tone.start();
 
-    // Master Bus Chain: MasterVolume -> MasterCompressor -> MasterLimiter -> Destination
+    // Master Bus: MixComp -> MixVolume -> [mastering chain] -> Destination.
+    // The safety limiter stays as the last thing before the output; the
+    // mastering chain's own limiter sits ahead of it and is what the Master
+    // room's ceiling control drives.
     this.masterLimiter = new Tone.Limiter(-0.5).toDestination();
-    this.masterVolume = new Tone.Volume(0).connect(this.masterLimiter);
+    this.masterVolume = new Tone.Volume(0);
+    this.masterVolume.connect(this.masterLimiter);
     this.masterCompressor = new Tone.Compressor({ threshold: -12, ratio: 4, attack: 0.003, release: 0.25 }).connect(
       this.masterVolume
     );
@@ -64,45 +73,14 @@ export class AudioEngine {
     this.masterReverb.connect(this.masterCompressor);
     this.masterDelay.connect(this.masterCompressor);
 
-    // Instrument Synthesizers
-    this.kickSynth = new Tone.MembraneSynth({
-      pitchDecay: 0.05,
-      octaves: 8,
-      oscillator: { type: 'sine' },
-      envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 0.4 },
-    });
-
-    this.snareSynth = new Tone.NoiseSynth({
-      noise: { type: 'white' },
-      envelope: { attack: 0.001, decay: 0.2, sustain: 0 },
-    });
-
-    this.hihatSynth = new Tone.MetalSynth({
-      envelope: { attack: 0.001, decay: 0.05, release: 0.05 },
-      harmonicity: 5.1,
-      modulationIndex: 32,
-      resonance: 4000,
-      octaves: 1.5,
-      volume: -10,
-    });
-    this.hihatSynth.frequency.value = 200;
-
-    this.melodySynth = new Tone.FMSynth({
-      harmonicity: 3,
-      modulationIndex: 10,
-      detune: 0,
-      oscillator: { type: 'sine' },
-      envelope: { attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.5 },
-      modulation: { type: 'triangle' },
-      modulationEnvelope: { attack: 0.02, decay: 0.2, sustain: 0.2, release: 0.5 },
-    });
-
-    this.bassSynth = new Tone.MonoSynth({
-      oscillator: { type: 'sawtooth' },
-      filter: { Q: 3, type: 'lowpass' },
-      envelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.4 },
-      filterEnvelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.2, baseFrequency: 80, octaves: 4 },
-    });
+    // Instrument Synthesizers — built from the specs the offline bounce also
+    // uses, so a bounce cannot drift from what is played live.
+    const voices = createInstrumentVoices();
+    this.kickSynth = voices.kick;
+    this.snareSynth = voices.snare;
+    this.hihatSynth = voices.hihat;
+    this.melodySynth = voices.melody;
+    this.bassSynth = voices.bass;
 
     this.initialized = true;
   }
@@ -121,8 +99,7 @@ export class AudioEngine {
 
     let nodes = this.trackNodeMap.get(track.id);
     if (!nodes) {
-      const defaultFilterFreq =
-        track.instrument === 'kick' ? 400 : track.instrument === 'bass' ? 600 : track.instrument === 'hihat' ? 8000 : 12000;
+      const defaultFilterFreq = defaultFilterFreqFor(track.instrument);
 
       const filter = new Tone.Filter({
         frequency: track.dspSettings?.filterFreq || defaultFilterFreq,
@@ -288,9 +265,14 @@ export class AudioEngine {
         this.hihatSynth.disconnect();
         this.hihatSynth.connect(this.masterCompressor);
       }
-      this.hihatSynth.triggerAttackRelease(duration, time, velocity);
-    } catch {
-      // AudioContext safe check
+      // MetalSynth is a Monophonic voice: (note, duration, time, velocity).
+      // Called with the Instrument signature the arguments shift by one, the
+      // scheduler rejects the event, and the hi-hat silently never sounds.
+      this.hihatSynth.triggerAttackRelease(HIHAT_FREQUENCY, duration, time, velocity);
+    } catch (err) {
+      // Never swallow this silently again — a dropped trigger is inaudible,
+      // which is exactly why the wrong signature above went unnoticed.
+      console.warn('[audioEngine] hi-hat trigger failed:', err);
     }
   }
 
@@ -326,6 +308,25 @@ export class AudioEngine {
     } catch {
       // AudioContext safe check
     }
+  }
+
+  /**
+   * Installs or updates the mastering chain on the live master bus, so the
+   * Master room's controls change what is actually heard.
+   */
+  public applyMasteringChain(chain: MasteringDspChain) {
+    if (!this.initialized || !this.masterVolume || !this.masterLimiter) return;
+
+    if (this.masteringChain) {
+      this.masteringChain.update(chain);
+      return;
+    }
+
+    const built = buildMasteringChain(chain);
+    this.masterVolume.disconnect();
+    this.masterVolume.connect(built.input);
+    built.output.connect(this.masterLimiter);
+    this.masteringChain = built;
   }
 
   public setVocalBuffer(buffer: AudioBuffer | null) {

@@ -70,6 +70,20 @@ import { resolveCaptureTarget } from '../audio/captureRouting';
 import { midiNoteToCaptureEvent } from '../audio/midiCapture';
 import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
 import { toMono } from '../audio/fft';
+import { renderMasterBounce } from '../audio/masterRender';
+import { masteringTelemetryEngine, LoudnessTelemetryReport } from '../audio/masteringTelemetryEngine';
+import { audioEncoders } from '../lib/audioEncoders';
+
+export type MasterBounceFormat = 'WAV_24' | 'WAV_16' | 'FLAC';
+
+export interface MasterBounceResult {
+  ok: boolean;
+  message: string;
+  fileName?: string;
+  url?: string;
+  sizeBytes?: number;
+  measurement?: LoudnessTelemetryReport;
+}
 import { midiEngine } from '../audio/midiEngine';
 import { DemucsClient } from '../lib/inference/demucsClient';
 import { getInferenceSettings } from '../lib/inference/inferenceSettings';
@@ -534,6 +548,12 @@ export interface StudioSessionState {
   masterCandidates: MasterCandidate[];
   activeMasterCandidateId: string;
   finalizationGate: FinalizationGateStatus;
+  /** Bounces the project through the mastering chain and measures it for real. */
+  handleAnalyzeMaster: () => Promise<LoudnessTelemetryReport | null>;
+  /** Bounces and hands back an encoded file, ready to download. */
+  handleBounceMaster: (format: MasterBounceFormat) => Promise<MasterBounceResult>;
+  isBouncing: boolean;
+  masterMeasurement: LoudnessTelemetryReport | null;
   handleUpdateMasteringProcessor: (slotId: string, params: Record<string, any>) => void;
   handleToggleMasteringProcessor: (slotId: string) => void;
   handleLoadMasteringPreset: (presetName: string) => void;
@@ -756,9 +776,11 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   // Ref to tracks for live playback callbacks
   const tracksRef = useRef(tracks);
   const bpmRef = useRef(dawState.bpm);
+  const dawStateRef = useRef(dawState);
   useEffect(() => {
     bpmRef.current = dawState.bpm;
-  }, [dawState.bpm]);
+    dawStateRef.current = dawState;
+  }, [dawState]);
 
   /**
    * Commits classified capture events onto their channels.
@@ -2796,6 +2818,12 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
   const [masteringChain, setMasteringChain] = useState<MasteringDspChain>(INITIAL_MASTERING_DSP_CHAIN);
+  const masteringChainRef = useRef(masteringChain);
+  // Keep the live master bus and the offline bounce reading the same chain.
+  useEffect(() => {
+    masteringChainRef.current = masteringChain;
+    audioEngine.applyMasteringChain(masteringChain);
+  }, [masteringChain]);
 
   const [masterCandidates, setMasterCandidates] = useState<MasterCandidate[]>([
     {
@@ -2852,6 +2880,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   ]);
 
   const [activeMasterCandidateId, setActiveMasterCandidateId] = useState<string>('cand_master_a');
+  const activeMasterCandidateIdRef = useRef(activeMasterCandidateId);
+  useEffect(() => {
+    activeMasterCandidateIdRef.current = activeMasterCandidateId;
+  }, [activeMasterCandidateId]);
 
   const [finalizationGate, setFinalizationGate] = useState<FinalizationGateStatus>({
     audioChecksPassed: true,
@@ -2864,6 +2896,98 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     isReadyToSign: true,
     blockingReasons: [],
   });
+
+  const [isBouncing, setIsBouncing] = useState(false);
+  const [masterMeasurement, setMasterMeasurement] = useState<LoudnessTelemetryReport | null>(null);
+
+  /** Renders the project through the mastering chain once, for measuring or encoding. */
+  const bounce = useCallback(async () => {
+    const result = await renderMasterBounce({
+      tracks: tracksRef.current,
+      bpm: bpmRef.current || 110,
+      chain: masteringChainRef.current,
+    });
+    const left = result.buffer.getChannelData(0);
+    const right = result.buffer.numberOfChannels > 1 ? result.buffer.getChannelData(1) : left;
+    const measurement = masteringTelemetryEngine.measureLoudness(left, right, result.sampleRate);
+    return { result, measurement };
+  }, []);
+
+  const handleAnalyzeMaster = useCallback(async (): Promise<LoudnessTelemetryReport | null> => {
+    setIsBouncing(true);
+    try {
+      const { result, measurement } = await bounce();
+      setMasterMeasurement(measurement);
+      // The candidate now carries what was measured, not a literal.
+      setMasterCandidates((prev) =>
+        prev.map((c) =>
+          c.candidateId === activeMasterCandidateIdRef.current
+            ? {
+                ...c,
+                measuredLufs: measurement.integratedLufs,
+                measuredDbtp: measurement.truePeakDbtp,
+                measuredCrestFactor: measurement.crestFactorDb,
+              }
+            : c
+        )
+      );
+      if (result.eventsRendered === 0) {
+        // An empty project measures as silence; say so rather than showing a number.
+        return measurement;
+      }
+      return measurement;
+    } finally {
+      setIsBouncing(false);
+    }
+  }, [bounce]);
+
+  const handleBounceMaster = useCallback(
+    async (format: MasterBounceFormat): Promise<MasterBounceResult> => {
+      setIsBouncing(true);
+      try {
+        const { result, measurement } = await bounce();
+        if (result.eventsRendered === 0) {
+          return {
+            ok: false,
+            message: 'Nothing to export — the project rendered silent. Add or unmute a track first.',
+          };
+        }
+        setMasterMeasurement(measurement);
+
+        const base = (dawStateRef.current.projectName || 'soulsonus-master')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '');
+
+        const bounceLeft = result.buffer.getChannelData(0);
+        const bounceRight = result.buffer.numberOfChannels > 1 ? result.buffer.getChannelData(1) : null;
+
+        const encoded =
+          format === 'FLAC'
+            ? audioEncoders.encodeFlac(bounceLeft, bounceRight, result.sampleRate)
+            : format === 'WAV_16'
+              ? audioEncoders.encode16BitWav(bounceLeft, bounceRight, result.sampleRate)
+              : audioEncoders.encode24BitWav(bounceLeft, bounceRight, result.sampleRate);
+
+        const extension = format === 'FLAC' ? 'flac' : 'wav';
+        const suffix = format === 'WAV_16' ? '_16bit' : format === 'WAV_24' ? '_24bit' : '';
+
+        return {
+          ok: true,
+          message: `Bounced ${result.durationSeconds.toFixed(1)}s at ${measurement.integratedLufs} LUFS / ${measurement.truePeakDbtp} dBTP.`,
+          fileName: `${base}${suffix}.${extension}`,
+          url: encoded.dataUrl,
+          sizeBytes: encoded.byteLength,
+          measurement,
+        };
+      } catch (err) {
+        return { ok: false, message: err instanceof Error ? err.message : 'Bounce failed.' };
+      } finally {
+        setIsBouncing(false);
+      }
+    },
+    [bounce]
+  );
 
   const handleUpdateMasteringProcessor = useCallback((slotId: string, params: Record<string, any>) => {
     setMasteringChain((prev) => ({
@@ -3099,6 +3223,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       masterCandidates,
       activeMasterCandidateId,
       finalizationGate,
+      handleAnalyzeMaster,
+      handleBounceMaster,
+      isBouncing,
+      masterMeasurement,
       handleUpdateMasteringProcessor,
       handleToggleMasteringProcessor,
       handleLoadMasteringPreset,
@@ -3226,6 +3354,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       masterCandidates,
       activeMasterCandidateId,
       finalizationGate,
+      handleAnalyzeMaster,
+      handleBounceMaster,
+      isBouncing,
+      masterMeasurement,
       handleUpdateMasteringProcessor,
       handleToggleMasteringProcessor,
       handleLoadMasteringPreset,

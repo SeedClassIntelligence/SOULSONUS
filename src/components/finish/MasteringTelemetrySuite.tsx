@@ -20,6 +20,10 @@ export const MasteringTelemetrySuite: React.FC = () => {
     handleToggleReferenceAB,
     activeMasterCandidateId,
     masterCandidates,
+    handleAnalyzeMaster,
+    handleBounceMaster,
+    isBouncing,
+    masterMeasurement,
   } = useStudioSession();
 
   const activeCand =
@@ -87,6 +91,25 @@ export const MasteringTelemetrySuite: React.FC = () => {
         </div>
       </div>
 
+      {/* Measure the real bounce. Until this runs, the boxes below show the
+          candidate's stored values rather than anything measured. */}
+      <div className="px-3.5 pt-3 flex items-center justify-between gap-2 shrink-0">
+        <span className="text-[10px] text-slate-400">
+          {masterMeasurement
+            ? 'Measured from a bounce of this project through the mastering chain.'
+            : 'Not measured yet — values below are the candidate preset, not a measurement.'}
+        </span>
+        <button
+          type="button"
+          data-testid="analyze-master"
+          onClick={() => handleAnalyzeMaster()}
+          disabled={isBouncing}
+          className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-black text-[10px] tracking-wide transition cursor-pointer shrink-0"
+        >
+          {isBouncing ? 'BOUNCING…' : 'MEASURE THIS MASTER'}
+        </button>
+      </div>
+
       {/* 2. BODY CONTENT */}
       <div className="flex-1 p-3.5 overflow-y-auto custom-scrollbar space-y-3">
         {/* TAB 1: LOUDNESS & DYNAMICS */}
@@ -96,17 +119,23 @@ export const MasteringTelemetrySuite: React.FC = () => {
               {/* Integrated LUFS Target Box */}
               <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
                 <span className="text-[9px] text-slate-500 font-bold uppercase">INTEGRATED LUFS</span>
-                <p className="text-xl font-black text-cyan-400">{activeCand.measuredLufs} LUFS</p>
+                <p className="text-xl font-black text-cyan-400" data-testid="lufs-readout">
+                  {masterMeasurement ? masterMeasurement.integratedLufs : activeCand.measuredLufs} LUFS
+                </p>
                 <div className="flex items-center justify-between text-[9px] text-slate-400 pt-1">
                   <span>Target: -14.0 LUFS</span>
-                  <span className="text-emerald-400 font-bold">COMPLIANT</span>
+                  <span className={masterMeasurement ? (masterMeasurement.isStreamingCompliant ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold') : 'text-slate-500 font-bold'}>
+                    {masterMeasurement ? (masterMeasurement.isStreamingCompliant ? 'COMPLIANT' : 'OVER TARGET') : 'NOT MEASURED'}
+                  </span>
                 </div>
               </div>
 
               {/* True-Peak Ceiling Box */}
               <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
                 <span className="text-[9px] text-slate-500 font-bold uppercase">TRUE PEAK CEILING</span>
-                <p className="text-xl font-black text-emerald-400">{activeCand.measuredDbtp} dBTP</p>
+                <p className="text-xl font-black text-emerald-400" data-testid="dbtp-readout">
+                  {masterMeasurement ? masterMeasurement.truePeakDbtp : activeCand.measuredDbtp} dBTP
+                </p>
                 <div className="flex items-center justify-between text-[9px] text-slate-400 pt-1">
                   <span>Max Intersample: Safe</span>
                   <span className="text-emerald-400 font-bold">NO CLIPPING</span>
@@ -118,20 +147,28 @@ export const MasteringTelemetrySuite: React.FC = () => {
             <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
               <div className="flex items-center justify-between text-[10px]">
                 <span className="text-slate-400 font-bold uppercase">Dynamic Crest Factor</span>
-                <span className="text-amber-400 font-bold">{activeCand.measuredCrestFactor} dB (Punch Preserved)</span>
+                <span className="text-amber-400 font-bold">
+                  {masterMeasurement ? masterMeasurement.crestFactorDb : activeCand.measuredCrestFactor} dB
+                </span>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center text-[9px] pt-1 border-t border-slate-800">
                 <div>
                   <span className="text-slate-500 block">Short-Term</span>
-                  <span className="text-slate-200 font-bold">-13.8 LUFS</span>
+                  <span className="text-slate-200 font-bold">
+                    {masterMeasurement ? `${masterMeasurement.shortTermLufs} LUFS` : '—'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-500 block">Momentary</span>
-                  <span className="text-slate-200 font-bold">-13.2 LUFS</span>
+                  <span className="text-slate-200 font-bold">
+                    {masterMeasurement ? `${masterMeasurement.momentaryLufs} LUFS` : '—'}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block">Limiter GR</span>
-                  <span className="text-cyan-400 font-bold">1.4 dB Max</span>
+                  <span className="text-slate-500 block">Phase Corr.</span>
+                  <span className="text-cyan-400 font-bold">
+                    {masterMeasurement ? `${masterMeasurement.phaseCorrelation} corr` : '—'}
+                  </span>
                 </div>
               </div>
             </div>

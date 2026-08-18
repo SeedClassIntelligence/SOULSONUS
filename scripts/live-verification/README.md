@@ -45,6 +45,8 @@ much faster than wall-clock, so treat elapsed-time assertions with care.
 | `test-16-drawer-triggers` | Every drawer trigger opens the drawer it claims to, and where each is reachable from. |
 | `test-17-drawer-contents` | Do the controls inside each drawer create audio or change state? |
 | `test-18-drawer-tabs` | Walks every tab inside the multi-tab workstations, not just the default one. |
+| `test-19-loudness-accuracy` | Browser-free: checks the loudness engine against EBU Tech 3341 and BS.1770-4 reference cases. |
+| `test-20-master-bounce` | Bounces the project, measures it, moves each mastering stage, and encodes real WAV/FLAC. |
 
 ## Two harness traps these tests hit
 
