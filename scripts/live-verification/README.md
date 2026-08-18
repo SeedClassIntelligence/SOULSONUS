@@ -47,6 +47,10 @@ much faster than wall-clock, so treat elapsed-time assertions with care.
 | `test-18-drawer-tabs` | Walks every tab inside the multi-tab workstations, not just the default one. |
 | `test-19-loudness-accuracy` | Browser-free: checks the loudness engine against EBU Tech 3341 and BS.1770-4 reference cases. |
 | `test-20-master-bounce` | Bounces the project, measures it, moves each mastering stage, and encodes real WAV/FLAC. |
+| `test-21-persistence` | Does a creator's work survive a reload? Named versions, new project, reopen. |
+| `test-22-extract-stems` | Does Extract Stems use the actual take, and refuse honestly when there is none? |
+| `test-23-masking-analysis` | Is the Mix advisor measured — and silent on an empty canvas? |
+| `test-24-vocal-take-persistence` | Does a recorded vocal Blob survive a reload and re-decode? |
 
 ## Two harness traps these tests hit
 

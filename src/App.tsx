@@ -33,6 +33,7 @@ import { SeedSignatureModal } from './components/SeedSignatureModal';
 import { ExportModal } from './components/ExportModal';
 import { AiControlRoomModal } from './components/AiControlRoomModal';
 import { VirtualPianoKeyboard } from './components/VirtualPianoKeyboard';
+import { ProjectMenu } from './components/ProjectMenu';
 
 import { audioEngine } from './audio/audioEngine';
 import { detectionEngine } from './audio/detectionEngine';
@@ -92,6 +93,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   // Drawers
   const [isStudioIntelligenceOpen, setIsStudioIntelligenceOpen] = useState(false);
   const [isTrackWorkstationOpen, setIsTrackWorkstationOpen] = useState(false);
+  const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const [isSongwritingSuiteOpen, setIsSongwritingSuiteOpen] = useState(false);
   const [isHardwareMidiOpen, setIsHardwareMidiOpen] = useState(false);
   const [isNativeBrainOpen, setIsNativeBrainOpen] = useState(false);
@@ -205,6 +207,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       if (detail === 'vault' || detail === 'library') setIsSoundLibraryOpen(true);
       if (detail === 'collab' || detail === 'collaboration') setIsCollaborationOpen(true);
       if (detail === 'export') setIsExportOpen(true);
+      if (detail === 'projects' || detail === 'save') setIsProjectMenuOpen(true);
       if (detail === 'piano' || detail === 'keyboard') setIsPianoOpen((prev) => !prev);
 
       if (detail === 'proposal' || detail === 'realization' || (typeof detail === 'object' && detail?.type === 'realization')) {
@@ -346,6 +349,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         onOpenCollaboration={() => setIsCollaborationOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
         onOpenPiano={() => setIsPianoOpen(true)}
+        onOpenProjects={() => setIsProjectMenuOpen(true)}
         onBackToLanding={onBackToLanding}
         isMicActive={detectionSettings.enabled}
       />
@@ -481,6 +485,8 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       )}
 
       {/* Modals */}
+      <ProjectMenu isOpen={isProjectMenuOpen} onClose={() => setIsProjectMenuOpen(false)} />
+
       <QuickHelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <StudioTourGuide
         isOpen={isTourOpen}

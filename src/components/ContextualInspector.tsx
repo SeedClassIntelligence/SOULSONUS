@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Track, ArrangementSection } from '../types/daw';
 import { useStudioSession } from '../app/StudioSessionContext';
+import type { StemExtractionResult } from '../app/StudioSessionContext';
 import { productionHistory, ProductionOperation } from '../lib/productionOperations';
 import {
   Mic,
@@ -104,6 +105,7 @@ export const ContextualInspector: React.FC<ContextualInspectorProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [timingTighten, setTimingTighten] = useState<'Original' | 'Light' | 'Tight' | 'Custom'>('Light');
   const [isExtracting, setIsExtracting] = useState(false);
+  const [extractResult, setExtractResult] = useState<StemExtractionResult | null>(null);
 
   if (!selectedTrack) {
     return (
@@ -348,12 +350,13 @@ export const ContextualInspector: React.FC<ContextualInspectorProps> = ({
                 {/* Mode Selector: Full Composition vs Single Instrument */}
                 <div className="space-y-1.5 pt-1">
                   <button
-                    onClick={() => {
+                    data-testid="extract-stems"
+                    onClick={async () => {
                       setIsExtracting(true);
-                      setTimeout(() => {
-                        handleExtractStemsFromSource(selectedTrack.id);
-                        setIsExtracting(false);
-                      }, 500);
+                      setExtractResult(null);
+                      const res = await handleExtractStemsFromSource(selectedTrack.id);
+                      setExtractResult(res);
+                      setIsExtracting(false);
                     }}
                     disabled={isExtracting}
                     className="w-full py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs flex items-center justify-center space-x-1.5 transition cursor-pointer shadow-md shadow-amber-500/20 active:scale-95 disabled:opacity-50"
@@ -361,6 +364,18 @@ export const ContextualInspector: React.FC<ContextualInspectorProps> = ({
                     <Zap className={`w-3.5 h-3.5 ${isExtracting ? 'animate-spin' : ''}`} />
                     <span>{isExtracting ? 'ANALYZING & MANIFESTING...' : '✦ DECOMPOSE ALL STEMS'}</span>
                   </button>
+                  {extractResult && (
+                    <div
+                      data-testid="extract-result"
+                      className={`p-2 rounded-lg text-[10px] font-sans leading-snug border ${
+                        extractResult.ok
+                          ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200'
+                          : 'bg-amber-950/30 border-amber-500/40 text-amber-200'
+                      }`}
+                    >
+                      {extractResult.message}
+                    </div>
+                  )}
 
                   <div className="pt-1 text-[8px] text-slate-400 font-bold flex justify-between">
                     <span>EXTRACT SINGLE INSTRUMENT:</span>
@@ -613,12 +628,13 @@ export const ContextualInspector: React.FC<ContextualInspectorProps> = ({
 
                 {/* Extract Button */}
                 <button
-                  onClick={() => {
+                  data-testid="extract-stems-alt"
+                  onClick={async () => {
                     setIsExtracting(true);
-                    setTimeout(() => {
-                      handleExtractStemsFromSource(selectedTrack.id);
-                      setIsExtracting(false);
-                    }, 500);
+                    setExtractResult(null);
+                    const res = await handleExtractStemsFromSource(selectedTrack.id);
+                    setExtractResult(res);
+                    setIsExtracting(false);
                   }}
                   disabled={isExtracting}
                   className="w-full py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs flex items-center justify-center space-x-1.5 transition cursor-pointer shadow-md shadow-amber-500/20 active:scale-95 disabled:opacity-50"
@@ -626,6 +642,18 @@ export const ContextualInspector: React.FC<ContextualInspectorProps> = ({
                   <Zap className={`w-3.5 h-3.5 ${isExtracting ? 'animate-spin' : ''}`} />
                   <span>{isExtracting ? 'ANALYZING & MANIFESTING...' : '✦ DECOMPOSE & MANIFEST TRACKS'}</span>
                 </button>
+                {extractResult && (
+                  <div
+                    data-testid="extract-result-alt"
+                    className={`p-2 rounded-lg text-[10px] font-sans leading-snug border ${
+                      extractResult.ok
+                        ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200'
+                        : 'bg-amber-950/30 border-amber-500/40 text-amber-200'
+                    }`}
+                  >
+                    {extractResult.message}
+                  </div>
+                )}
               </div>
             )}
 

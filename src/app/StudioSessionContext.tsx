@@ -71,6 +71,7 @@ import { midiNoteToCaptureEvent } from '../audio/midiCapture';
 import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
 import { toMono } from '../audio/fft';
 import { renderMasterBounce } from '../audio/masterRender';
+import { MaskingReport, analyzeMasking } from '../audio/maskingAnalysis';
 import { masteringTelemetryEngine, LoudnessTelemetryReport } from '../audio/masteringTelemetryEngine';
 import { audioEncoders } from '../lib/audioEncoders';
 
@@ -87,8 +88,24 @@ export interface MasterBounceResult {
 import { midiEngine } from '../audio/midiEngine';
 import { DemucsClient } from '../lib/inference/demucsClient';
 import { getInferenceSettings } from '../lib/inference/inferenceSettings';
+import {
+  AUTOSAVE_ID,
+  ProjectSnapshot,
+  ProjectSummary,
+  SCHEMA_VERSION,
+  deleteProject,
+  listProjects,
+  loadProject,
+  saveProject,
+} from '../lib/projectPersistence';
 
 export type AudioImportMode = 'SOLO_PERFORMANCE' | 'FULL_MIX';
+
+export interface StemExtractionResult {
+  ok: boolean;
+  message: string;
+  stems?: { name: string; instrument: string; noteCount: number }[];
+}
 
 export interface AudioImportResult {
   ok: boolean;
@@ -450,6 +467,16 @@ export interface StudioSessionState {
   creatorName: string;
 
   // Source Track Creation & Extraction
+  // Project persistence
+  isHydrating: boolean;
+  lastSavedAt: number | null;
+  persistenceError: string | null;
+  handleSaveProjectAs: (name: string) => Promise<ProjectSummary | null>;
+  handleOpenProject: (id: string) => Promise<boolean>;
+  handleListProjects: () => Promise<ProjectSummary[]>;
+  handleDeleteProject: (id: string) => Promise<void>;
+  handleNewProject: () => void;
+
   handleCreateSourceTrack: (modality: SourceModality) => void;
 
   // Capture inputs that share one router: mic, uploaded file, MIDI hardware
@@ -457,7 +484,7 @@ export interface StudioSessionState {
   handleToggleMidiCapture: () => Promise<boolean>;
   handleAnalyzeAudioFile: (file: File) => Promise<ContentAnalysis>;
   handleImportAudioFile: (file: File, mode: AudioImportMode) => Promise<AudioImportResult>;
-  handleExtractStemsFromSource: (sourceTrackId: string) => void;
+  handleExtractStemsFromSource: (sourceTrackId: string) => Promise<StemExtractionResult>;
   handleExtractSingleInstrument: (sourceTrackId: string, targetInstrument: InstrumentType) => void;
 
   // Track Layering & Explosion
@@ -548,6 +575,11 @@ export interface StudioSessionState {
   masterCandidates: MasterCandidate[];
   activeMasterCandidateId: string;
   finalizationGate: FinalizationGateStatus;
+  /** Measures where two tracks compete for the same band, from real audio. */
+  handleAnalyzeMasking: () => Promise<MaskingReport>;
+  maskingReport: MaskingReport | null;
+  isAnalyzingMasking: boolean;
+
   /** Bounces the project through the mastering chain and measures it for real. */
   handleAnalyzeMaster: () => Promise<LoudnessTelemetryReport | null>;
   /** Bounces and hands back an encoded file, ready to download. */
@@ -1692,165 +1724,163 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     setSelectionContext((prev) => ({ ...prev, selectedTrackId: sourceTrackId }));
   }, [tracks]);
 
-  const handleExtractStemsFromSource = useCallback((sourceTrackId: string) => {
-    const sourceTrack = tracks.find((t) => t.id === sourceTrackId);
-    if (!sourceTrack) return;
+  /**
+   * Turns a seed take into per-sound-type stem tracks.
+   *
+   * This used to write the demo preset's fixed step arrays regardless of what
+   * was recorded — the same 16 kicks every time. It now works from whatever
+   * the seed actually holds, and says so plainly when it holds nothing:
+   *
+   *   - a seed carrying real audio is analysed with the same onset detection
+   *     and classifier the live mic uses;
+   *   - a seed whose performance was already separated at capture time is
+   *     consolidated from those real captured notes, matched by provenance;
+   *   - a seed with neither is reported as having nothing to extract.
+   */
+  const handleExtractStemsFromSource = useCallback(
+    async (sourceTrackId: string): Promise<StemExtractionResult> => {
+      const current = tracksRef.current;
+      const sourceTrack = current.find((t) => t.id === sourceTrackId);
+      if (!sourceTrack) return { ok: false, message: 'That source track no longer exists.' };
 
-    const timestamp = Date.now();
-    const modality = sourceTrack.sourceModality || 'MOUTH';
-    let manifestedTracks: Track[] = [];
-
-    if (modality === 'MOUTH') {
-      // Mouth decomposes into full Beatbox & Harmonic stems
-      const kickSteps = new Array(64).fill(false);
-      [0, 6, 10, 12, 16, 22, 26, 28, 32, 38, 42, 44, 48, 54, 58, 60].forEach(i => kickSteps[i] = true);
-
-      const snareSteps = new Array(64).fill(false);
-      [4, 12, 20, 28, 36, 44, 52, 60, 14, 30, 46, 62].forEach(i => snareSteps[i] = true);
-
-      const hatSteps = new Array(64).fill(false);
-      for (let i = 0; i < 64; i += 2) hatSteps[i] = true;
-
-      const bassSteps = new Array(64).fill(false);
-      [0, 8, 16, 24, 32, 40, 48, 56].forEach(i => bassSteps[i] = true);
-
-      const melodySteps = new Array(64).fill(false);
-      [0, 3, 7, 10, 14, 16, 19, 23, 27, 30, 32, 35, 39, 42, 46, 48, 51, 55, 59, 62].forEach(i => melodySteps[i] = true);
-
-      const melodyNotes = new Array(64).fill('C3');
-      [0, 16, 32, 48].forEach(i => melodyNotes[i] = 'C3');
-      [3, 19, 35, 51].forEach(i => melodyNotes[i] = 'Eb3');
-      [7, 23, 39, 55].forEach(i => melodyNotes[i] = 'G3');
-      [10, 27, 42, 59].forEach(i => melodyNotes[i] = 'Bb3');
-
-      manifestedTracks = [
-        { id: `t-ext-kick-${timestamp}`, name: 'Kick (Beatbox Extract)', instrument: 'kick', color: '#f59e0b', steps: kickSteps, mute: false, solo: false, volume: 0, pitch: 'C1' },
-        { id: `t-ext-snare-${timestamp}`, name: 'Snare (Vocal Pop Extract)', instrument: 'snare', color: '#06b6d4', steps: snareSteps, mute: false, solo: false, volume: -2, pitch: 'C2' },
-        { id: `t-ext-hat-${timestamp}`, name: 'Hi-Hat (Tss Extract)', instrument: 'hihat', color: '#10b981', steps: hatSteps, mute: false, solo: false, volume: -6, pitch: 'F#3' },
-        { id: `t-ext-bass-${timestamp}`, name: '808 Bass (Throat Extract)', instrument: 'bass', color: '#06b6d4', steps: bassSteps, mute: false, solo: false, volume: -1, pitch: 'C1' },
-        { id: `t-ext-melody-${timestamp}`, name: 'Melody (Hum Extract)', instrument: 'melody', color: '#a855f7', steps: melodySteps, notes: melodyNotes, mute: false, solo: false, volume: -4, pitch: 'C3' },
-      ];
-    } else if (modality === 'BODY') {
-      // Body decomposes into Physical Rhythmic & Percussive stems
-      const thumpSteps = new Array(64).fill(false);
-      [0, 6, 12, 16, 22, 28, 32, 38, 44, 48, 54, 60].forEach(i => thumpSteps[i] = true);
-
-      const clapSteps = new Array(64).fill(false);
-      [4, 12, 20, 28, 36, 44, 52, 60].forEach(i => clapSteps[i] = true);
-
-      const fingerTapSteps = new Array(64).fill(false);
-      for (let i = 0; i < 64; i += 2) fingerTapSteps[i] = true;
-
-      const rimSteps = new Array(64).fill(false);
-      [2, 7, 10, 18, 23, 26, 34, 39, 42, 50, 55, 58].forEach(i => rimSteps[i] = true);
-
-      manifestedTracks = [
-        { id: `t-ext-thump-${timestamp}`, name: 'Kick / Thump (Chest Tap)', instrument: 'kick', color: '#f59e0b', steps: thumpSteps, mute: false, solo: false, volume: 0, pitch: 'C1' },
-        { id: `t-ext-clap-${timestamp}`, name: 'Snare / Clap (Hand Clap)', instrument: 'snare', color: '#06b6d4', steps: clapSteps, mute: false, solo: false, volume: -2, pitch: 'C2' },
-        { id: `t-ext-tap-${timestamp}`, name: 'Finger Drums (Surface Tap)', instrument: 'hihat', color: '#10b981', steps: fingerTapSteps, mute: false, solo: false, volume: -6, pitch: 'F#3' },
-        { id: `t-ext-rim-${timestamp}`, name: 'Rimshot (Physical Knock)', instrument: 'percussion', color: '#ec4899', steps: rimSteps, mute: false, solo: false, volume: -4, pitch: 'D3' },
-      ];
-    } else if (modality === 'KEYS') {
-      // Keys decomposes into MIDI Chords, Bass Root, and Lead Lines
-      const chordSteps = new Array(64).fill(false);
-      [0, 8, 16, 24, 32, 40, 48, 56].forEach(i => chordSteps[i] = true);
-      const chordNotes = new Array(64).fill('C3');
-      [0, 16, 32, 48].forEach(i => chordNotes[i] = 'Eb3');
-      [8, 24, 40, 56].forEach(i => chordNotes[i] = 'G3');
-
-      const bassRootSteps = new Array(64).fill(false);
-      [0, 16, 32, 48].forEach(i => bassRootSteps[i] = true);
-
-      const leadSteps = new Array(64).fill(false);
-      [0, 3, 6, 10, 14, 16, 19, 22, 26, 30, 32, 35, 38, 42, 46, 48].forEach(i => leadSteps[i] = true);
-
-      manifestedTracks = [
-        { id: `t-ext-keys-chords-${timestamp}`, name: 'Keys / Chords (MIDI Transcribed)', instrument: 'melody', color: '#a855f7', steps: chordSteps, notes: chordNotes, mute: false, solo: false, volume: -3, pitch: 'C3' },
-        { id: `t-ext-keys-bass-${timestamp}`, name: 'Bass Root (Extracted Line)', instrument: 'bass', color: '#06b6d4', steps: bassRootSteps, mute: false, solo: false, volume: -2, pitch: 'C1' },
-        { id: `t-ext-keys-lead-${timestamp}`, name: 'Lead Melody (MIDI Solo)', instrument: 'melody', color: '#3b82f6', steps: leadSteps, mute: false, solo: false, volume: -4, pitch: 'G3' },
-      ];
-    } else if (modality === 'AUDIO') {
-      // Audio decomposes into Separated Drums, Bass, Instrumental
-      const drumSteps = new Array(64).fill(false);
-      for (let i = 0; i < 64; i += 4) drumSteps[i] = true;
-      const bassSteps = new Array(64).fill(false);
-      [0, 8, 16, 24, 32, 40, 48, 56].forEach(i => bassSteps[i] = true);
-      const musicSteps = new Array(64).fill(false);
-      [0, 16, 32, 48].forEach(i => musicSteps[i] = true);
-
-      manifestedTracks = [
-        { id: `t-ext-aud-drums-${timestamp}`, name: 'Drums (Source Separated)', instrument: 'kick', color: '#f59e0b', steps: drumSteps, mute: false, solo: false, volume: 0, pitch: 'C1' },
-        { id: `t-ext-aud-bass-${timestamp}`, name: 'Bass Stem (Source Separated)', instrument: 'bass', color: '#06b6d4', steps: bassSteps, mute: false, solo: false, volume: -2, pitch: 'C1' },
-        { id: `t-ext-aud-music-${timestamp}`, name: 'Instruments / Harmony (Separated)', instrument: 'melody', color: '#3b82f6', steps: musicSteps, mute: false, solo: false, volume: -4, pitch: 'C3' },
-      ];
-    } else if (modality === 'LYRICS') {
-      // Lyrics decomposes into Cadence Grid & Vocal Pocket Guide
-      const cadenceSteps = new Array(64).fill(false);
-      [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62].forEach(i => cadenceSteps[i] = true);
-
-      manifestedTracks = [
-        { id: `t-ext-lyric-cadence-${timestamp}`, name: 'Lead Vocal Cadence Guide', instrument: 'vocal_synth', color: '#ec4899', steps: cadenceSteps, mute: false, solo: false, volume: 0, pitch: 'C3' },
-        { id: `t-ext-lyric-harmony-${timestamp}`, name: 'Vocal Pocket & Rhyme Stem', instrument: 'vocal_synth', color: '#8b5cf6', steps: cadenceSteps.map((s, idx) => idx % 4 === 0), mute: false, solo: false, volume: -3, pitch: 'E3' },
-      ];
-    }
-
-    // Attach explicit lineage metadata to every manifested child track
-    manifestedTracks = manifestedTracks.map((tr) => ({
-      ...tr,
-      parentSourceTrackId: sourceTrackId,
-      sourceAsset: {
-        id: `asset_${timestamp}_${tr.instrument}`,
-        takeName: `${sourceTrack.name} (Take 1)`,
-        sampleRate: 48000,
-        rhythmMatch: 0.98,
-        onsets: tr.steps.filter(Boolean).length,
-        parentSeedId: sourceTrackId,
-        lineageParent: sourceTrack.name,
-      },
-    }));
-
-    // Record immutable lineage in session history
-    const lineageEntry: AssetLineageRecord = {
-      lineageId: `lin_${timestamp}`,
-      commitTransactionId: `tx_${timestamp}`,
-      assetId: `manifest_${timestamp}`,
-      sourceAssetId: sourceTrackId,
-      candidateId: `cand_${timestamp}`,
-      operationType: 'EXTRACTION_DECOMPOSITION',
-      backend: 'SoulSonusPerformanceTransfer',
-      modelVersion: 'ACE_DSP_v2',
-      intentContractProfileId: 'profile_extraction',
-      seedSignatureRecordId: `sig_${timestamp}`,
-      timestamp,
-    };
-    setLineageRecords((prev) => [lineageEntry, ...prev]);
-
-    setTracks((prev) => {
-      const idx = prev.findIndex(t => t.id === sourceTrackId);
-      if (idx === -1) return [...prev, ...manifestedTracks];
-      const updatedSource = {
-        ...sourceTrack,
-        mute: true, // Mute original so creator hears manifested stems, but NEVER destroy original!
-        decompositionManifest: {
-          manifestId: `manif_${timestamp}`,
-          sourceTrackId,
-          timestamp,
-          extractedTracks: manifestedTracks.map(t => ({
-            instrument: t.instrument,
-            name: t.name,
-            steps: t.steps,
-            notes: t.notes,
-            confidence: 0.98,
-            proposedSoundPreset: t.name,
-          }))
-        }
+      const modality = sourceTrack.sourceModality || 'MOUTH';
+      const timestamp = Date.now();
+      const CLASS_SPEC: Record<string, { instrument: InstrumentType; label: string; pitch: string; color: string }> = {
+        kick: { instrument: 'kick', label: 'Kick', pitch: 'C1', color: '#f59e0b' },
+        snare: { instrument: 'snare', label: 'Snare', pitch: 'C2', color: '#06b6d4' },
+        hihat: { instrument: 'hihat', label: 'Hi-Hat', pitch: 'F#3', color: '#10b981' },
+        tonal_low: { instrument: 'bass', label: 'Sub / Bass', pitch: 'C1', color: '#f43f5e' },
+        tonal_high: { instrument: 'melody', label: 'Lead', pitch: 'C3', color: '#a855f7' },
       };
-      const copy = [...prev];
-      copy[idx] = updatedSource;
-      copy.splice(idx + 1, 0, ...manifestedTracks);
-      return copy;
-    });
-  }, [tracks]);
+
+      const buildStems = (grouped: Map<string, NoteEvent[]>): Track[] =>
+        [...grouped.entries()]
+          .filter(([, notes]) => notes.length > 0)
+          .map(([klass, notes]) => {
+            const spec = CLASS_SPEC[klass] || CLASS_SPEC.tonal_high;
+            const steps = new Array(64).fill(false);
+            for (const n of notes) {
+              const step = Math.max(0, Math.min(63, Math.floor(n.startTick / 120)));
+              steps[step] = true;
+            }
+            return {
+              id: `t-ext-${klass}-${timestamp}`,
+              name: `${spec.label} (${modality} Extract)`,
+              instrument: spec.instrument,
+              steps,
+              noteEvents: notes,
+              mute: false,
+              solo: false,
+              volume: 0,
+              pitch: spec.pitch,
+              color: spec.color,
+            } as Track;
+          });
+
+      let stems: Track[] = [];
+      let derivedFrom = '';
+
+      // 1. A seed carrying real audio gets analysed for real.
+      if (sourceTrack.sourceTakeAudioUrl) {
+        try {
+          const res = await fetch(sourceTrack.sourceTakeAudioUrl);
+          if (!res.ok) throw new Error(`audio could not be read (${res.status})`);
+          const buffer = await decodeAudioFile(new File([await res.blob()], 'seed.wav'));
+          const { events } = analyzePerformanceBuffer(buffer, modality === 'KEYS' ? 'KEYS' : 'MOUTH');
+          const ticksPerSecond = ((bpmRef.current || 110) / 60) * 480;
+          const grouped = new Map<string, NoteEvent[]>();
+          for (const ev of events) {
+            const startTick = Math.max(0, Math.min(TICKS_PER_4_BARS - 120, Math.round((ev.atSeconds ?? 0) * ticksPerSecond)));
+            const note: NoteEvent = {
+              id: `ext_${timestamp}_${Math.random().toString(36).slice(2, 8)}`,
+              startTick,
+              durationTicks: 120,
+              midiNote: ev.pitch ? noteNameToMidi(ev.pitch) : noteNameToMidi(CLASS_SPEC[ev.klass]?.pitch || 'C3'),
+              velocity: ev.velocity,
+              provenance: {
+                origin: modality === 'BODY' ? 'BODY' : modality === 'KEYS' ? 'MIDI_KEYS' : 'MOUTH',
+                sourceAssetId: sourceTrackId,
+                detectionConfidence: ev.confidence,
+                creatorEdited: false,
+              },
+            };
+            const list = grouped.get(ev.klass) || [];
+            list.push(note);
+            grouped.set(ev.klass, list);
+          }
+          stems = buildStems(grouped);
+          derivedFrom = `${events.length} onsets detected in the seed audio`;
+        } catch (err) {
+          return { ok: false, message: `The seed's audio could not be analysed: ${err instanceof Error ? err.message : 'unknown error'}.` };
+        }
+      } else {
+        // 2. Otherwise consolidate the notes this performance already produced.
+        const originForModality = modality === 'BODY' ? 'BODY' : modality === 'KEYS' ? 'MIDI_KEYS' : 'MOUTH';
+        const grouped = new Map<string, NoteEvent[]>();
+        for (const track of current) {
+          if (track.isSourceTrack) continue;
+          const mine = (track.noteEvents || []).filter((n) => n.provenance?.origin === originForModality);
+          if (!mine.length) continue;
+          const klass =
+            track.instrument === 'kick' ? 'kick'
+            : track.instrument === 'snare' ? 'snare'
+            : track.instrument === 'hihat' ? 'hihat'
+            : track.instrument === 'bass' ? 'tonal_low'
+            : 'tonal_high';
+          const list = grouped.get(klass) || [];
+          list.push(...mine.map((n) => ({ ...n, id: `ext_${timestamp}_${Math.random().toString(36).slice(2, 8)}` })));
+          grouped.set(klass, list);
+        }
+        stems = buildStems(grouped);
+        const total = [...grouped.values()].reduce((a, l) => a + l.length, 0);
+        derivedFrom = `${total} notes captured from this ${modality} performance`;
+      }
+
+      if (!stems.length) {
+        return {
+          ok: false,
+          message:
+            'There is nothing to extract from this seed yet — it holds no audio and no captured performance. ' +
+            'Record into it first, or import audio onto it.',
+        };
+      }
+
+      updateTracksWithHistory((prev) => {
+        const idx = prev.findIndex((t) => t.id === sourceTrackId);
+        const marked = prev.map((t) =>
+          t.id === sourceTrackId
+            ? {
+                ...t,
+                decompositionManifest: {
+                  manifestId: `manif_${timestamp}`,
+                  sourceTrackId,
+                  timestamp,
+                  extractedTracks: stems.map((st) => ({
+                    instrument: st.instrument,
+                    name: st.name,
+                    steps: st.steps,
+                    notes: st.notes,
+                    confidence: 1,
+                    proposedSoundPreset: st.name,
+                  })),
+                },
+              }
+            : t
+        );
+        if (idx === -1) return [...marked, ...stems];
+        const copy = [...marked];
+        copy.splice(idx + 1, 0, ...stems);
+        return copy;
+      });
+
+      return {
+        ok: true,
+        message: `Extracted ${stems.length} stem${stems.length === 1 ? '' : 's'} from ${derivedFrom}.`,
+        stems: stems.map((st) => ({ name: st.name, instrument: st.instrument, noteCount: (st.noteEvents || []).length })),
+      };
+    },
+    [decodeAudioFile, updateTracksWithHistory]
+  );
 
   const handleExtractSingleInstrument = useCallback((sourceTrackId: string, targetInstrument: InstrumentType) => {
     const sourceTrack = tracks.find((t) => t.id === sourceTrackId);
@@ -2900,6 +2930,229 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isBouncing, setIsBouncing] = useState(false);
   const [masterMeasurement, setMasterMeasurement] = useState<LoudnessTelemetryReport | null>(null);
 
+  // --- Project persistence ----------------------------------------------
+  const [isHydrating, setIsHydrating] = useState(true);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
+
+  /**
+   * Builds the snapshot. Only creative work goes in: transient UI — which
+   * drawer is open, what is selected, whether the transport is rolling — is
+   * deliberately left out, so reopening a project does not also restore a
+   * half-finished interaction.
+   */
+  const buildSnapshot = useCallback(
+    (id: string, name: string): ProjectSnapshot => ({
+      schemaVersion: SCHEMA_VERSION,
+      id,
+      name,
+      savedAt: Date.now(),
+      dawState: {
+        bpm: dawState.bpm,
+        swing: dawState.swing,
+        masterVolume: dawState.masterVolume,
+        reverbLevel: dawState.reverbLevel,
+        delayLevel: dawState.delayLevel,
+        metronomeOn: dawState.metronomeOn,
+        isLooping: dawState.isLooping,
+        activeBarView: dawState.activeBarView,
+        soulFlowState: dawState.soulFlowState,
+        projectName: dawState.projectName,
+        projectVersion: dawState.projectVersion,
+      },
+      tracks,
+      sections,
+      lyricSections,
+      masteringChain,
+      masterCandidates,
+      activeMasterCandidateId,
+      buses,
+      mixSnapshots,
+      referenceTrack,
+      acceptedMixPrint,
+      seedRecords,
+      lineageRecords,
+      decisionRecords,
+      detectionSettings,
+      activeWorkspace,
+      // The decoded AudioBuffer cannot be stored; the encoded blob it came
+      // from can, and the buffer is rebuilt from it on load.
+      vocalTake: vocalState.audioBlob
+        ? {
+            blob: vocalState.audioBlob,
+            duration: vocalState.duration,
+            waveformData: vocalState.waveformData || [],
+          }
+        : null,
+    }),
+    [
+      dawState, tracks, sections, lyricSections, masteringChain, masterCandidates,
+      activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
+      seedRecords, lineageRecords, decisionRecords, detectionSettings, activeWorkspace,
+      vocalState.audioBlob, vocalState.duration, vocalState.waveformData,
+    ]
+  );
+
+  const applySnapshot = useCallback(async (snap: ProjectSnapshot) => {
+    setTracks(snap.tracks as Track[]);
+    setSections(snap.sections as ArrangementSection[]);
+    setLyricSections(snap.lyricSections as Record<string, LyricSection>);
+    setMasteringChain(snap.masteringChain as MasteringDspChain);
+    setMasterCandidates(snap.masterCandidates as MasterCandidate[]);
+    setActiveMasterCandidateId(snap.activeMasterCandidateId);
+    setBuses(snap.buses as MixBusChannel[]);
+    setMixSnapshots(snap.mixSnapshots as MixSnapshot[]);
+    setReferenceTrack(snap.referenceTrack as ReferenceTrackConfig | null);
+    setAcceptedMixPrint(snap.acceptedMixPrint as AcceptedMixPrint);
+    setSeedRecords(snap.seedRecords as SeedSignatureRecord[]);
+    setLineageRecords(snap.lineageRecords as AssetLineageRecord[]);
+    setDecisionRecords(snap.decisionRecords as GenerationDecisionRecord[]);
+    setDetectionSettings((prev) => ({ ...prev, ...(snap.detectionSettings as object), enabled: false, micConnected: false }));
+    setActiveWorkspace(snap.activeWorkspace as WorkspaceTab);
+    setDawState((prev) => ({
+      ...prev,
+      ...(snap.dawState as object),
+      // Never restore transport state — a reopened project starts stopped.
+      isPlaying: false,
+      isRecordingMic: false,
+      currentStep: 0,
+    }));
+
+    if (snap.vocalTake) {
+      try {
+        const ctx = new (window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        const decoded = await ctx.decodeAudioData(await snap.vocalTake.blob.arrayBuffer());
+        if (ctx.state !== 'closed') ctx.close();
+        setVocalState((prev) => ({
+          ...prev,
+          audioBlob: snap.vocalTake!.blob,
+          audioBuffer: decoded,
+          duration: snap.vocalTake!.duration,
+          waveformData: snap.vocalTake!.waveformData,
+          isRecording: false,
+        }));
+        audioEngine.setVocalBuffer(decoded);
+      } catch {
+        // A take that will not decode is reported, not silently dropped.
+        setPersistenceError('The saved vocal take could not be decoded and was not restored.');
+      }
+    }
+  }, []);
+
+  // Restore the last session on startup.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await loadProject(AUTOSAVE_ID);
+        if (!cancelled && snap) {
+          await applySnapshot(snap);
+          setLastSavedAt(snap.savedAt);
+        }
+      } catch (err) {
+        if (!cancelled) setPersistenceError(err instanceof Error ? err.message : 'Could not restore the last session.');
+      } finally {
+        if (!cancelled) setIsHydrating(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [applySnapshot]);
+
+  // Rolling autosave. Debounced so a drag does not write on every frame.
+  const snapshotRef = useRef(buildSnapshot);
+  snapshotRef.current = buildSnapshot;
+  useEffect(() => {
+    if (isHydrating) return;
+    const timer = setTimeout(() => {
+      const snap = snapshotRef.current(AUTOSAVE_ID, dawState.projectName || 'Untitled Session');
+      saveProject(snap)
+        .then(() => {
+          setLastSavedAt(snap.savedAt);
+          setPersistenceError(null);
+        })
+        .catch((err) => setPersistenceError(err instanceof Error ? err.message : 'Autosave failed.'));
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [
+    isHydrating, tracks, sections, lyricSections, masteringChain, masterCandidates,
+    activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
+    seedRecords, lineageRecords, decisionRecords, detectionSettings, activeWorkspace,
+    dawState, vocalState.audioBlob,
+  ]);
+
+  const handleSaveProjectAs = useCallback(
+    async (name: string): Promise<ProjectSummary | null> => {
+      const trimmed = name.trim();
+      if (!trimmed) return null;
+      const id = `proj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const snap = buildSnapshot(id, trimmed);
+      try {
+        await saveProject(snap);
+        setDawState((prev) => ({ ...prev, projectName: trimmed }));
+        setLastSavedAt(snap.savedAt);
+        setPersistenceError(null);
+        return {
+          id,
+          name: trimmed,
+          savedAt: snap.savedAt,
+          trackCount: tracks.length,
+          noteCount: tracks.reduce((a, t) => a + (t.noteEvents?.length ?? 0), 0),
+        };
+      } catch (err) {
+        setPersistenceError(err instanceof Error ? err.message : 'Could not save the project.');
+        return null;
+      }
+    },
+    [buildSnapshot, tracks]
+  );
+
+  const handleOpenProject = useCallback(
+    async (id: string): Promise<boolean> => {
+      try {
+        const snap = await loadProject(id);
+        if (!snap) {
+          setPersistenceError('That project could not be found.');
+          return false;
+        }
+        audioEngine.stopSequencer();
+        await applySnapshot(snap);
+        setPersistenceError(null);
+        return true;
+      } catch (err) {
+        setPersistenceError(err instanceof Error ? err.message : 'Could not open the project.');
+        return false;
+      }
+    },
+    [applySnapshot]
+  );
+
+  const handleListProjects = useCallback(() => listProjects(), []);
+  const handleDeleteProject = useCallback(async (id: string) => {
+    await deleteProject(id);
+  }, []);
+
+  const handleNewProject = useCallback(() => {
+    audioEngine.stopSequencer();
+    setTracks(PRESETS[0].tracks.map((t) => ({ ...t, noteEvents: [], steps: new Array(64).fill(false) })));
+    setSeedRecords([]);
+    setLineageRecords([]);
+    setDecisionRecords([]);
+    setMixSnapshots([]);
+    setVocalState((prev) => ({ ...prev, audioBlob: null, audioBuffer: null, waveformData: [], duration: 0 }));
+    audioEngine.setVocalBuffer(null);
+    setDawState((prev) => ({
+      ...prev,
+      projectName: 'Untitled Session',
+      isPlaying: false,
+      currentStep: 0,
+      soulFlowState: 'CAPTURED',
+    }));
+  }, []);
+
+
   /** Renders the project through the mastering chain once, for measuring or encoding. */
   const bounce = useCallback(async () => {
     const result = await renderMasterBounce({
@@ -2911,6 +3164,20 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     const right = result.buffer.numberOfChannels > 1 ? result.buffer.getChannelData(1) : left;
     const measurement = masteringTelemetryEngine.measureLoudness(left, right, result.sampleRate);
     return { result, measurement };
+  }, []);
+
+  const [maskingReport, setMaskingReport] = useState<MaskingReport | null>(null);
+  const [isAnalyzingMasking, setIsAnalyzingMasking] = useState(false);
+
+  const handleAnalyzeMasking = useCallback(async (): Promise<MaskingReport> => {
+    setIsAnalyzingMasking(true);
+    try {
+      const report = await analyzeMasking(tracksRef.current, bpmRef.current || 110, masteringChainRef.current);
+      setMaskingReport(report);
+      return report;
+    } finally {
+      setIsAnalyzingMasking(false);
+    }
   }, []);
 
   const handleAnalyzeMaster = useCallback(async (): Promise<LoudnessTelemetryReport | null> => {
@@ -3157,6 +3424,14 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setCalibratingTrackId,
       creatorName,
       coproducerContext,
+      isHydrating,
+      lastSavedAt,
+      persistenceError,
+      handleSaveProjectAs,
+      handleOpenProject,
+      handleListProjects,
+      handleDeleteProject,
+      handleNewProject,
       handleCreateSourceTrack,
       isMidiCaptureArmed,
       handleToggleMidiCapture,
@@ -3223,6 +3498,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       masterCandidates,
       activeMasterCandidateId,
       finalizationGate,
+      handleAnalyzeMasking,
+      maskingReport,
+      isAnalyzingMasking,
       handleAnalyzeMaster,
       handleBounceMaster,
       isBouncing,
@@ -3297,6 +3575,14 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       calibratingTrackId,
       creatorName,
       coproducerContext,
+      isHydrating,
+      lastSavedAt,
+      persistenceError,
+      handleSaveProjectAs,
+      handleOpenProject,
+      handleListProjects,
+      handleDeleteProject,
+      handleNewProject,
       handleCreateSourceTrack,
       isMidiCaptureArmed,
       handleToggleMidiCapture,
@@ -3354,6 +3640,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       masterCandidates,
       activeMasterCandidateId,
       finalizationGate,
+      handleAnalyzeMasking,
+      maskingReport,
+      isAnalyzingMasking,
       handleAnalyzeMaster,
       handleBounceMaster,
       isBouncing,

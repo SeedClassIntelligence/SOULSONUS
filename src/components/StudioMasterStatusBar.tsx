@@ -3,7 +3,7 @@ import { useStudioSession } from '../app/StudioSessionContext';
 import { Activity, ShieldCheck, Cpu, Volume2, Users, FileCheck, Layers } from 'lucide-react';
 
 export const StudioMasterStatusBar: React.FC = () => {
-  const { dawState, creatorName, seedRecords, tracks } = useStudioSession();
+  const { dawState, creatorName, seedRecords, tracks, lastSavedAt, persistenceError, isHydrating } = useStudioSession();
 
   const isSigned = seedRecords && seedRecords.length > 0;
 
@@ -24,6 +24,20 @@ export const StudioMasterStatusBar: React.FC = () => {
         <div className="flex items-center space-x-1 text-slate-300 hidden sm:flex">
           <Layers className="w-3.5 h-3.5 text-amber-400" />
           <span>PROJECT: {dawState.projectName} ({dawState.projectVersion || 'v1.0.0'})</span>
+        </div>
+        <span className="text-slate-700 hidden sm:inline">•</span>
+        <div className="flex items-center space-x-1 hidden sm:flex" data-testid="save-status">
+          {persistenceError ? (
+            <span className="text-rose-300 font-bold" title={persistenceError}>NOT SAVED</span>
+          ) : isHydrating ? (
+            <span className="text-slate-400">RESTORING…</span>
+          ) : lastSavedAt ? (
+            <span className="text-emerald-300">
+              SAVED {new Date(lastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          ) : (
+            <span className="text-slate-500">NOT SAVED YET</span>
+          )}
         </div>
       </div>
 

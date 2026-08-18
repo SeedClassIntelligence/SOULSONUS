@@ -16,7 +16,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import { useStudioSession } from '../../app/StudioSessionContext';
-import { MixProposal, MixSnapshot } from '../../types/daw';
+import { MixSnapshot } from '../../types/daw';
 
 export const CoEngineerAnalysisSuite: React.FC = () => {
   const {
@@ -30,49 +30,17 @@ export const CoEngineerAnalysisSuite: React.FC = () => {
     handleSaveMixSnapshot,
     handleRestoreMixSnapshot,
     handleToggleReferenceAB,
-    handleCommitMixProposal,
+    handleAnalyzeMasking,
+    maskingReport,
+    isAnalyzingMasking,
   } = useStudioSession();
 
   const [activeTab, setActiveTab] = useState<'co_engineer' | 'meter_bridge' | 'reference_track' | 'snapshots'>('co_engineer');
   const [snapshotNameInput, setSnapshotNameInput] = useState('');
-  const [activeAuditionProposalId, setActiveAuditionProposalId] = useState<string | null>(null);
 
-  // Proactive Co-Engineer Analysis Proposals
-  const sampleProposals: MixProposal[] = [
-    {
-      id: 'prop_808_kick_masking',
-      title: 'Separate 808 Sub & Kick Transient (68Hz Ducking)',
-      description: 'Dynamic EQ attenuation on 808 (-2.4dB @ 68Hz with 18ms fast recovery) when Kick hits to eliminate low-frequency mud.',
-      targetTrackIds: ['t-808', 't-kick'],
-      operationType: 'DYNAMIC_SIDECHAIN_EQ',
-      proposedDspChanges: {
-        't-808': { lowGain: -2.5 },
-      },
-      lockedInvariants: ['kick_punch_preserved', '808_sub_weight_retained'],
-      confidenceScore: 0.985,
-    },
-    {
-      id: 'prop_vocal_air_lift',
-      title: 'Lift Lead Vocal Air Shelf (+1.8dB @ 12kHz)',
-      description: 'Adds high-frequency breath and clarity to lead vocal while engaging 6.8kHz optical de-esser to prevent sibilance harshness.',
-      targetTrackIds: ['t-vocal'],
-      operationType: 'VOCAL_AIR_ENHANCEMENT',
-      proposedDspChanges: {
-        't-vocal': { highGain: 1.8 },
-      },
-      lockedInvariants: ['vocal_sibilance_controlled'],
-      confidenceScore: 0.972,
-    },
-  ];
-
-  const handleAuditionProposal = (prop: MixProposal) => {
-    setActiveAuditionProposalId(activeAuditionProposalId === prop.id ? null : prop.id);
-  };
-
-  const handleCommit = (prop: MixProposal) => {
-    handleCommitMixProposal(prop);
-    setActiveAuditionProposalId(null);
-  };
+  // Masking is measured from the audio now. The old version of this panel was
+  // a literal array that reported the same two findings at the same 99% and
+  // 97% confidence on a full project and on an empty canvas.
 
   const handleCreateSnapshot = () => {
     if (!snapshotNameInput.trim()) return;
@@ -145,70 +113,78 @@ export const CoEngineerAnalysisSuite: React.FC = () => {
         {/* TAB 1: CO-ENGINEER PROPOSALS (PROPOSE -> AUDITION -> COMMIT) */}
         {activeTab === 'co_engineer' && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="font-bold text-slate-200 uppercase text-xs">
-                Acoustic Masking & Balance Telemetry
+                Acoustic Masking &amp; Balance
               </span>
-              <span className="text-[10px] text-amber-400 font-bold">2 Proposals Detected</span>
+              <button
+                type="button"
+                data-testid="analyze-masking"
+                onClick={() => handleAnalyzeMasking()}
+                disabled={isAnalyzingMasking}
+                className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black text-[10px] tracking-wide transition cursor-pointer shrink-0"
+              >
+                {isAnalyzingMasking ? 'LISTENING…' : 'ANALYSE THIS MIX'}
+              </button>
             </div>
 
+            {!maskingReport && (
+              <p className="text-[11px] text-slate-400 font-sans leading-snug">
+                Nothing measured yet. Analysing bounces each track on its own and compares where two of
+                them put energy in the same band at the same time.
+              </p>
+            )}
+
+            {maskingReport?.emptyReason && (
+              <div data-testid="masking-empty" className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] text-slate-300 font-sans">
+                {maskingReport.emptyReason}
+              </div>
+            )}
+
+            {maskingReport && !maskingReport.emptyReason && maskingReport.findings.length === 0 && (
+              <div data-testid="masking-none" className="p-3 rounded-xl bg-emerald-950/25 border border-emerald-500/40 text-[11px] text-emerald-200 font-sans">
+                No significant masking found across {maskingReport.tracksAnalyzed} tracks. Nothing is
+                competing for the same band often enough to be worth changing.
+              </div>
+            )}
+
             <div className="space-y-2.5">
-              {sampleProposals.map((prop) => {
-                const isAuditioning = activeAuditionProposalId === prop.id;
+              {(maskingReport?.findings || []).map((f, i) => {
+                const masked = f.maskedTrackId === f.trackAId ? f.trackAName : f.trackBName;
+                const covering = f.maskedTrackId === f.trackAId ? f.trackBName : f.trackAName;
                 return (
-                  <div
-                    key={prop.id}
-                    className={`p-3 rounded-xl border transition ${
-                      isAuditioning
-                        ? 'bg-amber-950/20 border-amber-400 shadow-md shadow-amber-500/20'
-                        : 'bg-slate-900/80 border-slate-800'
-                    }`}
-                  >
+                  <div key={`${f.trackAId}-${f.trackBId}-${f.band}-${i}`} data-testid="masking-finding" className="p-3 rounded-xl border bg-slate-900/80 border-slate-800">
                     <div className="flex items-start justify-between gap-2">
                       <div className="space-y-1">
                         <h5 className="font-black text-slate-100 text-xs flex items-center gap-1.5">
                           <Zap className="w-3.5 h-3.5 text-amber-400" />
-                          {prop.title}
+                          {f.trackAName} and {f.trackBName} around {f.centerHz} Hz
                         </h5>
                         <p className="text-[11px] text-slate-300 font-sans leading-snug">
-                          {prop.description}
+                          Both are active in this band for {Math.round(f.overlapRatio * 100)}% of the take.
+                          {' '}
+                          <span className="text-slate-400">
+                            {covering} puts {Math.round((f.maskedTrackId === f.trackAId ? f.bShare : f.aShare) * 100)}% of
+                            its energy here against {masked}&apos;s{' '}
+                            {Math.round((f.maskedTrackId === f.trackAId ? f.aShare : f.bShare) * 100)}%, so {masked} is
+                            the one being covered.
+                          </span>
                         </p>
                       </div>
                       <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[9px] font-mono shrink-0">
-                        {Math.round(prop.confidenceScore * 100)}% Match
+                        {f.band}
                       </span>
-                    </div>
-
-                    {/* Proposal Actions */}
-                    <div className="pt-2.5 flex items-center justify-between border-t border-slate-800/80 mt-2">
-                      <span className="text-[9px] text-slate-500">
-                        Locked Invariants: {prop.lockedInvariants.join(', ')}
-                      </span>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleAuditionProposal(prop)}
-                          className={`px-2.5 py-1 rounded text-[10px] font-bold transition cursor-pointer flex items-center space-x-1 ${
-                            isAuditioning
-                              ? 'bg-amber-400 text-slate-950 font-black'
-                              : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
-                          }`}
-                        >
-                          <Radio className="w-3 h-3" />
-                          <span>{isAuditioning ? 'AUDITIONING (B)' : 'AUDITION'}</span>
-                        </button>
-                        <button
-                          onClick={() => handleCommit(prop)}
-                          className="px-2.5 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10px] transition cursor-pointer flex items-center space-x-1"
-                        >
-                          <Check className="w-3 h-3 stroke-[3]" />
-                          <span>COMMIT</span>
-                        </button>
-                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
+
+            {maskingReport && !maskingReport.emptyReason && (
+              <p className="text-[9px] text-slate-500 font-sans">
+                Measured from {maskingReport.tracksAnalyzed} solo bounces over {maskingReport.framesAnalyzed} frames.
+              </p>
+            )}
           </div>
         )}
 

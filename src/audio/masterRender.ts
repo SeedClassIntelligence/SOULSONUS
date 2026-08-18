@@ -33,6 +33,8 @@ export interface RenderOptions {
   sampleRate?: number;
   /** Extra seconds so reverb and release tails are not cut off. */
   tailSeconds?: number;
+  /** Render only these tracks. Used to bounce one track at a time for analysis. */
+  onlyTrackIds?: string[];
 }
 
 export interface RenderResult {
@@ -47,7 +49,11 @@ const STEPS_PER_BAR = 16;
 
 /** Renders the project to an AudioBuffer. Deterministic: same input, same output. */
 export async function renderMasterBounce(options: RenderOptions): Promise<RenderResult> {
-  const { tracks, chain } = options;
+  const allTracks = options.tracks;
+  const tracks = options.onlyTrackIds
+    ? allTracks.filter((t) => options.onlyTrackIds!.includes(t.id))
+    : allTracks;
+  const { chain } = options;
   const bpm = options.bpm > 0 ? options.bpm : 110;
   const bars = options.bars ?? 4;
   const sampleRate = options.sampleRate ?? 48000;
@@ -60,7 +66,9 @@ export async function renderMasterBounce(options: RenderOptions): Promise<Render
   const duration = bodySeconds + tail;
 
   let eventsRendered = 0;
-  const hasSolo = tracks.some((t) => t.solo);
+  // When rendering a subset for analysis, existing solo flags must not also
+  // silence the very track being isolated.
+  const hasSolo = options.onlyTrackIds ? false : tracks.some((t) => t.solo);
 
   const rendered = await Tone.Offline(async () => {
     const master = buildMasteringChain(chain);

@@ -42,6 +42,7 @@ interface HeaderProps {
   onOpenExport: () => void;
   onOpenVault?: () => void;
   onOpenPiano?: () => void;
+  onOpenProjects?: () => void;
   onBackToLanding?: () => void;
   isMicActive: boolean;
 }
@@ -61,6 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCollaboration,
   onOpenExport,
   onOpenPiano,
+  onOpenProjects,
   onBackToLanding,
   isMicActive,
 }) => {
@@ -178,6 +180,21 @@ export const Header: React.FC<HeaderProps> = ({
             title="Start a clean, empty multi-track canvas for live mic recording"
           >
             <span>✦ BLANK CANVAS</span>
+          </button>
+
+          {/* Projects: save, open, start new */}
+          <button
+            type="button"
+            data-testid="open-projects"
+            onClick={() =>
+              onOpenProjects
+                ? onOpenProjects()
+                : window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'projects' }))
+            }
+            className="hidden sm:flex items-center space-x-1 px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-emerald-300 border border-emerald-500/30 text-xs font-mono font-bold transition cursor-pointer"
+            title="Save, open or start a project"
+          >
+            <span>💾 PROJECTS</span>
           </button>
 
           {/* Virtual Piano Keyboard Toggle Button */}
