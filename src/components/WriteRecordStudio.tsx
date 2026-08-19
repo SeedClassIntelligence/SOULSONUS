@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Track, ArrangementSection } from '../types/daw';
+import { useStudioSession } from '../app/StudioSessionContext';
 import { LyricCadenceStudio } from './LyricCadenceStudio';
 import { VocalTakeStack } from './VocalTakeStack';
 import { VocalCompBuilder } from './vocal/VocalCompBuilder';
@@ -42,6 +43,20 @@ export const WriteRecordStudio: React.FC<WriteRecordStudioProps> = ({
     'LYRICS' | 'TAKES' | 'COMP' | 'PUNCH' | 'PITCH_TIMING' | 'HARMONY' | 'VOICE_IDENTITY' | 'DSP'
   >('LYRICS');
 
+  const { tracks } = useStudioSession();
+
+  // The suite was handed whatever channel happened to be selected, so recording
+  // a vocal overdub while the kick was selected attached the take to the kick
+  // and the Lead Vocal Track never received it. A vocal room writes to a vocal
+  // track: the selection is honoured when it can hold vocals, otherwise the
+  // first track that can.
+  const canHoldVocals = (t: Track | null | undefined) =>
+    !!t && (t.instrument === 'vocal_synth' || !!t.vocalState);
+  const vocalTrack: Track | null = canHoldVocals(track)
+    ? track
+    : tracks.find(canHoldVocals) || track;
+  const redirected = !!vocalTrack && !!track && vocalTrack.id !== track.id;
+
   return (
     <div className="w-full space-y-3">
       {/* Top Write & Record Workspace Navigation Bar */}
@@ -52,6 +67,18 @@ export const WriteRecordStudio: React.FC<WriteRecordStudioProps> = ({
             WRITE & RECORD VOCAL ROOM
           </span>
           <span className="text-slate-500 hidden sm:inline">• Room 3 of Permanent Studio</span>
+          {vocalTrack && (
+            <span
+              className={`hidden md:inline px-2 py-0.5 rounded text-[9px] font-black ${
+                redirected
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/40'
+                  : 'bg-slate-800 text-slate-300 border border-slate-700'
+              }`}
+              title={redirected ? `${track?.name} cannot hold vocals, so this suite is writing to ${vocalTrack.name}` : undefined}
+            >
+              WRITING TO: {vocalTrack.name.toUpperCase()}
+            </span>
+          )}
         </div>
 
         {/* 8 Primary Vocal Workstation Tabs */}
@@ -168,31 +195,31 @@ export const WriteRecordStudio: React.FC<WriteRecordStudioProps> = ({
         )}
 
         {activeTab === 'TAKES' && (
-          <VocalTakeStack track={track} />
+          <VocalTakeStack track={vocalTrack} />
         )}
 
         {activeTab === 'COMP' && (
-          <VocalCompBuilder track={track} />
+          <VocalCompBuilder track={vocalTrack} />
         )}
 
         {activeTab === 'PUNCH' && (
-          <OverdubRecorder track={track} />
+          <OverdubRecorder track={vocalTrack} />
         )}
 
         {activeTab === 'PITCH_TIMING' && (
-          <VocalPitchTiming track={track} />
+          <VocalPitchTiming track={vocalTrack} />
         )}
 
         {activeTab === 'HARMONY' && (
-          <VocalHarmonyDoubles track={track} />
+          <VocalHarmonyDoubles track={vocalTrack} />
         )}
 
         {activeTab === 'VOICE_IDENTITY' && (
-          <VoiceIdentitySynthesis track={track} />
+          <VoiceIdentitySynthesis track={vocalTrack} />
         )}
 
         {activeTab === 'DSP' && (
-          <VocalDspChain track={track} />
+          <VocalDspChain track={vocalTrack} />
         )}
       </div>
     </div>

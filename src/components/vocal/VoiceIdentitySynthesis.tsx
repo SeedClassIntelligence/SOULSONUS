@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Track, VoiceIdentitySettings, VocalCharacterType } from '../../types/daw';
 import { useStudioSession } from '../../app/StudioSessionContext';
+import {
+  auditionVoiceCharacter,
+  isPlayableAudioSource,
+  CHARACTER_PRESETS,
+  AuditionHandle,
+} from '../../audio/vocalAudition';
 import {
   ShieldCheck,
   Play,
@@ -65,8 +71,6 @@ export const VoiceIdentitySynthesis: React.FC<VoiceIdentitySynthesisProps> = ({ 
 
   const currentTrack = track || tracks.find((t) => t.id === 't-vocal') || tracks[0];
 
-  if (!currentTrack) return <div className="p-6 text-center text-neutral-500">Select a vocal track for voice identity</div>;
-
   const voice: VoiceIdentitySettings = currentTrack?.vocalState?.voiceIdentitySettings || {
     profileId: 'prof_creator_01',
     profileName: 'SoulSonus Creator Signature Voice',
@@ -103,10 +107,24 @@ export const VoiceIdentitySynthesis: React.FC<VoiceIdentitySynthesisProps> = ({ 
     voice.characterSettings?.character || 'intimate'
   );
   const [isAuditioning, setIsAuditioning] = useState(false);
+  const [auditionSource, setAuditionSource] = useState<'take' | 'synthetic' | null>(null);
+  const auditionRef = useRef<AuditionHandle | null>(null);
 
   useEffect(() => {
     setSelectedVoiceProfile(voice.profileId);
   }, [voice.profileId]);
+
+  useEffect(() => () => auditionRef.current?.stop(), []);
+
+  // The most recent take that has real audio behind it. Preset takes carry a
+  // synthetic asset id and nothing to play, so they are skipped.
+  const playableTake = [...(currentTrack?.vocalTakes || [])]
+    .reverse()
+    .find((take) => isPlayableAudioSource(take.sourceAudioId));
+
+  // Hooks run before this bail-out: returning above them would change the hook
+  // count between renders the moment a track is deselected.
+  if (!currentTrack) return <div className="p-6 text-center text-neutral-500">Select a vocal track for voice identity</div>;
 
   const activeProfileData = PROFILES.find((p) => p.id === selectedVoiceProfile) || PROFILES[0];
 
@@ -114,9 +132,33 @@ export const VoiceIdentitySynthesis: React.FC<VoiceIdentitySynthesisProps> = ({ 
     handleUpdateVoiceIdentitySettings(currentTrack.id, updates);
   };
 
-  const handleAudition = () => {
+  // Runs a source through the character chain — air shelf, proximity, drive and
+  // the formant peaks — so the settings are heard rather than described. The
+  // track's own take is used when one has audio; otherwise a synthesized vowel
+  // stands in, and the button says so.
+  const handleAudition = async () => {
+    if (auditionRef.current) {
+      auditionRef.current.stop();
+      auditionRef.current = null;
+      setIsAuditioning(false);
+      return;
+    }
+
     setIsAuditioning(true);
-    setTimeout(() => setIsAuditioning(false), 3500);
+    try {
+      const handle = await auditionVoiceCharacter({
+        settings: voice.characterSettings || CHARACTER_PRESETS[selectedCharacter],
+        sourceUrl: playableTake?.sourceAudioId,
+      });
+      auditionRef.current = handle;
+      setAuditionSource(handle.source);
+      await handle.finished;
+    } catch (err) {
+      console.warn('[VoiceIdentitySynthesis] character audition failed:', err);
+    } finally {
+      auditionRef.current = null;
+      setIsAuditioning(false);
+    }
   };
 
   return (
@@ -136,6 +178,12 @@ export const VoiceIdentitySynthesis: React.FC<VoiceIdentitySynthesisProps> = ({ 
         <div className="flex items-center space-x-2">
           <button
             onClick={handleAudition}
+            data-testid="audition-voice-character"
+            title={
+              playableTake
+                ? `Plays ${playableTake.name} through the character settings`
+                : 'No recorded take on this track yet — plays a test tone through the character settings'
+            }
             className={`px-3 py-1.5 rounded-xl font-black text-xs flex items-center space-x-1.5 transition cursor-pointer active:scale-95 ${
               isAuditioning
                 ? 'bg-emerald-400 text-slate-950 animate-pulse'
@@ -143,7 +191,15 @@ export const VoiceIdentitySynthesis: React.FC<VoiceIdentitySynthesisProps> = ({ 
             }`}
           >
             <Play className="w-3.5 h-3.5 fill-slate-950" />
-            <span>{isAuditioning ? 'SYNTHESIZING & AUDITIONING...' : 'AUDITION VOCAL'}</span>
+            <span>
+              {isAuditioning
+                ? auditionSource === 'take'
+                  ? 'PLAYING TAKE…'
+                  : 'PLAYING TEST TONE…'
+                : playableTake
+                ? 'AUDITION TAKE'
+                : 'AUDITION CHARACTER'}
+            </span>
           </button>
         </div>
       </div>
@@ -166,15 +222,12 @@ export const VoiceIdentitySynthesis: React.FC<VoiceIdentitySynthesisProps> = ({ 
                 key={char.id}
                 onClick={() => {
                   setSelectedCharacter(char.id);
+                  // Selecting a character moves the numbers it describes.
+                  // Before this it set the label only, so every character
+                  // produced the same settings and the same sound.
                   updateVoice({
                     characterSettings: {
-                      ...(voice.characterSettings || {
-                        breathiness: 30,
-                        intimacy: 80,
-                        grit: 10,
-                        formantShift: 0,
-                        airShelf: 2,
-                      }),
+                      ...CHARACTER_PRESETS[char.id],
                       character: char.id,
                     },
                   });

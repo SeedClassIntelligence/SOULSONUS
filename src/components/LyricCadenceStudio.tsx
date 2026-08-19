@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { ArrangementSection, LyricLine, LyricVersion } from '../types/daw';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrangementSection, LyricLine, LyricSection, LyricVersion } from '../types/daw';
 import { useStudioSession } from '../app/StudioSessionContext';
+import { auditionCadence, AuditionHandle } from '../audio/vocalAudition';
 import {
   Play,
   Plus,
@@ -40,6 +41,7 @@ export const LyricCadenceStudio: React.FC<LyricCadenceStudioProps> = ({
   const [newLineText, setNewLineText] = useState('');
   const [selectedLineId, setSelectedLineId] = useState<string | null>('line_h1_1');
   const [isAuditioningCadence, setIsAuditioningCadence] = useState(false);
+  const auditionRef = useRef<AuditionHandle | null>(null);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [newVersionName, setNewVersionName] = useState('');
 
@@ -50,8 +52,25 @@ export const LyricCadenceStudio: React.FC<LyricCadenceStudioProps> = ({
     bars: [13, 14, 15, 16, 17, 18, 19, 20],
   };
 
-  const sectionData = lyricSections[currentSection.id] || {
-    sectionId: currentSection.id,
+  // The arrangement's sections and the lyric sections are two separate sets of
+  // ids — the arrangement uses sec_1..sec_4, the lyrics sec_verse and sec_hook —
+  // so looking lyrics up by the arrangement id alone found nothing and the panel
+  // opened permanently empty. Join them by tag, then fall back to whichever
+  // lyric section actually holds lines.
+  const lyricSectionId = React.useMemo(() => {
+    if (lyricSections[currentSection.id]?.lines?.length) return currentSection.id;
+    const tag = `${currentSection.tag || ''} ${currentSection.name || ''}`.toLowerCase();
+    const wants = /chorus|hook/.test(tag) ? 'hook' : /verse/.test(tag) ? 'verse' : null;
+    const entries: LyricSection[] = Object.values(lyricSections);
+    if (wants) {
+      const match = entries.find((ls) => ls.sectionId.toLowerCase().includes(wants) && ls.lines?.length);
+      if (match) return match.sectionId;
+    }
+    return entries.find((ls) => ls.lines?.length)?.sectionId || currentSection.id;
+  }, [lyricSections, currentSection.id, currentSection.tag, currentSection.name]);
+
+  const sectionData = lyricSections[lyricSectionId] || {
+    sectionId: lyricSectionId,
     sectionName: currentSection.name,
     lines: [],
     versions: [],
@@ -69,12 +88,14 @@ export const LyricCadenceStudio: React.FC<LyricCadenceStudioProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSectionId]);
 
+  useEffect(() => () => auditionRef.current?.stop(), []);
+
   const lines = sectionData.lines;
   const activeLine = lines.find((l) => l.lineId === selectedLineId) || lines[0] || null;
 
   const handleAdd = () => {
     if (!newLineText.trim()) return;
-    handleAddLyricLine(currentSection.id, newLineText.trim());
+    handleAddLyricLine(lyricSectionId, newLineText.trim());
     setNewLineText('');
   };
 
@@ -82,21 +103,54 @@ export const LyricCadenceStudio: React.FC<LyricCadenceStudioProps> = ({
     if (!activeLine) return;
     const newEmphasis = [...activeLine.cadenceEmphasis];
     newEmphasis[sylIdx] = !newEmphasis[sylIdx];
-    handleUpdateLyricLine(currentSection.id, activeLine.lineId, { cadenceEmphasis: newEmphasis });
+    handleUpdateLyricLine(lyricSectionId, activeLine.lineId, { cadenceEmphasis: newEmphasis });
   };
 
   const handleSaveVersion = () => {
     if (!newVersionName.trim()) return;
-    handleCreateLyricVersion(currentSection.id, newVersionName.trim(), 'CREATOR');
+    handleCreateLyricVersion(lyricSectionId, newVersionName.trim(), 'CREATOR');
     setNewVersionName('');
     setShowVersionModal(false);
   };
 
-  const handleAuditionCadence = () => {
-    setIsAuditioningCadence(true);
-    setTimeout(() => {
+  // The grid and the audition read the same slots, so what is heard is what is
+  // drawn: one articulation per syllable at its own 16th, accented where the
+  // creator marked emphasis.
+  const cadenceSlots = React.useMemo(() => {
+    if (!activeLine) return [] as { index: number; emphasized: boolean }[];
+    if (activeLine.cadenceGrid?.length) {
+      return activeLine.cadenceGrid
+        .map((entry) => ({
+          index: (entry.beat - 1) * 4 + (entry.subBeat - 1),
+          emphasized: entry.emphasized,
+        }))
+        .filter((slot) => slot.index >= 0 && slot.index < 16);
+    }
+    return activeLine.syllables
+      .slice(0, 16)
+      .map((_syllable, index) => ({ index, emphasized: !!activeLine.cadenceEmphasis[index] }));
+  }, [activeLine]);
+
+  const handleAuditionCadence = async () => {
+    if (auditionRef.current) {
+      auditionRef.current.stop();
+      auditionRef.current = null;
       setIsAuditioningCadence(false);
-    }, 3500);
+      return;
+    }
+    if (!cadenceSlots.length) return;
+
+    setIsAuditioningCadence(true);
+    try {
+      const handle = await auditionCadence({ syllables: cadenceSlots, bpm });
+      auditionRef.current = handle;
+      await handle.finished;
+    } catch (err) {
+      console.warn('[LyricCadenceStudio] cadence audition failed:', err);
+    } finally {
+      auditionRef.current = null;
+      setIsAuditioningCadence(false);
+    }
   };
 
   // 16th-Note Subdivisions for E08 Cadence Grid (1 e & a | 2 e & a | 3 e & a | 4 e & a)
@@ -126,7 +180,7 @@ export const LyricCadenceStudio: React.FC<LyricCadenceStudioProps> = ({
         <div className="flex items-center space-x-2">
           <AlignLeft className="w-4 h-4 text-pink-400" />
           <span className="font-black text-slate-100 uppercase tracking-wide">
-            LYRIC & CADENCE WORKSPACE • {currentSection.name.toUpperCase()}
+            LYRIC & CADENCE WORKSPACE • {(sectionData.sectionName || currentSection.name).toUpperCase()}
           </span>
           <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[10px] text-pink-300 font-bold">
             {bpm} BPM • 4/4
@@ -140,7 +194,7 @@ export const LyricCadenceStudio: React.FC<LyricCadenceStudioProps> = ({
             <History className="w-3 h-3 text-amber-400" />
             <select
               value={sectionData.activeVersionId}
-              onChange={(e) => handleRestoreLyricVersion(currentSection.id, e.target.value)}
+              onChange={(e) => handleRestoreLyricVersion(lyricSectionId, e.target.value)}
               className="bg-transparent text-slate-200 font-bold focus:outline-none cursor-pointer"
             >
               {sectionData.versions.map((ver) => (
@@ -212,7 +266,7 @@ export const LyricCadenceStudio: React.FC<LyricCadenceStudioProps> = ({
         {/* Left Column: Section Phrases & Line-by-Line Editor */}
         <div className="lg:col-span-6 space-y-2">
           <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold">
-            <span>LYRIC LINES ({lines.length} Lines in {currentSection.name})</span>
+            <span>LYRIC LINES ({lines.length} Lines in {sectionData.sectionName || currentSection.name})</span>
             <span>Click to align cadence</span>
           </div>
 
@@ -251,7 +305,7 @@ export const LyricCadenceStudio: React.FC<LyricCadenceStudioProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteLyricLine(currentSection.id, line.lineId);
+                          handleDeleteLyricLine(lyricSectionId, line.lineId);
                         }}
                         className="text-slate-500 hover:text-red-400 p-0.5 transition cursor-pointer"
                         title="Delete Line"
@@ -298,14 +352,19 @@ export const LyricCadenceStudio: React.FC<LyricCadenceStudioProps> = ({
             </span>
             <button
               onClick={handleAuditionCadence}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-black flex items-center space-x-1 transition cursor-pointer ${
-                isAuditioningCadence
-                  ? 'bg-amber-400 text-slate-950 animate-pulse'
-                  : 'bg-slate-950 text-amber-300 border border-amber-500/40 hover:bg-amber-500/20'
+              disabled={!cadenceSlots.length}
+              data-testid="audition-cadence"
+              title={cadenceSlots.length ? `Play ${cadenceSlots.length} syllables at ${bpm} BPM` : 'This line has no syllables placed on the grid yet'}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-black flex items-center space-x-1 transition ${
+                !cadenceSlots.length
+                  ? 'bg-slate-950 text-slate-600 border border-slate-800 cursor-not-allowed'
+                  : isAuditioningCadence
+                  ? 'bg-amber-400 text-slate-950 animate-pulse cursor-pointer'
+                  : 'bg-slate-950 text-amber-300 border border-amber-500/40 hover:bg-amber-500/20 cursor-pointer'
               }`}
             >
-              <Play className="w-3 h-3 fill-amber-400 text-amber-400" />
-              <span>{isAuditioningCadence ? 'AUDITIONING...' : 'AUDITION CADENCE'}</span>
+              <Play className={`w-3 h-3 ${cadenceSlots.length ? 'fill-amber-400 text-amber-400' : 'text-slate-600'}`} />
+              <span>{isAuditioningCadence ? 'PLAYING…' : 'AUDITION CADENCE'}</span>
             </button>
           </div>
 

@@ -1,6 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Track, VocalComp, VocalCompSegment } from '../../types/daw';
 import { useStudioSession } from '../../app/StudioSessionContext';
+import {
+  auditionCompSegment,
+  auditionCompSequence,
+  isPlayableAudioSource,
+  AuditionHandle,
+} from '../../audio/vocalAudition';
 import {
   Scissors,
   Check,
@@ -20,8 +26,6 @@ export const VocalCompBuilder: React.FC<VocalCompBuilderProps> = ({ track }) => 
   } = useStudioSession();
 
   const currentTrack = track || tracks.find((t) => t.id === 't-vocal') || tracks[0];
-  if (!currentTrack) return <div className='p-6 text-center text-neutral-500'>Select a vocal track for comp builder</div>;
-
   const takes = currentTrack?.vocalTakes || [];
   const comps = currentTrack?.vocalComps || [];
 
@@ -29,7 +33,7 @@ export const VocalCompBuilder: React.FC<VocalCompBuilderProps> = ({ track }) => 
     comps[0] || {
       id: 'comp_hook_main',
       compId: 'comp_hook_main',
-      trackId: currentTrack.id,
+      trackId: currentTrack?.id ?? '',
       sectionId: 'sec_hook',
       name: 'Master Hook Vocal Comp',
       active: true,
@@ -45,6 +49,7 @@ export const VocalCompBuilder: React.FC<VocalCompBuilderProps> = ({ track }) => 
     };
 
   const [auditioningTarget, setAuditioningTarget] = useState<string | null>(null);
+  const auditionRef = useRef<AuditionHandle | null>(null);
   const [crossfadeMs, setCrossfadeMs] = useState<number>(25);
 
   // AI Comp Proposal State
@@ -53,12 +58,72 @@ export const VocalCompBuilder: React.FC<VocalCompBuilderProps> = ({ track }) => 
     reasoning: string;
   } | null>(null);
 
-  const handleAudition = (id: string) => {
-    setAuditioningTarget(id);
-    setTimeout(() => {
-      setAuditioningTarget(null);
-    }, 3000);
+  // A comp can only be auditioned from takes that carry audio. Preset takes hold
+  // a synthetic asset id and nothing to play, so the controls below disable
+  // themselves and say why rather than glowing for three seconds over silence.
+  const takeAudioFor = (takeId: string | undefined) => {
+    const take = takes.find((t) => t.id === takeId);
+    return isPlayableAudioSource(take?.sourceAudioId) ? (take!.sourceAudioId as string) : null;
   };
+
+  const playableSegments = (comp: VocalComp) =>
+    comp.segments
+      .map((segment) => {
+        const sourceUrl = takeAudioFor(segment.takeId);
+        return sourceUrl
+          ? {
+              sourceUrl,
+              sourceStart: segment.sourceStart,
+              sourceEnd: segment.sourceEnd,
+              gainTrimDb: segment.gainTrim,
+            }
+          : null;
+      })
+      .filter((segment): segment is NonNullable<typeof segment> => segment !== null);
+
+  const runAudition = async (id: string, start: () => Promise<AuditionHandle>) => {
+    if (auditionRef.current) {
+      auditionRef.current.stop();
+      auditionRef.current = null;
+    }
+    setAuditioningTarget(id);
+    try {
+      const handle = await start();
+      auditionRef.current = handle;
+      await handle.finished;
+    } catch (err) {
+      console.warn('[VocalCompBuilder] comp audition failed:', err);
+    } finally {
+      auditionRef.current = null;
+      setAuditioningTarget((current) => (current === id ? null : current));
+    }
+  };
+
+  const handleAuditionComp = (id: string, comp: VocalComp) => {
+    const segments = playableSegments(comp);
+    if (!segments.length) return;
+    void runAudition(id, () => auditionCompSequence({ segments, crossfadeMs }));
+  };
+
+  const handleAuditionSegment = (id: string, segment: VocalCompSegment | undefined) => {
+    if (!segment) return;
+    const sourceUrl = takeAudioFor(segment.takeId);
+    if (!sourceUrl) return;
+    void runAudition(id, () =>
+      auditionCompSegment({
+        sourceUrl,
+        sourceStart: segment.sourceStart,
+        sourceEnd: segment.sourceEnd,
+        gainTrimDb: segment.gainTrim,
+      }),
+    );
+  };
+
+  useEffect(() => () => auditionRef.current?.stop(), []);
+
+  // Hooks run before this bail-out: returning above them would change the hook
+  // count between renders the moment a track is deselected.
+  if (!currentTrack) return <div className='p-6 text-center text-neutral-500'>Select a vocal track for comp builder</div>;
 
   const handleGenerateAiComp = () => {
     const aiProposal: VocalComp = {
@@ -90,6 +155,8 @@ export const VocalCompBuilder: React.FC<VocalCompBuilderProps> = ({ track }) => 
     handleApplyCompProposal(currentTrack.id, 'sec_hook', proposedComp.comp);
     setProposedComp(null);
   };
+
+  const masterPlayable = playableSegments(activeComp).length;
 
   return (
     <div className="bg-slate-950/95 border border-slate-800/90 rounded-2xl p-4 shadow-2xl space-y-3 select-none text-xs font-mono">
@@ -133,15 +200,30 @@ export const VocalCompBuilder: React.FC<VocalCompBuilderProps> = ({ track }) => 
 
           {/* Audition Master Comp */}
           <button
-            onClick={() => handleAudition('master_comp')}
-            className={`px-3 py-1.5 rounded-xl font-black text-xs flex items-center space-x-1.5 transition cursor-pointer active:scale-95 ${
-              auditioningTarget === 'master_comp'
-                ? 'bg-pink-400 text-slate-950 animate-pulse'
-                : 'bg-pink-500 hover:bg-pink-400 text-slate-950 shadow-md shadow-pink-500/20'
+            onClick={() => handleAuditionComp('master_comp', activeComp)}
+            disabled={!masterPlayable}
+            data-testid="audition-master-comp"
+            title={
+              masterPlayable
+                ? `Plays ${masterPlayable} segment${masterPlayable === 1 ? '' : 's'} with a ${crossfadeMs}ms crossfade`
+                : 'None of the takes in this comp have recorded audio behind them yet'
+            }
+            className={`px-3 py-1.5 rounded-xl font-black text-xs flex items-center space-x-1.5 transition active:scale-95 ${
+              !masterPlayable
+                ? 'bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed'
+                : auditioningTarget === 'master_comp'
+                ? 'bg-pink-400 text-slate-950 animate-pulse cursor-pointer'
+                : 'bg-pink-500 hover:bg-pink-400 text-slate-950 shadow-md shadow-pink-500/20 cursor-pointer'
             }`}
           >
-            <Play className="w-3.5 h-3.5 fill-slate-950" />
-            <span>{auditioningTarget === 'master_comp' ? 'AUDITIONING...' : 'PLAY MASTER COMP'}</span>
+            <Play className={`w-3.5 h-3.5 ${masterPlayable ? 'fill-slate-950' : ''}`} />
+            <span>
+              {auditioningTarget === 'master_comp'
+                ? 'PLAYING…'
+                : masterPlayable
+                ? 'PLAY MASTER COMP'
+                : 'NO TAKE AUDIO'}
+            </span>
           </button>
         </div>
       </div>
@@ -158,11 +240,21 @@ export const VocalCompBuilder: React.FC<VocalCompBuilderProps> = ({ track }) => 
             </div>
             <div className="flex items-center space-x-1.5">
               <button
-                onClick={() => handleAudition('ai_comp')}
-                className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 text-[10px] font-black cursor-pointer flex items-center space-x-1"
+                onClick={() => handleAuditionComp('ai_comp', proposedComp.comp)}
+                disabled={!playableSegments(proposedComp.comp).length}
+                title={
+                  playableSegments(proposedComp.comp).length
+                    ? 'Plays the proposed comp in order'
+                    : 'None of the takes in this proposal have recorded audio behind them yet'
+                }
+                className={`px-2.5 py-1 rounded-lg border text-[10px] font-black flex items-center space-x-1 ${
+                  playableSegments(proposedComp.comp).length
+                    ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border-amber-500/40 cursor-pointer'
+                    : 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed'
+                }`}
               >
                 <Play className="w-3 h-3 fill-current" />
-                <span>AUDITION PROPOSAL</span>
+                <span>{auditioningTarget === 'ai_comp' ? 'PLAYING…' : 'AUDITION PROPOSAL'}</span>
               </button>
               <button
                 onClick={handleAcceptProposal}
@@ -201,9 +293,19 @@ export const VocalCompBuilder: React.FC<VocalCompBuilderProps> = ({ track }) => 
                 <div className="flex items-center justify-between border-b border-slate-800 pb-1 text-[10px]">
                   <span className="font-bold text-pink-300">{col.phraseName}</span>
                   <button
-                    onClick={() => handleAudition(`phrase_${col.bar}`)}
-                    className="p-0.5 text-slate-400 hover:text-pink-400 cursor-pointer"
-                    title="Audition Phrase"
+                    data-testid={`audition-phrase-${col.bar}`}
+                    onClick={() => handleAuditionSegment(`phrase_${col.bar}`, activeSegment)}
+                    disabled={!takeAudioFor(activeSegment?.takeId)}
+                    className={`p-0.5 ${
+                      takeAudioFor(activeSegment?.takeId)
+                        ? 'text-slate-400 hover:text-pink-400 cursor-pointer'
+                        : 'text-slate-700 cursor-not-allowed'
+                    }`}
+                    title={
+                      takeAudioFor(activeSegment?.takeId)
+                        ? 'Play this phrase from its take'
+                        : 'This take has no recorded audio behind it'
+                    }
                   >
                     <Play className="w-3 h-3 fill-current" />
                   </button>
@@ -220,6 +322,7 @@ export const VocalCompBuilder: React.FC<VocalCompBuilderProps> = ({ track }) => 
                   return (
                     <button
                       key={take.id}
+                      data-testid={`comp-take-${col.bar}-${take.id}`}
                       onClick={() => handleUpdateCompSegment(currentTrack.id, 'sec_hook', col.bar, take.id)}
                       className={`w-full px-2 py-1.5 rounded-lg text-left text-[10px] font-bold transition cursor-pointer flex items-center justify-between ${
                         isSelected

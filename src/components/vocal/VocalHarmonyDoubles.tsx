@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Track, HarmonySettings } from '../../types/daw';
 import { useStudioSession } from '../../app/StudioSessionContext';
+import {
+  auditionHarmony,
+  harmonyOffsetSemitones,
+  AuditionHandle,
+  HarmonyInterval,
+} from '../../audio/vocalAudition';
 import {
   Music,
   Play,
@@ -23,8 +29,6 @@ export const VocalHarmonyDoubles: React.FC<VocalHarmonyDoublesProps> = ({ track 
 
   const currentTrack = track || tracks.find((t) => t.id === 't-vocal') || tracks[0];
 
-  if (!currentTrack) return <div className='p-6 text-center text-neutral-500'>Select a vocal track for harmony</div>;
-
   const harmony: HarmonySettings = currentTrack?.vocalState?.harmonySettings || {
     enabled: true,
     mode: 'third_above',
@@ -36,19 +40,54 @@ export const VocalHarmonyDoubles: React.FC<VocalHarmonyDoublesProps> = ({ track 
   const key = currentTrack?.vocalState?.pitchSettings?.key || 'C';
   const scale = currentTrack?.vocalState?.pitchSettings?.scale || 'MINOR';
 
-  const [selectedInterval, setSelectedInterval] = useState<'third_above' | 'third_below' | 'fifth' | 'octave' | 'double'>((harmony.mode as any) || 'third_above');
-  const [isAuditioning, setIsAuditioning] = useState(false);
+  const [selectedInterval, setSelectedInterval] = useState<HarmonyInterval>((harmony.mode as HarmonyInterval) || 'third_above');
+  const [auditioningInterval, setAuditioningInterval] = useState<string | null>(null);
   const [committedCandidate, setCommittedCandidate] = useState<string | null>(null);
+  const auditionRef = useRef<AuditionHandle | null>(null);
 
   useEffect(() => {
-    if (harmony.mode) setSelectedInterval(harmony.mode as any);
+    if (harmony.mode) setSelectedInterval(harmony.mode as HarmonyInterval);
   }, [harmony.mode]);
 
-  const handleAudition = (interval: string) => {
-    setIsAuditioning(true);
-    setTimeout(() => {
-      setIsAuditioning(false);
-    }, 3000);
+  useEffect(() => () => auditionRef.current?.stop(), []);
+
+  if (!currentTrack) return <div className='p-6 text-center text-neutral-500'>Select a vocal track for harmony</div>;
+
+  // Plays the candidate against its root in the track's own key and scale, with
+  // the detune and spread the sliders are set to — so a third in a minor key
+  // sounds minor, and a double is heard widening rather than described as wide.
+  const handleAudition = async (interval: string) => {
+    if (auditionRef.current) {
+      auditionRef.current.stop();
+      auditionRef.current = null;
+    }
+    setAuditioningInterval(interval);
+    try {
+      const handle = await auditionHarmony({
+        key,
+        scale,
+        interval: interval as HarmonyInterval,
+        humanizeCents: harmony.humanizeCents,
+        stereoSpread: harmony.stereoSpread,
+      });
+      auditionRef.current = handle;
+      await handle.finished;
+    } catch (err) {
+      console.warn('[VocalHarmonyDoubles] harmony audition failed:', err);
+    } finally {
+      auditionRef.current = null;
+      setAuditioningInterval((current) => (current === interval ? null : current));
+    }
+  };
+
+  // The interval labels are derived, not written down, so the card cannot say
+  // "+4st" while a minor key plays +3.
+  const intervalLabel = (id: HarmonyInterval) => {
+    if (id === 'double') return 'Vocal Double (Tight)';
+    const semis = harmonyOffsetSemitones(id, scale);
+    const sign = semis > 0 ? '+' : '';
+    const name = id === 'third_above' ? '3rd Above' : id === 'third_below' ? '3rd Below' : id === 'fifth' ? 'Perfect 5th' : 'Octave';
+    return `${name} (${sign}${semis}st)`;
   };
 
   const handleCommitToNewTrack = () => {
@@ -96,18 +135,18 @@ export const VocalHarmonyDoubles: React.FC<VocalHarmonyDoublesProps> = ({ track 
       {/* 2. Intervals Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5">
         {[
-          { id: 'third_above', name: '3rd Above (+4st)', desc: 'Bright uplifting hook layer', color: 'border-pink-500' },
-          { id: 'third_below', name: '3rd Below (-3st)', desc: 'Warm chest harmony', color: 'border-purple-500' },
-          { id: 'fifth', name: 'Perfect 5th (+7st)', desc: 'Spacious cinematic power', color: 'border-indigo-500' },
-          { id: 'octave', name: 'Octave (+12st)', desc: 'Falsetto sheen & sparkle', color: 'border-cyan-500' },
-          { id: 'double', name: 'Vocal Double (Tight)', desc: 'Stereo width & weight', color: 'border-amber-500' },
+          { id: 'third_above' as HarmonyInterval, name: intervalLabel('third_above'), desc: 'Bright uplifting hook layer', color: 'border-pink-500' },
+          { id: 'third_below' as HarmonyInterval, name: intervalLabel('third_below'), desc: 'Warm chest harmony', color: 'border-purple-500' },
+          { id: 'fifth' as HarmonyInterval, name: intervalLabel('fifth'), desc: 'Spacious cinematic power', color: 'border-indigo-500' },
+          { id: 'octave' as HarmonyInterval, name: intervalLabel('octave'), desc: 'Falsetto sheen & sparkle', color: 'border-cyan-500' },
+          { id: 'double' as HarmonyInterval, name: intervalLabel('double'), desc: 'Stereo width & weight', color: 'border-amber-500' },
         ].map((item) => {
           const isSelected = selectedInterval === item.id;
           return (
             <div
               key={item.id}
               onClick={() => {
-                setSelectedInterval(item.id as any);
+                setSelectedInterval(item.id);
                 handleUpdateHarmonySettings(currentTrack.id, { mode: item.id as any });
               }}
               className={`p-3 rounded-xl border transition cursor-pointer flex flex-col justify-between space-y-2 ${
@@ -129,14 +168,15 @@ export const VocalHarmonyDoubles: React.FC<VocalHarmonyDoublesProps> = ({ track 
                   e.stopPropagation();
                   handleAudition(item.id);
                 }}
+                data-testid={`audition-harmony-${item.id}`}
                 className={`w-full py-1.5 rounded-lg text-[10px] font-black flex items-center justify-center space-x-1 transition cursor-pointer ${
-                  isAuditioning && isSelected
+                  auditioningInterval === item.id
                     ? 'bg-purple-500 text-slate-950 animate-pulse'
                     : 'bg-slate-950 text-purple-300 border border-purple-500/40 hover:bg-purple-500/20'
                 }`}
               >
                 <Play className="w-3 h-3 fill-current" />
-                <span>{isAuditioning && isSelected ? 'AUDITIONING...' : 'AUDITION'}</span>
+                <span>{auditioningInterval === item.id ? 'PLAYING…' : 'AUDITION'}</span>
               </button>
             </div>
           );
