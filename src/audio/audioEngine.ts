@@ -3,7 +3,7 @@ import { Track, InstrumentType, TrackDspSettings } from '../types/daw';
 import { vocalRecorder } from './vocalRecorder';
 import { vocalDspProcessor } from './vocalDspProcessor';
 import { tickToStep, midiToNoteName } from '../utils/musicMath';
-import { createInstrumentVoices, HIHAT_FREQUENCY } from './instrumentVoices';
+import { applyInstrumentParams, createInstrumentVoices, expressiveVelocity, HIHAT_FREQUENCY, InstrumentVoices } from './instrumentVoices';
 import { buildTrackStrip, TrackStrip } from './trackStrip';
 import { AudioAsset, AudioClip } from '../types/daw';
 import { resolveClips, ticksToSeconds } from './audioClips';
@@ -96,6 +96,27 @@ export class AudioEngine {
   }
 
   /**
+   * Points the shared voices at one track's instrument parameters.
+   *
+   * The voices are shared per instrument and routed per track at trigger
+   * time; the parameters follow the same rule, so a kick with a long decay
+   * and a kick with a short one sound different even though one MembraneSynth
+   * plays both.
+   */
+  private prepareVoice(track?: Track) {
+    if (!track?.instrumentParams) return;
+    if (!this.kickSynth || !this.snareSynth || !this.hihatSynth || !this.melodySynth || !this.bassSynth) return;
+    const voices: InstrumentVoices = {
+      kick: this.kickSynth,
+      snare: this.snareSynth,
+      hihat: this.hihatSynth,
+      melody: this.melodySynth,
+      bass: this.bassSynth,
+    };
+    applyInstrumentParams(voices, track);
+  }
+
+  /**
    * Ensure a dedicated Tone.Channel and DSP Chain exists for every track in the project
    */
   public getOrCreateTrackNodes(track: Track): TrackChannelNodes | null {
@@ -107,7 +128,7 @@ export class AudioEngine {
     if (!nodes) {
       // Low cut, low shelf, parametric mid, high shelf, character filter and
       // compressor — the same builder the offline bounce uses.
-      const strip = buildTrackStrip(track.dspSettings, track.instrument);
+      const strip = buildTrackStrip(track.dspSettings, track.instrument, track.instrumentParams?.drive);
 
       const channel = new Tone.Channel({
         volume: track.volume || 0,
@@ -145,10 +166,15 @@ export class AudioEngine {
    * channel workstation reached no audio node. One entry point means every
    * writer works.
    */
-  public applyTrackDsp(trackId: string, dsp: TrackDspSettings | undefined, instrument?: Track['instrument']) {
+  public applyTrackDsp(
+    trackId: string,
+    dsp: TrackDspSettings | undefined,
+    instrument?: Track['instrument'],
+    drivePercent?: number
+  ) {
     const nodes = this.trackNodeMap.get(trackId);
     if (!nodes) return;
-    nodes.strip.update(dsp, instrument || nodes.instrument);
+    nodes.strip.update(dsp, instrument || nodes.instrument, drivePercent);
     if (dsp?.pan !== undefined) nodes.channel.pan.rampTo(dsp.pan, 0.05);
     if (dsp?.volume !== undefined) nodes.channel.volume.rampTo(dsp.volume, 0.05);
     if (dsp?.reverbSend !== undefined) nodes.reverbSend.gain.rampTo(dsp.reverbSend, 0.05);
@@ -242,7 +268,13 @@ export class AudioEngine {
         this.kickSynth.disconnect();
         this.kickSynth.connect(this.masterCompressor);
       }
-      this.kickSynth.triggerAttackRelease(note, duration, time, velocity);
+      this.prepareVoice(targetTrack);
+      this.kickSynth.triggerAttackRelease(
+        note,
+        duration,
+        time,
+        expressiveVelocity(velocity, targetTrack?.instrumentParams)
+      );
     } catch {
       // AudioContext safe check
     }
@@ -259,7 +291,12 @@ export class AudioEngine {
         this.snareSynth.disconnect();
         this.snareSynth.connect(this.masterCompressor);
       }
-      this.snareSynth.triggerAttackRelease(duration, time, velocity);
+      this.prepareVoice(targetTrack);
+      this.snareSynth.triggerAttackRelease(
+        duration,
+        time,
+        expressiveVelocity(velocity, targetTrack?.instrumentParams)
+      );
     } catch {
       // AudioContext safe check
     }
@@ -279,7 +316,13 @@ export class AudioEngine {
       // MetalSynth is a Monophonic voice: (note, duration, time, velocity).
       // Called with the Instrument signature the arguments shift by one, the
       // scheduler rejects the event, and the hi-hat silently never sounds.
-      this.hihatSynth.triggerAttackRelease(HIHAT_FREQUENCY, duration, time, velocity);
+      this.prepareVoice(targetTrack);
+      this.hihatSynth.triggerAttackRelease(
+        HIHAT_FREQUENCY,
+        duration,
+        time,
+        expressiveVelocity(velocity, targetTrack?.instrumentParams)
+      );
     } catch (err) {
       // Never swallow this silently again — a dropped trigger is inaudible,
       // which is exactly why the wrong signature above went unnoticed.
@@ -298,7 +341,13 @@ export class AudioEngine {
         this.melodySynth.disconnect();
         this.melodySynth.connect(this.masterCompressor);
       }
-      this.melodySynth.triggerAttackRelease(note, duration, time, velocity);
+      this.prepareVoice(targetTrack);
+      this.melodySynth.triggerAttackRelease(
+        note,
+        duration,
+        time,
+        expressiveVelocity(velocity, targetTrack?.instrumentParams)
+      );
     } catch {
       // AudioContext safe check
     }
@@ -315,7 +364,13 @@ export class AudioEngine {
         this.bassSynth.disconnect();
         this.bassSynth.connect(this.masterCompressor);
       }
-      this.bassSynth.triggerAttackRelease(note, duration, time, velocity);
+      this.prepareVoice(targetTrack);
+      this.bassSynth.triggerAttackRelease(
+        note,
+        duration,
+        time,
+        expressiveVelocity(velocity, targetTrack?.instrumentParams)
+      );
     } catch {
       // AudioContext safe check
     }

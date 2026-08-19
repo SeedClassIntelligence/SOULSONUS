@@ -1242,9 +1242,19 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       if (label) pendingLabelRef.current = label;
       // Channel-strip settings have to reach the audio graph as well as state,
       // or a pan moved from here would be stored and never heard.
-      if (updates.dspSettings) {
+      if (updates.dspSettings || updates.instrumentParams) {
         const track = tracksRef.current.find((t) => t.id === trackId);
-        if (track) audioEngine.applyTrackDsp(trackId, updates.dspSettings, track.instrument);
+        if (track) {
+          // Drive lives on the channel strip's distortion, so an instrument
+          // parameter change has to reach the strip too. The rest of the
+          // instrument parameters are applied to the voice at trigger time.
+          audioEngine.applyTrackDsp(
+            trackId,
+            updates.dspSettings || track.dspSettings,
+            track.instrument,
+            (updates.instrumentParams || track.instrumentParams)?.drive
+          );
+        }
       }
       updateTracksWithHistory((prev) => prev.map((t) => (t.id === trackId ? { ...t, ...updates } : t)));
     },

@@ -26,11 +26,17 @@ export interface TrackStrip {
   /** Take the processed signal from here. */
   output: Tone.ToneAudioNode;
   /** Re-applies settings without rebuilding the graph. */
-  update: (dsp: TrackDspSettings | undefined, instrument: Track['instrument']) => void;
+  update: (dsp: TrackDspSettings | undefined, instrument: Track['instrument'], drivePercent?: number) => void;
   dispose: () => void;
 }
 
 const num = (v: unknown, fallback: number) => (typeof v === 'number' && isFinite(v) ? v : fallback);
+
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+/** 0..100 from the control to Tone's 0..1 curve amount. */
+const driveAmount = (percent: number) => clamp01(num(percent, 0) / 100) * 0.9;
+/** Fully dry at zero, so an untouched control cannot colour the sound. */
+const driveWet = (percent: number) => clamp01(num(percent, 0) / 100);
 
 /** What a track sounds like before anyone touches a control. */
 export function defaultTrackDsp(track: Track): TrackDspSettings {
@@ -54,10 +60,19 @@ export function defaultTrackDsp(track: Track): TrackDspSettings {
 
 /**
  * Low cut → low shelf → parametric mid → high shelf → character filter →
- * compressor. The character filter and compressor were already here; the four
- * EQ stages in front of them are what the controls were missing.
+ * drive → compressor.
+ *
+ * The character filter and compressor were already here; the four EQ stages in
+ * front of them were added when the EQ controls turned out to reach nothing.
+ * Drive is the newest: the workstation has had a DRIVE control since the
+ * beginning and there was no distortion anywhere in the graph for it to move,
+ * so the control wrote a number and the audio never changed.
  */
-export function buildTrackStrip(dsp: TrackDspSettings | undefined, instrument: Track['instrument']): TrackStrip {
+export function buildTrackStrip(
+  dsp: TrackDspSettings | undefined,
+  instrument: Track['instrument'],
+  drivePercent = 0
+): TrackStrip {
   const lowCut = new Tone.Filter({ type: 'highpass', frequency: num(dsp?.lowCutHz, DEFAULT_LOW_CUT_HZ), rolloff: -12 });
   const lowShelf = new Tone.Filter({ type: 'lowshelf', frequency: LOW_SHELF_HZ, gain: num(dsp?.lowGain, 0) });
   const midPeak = new Tone.Filter({
@@ -77,14 +92,27 @@ export function buildTrackStrip(dsp: TrackDspSettings | undefined, instrument: T
     attack: 0.005,
     release: 0.1,
   });
+  // Drive is a percentage in the UI. Tone's distortion amount is 0..1, and the
+  // wet mix rises with it so that a drive of zero is genuinely bypassed rather
+  // than a distortion set to a small number.
+  const drive = new Tone.Distortion({
+    distortion: driveAmount(drivePercent),
+    wet: driveWet(drivePercent),
+    oversample: '2x',
+  });
 
   lowCut.connect(lowShelf);
   lowShelf.connect(midPeak);
   midPeak.connect(highShelf);
   highShelf.connect(filter);
-  filter.connect(compressor);
+  filter.connect(drive);
+  drive.connect(compressor);
 
-  const update = (next: TrackDspSettings | undefined, inst: Track['instrument']) => {
+  const update = (next: TrackDspSettings | undefined, inst: Track['instrument'], nextDrive?: number) => {
+    if (typeof nextDrive === 'number') {
+      drive.distortion = driveAmount(nextDrive);
+      drive.wet.value = driveWet(nextDrive);
+    }
     lowCut.frequency.value = num(next?.lowCutHz, DEFAULT_LOW_CUT_HZ);
     lowShelf.gain.value = num(next?.lowGain, 0);
     midPeak.frequency.value = num(next?.midFreqHz, DEFAULT_MID_HZ);
@@ -102,7 +130,7 @@ export function buildTrackStrip(dsp: TrackDspSettings | undefined, instrument: T
     output: compressor,
     update,
     dispose: () => {
-      [lowCut, lowShelf, midPeak, highShelf, filter, compressor].forEach((n) => {
+      [lowCut, lowShelf, midPeak, highShelf, filter, drive, compressor].forEach((n) => {
         try { n.dispose(); } catch { /* already disposed */ }
       });
     },

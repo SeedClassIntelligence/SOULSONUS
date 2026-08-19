@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Track, AutomationLane, AutomationPoint, InstrumentParameters, TrackDspSettings } from '../types/daw';
 import { audioEngine } from '../audio/audioEngine';
 import { rankByTerms } from '../lib/soundVaultSearch';
+import { INACTIVE_REASON, paramIsActive } from '../audio/instrumentVoices';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { productionHistory, ProductionOperation } from '../lib/productionOperations';
 import {
@@ -985,7 +986,7 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                   <span className="text-amber-400 text-[10px]">VCA</span>
                 </div>
                 <div className="space-y-1.5 text-[10px]">
-                  <div className="flex justify-between text-slate-400">
+                  <div className={`flex justify-between ${paramIsActive(track.instrument, 'attack') ? 'text-slate-400' : 'text-slate-600 line-through decoration-slate-700'}`}>
                     <span>Attack: {instParams.attack}ms</span>
                     <input
                       type="range"
@@ -993,10 +994,16 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                       max={250}
                       value={instParams.attack}
                       onChange={(e) => handleUpdateInstrumentParam('attack', Number(e.target.value))}
+                      disabled={!paramIsActive(track.instrument, 'attack')}
+                      title={
+                        paramIsActive(track.instrument, 'attack')
+                          ? undefined
+                          : `Not a control on this voice — ${INACTIVE_REASON['attack'] || 'it reaches nothing here'}`
+                      }
                       className="w-24 accent-amber-500"
                     />
                   </div>
-                  <div className="flex justify-between text-slate-400">
+                  <div className={`flex justify-between ${paramIsActive(track.instrument, 'decay') ? 'text-slate-400' : 'text-slate-600 line-through decoration-slate-700'}`}>
                     <span>Decay: {instParams.decay}ms</span>
                     <input
                       type="range"
@@ -1004,10 +1011,16 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                       max={2000}
                       value={instParams.decay}
                       onChange={(e) => handleUpdateInstrumentParam('decay', Number(e.target.value))}
+                      disabled={!paramIsActive(track.instrument, 'decay')}
+                      title={
+                        paramIsActive(track.instrument, 'decay')
+                          ? undefined
+                          : `Not a control on this voice — ${INACTIVE_REASON['decay'] || 'it reaches nothing here'}`
+                      }
                       className="w-24 accent-amber-500"
                     />
                   </div>
-                  <div className="flex justify-between text-slate-400">
+                  <div className={`flex justify-between ${paramIsActive(track.instrument, 'sustain') ? 'text-slate-400' : 'text-slate-600 line-through decoration-slate-700'}`}>
                     <span>Sustain: {instParams.sustain}%</span>
                     <input
                       type="range"
@@ -1015,10 +1028,16 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                       max={100}
                       value={instParams.sustain}
                       onChange={(e) => handleUpdateInstrumentParam('sustain', Number(e.target.value))}
+                      disabled={!paramIsActive(track.instrument, 'sustain')}
+                      title={
+                        paramIsActive(track.instrument, 'sustain')
+                          ? undefined
+                          : `Not a control on this voice — ${INACTIVE_REASON['sustain'] || 'it reaches nothing here'}`
+                      }
                       className="w-24 accent-amber-500"
                     />
                   </div>
-                  <div className="flex justify-between text-slate-400">
+                  <div className={`flex justify-between ${paramIsActive(track.instrument, 'release') ? 'text-slate-400' : 'text-slate-600 line-through decoration-slate-700'}`}>
                     <span>Release: {instParams.release}ms</span>
                     <input
                       type="range"
@@ -1026,6 +1045,12 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                       max={1500}
                       value={instParams.release}
                       onChange={(e) => handleUpdateInstrumentParam('release', Number(e.target.value))}
+                      disabled={!paramIsActive(track.instrument, 'release')}
+                      title={
+                        paramIsActive(track.instrument, 'release')
+                          ? undefined
+                          : `Not a control on this voice — ${INACTIVE_REASON['release'] || 'it reaches nothing here'}`
+                      }
                       className="w-24 accent-amber-500"
                     />
                   </div>
@@ -1039,7 +1064,7 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                   <span className="text-purple-400 text-[10px]">24dB Ladder</span>
                 </div>
                 <div className="space-y-1.5 text-[10px]">
-                  <div className="flex justify-between text-slate-400">
+                  <div className={`flex justify-between ${paramIsActive(track.instrument, 'filterCutoff') ? 'text-slate-400' : 'text-slate-600 line-through decoration-slate-700'}`}>
                     <span>Cutoff: {instParams.filterCutoff}Hz</span>
                     <input
                       type="range"
@@ -1047,10 +1072,16 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                       max={20000}
                       value={instParams.filterCutoff}
                       onChange={(e) => handleUpdateInstrumentParam('filterCutoff', Number(e.target.value))}
+                      disabled={!paramIsActive(track.instrument, 'filterCutoff')}
+                      title={
+                        paramIsActive(track.instrument, 'filterCutoff')
+                          ? undefined
+                          : `Not a control on this voice — ${INACTIVE_REASON['filterCutoff'] || 'it reaches nothing here'}`
+                      }
                       className="w-24 accent-purple-500"
                     />
                   </div>
-                  <div className="flex justify-between text-slate-400">
+                  <div className={`flex justify-between ${paramIsActive(track.instrument, 'filterResonance') ? 'text-slate-400' : 'text-slate-600 line-through decoration-slate-700'}`}>
                     <span>Resonance: {instParams.filterResonance} Q</span>
                     <input
                       type="range"
@@ -1059,10 +1090,16 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                       step={0.1}
                       value={instParams.filterResonance}
                       onChange={(e) => handleUpdateInstrumentParam('filterResonance', Number(e.target.value))}
+                      disabled={!paramIsActive(track.instrument, 'filterResonance')}
+                      title={
+                        paramIsActive(track.instrument, 'filterResonance')
+                          ? undefined
+                          : `Not a control on this voice — ${INACTIVE_REASON['filterResonance'] || 'it reaches nothing here'}`
+                      }
                       className="w-24 accent-purple-500"
                     />
                   </div>
-                  <div className="flex justify-between text-slate-400">
+                  <div className={`flex justify-between ${paramIsActive(track.instrument, 'drive') ? 'text-slate-400' : 'text-slate-600 line-through decoration-slate-700'}`}>
                     <span>Drive / Sat: {instParams.drive}%</span>
                     <input
                       type="range"
@@ -1070,6 +1107,12 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                       max={100}
                       value={instParams.drive}
                       onChange={(e) => handleUpdateInstrumentParam('drive', Number(e.target.value))}
+                      disabled={!paramIsActive(track.instrument, 'drive')}
+                      title={
+                        paramIsActive(track.instrument, 'drive')
+                          ? undefined
+                          : `Not a control on this voice — ${INACTIVE_REASON['drive'] || 'it reaches nothing here'}`
+                      }
                       className="w-24 accent-purple-500"
                     />
                   </div>
@@ -1083,7 +1126,7 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                   <span className="text-cyan-400 text-[10px]">Sub / Glide</span>
                 </div>
                 <div className="space-y-1.5 text-[10px]">
-                  <div className="flex justify-between text-slate-400">
+                  <div className={`flex justify-between ${paramIsActive(track.instrument, 'glideTime') ? 'text-slate-400' : 'text-slate-600 line-through decoration-slate-700'}`}>
                     <span>Glide Time: {instParams.glideTime}ms</span>
                     <input
                       type="range"
@@ -1091,10 +1134,16 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                       max={500}
                       value={instParams.glideTime}
                       onChange={(e) => handleUpdateInstrumentParam('glideTime', Number(e.target.value))}
+                      disabled={!paramIsActive(track.instrument, 'glideTime')}
+                      title={
+                        paramIsActive(track.instrument, 'glideTime')
+                          ? undefined
+                          : `Not a control on this voice — ${INACTIVE_REASON['glideTime'] || 'it reaches nothing here'}`
+                      }
                       className="w-24 accent-cyan-500"
                     />
                   </div>
-                  <div className="flex justify-between text-slate-400">
+                  <div className={`flex justify-between ${paramIsActive(track.instrument, 'subWeight') ? 'text-slate-400' : 'text-slate-600 line-through decoration-slate-700'}`}>
                     <span>Sub Weight: +{instParams.subWeight}dB</span>
                     <input
                       type="range"
@@ -1103,10 +1152,16 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                       step={0.5}
                       value={instParams.subWeight}
                       onChange={(e) => handleUpdateInstrumentParam('subWeight', Number(e.target.value))}
+                      disabled={!paramIsActive(track.instrument, 'subWeight')}
+                      title={
+                        paramIsActive(track.instrument, 'subWeight')
+                          ? undefined
+                          : `Not a control on this voice — ${INACTIVE_REASON['subWeight'] || 'it reaches nothing here'}`
+                      }
                       className="w-24 accent-cyan-500"
                     />
                   </div>
-                  <div className="flex justify-between text-slate-400">
+                  <div className={`flex justify-between ${paramIsActive(track.instrument, 'timbreBrightness') ? 'text-slate-400' : 'text-slate-600 line-through decoration-slate-700'}`}>
                     <span>Timbre: {instParams.timbreBrightness}%</span>
                     <input
                       type="range"
@@ -1114,6 +1169,12 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                       max={100}
                       value={instParams.timbreBrightness}
                       onChange={(e) => handleUpdateInstrumentParam('timbreBrightness', Number(e.target.value))}
+                      disabled={!paramIsActive(track.instrument, 'timbreBrightness')}
+                      title={
+                        paramIsActive(track.instrument, 'timbreBrightness')
+                          ? undefined
+                          : `Not a control on this voice — ${INACTIVE_REASON['timbreBrightness'] || 'it reaches nothing here'}`
+                      }
                       className="w-24 accent-cyan-500"
                     />
                   </div>

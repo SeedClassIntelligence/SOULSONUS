@@ -20,6 +20,8 @@ import {
   KICK_OPTIONS,
   MELODY_OPTIONS,
   SNARE_OPTIONS,
+  applyParamsToVoice,
+  expressiveVelocity,
 } from './instrumentVoices';
 import { buildTrackStrip } from './trackStrip';
 import { AudioAsset } from '../types/daw';
@@ -110,7 +112,7 @@ export async function renderMasterBounce(options: RenderOptions): Promise<Render
     // including the four EQ bands, so a bounce carries the EQ the creator set.
     const strips = new Map<string, { input: Tone.ToneAudioNode }>();
     for (const track of tracks) {
-      const strip = buildTrackStrip(track.dspSettings, track.instrument);
+      const strip = buildTrackStrip(track.dspSettings, track.instrument, track.instrumentParams?.drive);
       const channel = new Tone.Channel({
         volume: track.volume || 0,
         pan: track.dspSettings?.pan || 0,
@@ -179,6 +181,9 @@ export async function renderMasterBounce(options: RenderOptions): Promise<Render
       const voices: Voice[] = [];
       for (let i = 0; i < VOICES_PER_TRACK; i++) {
         const v = makeVoice(track.instrument);
+        // The track's own instrument parameters, so a bounce carries the
+        // envelope, glide and timbre the creator set rather than the defaults.
+        applyParamsToVoice(v, track);
         v.connect(strip.input);
         voices.push(v);
       }
@@ -191,14 +196,15 @@ export async function renderMasterBounce(options: RenderOptions): Promise<Render
       const voice = pool.voices[pool.next % pool.voices.length];
       pool.next++;
       eventsRendered++;
+      const vel = expressiveVelocity(velocity, track.instrumentParams);
       if (voice instanceof Tone.NoiseSynth) {
         // NoiseSynth is an Instrument: (duration, time, velocity).
-        voice.triggerAttackRelease(durSec, when, velocity);
+        voice.triggerAttackRelease(durSec, when, vel);
       } else if (voice instanceof Tone.MetalSynth) {
         // MetalSynth is Monophonic: (note, duration, time, velocity).
-        voice.triggerAttackRelease(HIHAT_FREQUENCY, durSec, when, velocity);
+        voice.triggerAttackRelease(HIHAT_FREQUENCY, durSec, when, vel);
       } else {
-        voice.triggerAttackRelease(pitch, durSec, when, velocity);
+        voice.triggerAttackRelease(pitch, durSec, when, vel);
       }
     };
 
