@@ -81,6 +81,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     handleCommitCandidateTransaction,
     handleUndo,
     handleRedo,
+    handleUpdateTrack,
   } = useStudioSession();
 
   // Undo was reachable only from the Build room's control cluster, while takes
@@ -430,9 +431,9 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         selectedTrack={tracks.find((t) => t.id === selectionContext.selectedTrackId) || tracks[0] || null}
         onUpdateTrack={(updates) => {
           const selectedTrackId = selectionContext.selectedTrackId || tracks[0]?.id;
-          if (selectedTrackId) {
-            setTracks((prev) => prev.map((t) => (t.id === selectedTrackId ? { ...t, ...updates } : t)));
-          }
+          // Through the session, so the edit is undoable — this used to write
+          // tracks directly and could not be taken back.
+          if (selectedTrackId) handleUpdateTrack(selectedTrackId, updates);
         }}
       />
 

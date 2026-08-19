@@ -14,7 +14,6 @@ import { VocalLayer } from './VocalLayer';
 import { MasterMixerConsole } from './MasterMixerConsole';
 import { MixWorkspace } from './mix/MixWorkspace';
 import { FinishWorkspace } from './workspaces/FinishWorkspace';
-import { TrackProductionStrip } from './TrackProductionStrip';
 import { WriteRecordStudio } from './WriteRecordStudio';
 import { Sparkles, Layers, Mic, Sliders, ShieldCheck, ChevronUp, ChevronDown, Maximize2 } from 'lucide-react';
 import { Track } from '../types/daw';
@@ -31,6 +30,7 @@ export const ContextualToolPanel: React.FC = () => {
     handleToggleMute,
     handleToggleSolo,
     handleChangeVolume,
+    handleUpdateTrack,
     handleMasterVolumeChange,
     handleReverbLevelChange,
     handleDelayLevelChange,
@@ -38,11 +38,18 @@ export const ContextualToolPanel: React.FC = () => {
 
   const selectedTrack = tracks.find((t) => t.id === selectionContext.selectedTrackId) || tracks[0] || null;
 
+  // The same workstation renders here and in the drawer. This handler forwarded
+  // only `volume`, so every other field the panel edited — name, instrument
+  // parameters, DSP — was silently dropped on this mount and applied on the
+  // other. Both go through the session now.
   const handleUpdateSelectedTrack = (updates: Partial<Track>) => {
     if (!selectedTrack) return;
     if (updates.volume !== undefined) {
       handleChangeVolume(selectedTrack.id, updates.volume);
     }
+    const rest = { ...updates };
+    delete rest.volume;
+    if (Object.keys(rest).length > 0) handleUpdateTrack(selectedTrack.id, rest);
   };
 
   const handleOpenAsSidePanel = () => {

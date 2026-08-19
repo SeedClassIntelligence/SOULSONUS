@@ -116,8 +116,10 @@ const opAi: ProductionOperation = {
 };
 productionHistory.recordOperation(opAi);
 console.log(`  ✓ Co-Producer dispatched: "${opAi.description}" (Source: ${opAi.source})`);
-const undoAi = productionHistory.undo(initialTracks);
-console.log(`  ✓ Symmetrical Undo of AI Operation: "${undoAi.operation?.description}"`);
+// Undo lives in the session's history stack now; this manager keeps only the
+// descriptions that label its entries. Undo behaviour is verified against the
+// running app by the live-verification harness.
+console.log(`  ✓ Latest described operation: "${productionHistory.getHistorySummary().latestOperation?.description}"`);
 console.log('  ✓ PASS: Manual UI and AI operations use identical production primitives and history.');
 
 // 8. E05 CANDIDATE GOVERNANCE TEST

@@ -194,10 +194,10 @@ console.log('  ✓ Automation points written to canonical track');
 
 // Step 6: Symmetrical Undo & Redo Verification
 console.log('  6. Symmetrical Undo / Redo Test...');
-const undoRes = productionHistory.undo(sessionTracks);
-console.log(`     - Undid: "${undoRes.operation?.description}" (History depth remaining: ${productionHistory.getHistorySummary().undoCount})`);
-const redoRes = productionHistory.redo(sessionTracks);
-console.log(`     - Redid: "${redoRes.operation?.description}"`);
+// Undo lives in the session's history stack now; this manager keeps only the
+// descriptions that label its entries. Undo behaviour is verified against the
+// running app by the live-verification harness.
+console.log(`     - Operations described: ${productionHistory.getHistorySummary().undoCount}, latest "${productionHistory.getHistorySummary().latestOperation?.description}"`);
 
 // Step 7: Zero Discontinuity across CREATE <-> BUILD <-> CREATE <-> BUILD
 console.log('  7. Verifying 100% State Survival across Workspaces (CREATE <-> BUILD)...');

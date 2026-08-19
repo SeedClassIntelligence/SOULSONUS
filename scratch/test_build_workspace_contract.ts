@@ -57,12 +57,13 @@ const aiOp: ProductionOperation = {
 };
 productionHistory.recordOperation(aiOp);
 
-console.log(`  History Depth: ${productionHistory.getHistorySummary().undoCount} operations`);
-const undoRes1 = productionHistory.undo([sampleTrack]);
-console.log(`  ✓ Undid AI Operation: "${undoRes1.operation?.description}" (Source: ${undoRes1.operation?.source})`);
-const undoRes2 = productionHistory.undo([sampleTrack]);
-console.log(`  ✓ Undid Manual Operation: "${undoRes2.operation?.description}" (Source: ${undoRes2.operation?.source})`);
-console.log('  ✓ PASS: Manual UI and AI operations undo symmetrically through one history engine.');
+// Undo is owned by the session's history stack now, not by this manager — it
+// keeps only the operation descriptions that label the session's entries. The
+// undo behaviour itself is verified against the running app by
+// scripts/live-verification/test-30-capture-undo.cjs and test-31-one-undo-stack.cjs.
+console.log(`  Operations described: ${productionHistory.getHistorySummary().undoCount}`);
+console.log(`  Latest: "${productionHistory.getHistorySummary().latestOperation?.description}"`);
+console.log('  ✓ PASS: Manual UI and AI operations both describe into one history engine.');
 
 // 3. ARRANGEMENT CONTINUITY TEST
 console.log('\n[3] ARRANGEMENT CONTINUITY TEST:');

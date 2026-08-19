@@ -64,6 +64,7 @@ import {
 
 import { PRESETS } from '../data/presets';
 import { audioEngine } from '../audio/audioEngine';
+import { productionHistory } from '../lib/productionOperations';
 import { detectionEngine, CaptureEvent } from '../audio/detectionEngine';
 import { resolveCaptureTarget } from '../audio/captureRouting';
 import { midiNoteToCaptureEvent } from '../audio/midiCapture';
@@ -460,8 +461,12 @@ export interface StudioSessionState {
   // History Stack
   canUndo: boolean;
   canRedo: boolean;
-  handleUndo: () => void;
-  handleRedo: () => void;
+  handleUndo: () => string | null;
+  handleRedo: () => string | null;
+  undoLabel: string | null;
+  redoLabel: string | null;
+  labelNextEdit: (label: string) => void;
+  handleUpdateTrack: (trackId: string, updates: Partial<Track>, label?: string) => void;
   updateTracksWithHistory: (action: Track[] | ((prev: Track[]) => Track[])) => void;
 
   // Engine Actions
@@ -768,6 +773,23 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const historyGroupRef = useRef<{ key: string; at: number } | null>(null);
   const HISTORY_GROUP_IDLE_MS = 2000;
 
+  /**
+   * What the pending entry should be called, if anything named it.
+   *
+   * The co-producer and the track workstation described their edits into a
+   * second, separate undo stack. The descriptions were the useful part; the
+   * separate stack was not, because pressing undo in one panel could not take
+   * back what the other did. Descriptions now label entries in the one stack.
+   */
+  const pendingLabelRef = useRef<string | null>(null);
+  const [pastLabels, setPastLabels] = useState<string[]>([]);
+  const [futureLabels, setFutureLabels] = useState<string[]>([]);
+
+  /** Names the next history entry. Called before the edit that creates it. */
+  const labelNextEdit = useCallback((label: string) => {
+    pendingLabelRef.current = label;
+  }, []);
+
   const updateTracksWithHistory = useCallback(
     (action: Track[] | ((prev: Track[]) => Track[]), options?: { group?: string }) => {
       // Group bookkeeping happens here rather than inside the updater: React
@@ -801,11 +823,18 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     const snapshot = pendingUndoRef.current;
     if (snapshot === null) return;
     pendingUndoRef.current = null;
+    const label = pendingLabelRef.current || 'Edit';
+    pendingLabelRef.current = null;
     setPast((prevPast) => {
       const updated = [...prevPast, snapshot];
       return updated.length > 50 ? updated.slice(1) : updated;
     });
+    setPastLabels((prev) => {
+      const updated = [...prev, label];
+      return updated.length > 50 ? updated.slice(1) : updated;
+    });
     setFuture([]);
+    setFutureLabels([]);
   }, [tracks]);
 
   const canUndo = past.length > 0;
@@ -822,11 +851,18 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     futureRef.current = future;
   }, [past, future]);
 
-  const handleUndo = useCallback(() => {
+  const labelsRef = useRef<{ past: string[]; future: string[] }>({ past: [], future: [] });
+  useEffect(() => {
+    labelsRef.current = { past: pastLabels, future: futureLabels };
+  }, [pastLabels, futureLabels]);
+
+  const handleUndo = useCallback((): string | null => {
     const prevPast = pastRef.current;
-    if (prevPast.length === 0) return;
+    if (prevPast.length === 0) return null;
     const previousState = prevPast[prevPast.length - 1];
     const currentTracks = tracksRef.current;
+    const labels = labelsRef.current;
+    const label = labels.past[labels.past.length - 1] || 'Edit';
 
     // Whatever run of edits was open ends here, so the next edit starts a new
     // history entry rather than joining the one just undone.
@@ -834,25 +870,79 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
 
     pastRef.current = prevPast.slice(0, prevPast.length - 1);
     futureRef.current = [currentTracks, ...futureRef.current];
+    labelsRef.current = {
+      past: labels.past.slice(0, labels.past.length - 1),
+      future: [label, ...labels.future],
+    };
     setPast(pastRef.current);
     setFuture(futureRef.current);
+    setPastLabels(labelsRef.current.past);
+    setFutureLabels(labelsRef.current.future);
     setTracks(previousState);
+    return label;
   }, []);
 
-  const handleRedo = useCallback(() => {
+  const handleRedo = useCallback((): string | null => {
     const prevFuture = futureRef.current;
-    if (prevFuture.length === 0) return;
+    if (prevFuture.length === 0) return null;
     const nextState = prevFuture[0];
     const currentTracks = tracksRef.current;
+    const labels = labelsRef.current;
+    const label = labels.future[0] || 'Edit';
 
     historyGroupRef.current = null;
 
     futureRef.current = prevFuture.slice(1);
     pastRef.current = [...pastRef.current, currentTracks];
+    labelsRef.current = {
+      past: [...labels.past, label],
+      future: labels.future.slice(1),
+    };
     setFuture(futureRef.current);
     setPast(pastRef.current);
+    setPastLabels(labelsRef.current.past);
+    setFutureLabels(labelsRef.current.future);
     setTracks(nextState);
+    return label;
   }, []);
+
+  const undoLabel = pastLabels[pastLabels.length - 1] || null;
+  const redoLabel = futureLabels[0] || null;
+
+  // The co-producer and the track workstation describe their edits through this
+  // bridge, so their descriptions name entries in the one stack instead of
+  // filling a second one.
+  useEffect(() => {
+    productionHistory.connect({
+      labelNextEdit,
+      undo: handleUndo,
+      redo: handleRedo,
+      canUndo: () => pastRef.current.length > 0,
+      canRedo: () => futureRef.current.length > 0,
+    });
+  }, [labelNextEdit, handleUndo, handleRedo]);
+
+  /**
+   * One updater for arbitrary track fields.
+   *
+   * The track workstation is rendered in two places and used to behave
+   * differently in each: from the drawer every field was applied, from the side
+   * panel only volume was — everything else was silently dropped by a handler
+   * that only forwarded one key. Both now call this, and both are undoable.
+   */
+  const handleUpdateTrack = useCallback(
+    (trackId: string, updates: Partial<Track>, label?: string) => {
+      if (label) pendingLabelRef.current = label;
+      // Channel-strip settings have to reach the audio graph as well as state,
+      // or a pan moved from here would be stored and never heard.
+      if (updates.dspSettings) {
+        const track = tracksRef.current.find((t) => t.id === trackId);
+        if (track) audioEngine.applyTrackDsp(trackId, updates.dspSettings, track.instrument);
+      }
+      updateTracksWithHistory((prev) => prev.map((t) => (t.id === trackId ? { ...t, ...updates } : t)));
+    },
+    [updateTracksWithHistory]
+  );
 
   // Detection Settings
   const [detectionSettings, setDetectionSettings] = useState<DetectionSettings>({
@@ -3536,6 +3626,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       canRedo,
       handleUndo,
       handleRedo,
+      undoLabel,
+      redoLabel,
+      labelNextEdit,
+      handleUpdateTrack,
       updateTracksWithHistory,
       handleMasterVolumeChange,
       handleReverbLevelChange,
@@ -3696,6 +3790,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       canRedo,
       handleUndo,
       handleRedo,
+      undoLabel,
+      redoLabel,
+      labelNextEdit,
+      handleUpdateTrack,
       updateTracksWithHistory,
       handleMasterVolumeChange,
       handleReverbLevelChange,

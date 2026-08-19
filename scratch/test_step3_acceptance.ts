@@ -140,11 +140,12 @@ console.log('  ✓ PASS: TEST 6 (Proposal audited before commit)');
 
 // 7. TEST 7 — UNDO / REDO SYMMETRY
 console.log('\n[TEST 7] UNDO / REDO SYMMETRY:');
-const undoRes = productionHistory.undo([doubleTrack]);
-console.log(`  Undid: "${undoRes.operation?.description}"`);
-const redoRes = productionHistory.redo([doubleTrack]);
-console.log(`  Redid: "${redoRes.operation?.description}"`);
-console.log('  ✓ PASS: TEST 7 (Deterministic undo/redo symmetry verified)');
+// Undo is owned by the session's history stack now, not by this manager — it
+// keeps only the operation descriptions that label the session's entries. The
+// undo behaviour itself is verified against the running app by
+// scripts/live-verification/test-30-capture-undo.cjs and test-31-one-undo-stack.cjs.
+console.log(`  Latest described operation: "${productionHistory.getHistorySummary().latestOperation?.description}"`);
+console.log('  ✓ PASS: TEST 7 (Operation recorded with a description)');
 
 // 8. TEST 8 — WORKSPACE CONTINUITY (WRITE & RECORD <-> BUILD <-> CREATE)
 console.log('\n[TEST 8] WORKSPACE CONTINUITY:');

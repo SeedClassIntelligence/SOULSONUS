@@ -49,7 +49,14 @@ export const ContextualCoProducer: React.FC<ContextualCoProducerProps> = ({
   coProducerState: externalState,
   onStateChange,
 }) => {
-  const { tracks, setTracks } = useStudioSession();
+  const {
+    tracks,
+    setTracks,
+    handleUndo: sessionUndo,
+    handleRedo: sessionRedo,
+    undoLabel,
+    redoLabel,
+  } = useStudioSession();
   const [internalState, setInternalState] = useState<'hidden' | 'compact' | 'expanded'>('expanded');
   const viewState = externalState || internalState;
 
@@ -135,20 +142,17 @@ export const ContextualCoProducer: React.FC<ContextualCoProducerProps> = ({
     setLastExecutedOp('Proposal discarded');
   };
 
+  // Undo goes through the session, which owns the state and restores its own
+  // snapshot — so nothing is written back here. This panel used to keep a
+  // second stack whose inverses were closures captured at description time.
   const handleUndo = () => {
-    const res = productionHistory.undo(tracks);
-    if (res.operation) {
-      setTracks(res.updatedTracks);
-      setLastExecutedOp(`Undid: ${res.operation.description}`);
-    }
+    const label = sessionUndo();
+    if (label) setLastExecutedOp(`Undid: ${label}`);
   };
 
   const handleRedo = () => {
-    const res = productionHistory.redo(tracks);
-    if (res.operation) {
-      setTracks(res.updatedTracks);
-      setLastExecutedOp(`Redid: ${res.operation.description}`);
-    }
+    const label = sessionRedo();
+    if (label) setLastExecutedOp(`Redid: ${label}`);
   };
 
   // State 1: HIDDEN (Small vertical tab trigger)
@@ -239,17 +243,17 @@ export const ContextualCoProducer: React.FC<ContextualCoProducerProps> = ({
         <div className="flex items-center space-x-1">
           <button
             onClick={handleUndo}
-            disabled={!productionHistory.canUndo()}
+            disabled={!undoLabel}
+            title={undoLabel ? `Undo: ${undoLabel}` : 'Nothing to undo'}
             className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-40 transition cursor-pointer"
-            title="Undo Last Operation"
           >
             <Undo2 className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={handleRedo}
-            disabled={!productionHistory.canRedo()}
+            disabled={!redoLabel}
+            title={redoLabel ? `Redo: ${redoLabel}` : 'Nothing to redo'}
             className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-40 transition cursor-pointer"
-            title="Redo Operation"
           >
             <Redo2 className="w-3.5 h-3.5" />
           </button>

@@ -37,51 +37,72 @@ export interface CoProducerProposal {
   operation: ProductionOperation;
 }
 
+/**
+ * The bridge into the session's history.
+ *
+ * There used to be two undo stacks. This manager kept its own, built from
+ * per-operation inverse closures, while the session kept whole-track snapshots
+ * — so undo in the co-producer could not take back a canvas edit, and undo on
+ * the canvas could not take back a co-producer commit. Worse, the closures
+ * captured values from when the operation was described, so undoing after any
+ * later edit restored a stale track.
+ *
+ * The session's stack is now the only one. What survives here is the part that
+ * was genuinely useful: the human-readable description of each operation, which
+ * becomes the label on the session's entry.
+ */
+export interface HistoryBridge {
+  labelNextEdit: (label: string) => void;
+  undo: () => string | null;
+  redo: () => string | null;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+}
+
 class ProductionHistoryManager {
-  private undoStack: ProductionOperation[] = [];
-  private redoStack: ProductionOperation[] = [];
-  private maxHistory = 50;
+  private bridge: HistoryBridge | null = null;
+  private log: ProductionOperation[] = [];
+  private maxLog = 50;
   private activeProposal: CoProducerProposal | null = null;
 
+  /** The provider registers the session's history here on mount. */
+  public connect(bridge: HistoryBridge) {
+    this.bridge = bridge;
+  }
+
   public recordOperation(op: ProductionOperation) {
-    this.undoStack.push(op);
-    if (this.undoStack.length > this.maxHistory) {
-      this.undoStack.shift();
-    }
-    this.redoStack = []; // Clear redo on new action
+    this.log.push(op);
+    if (this.log.length > this.maxLog) this.log.shift();
+    // Names the entry the session is about to record for this same edit.
+    this.bridge?.labelNextEdit(op.description);
   }
 
   public canUndo(): boolean {
-    return this.undoStack.length > 0;
+    return this.bridge ? this.bridge.canUndo() : false;
   }
 
   public canRedo(): boolean {
-    return this.redoStack.length > 0;
+    return this.bridge ? this.bridge.canRedo() : false;
   }
 
-  public undo(tracks: Track[]): { updatedTracks: Track[]; operation: ProductionOperation | null } {
-    const op = this.undoStack.pop();
-    if (!op) return { updatedTracks: tracks, operation: null };
-
-    const updatedTracks = op.undo(tracks);
-    this.redoStack.push(op);
-    return { updatedTracks, operation: op };
+  /**
+   * Undoes through the session. `tracks` is returned unchanged: the session
+   * owns the state and has already restored its own snapshot, so a caller that
+   * wrote this back would fight it.
+   */
+  public undo(tracks: Track[]): { updatedTracks: Track[]; label: string | null } {
+    return { updatedTracks: tracks, label: this.bridge ? this.bridge.undo() : null };
   }
 
-  public redo(tracks: Track[]): { updatedTracks: Track[]; operation: ProductionOperation | null } {
-    const op = this.redoStack.pop();
-    if (!op) return { updatedTracks: tracks, operation: null };
-
-    const updatedTracks = op.redo(tracks);
-    this.undoStack.push(op);
-    return { updatedTracks, operation: op };
+  public redo(tracks: Track[]): { updatedTracks: Track[]; label: string | null } {
+    return { updatedTracks: tracks, label: this.bridge ? this.bridge.redo() : null };
   }
 
   public getHistorySummary() {
     return {
-      undoCount: this.undoStack.length,
-      redoCount: this.redoStack.length,
-      latestOperation: this.undoStack[this.undoStack.length - 1] || null,
+      undoCount: this.log.length,
+      redoCount: 0,
+      latestOperation: this.log[this.log.length - 1] || null,
     };
   }
 
