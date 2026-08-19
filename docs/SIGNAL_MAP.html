@@ -310,8 +310,8 @@
     <h1>SoulSonus Signal Map</h1>
     <p class="standfirst">Every component in the six rooms, sorted by whether it actually processes anything. Consolidated from all prior verification passes and re-checked against the current branch, so there is one map to plan from instead of several.</p>
     <div class="stamp">
-      <span>Describes the code at <code>main</code> @ <code>972f05c</code> — the branch Netlify deploys (this map is the commit after it)</span>
-      <span>Updated 19 Aug 2026 · Layers 0 and 1 complete · Layer 2 in progress — AUDITION sweep, real export, a working true-peak limiter, per-track EQ, undoable takes, a single undo stack, playable take audio, a working arrangement room, a type gate that checks component props, audio on the timeline, a song that is no longer four bars long, and an E05 seam with no invented scores behind it have landed</span>
+      <span>Describes the code at <code>main</code> @ <code>c8804bf</code> — the branch Netlify deploys (this map is the commit after it)</span>
+      <span>Updated 19 Aug 2026 · Layers 0 and 1 complete · Layer 2 in progress — AUDITION sweep, real export, a working true-peak limiter, per-track EQ, undoable takes, a single undo stack, playable take audio, a working arrangement room, a type gate that checks component props, audio on the timeline, a song that is no longer four bars long, an E05 seam with no invented scores behind it, and a Session Band whose grants are actually checked have landed</span>
       <span>Method: live headless browser + synthetic mic + source read</span>
     </div>
   </header>
@@ -325,9 +325,9 @@
   <section>
     <div class="bridge">
       <div class="cell work">
-        <span class="fig">101</span>
+        <span class="fig">108</span>
         <span class="lab">Working</span>
-        <span class="note">Processes real data end to end. Demonstrated, not assumed. 52 of these were broken and fixed during the audit.</span>
+        <span class="note">Processes real data end to end. Demonstrated, not assumed. 55 of these were broken and fixed during the audit.</span>
       </div>
       <div class="cell dark">
         <span class="fig">6</span>
@@ -340,7 +340,7 @@
         <span class="note">Presents literals as measurements, or the control does nothing.</span>
       </div>
       <div class="cell none">
-        <span class="fig">4</span>
+        <span class="fig">5</span>
         <span class="lab">Not built</span>
         <span class="note">The UI implies it, or the shell has a structural gap; no implementation exists. One row was removed rather than fixed.</span>
       </div>
@@ -350,7 +350,7 @@
       <span><span class="pill p-dark">Unplugged</span></span>
       <span><span class="pill p-deco">Decorative</span></span>
       <span><span class="pill p-none">Not built</span></span>
-      <span>Evidence column cites the file and line, or the live test that produced the result. 116 rows in total.</span>
+      <span>Evidence column cites the file and line, or the live test that produced the result. 124 rows in total.</span>
     </div>
   </section>
 
@@ -559,6 +559,25 @@
     </div>
   </section>
 
+  <!-- SESSION BAND -->
+  <section class="room">
+    <div class="roomhead">
+      <span class="roomno">Under the DAW</span>
+      <h2>The Session Band</h2>
+      <span class="roomrole">Instrument specialists the Co-Producer turns to. The creator stays the bandleader</span>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="what">A request can be addressed to a <em>who</em></div><div><span class="pill p-work">Fixed</span></div><div class="ev">The router was typed entirely by operation &mdash; a closed union of six verbs. &ldquo;Bass player, play what you feel&rdquo; names a musician and had nowhere to land, so it fell through to whichever operation happened to share a keyword. <code>role</code> and <code>grantLevel</code> now sit <em>beside</em> the verb rather than replacing it, and reading an address is deliberately narrow: live, &ldquo;make the kick fatter&rdquo; and &ldquo;the bass is masking the kick&rdquo; still route to operations</div></div>
+      <div class="row"><div class="what">Three grants, each with a check that can fail</div><div><span class="pill p-work">Working</span></div><div class="ev">A freedom level written into a prompt and never verified is a control that reports success while changing nothing &mdash; which this project has already shipped once. <code>PLAY EXACTLY</code>: same pitches, same count, onsets within 30&nbsp;ms. <code>PLAY AROUND IT</code>: every source onset still has a note within 60&nbsp;ms, anything may be added. <code>PLAY WHAT YOU FEEL</code>: one track, named bars, nothing outside. Every rule is shown refusing something &mdash; a shifted phrase, an added note, a dropped onset, a note in the wrong bar, a write to the wrong track</div></div>
+      <div class="row"><div class="what">The tolerances are wall-clock, not ticks</div><div><span class="pill p-work">Working</span></div><div class="ev">The same tick error is a different musical error at 70&nbsp;BPM and at 170. Measured: the same 60-tick shift is refused at 40&nbsp;BPM (<code>187.5&nbsp;ms</code>) and allowed at 400&nbsp;BPM (<code>18.8&nbsp;ms</code>). This is also the quiet argument for symbolic takes &mdash; &ldquo;did it keep my phrase?&rdquo; is arithmetic on notes and guesswork on a waveform</div></div>
+      <div class="row"><div class="what">Two players can never offer the engine swap</div><div><span class="pill p-work">Working</span></div><div class="ev">Five players hand back notes, so a take can be kept while the sound changes. Background vocals and texture hand back audio &mdash; a note grid cannot express a stacked &ldquo;ooh&rdquo;, and there is no symbolic form of a riser. In the type from the first commit, rather than discovered when the vocal arranger arrives</div></div>
+      <div class="row"><div class="what">No player is behind the brief, and it says so</div><div><span class="pill p-work">Working</span></div><div class="ev">The reply states the grant, the lane, what comes back and where the player sits in the call order &mdash; then says plainly that the intelligence returning a take does not exist yet. The brief and the check are real; the musician is not, and nothing pretends otherwise</div></div>
+      <div class="row"><div class="what">Two intelligences, the good one unreachable</div><div><span class="pill p-work">Fixed</span></div><div class="ev">Found while wiring the address. <code>SoulSonusIntelligenceDock</code> calls the reasoning provider and is imported by no file; <code>StudioIntelligenceDrawer</code> is the one actually mounted, and it answered from its own script. The mounted drawer now goes through <code>queryStudioIntelligence</code>, so the context compiler, the reasoning provider and the operation planner are reached for the first time &mdash; and so is the honest candidate path</div></div>
+      <div class="row"><div class="what">The drawer opened on a conversation nobody had</div><div><span class="pill p-work">Fixed</span></div><div class="ev">A seeded exchange containing a creator line nobody typed and a reply asserting &ldquo;the 808 is holding a 140ms sustain against the Bar 11 kick transient&rdquo; over three options badged <code>98%</code> / <code>95%</code> / <code>92% MATCH</code>. Nothing read the session and nothing computed a percentage. <code>confidence</code>, <code>rhythmScore</code> and <code>timingScore</code> are gone from the option shape entirely</div></div>
+      <div class="row"><div class="what">Players that return takes</div><div><span class="pill p-none">Not built</span></div><div class="ev">The adapter family over one reasoner. Tuning it needs a corpus of session-context-to-performance examples with preference signal &mdash; which the governance loop already produces, since every accept and reject on a candidate is a labelled preference pair. Shipping audition-and-decide early is data collection, and it compounds</div></div>
+    </div>
+  </section>
+
   <!-- CROSS-CUTTING -->
   <section class="room">
     <div class="roomhead">
@@ -582,7 +601,7 @@
       <div class="row"><div class="what"><code>ContextualToolPanel</code> was imported by nothing</div><div><span class="pill p-work">Fixed</span></div><div class="ev">It held <code>IntelligenceLaneInspector</code> and the Create room's FX tab, neither reachable in the current layout. The panel has been deleted rather than left as a broken duplicate; the inspector remains in the tree, still unmounted</div></div>
       <div class="row"><div class="what">Nothing reached the deployed site until now<small>Ten commits of fixes sat unmerged</small></div><div><span class="pill p-work">Fixed</span></div><div class="ev">Netlify builds <code>main</code>, which was still at <code>abc3cbe</code> from before the audit. Clicking into the studio gave 0 elements and <code>ReferenceError: useStudioSession is not defined</code> — the round-one crash, still live. <code>main</code> fast-forwarded to the audited branch and verified rendering 319 controls before pushing</div></div>
       <div class="row"><div class="what">Favicon and page metadata</div><div><span class="pill p-work">Fixed</span></div><div class="ev">A 404 on <code>/favicon.ico</code> was the last console error on a clean load, and left the browser tab blank. Console is now clean end to end</div></div>
-      <div class="row"><div class="what">Verification harness</div><div><span class="pill p-work">Working</span></div><div class="ev">scripts/live-verification — 38 tests driving real Chromium with a synthetic mic, reading committed React state, plus scripts/dsp for arithmetic that needs no browser</div></div>
+      <div class="row"><div class="what">Verification harness</div><div><span class="pill p-work">Working</span></div><div class="ev">scripts/live-verification — 39 tests driving real Chromium with a synthetic mic, reading committed React state, plus scripts/dsp for arithmetic that needs no browser</div></div>
     </div>
   </section>
 
@@ -592,8 +611,8 @@
     <p class="lede">Layers 0 and 1 are complete, and Layer 2 has landed: the AUDITION sweep, clips on the timeline, and the song length itself are all recorded above. The timeline is no longer four bars long. What remains is ordered by value returned per unit of work, given what already exists on disk.</p>
     <ol class="next">
       <li><div><strong>A host, and the first real <code>extract</code>.</strong><p>Everything on our side of the seam is in place and tested without a network. What is left is not code: a machine with the pinned checkpoint and enough VRAM. Until one exists, the honest status of realization is &ldquo;can be attempted, has not been&rdquo; &mdash; and the app now says exactly that rather than showing a score.</p></div></li>
-      <li><div><strong>The Session Band role dimension.</strong><p>Instrument-specialist agents under the same governance the Co-Producer already uses. It needs a role dimension on the router and nothing from ACE, so it can start before a host exists.</p></div></li>
-      <li><div><strong>Turn on <code>strict</code>.</strong><p>The type gate now checks props, but <code>strictNullChecks</code> is still off, so an optional field read without a guard is invisible. That is the next tier of the same class of bug, and the same argument applies: it will surface a batch at once, which is a reason to schedule it rather than fold it into something else.</p></div></li>
+      <li><div><strong>Sweep the remaining orphan components.</strong><p>Two more mounted-versus-real pairs turned up this pass alone: the intelligence dock that nothing imported while a scripted drawer was the reachable one, and a standalone piano roll still hard-wired to four bars that no file renders. Each one hides a whole class of &ldquo;built but unreachable&rdquo;, and finding them by accident is not a method.</p></div></li>
+      <li><div><strong>Turn on <code>strict</code>.</strong><p>Made concrete this pass: <code>preservationScores</code> became nullable and every unguarded read of it still typechecked, so the fabricated-number fixes had to be found by hand rather than by the gate. <code>strictNullChecks</code> is the difference between the compiler finding those and a person finding them.</p></div></li>
     </ol>
   </section>
 
