@@ -46,6 +46,10 @@ interface AppInnerProps {
   onBackToLanding?: () => void;
 }
 
+// Input types that genuinely swallow an undo shortcut. A range, checkbox or
+// radio does not — undo must keep working while a fader has focus.
+const TEXT_INPUT_TYPES = new Set(['text', 'search', 'email', 'url', 'tel', 'password', 'number', 'date', 'time']);
+
 const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const {
     activeWorkspace,
@@ -75,7 +79,33 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     selectionContext,
     setSelectionContext,
     handleCommitCandidateTransaction,
+    handleUndo,
+    handleRedo,
   } = useStudioSession();
+
+  // Undo was reachable only from the Build room's control cluster, while takes
+  // are recorded in Create — so undoing one meant leaving the room it was made
+  // in. The keyboard works everywhere the studio does.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== 'z' || !(e.metaKey || e.ctrlKey)) return;
+      const el = document.activeElement as HTMLElement | null;
+      // Never steal undo from a field the creator is typing in — but a fader is
+      // an <input> too, and having undo go dead because a slider still has focus
+      // would be worse than the gap this shortcut closes.
+      const typing =
+        !!el &&
+        (el.isContentEditable ||
+          el.tagName === 'TEXTAREA' ||
+          (el.tagName === 'INPUT' && TEXT_INPUT_TYPES.has(((el as HTMLInputElement).type || 'text').toLowerCase())));
+      if (typing) return;
+      e.preventDefault();
+      if (e.shiftKey) handleRedo();
+      else handleUndo();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleUndo, handleRedo]);
 
   // Modals & Drawers
   const [isHelpOpen, setIsHelpOpen] = useState(false);

@@ -757,17 +757,45 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    */
   const pendingUndoRef = useRef<Track[] | null>(null);
 
-  const updateTracksWithHistory = useCallback((action: Track[] | ((prev: Track[]) => Track[])) => {
-    setTracks((prevTracks) => {
-      const nextTracks = typeof action === 'function' ? action(prevTracks) : action;
+  /**
+   * An open run of related edits that undo should treat as one.
+   *
+   * A recorded take arrives as one commit per note. Routed through the history
+   * writer ungrouped, a 22-note take would cost 22 presses of undo to remove.
+   * While a group is open, the snapshot taken before its first edit is the one
+   * undo returns to; the group closes after `HISTORY_GROUP_IDLE_MS` of quiet.
+   */
+  const historyGroupRef = useRef<{ key: string; at: number } | null>(null);
+  const HISTORY_GROUP_IDLE_MS = 2000;
 
-      if (JSON.stringify(prevTracks) !== JSON.stringify(nextTracks)) {
-        // Guarded so a double-invoked updater records the snapshot only once.
-        if (pendingUndoRef.current === null) pendingUndoRef.current = prevTracks;
+  const updateTracksWithHistory = useCallback(
+    (action: Track[] | ((prev: Track[]) => Track[]), options?: { group?: string }) => {
+      // Group bookkeeping happens here rather than inside the updater: React
+      // invokes updaters twice under StrictMode, and this decides whether a
+      // history entry is written.
+      const group = options?.group;
+      const now = Date.now();
+      let continuesGroup = false;
+      if (group) {
+        const open = historyGroupRef.current;
+        continuesGroup = !!open && open.key === group && now - open.at < HISTORY_GROUP_IDLE_MS;
+        historyGroupRef.current = { key: group, at: now };
+      } else {
+        historyGroupRef.current = null;
       }
-      return nextTracks;
-    });
-  }, []);
+
+      setTracks((prevTracks) => {
+        const nextTracks = typeof action === 'function' ? action(prevTracks) : action;
+
+        if (JSON.stringify(prevTracks) !== JSON.stringify(nextTracks)) {
+          // Guarded so a double-invoked updater records the snapshot only once.
+          if (!continuesGroup && pendingUndoRef.current === null) pendingUndoRef.current = prevTracks;
+        }
+        return nextTracks;
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     const snapshot = pendingUndoRef.current;
@@ -783,34 +811,47 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const canUndo = past.length > 0;
   const canRedo = future.length > 0;
 
+  // Undo and redo read the committed values through refs and then write each
+  // piece of state once. They used to call setState from inside another
+  // updater, which StrictMode invokes twice — the one place where a doubled
+  // invocation silently corrupts the stack it is maintaining.
+  const pastRef = useRef<Track[][]>([]);
+  const futureRef = useRef<Track[][]>([]);
+  useEffect(() => {
+    pastRef.current = past;
+    futureRef.current = future;
+  }, [past, future]);
+
   const handleUndo = useCallback(() => {
-    setPast((prevPast) => {
-      if (prevPast.length === 0) return prevPast;
-      const previousState = prevPast[prevPast.length - 1];
-      const newPast = prevPast.slice(0, prevPast.length - 1);
+    const prevPast = pastRef.current;
+    if (prevPast.length === 0) return;
+    const previousState = prevPast[prevPast.length - 1];
+    const currentTracks = tracksRef.current;
 
-      setTracks((currentTracks) => {
-        setFuture((prevFuture) => [currentTracks, ...prevFuture]);
-        return previousState;
-      });
+    // Whatever run of edits was open ends here, so the next edit starts a new
+    // history entry rather than joining the one just undone.
+    historyGroupRef.current = null;
 
-      return newPast;
-    });
+    pastRef.current = prevPast.slice(0, prevPast.length - 1);
+    futureRef.current = [currentTracks, ...futureRef.current];
+    setPast(pastRef.current);
+    setFuture(futureRef.current);
+    setTracks(previousState);
   }, []);
 
   const handleRedo = useCallback(() => {
-    setFuture((prevFuture) => {
-      if (prevFuture.length === 0) return prevFuture;
-      const nextState = prevFuture[0];
-      const newFuture = prevFuture.slice(1);
+    const prevFuture = futureRef.current;
+    if (prevFuture.length === 0) return;
+    const nextState = prevFuture[0];
+    const currentTracks = tracksRef.current;
 
-      setTracks((currentTracks) => {
-        setPast((prevPast) => [...prevPast, currentTracks]);
-        return nextState;
-      });
+    historyGroupRef.current = null;
 
-      return newFuture;
-    });
+    futureRef.current = prevFuture.slice(1);
+    pastRef.current = [...pastRef.current, currentTracks];
+    setFuture(futureRef.current);
+    setPast(pastRef.current);
+    setTracks(nextState);
   }, []);
 
   // Detection Settings
@@ -866,7 +907,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     const bpm = bpmRef.current || 110;
     const ticksPerSecond = (bpm / 60) * 480;
 
-    setTracks((prev) => {
+    // Captured notes used to be written with setTracks directly, so a take
+    // could not be undone at all. They go through the history writer now, as
+    // one grouped entry per take rather than one per note.
+    updateTracksWithHistory((prev) => {
       let next = prev;
 
       for (const event of events) {
@@ -948,8 +992,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       return next;
-    });
-  }, []);
+    }, { group: 'capture' });
+  }, [updateTracksWithHistory]);
 
   /** Live monitoring for a single event. Kept out of state updaters, which must stay pure. */
   const monitorCaptureEvent = useCallback((event: CaptureEvent) => {
@@ -1135,7 +1179,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (!created.length) throw new Error('Stem separation returned no stems.');
 
-      setTracks((prev) => [...created, ...prev]);
+      updateTracksWithHistory((prev) => [...created, ...prev]);
       return {
         ok: true,
         mode,
@@ -1143,7 +1187,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         stems: stemSummaries,
       };
     },
-    [decodeAudioFile, commitCaptureEvents]
+    [decodeAudioFile, commitCaptureEvents, updateTracksWithHistory]
   );
 
   useEffect(() => {
@@ -1756,9 +1800,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       ],
     };
 
-    setTracks((prev) => [newSourceTrack, ...prev]);
+    updateTracksWithHistory((prev) => [newSourceTrack, ...prev]);
     setSelectionContext((prev) => ({ ...prev, selectedTrackId: sourceTrackId }));
-  }, [tracks]);
+  }, [tracks, updateTracksWithHistory]);
 
   /**
    * Turns a seed take into per-sound-type stem tracks.
@@ -1973,7 +2017,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     };
     setLineageRecords((prev) => [lineageEntry, ...prev]);
 
-    setTracks((prev) => {
+    updateTracksWithHistory((prev) => {
       const idx = prev.findIndex(t => t.id === sourceTrackId);
       if (idx === -1) return [...prev, singleTrack];
       const copy = [...prev];
