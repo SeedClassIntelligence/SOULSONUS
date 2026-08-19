@@ -283,11 +283,8 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
       // Add real synthetic vocal take to DAW track
       if (vocalTrack) {
         handleAddVocalTake(vocalTrack.id, {
-          takeName: `Cloned Vocal Take (${activeModel.name})`,
-          type: 'SYNTHETIC_CLONE',
-          isCompCandidate: true,
+          name: `Cloned Vocal Take (${activeModel.name})`,
           rating: 5,
-          color: '#ec4899',
         });
       }
     }, 2200);

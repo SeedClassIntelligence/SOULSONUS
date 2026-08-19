@@ -30,10 +30,10 @@ export interface ProjectSnapshot {
   name: string;
   savedAt: number;
   /** Everything below is the creative work; transient UI state is not stored. */
-  dawState: Record<string, unknown>;
+  dawState: unknown;
   tracks: unknown[];
   sections: unknown[];
-  lyricSections: Record<string, unknown>;
+  lyricSections: unknown;
   masteringChain: unknown;
   masterCandidates: unknown[];
   activeMasterCandidateId: string;
@@ -44,11 +44,11 @@ export interface ProjectSnapshot {
   seedRecords: unknown[];
   lineageRecords: unknown[];
   decisionRecords: unknown[];
-  detectionSettings: Record<string, unknown>;
+  detectionSettings: unknown;
   activeWorkspace: string;
   /** Added after v1 shipped; older snapshots simply lack them. */
-  editorPrefs?: Record<string, unknown>;
-  writeRoomDraft?: Record<string, unknown>;
+  editorPrefs?: unknown;
+  writeRoomDraft?: unknown;
   /** The recorded vocal take, stored as the encoded blob it was captured as. */
   vocalTake: { blob: Blob; duration: number; waveformData: number[] } | null;
   /**

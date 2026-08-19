@@ -456,7 +456,13 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
             <div className="flex items-center gap-1">
               <span className="text-slate-500 font-bold">SOURCE:</span>
               <span className="text-amber-400 font-bold">
-                {track.originType === 'ORAL_SEED' ? 'MOUTH' : isDrum ? 'BEATBOX' : 'PERF'}
+                {/* 'ORAL_SEED' is not one of the origin types; a mouth
+                    performance is recorded as a source modality. */}
+                {track.sourceModality === 'MOUTH' || track.originType === 'ROOT_PERFORMANCE'
+                  ? 'MOUTH'
+                  : isDrum
+                  ? 'BEATBOX'
+                  : 'PERF'}
               </span>
             </div>
 

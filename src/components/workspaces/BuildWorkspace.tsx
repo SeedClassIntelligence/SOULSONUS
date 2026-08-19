@@ -14,7 +14,7 @@ export const BuildWorkspace: React.FC = () => {
     setSelectionContext,
     handleCloneBarToAll,
     handleNudgeTrackPattern,
-    handleShiftTrackRow,
+    handleInvertPattern,
     handleClearTrack,
     handleClearAll,
     handleRandomize,
@@ -140,15 +140,21 @@ export const BuildWorkspace: React.FC = () => {
 
       {/* Shoot Around Transformation Panel */}
       <div className="w-full">
+        {/* Prop names the component actually declares. The previous four were
+            invented — onCloneBarToAll, onNudgeGlobal, onRandomize and an
+            onInvertPattern that was never passed at all — so every button in
+            this cluster called undefined. */}
         <ShootAroundControls
-          onCloneBarToAll={handleCloneBarToAll}
-          onNudgeGlobal={handleNudgeTrackPattern ? (dir) => handleNudgeTrackPattern('all', dir) : undefined}
+          onCloneBar1ToAll={() => handleCloneBarToAll(0)}
+          onNudgeLeft={() => handleNudgeTrackPattern('all', 'left')}
+          onNudgeRight={() => handleNudgeTrackPattern('all', 'right')}
+          onRandomizeBar1={() => handleRandomize(0)}
           onClearAll={handleClearAll}
-          onRandomize={handleRandomize}
+          onInvertPattern={handleInvertPattern}
           canUndo={canUndo}
           canRedo={canRedo}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
+          onUndo={() => { handleUndo(); }}
+          onRedo={() => { handleRedo(); }}
         />
       </div>
     </div>

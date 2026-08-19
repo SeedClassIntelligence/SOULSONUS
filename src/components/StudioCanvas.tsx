@@ -659,7 +659,10 @@ export const StudioCanvas: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    if (selectedTrack) handleQuantizeTrackNotes(selectedTrack.id, universalSnapTicks || 120);
+                    // An empty id list means "every note on the track"; the
+                    // division belongs in the third argument, and used to be
+                    // passed as the note ids.
+                    if (selectedTrack) handleQuantizeTrackNotes(selectedTrack.id, [], universalSnapTicks || 120);
                   }}
                   className="px-2 py-0.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold transition cursor-pointer text-[9px] flex items-center space-x-1"
                   title="Quantize selected track note timings"

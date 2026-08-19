@@ -78,7 +78,9 @@ export const TimelinePrimitive: React.FC<TimelinePrimitiveProps> = ({
       <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
         {tracks.map((track) => {
           const isSelected = track.id === selectedTrackId;
-          const activeSteps = track.steps.filter((s) => s.active).length;
+          // track.steps is boolean[]; this read `.active` off each boolean, so every
+          // step drew as inactive whatever the pattern held.
+          const activeSteps = track.steps.filter(Boolean).length;
 
           return (
             <div
@@ -116,7 +118,7 @@ export const TimelinePrimitive: React.FC<TimelinePrimitiveProps> = ({
                     <div
                       key={idx}
                       className={`h-8 rounded flex items-center justify-center transition-all ${
-                        step.active
+                        step
                           ? isCurrent
                             ? 'bg-amber-400 text-slate-950 font-bold scale-105 shadow-md shadow-amber-400/40'
                             : 'bg-amber-500/80 text-slate-950 font-semibold'
@@ -125,7 +127,7 @@ export const TimelinePrimitive: React.FC<TimelinePrimitiveProps> = ({
                           : 'bg-slate-900/60 border border-slate-800/60'
                       }`}
                     >
-                      {step.active && <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
+                      {step && <div className="w-1.5 h-1.5 rounded-full bg-slate-950" />}
                     </div>
                   );
                 })}

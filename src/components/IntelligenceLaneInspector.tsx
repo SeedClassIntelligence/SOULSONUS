@@ -31,7 +31,10 @@ export const IntelligenceLaneInspector: React.FC<IntelligenceLaneInspectorProps>
   track,
   onUpdateTrack,
 }) => {
-  const { canUseCapability, setIsVaultModalOpen } = useStudioSession();
+  // canUseCapability is on the capability registry, not the session — reading
+  // it from the session gave undefined and would have thrown when called.
+  const { setIsVaultModalOpen } = useStudioSession();
+  const canUseCapability = (id: string) => capabilityRegistry.canUseCapability(id);
   const [activeTab, setActiveTab] = useState<'SOURCE' | 'MIDI' | 'SOUND' | 'REALIZE' | 'TRANSFORM' | 'FX'>('SOURCE');
 
   if (!track) {

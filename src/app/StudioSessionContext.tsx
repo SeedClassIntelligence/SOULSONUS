@@ -123,10 +123,24 @@ export interface EditorPreferences {
  * was component-local, so leaving the room to check the mix destroyed whatever
  * had been typed and restored the demo text.
  */
+/**
+ * A layer in the Write & Record room's take list — a lead, a harmony or an
+ * ad-lib line with its own mute and level. Distinct from `VocalTake`, which is
+ * a recorded performance in the take pool; typing these as the same thing was
+ * a mistake that only surfaced once component props were being checked.
+ */
+export interface WriteRoomTake {
+  id: string;
+  name: string;
+  type: 'lead' | 'harmony' | 'adlib';
+  muted: boolean;
+  volume: number;
+}
+
 export interface WriteRoomDraft {
   lyrics: string;
   cadence: string;
-  takes: VocalTake[];
+  takes: WriteRoomTake[];
 }
 
 export interface StemExtractionResult {
@@ -430,17 +444,17 @@ export interface StudioSessionState {
 
   // Drawers & Modals Visibility
   isInspectorOpen: boolean;
-  setIsInspectorOpen: (open: boolean) => void;
+  setIsInspectorOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isCalibrationOpen: boolean;
-  setIsCalibrationOpen: (open: boolean) => void;
+  setIsCalibrationOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isVisualizationOpen: boolean;
-  setIsVisualizationOpen: (open: boolean) => void;
+  setIsVisualizationOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isVaultModalOpen: boolean;
-  setIsVaultModalOpen: (open: boolean) => void;
+  setIsVaultModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isAudioImportModalOpen: boolean;
-  setIsAudioImportModalOpen: (open: boolean) => void;
+  setIsAudioImportModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isVoiceCloneDrawerOpen: boolean;
-  setIsVoiceCloneDrawerOpen: (open: boolean) => void;
+  setIsVoiceCloneDrawerOpen: React.Dispatch<React.SetStateAction<boolean>>;
 
 
   // DAW Engine State
@@ -492,6 +506,7 @@ export interface StudioSessionState {
   handleClearTrack: (trackId: string) => void;
   handleClearAll: () => void;
   handleRandomize: (barIndex?: number) => void;
+  handleInvertPattern: () => void;
   handleAddSeedRecord: (record: SeedSignatureRecord) => void;
   handleCommitCandidateTransaction: (result: CommitTransactionResult, targetTrackId?: string) => boolean;
 
@@ -548,7 +563,7 @@ export interface StudioSessionState {
   handleRestoreLyricVersion: (sectionId: string, versionId: string) => void;
 
   // Step 3: Vocal Takes & Recording Actions
-  handleAddVocalTake: (trackId: string, takeData: Partial<VocalTake>) => void;
+  handleAddVocalTake: (trackId: string, takeData: Partial<VocalTake> & { audioBlob?: Blob }) => void;
   handleSetActiveTake: (trackId: string, takeId: string) => void;
   handleDeleteTake: (trackId: string, takeId: string) => void;
   handleUpdateTakeRating: (trackId: string, takeId: string, rating: number) => void;
@@ -573,6 +588,7 @@ export interface StudioSessionState {
   handleSplitNote: (trackId: string, noteId: string, splitAtTick: number) => void;
   handleDeleteNotes: (trackId: string, noteIds: string[]) => void;
   handleSetNoteVelocity: (trackId: string, noteId: string, velocity: number) => void;
+  handleSetNoteLyric: (trackId: string, noteId: string, lyric: string) => void;
   handleTransposeNotes: (trackId: string, noteIdsOrSemitones: string[] | number, semitones?: number) => void;
   handleTransposeAllTracks: (semitones: number) => void;
   handleQuantizeTrackNotes: (trackId: string, noteIds: string[], divisionTicks?: number) => void;
@@ -1844,6 +1860,20 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const handleRandomize = useCallback((barIndex?: number) => {
     updateTracksWithHistory((prevTracks) => audioEngine.randomizePattern(prevTracks, 'all', barIndex));
+  }, [updateTracksWithHistory]);
+
+  /**
+   * Flips every step on every track: what was silent plays, what played stops.
+   *
+   * The Build room's control cluster had an INVERT button whose handler was
+   * never passed, so it called undefined. This is the operation the label
+   * describes.
+   */
+  const handleInvertPattern = useCallback(() => {
+    pendingLabelRef.current = 'Invert pattern';
+    updateTracksWithHistory((prevTracks) =>
+      prevTracks.map((t) => ({ ...t, steps: t.steps.map((on) => !on) }))
+    );
   }, [updateTracksWithHistory]);
 
   const coproducerContext = useMemo<CoproducerContext>(
@@ -3741,6 +3771,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       handleClearTrack,
       handleClearAll,
       handleRandomize,
+      handleInvertPattern,
       handleAddSeedRecord,
       handleCommitCandidateTransaction,
       calibratingTrackId,
@@ -3905,6 +3936,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       handleClearTrack,
       handleClearAll,
       handleRandomize,
+      handleInvertPattern,
       handleAddSeedRecord,
       handleCommitCandidateTransaction,
       calibratingTrackId,

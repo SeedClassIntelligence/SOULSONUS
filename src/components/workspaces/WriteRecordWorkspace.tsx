@@ -3,14 +3,7 @@ import { useStudioSession } from '../../app/StudioSessionContext';
 import { Mic, Music, Sparkles, Layers, Volume2, Wand2, Disc, PenTool, ShieldCheck, Plus, Trash2, Play } from 'lucide-react';
 import { audioEngine } from '../../audio/audioEngine';
 import { VocalLayer } from '../VocalLayer';
-
-interface VocalTake {
-  id: string;
-  name: string;
-  type: 'lead' | 'harmony' | 'adlib';
-  muted: boolean;
-  volume: number;
-}
+import type { WriteRoomTake } from '../../app/StudioSessionContext';
 
 export const WriteRecordWorkspace: React.FC = () => {
   const {
@@ -33,7 +26,7 @@ export const WriteRecordWorkspace: React.FC = () => {
   const setLyrics = (v: string | ((p: string) => string)) =>
     updateWriteRoomDraft({ lyrics: typeof v === 'function' ? v(lyrics) : v });
   const setCadence = (v: string) => updateWriteRoomDraft({ cadence: v });
-  const setTakes = (v: VocalTake[] | ((p: VocalTake[]) => VocalTake[])) =>
+  const setTakes = (v: WriteRoomTake[] | ((p: WriteRoomTake[]) => WriteRoomTake[])) =>
     updateWriteRoomDraft({ takes: typeof v === 'function' ? v(takes) : v });
 
   const handleStartVocalRecording = async () => {
@@ -60,7 +53,7 @@ export const WriteRecordWorkspace: React.FC = () => {
   };
 
   const handleAddTake = (type: 'lead' | 'harmony' | 'adlib') => {
-    const newTake: VocalTake = {
+    const newTake: WriteRoomTake = {
       id: `take_${Date.now()}`,
       name: `${type.toUpperCase()} Take ${takes.length + 1}`,
       type,

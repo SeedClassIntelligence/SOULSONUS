@@ -91,11 +91,8 @@ export const VoiceCloneDrawer: React.FC<VoiceCloneDrawerProps> = ({ isOpen, onCl
       // Create synthetic vocal take and add to vocal track
       if (vocalTrack) {
         handleAddVocalTake(vocalTrack.id, {
-          takeName: `Cloned Voice (${activeProfile.name.slice(0, 15)}...)`,
-          type: 'SYNTHETIC_CLONE',
-          isCompCandidate: true,
+          name: `Cloned Voice (${activeProfile.name.slice(0, 15)}...)`,
           rating: 5,
-          color: '#ec4899',
         });
       }
     }, 2000);

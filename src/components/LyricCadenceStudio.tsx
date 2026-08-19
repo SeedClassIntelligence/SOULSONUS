@@ -46,8 +46,11 @@ export const LyricCadenceStudio: React.FC<LyricCadenceStudioProps> = ({
   const [newVersionName, setNewVersionName] = useState('');
 
   // Fallback to active section in context or sec_hook
-  const currentSection = sections.find((s) => s.id === activeSectionId) || sections[0] || {
+  const currentSection: ArrangementSection = sections.find((s) => s.id === activeSectionId) || sections[0] || {
     id: 'sec_hook',
+    tag: 'Chorus',
+    energy: 'high',
+    color: '#ec4899',
     name: 'Hook',
     bars: [13, 14, 15, 16, 17, 18, 19, 20],
   };

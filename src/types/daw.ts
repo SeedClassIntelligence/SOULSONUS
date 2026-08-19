@@ -52,21 +52,27 @@ export interface TrackSourceAsset {
   lineageParent: string;
 }
 
+/**
+ * Every field is optional: the channel strip supplies a default for each one
+ * (see `defaultTrackDsp` and `buildTrackStrip`), and partial settings objects
+ * are written from several panels. Requiring them only forced callers to
+ * restate defaults they did not mean to set.
+ */
 export interface TrackDspSettings {
   filterFreq?: number; // Cutoff Hz (20..20000)
   filterType?: 'lowpass' | 'highpass' | 'peaking';
   lowCutHz?: number; // Preamp HPF (20..200Hz)
-  lowGain: number; // dB (-12..+12)
+  lowGain?: number; // dB (-12..+12)
   midFreqHz?: number; // Parametric Mid Freq (200..8000Hz)
   midQ?: number; // Q-Factor (0.1..10)
-  midGain: number; // dB (-12..+12)
-  highGain: number; // dB (-12..+12)
-  compressorThreshold: number; // dB (-60..0)
-  compressorRatio: number; // (1..20)
-  reverbSend: number; // (0..1)
-  delaySend: number; // (0..1)
-  pan: number; // (-1..1)
-  volume: number; // dB (-20..+6)
+  midGain?: number; // dB (-12..+12)
+  highGain?: number; // dB (-12..+12)
+  compressorThreshold?: number; // dB (-60..0)
+  compressorRatio?: number; // (1..20)
+  reverbSend?: number; // (0..1)
+  delaySend?: number; // (0..1)
+  pan?: number; // (-1..1)
+  volume?: number; // dB (-20..+6)
 }
 
 export type SourceModality = 'MOUTH' | 'BODY' | 'KEYS' | 'AUDIO' | 'LYRICS';
@@ -169,6 +175,10 @@ export interface NoteEvent {
 }
 
 export interface Track {
+  /** Where the sound came from. Read by the track lane's SOURCE label. */
+  originType?: LayerOriginType;
+  /** Vault preset name, written by the lane's sound selector. */
+  vaultLabel?: string;
   id: string;
   name: string;
   instrument: InstrumentType;
@@ -306,7 +316,11 @@ export type ExtractionTargetClass =
   | 'synth'
   | 'brass'
   | 'woodwinds'
-  | 'fx';
+  | 'fx'
+  // Named by the seed capture studio and the stem service; the union had
+  // simply never been extended to match what the app extracts.
+  | 'music'
+  | 'keys';
 
 export type TransformationOperationType =
   | 'REMIX_TIMBRE'
@@ -395,12 +409,12 @@ export interface VocalTrackState {
   solo: boolean;
   delaySend: number; // 0 to 1
   reverbSend: number; // 0 to 1
-  takes: VocalTake[];
+  takes?: VocalTake[];
   activeTakeId?: string;
-  comps: VocalComp[];
+  comps?: VocalComp[];
   activeCompId?: string;
-  pitchSettings: PitchCorrectionSettings;
-  timingSettings: TimingCorrectionSettings;
+  pitchSettings?: PitchCorrectionSettings;
+  timingSettings?: TimingCorrectionSettings;
   harmonySettings?: HarmonySettings;
   voiceIdentitySettings?: VoiceIdentitySettings;
   inputSettings?: RecordingInputSettings;
@@ -433,6 +447,10 @@ export interface DAWState {
   activeBarView: 'all' | 1 | 2 | 3 | 4; // view focus filter for sequencer
   soulFlowState: SoulFlowState;
   projectName: string;
+  /** Shown in the status bar and written into the delivery package. */
+  projectVersion?: string;
+  /** Bar the playhead is in, derived from currentStep where it is set. */
+  currentBar?: number;
 }
 
 export interface Preset {

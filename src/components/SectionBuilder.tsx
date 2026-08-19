@@ -341,7 +341,7 @@ export const SectionBuilder: React.FC<SectionBuilderProps> = ({
     } else {
       // Dynamic Heuristic Mapping based on bar density analysis
       barStats.forEach((stat) => {
-        let tag: SectionTag = stat.suggestedTag;
+        const tag: SectionTag = stat.suggestedTag as SectionTag;
         let energy: 'low' | 'medium' | 'high' | 'peak' = 'medium';
 
         if (tag === 'Intro' || tag === 'Outro' || tag === 'Breakdown') energy = 'low';
