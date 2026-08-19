@@ -1,5 +1,4 @@
 import { studioIntelligenceRouter, CreatorIntent, SessionContext } from '../src/lib/studioIntelligenceRouter';
-import { transcriptionEngine } from '../src/audio/transcriptionEngine';
 import { clapEmbeddingMatcher } from '../src/lib/clapEmbeddingMatcher';
 import { audioEncoders } from '../src/lib/audioEncoders';
 import { Track, ArrangementSection } from '../src/types/daw';
@@ -54,32 +53,12 @@ async function testRouter() {
 // 2. BASIC PITCH & TRANSIENT TIMING EXTRACTION TEST
 console.log('[TEST 2] BASIC PITCH & DETERMINISTIC TRANSIENT EXTRACTION:');
 async function testTranscription() {
-  // Create synthetic 48kHz audio buffer with 4 beatbox transient pulses
-  const sampleRate = 48000;
-  const durationSec = 2.0;
-  const buffer = new Float32Array(sampleRate * durationSec);
-
-  // Add 4 transient kicks at 0.0s, 0.545s, 1.09s, 1.636s (110 BPM quarter notes)
-  const pulseInterval = (60 / 110) * sampleRate;
-  for (let p = 0; p < 4; p++) {
-    const startSample = Math.floor(p * pulseInterval);
-    for (let i = 0; i < 1000; i++) {
-      buffer[startSample + i] = Math.sin((i / 50) * Math.PI) * Math.exp(-i / 200);
-    }
-  }
-
-  const result = await transcriptionEngine.transcribeAudio(buffer, sampleRate, 110);
-
-  if (result.notes.length === 0 || result.resampledSampleCount === 0) {
-    throw new Error('Transcription engine failed to extract notes or resample');
-  }
-
-  console.log(`  Input Audio: ${result.rawSampleCount} samples @ 48kHz`);
-  console.log(`  Resampled for Basic Pitch: ${result.resampledSampleCount} samples @ 22.05kHz`);
-  console.log(`  Extracted MIDI Notes: ${result.notes.length} notes`);
-  console.log(`  First Note: ${result.notes[0].noteName} (MIDI: ${result.notes[0].noteNumber}, Vel: ${result.notes[0].velocity})`);
-  console.log(`  64-Step Grid Map: ${result.stepsArray.filter(Boolean).length} active steps quantized`);
-  console.log('  ✓ PASS: TEST 2 (Basic Pitch & Transient Timing)\n');
+  // Transcription moved to src/audio/basicPitch.ts, which runs the real Basic
+  // Pitch model rather than reporting autocorrelation as neural inference.
+  // It is covered by scripts/dsp/test-basic-pitch.ts, against signals whose
+  // pitches are known exactly, and end to end by
+  // scripts/live-verification/test-40-hum-to-notes.cjs.
+  console.log('  Covered by scripts/dsp/test-basic-pitch.ts — see that suite.\n');
 }
 
 // 3. CLAP QUANTIZED EMBEDDING SEARCH TEST

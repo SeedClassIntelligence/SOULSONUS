@@ -4,12 +4,13 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
+    "dev": "node scripts/copy-ort.cjs && vite --port=3000 --host=0.0.0.0",
+    "build": "node scripts/copy-ort.cjs && vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "npx esbuild scripts/test_comprehensive_platform_verification.ts --bundle --platform=node | node"
+    "test": "npx esbuild scripts/test_comprehensive_platform_verification.ts --bundle --platform=node | node",
+    "copy-ort": "node scripts/copy-ort.cjs"
   },
   "overrides": {
     "protobufjs": "^7.4.0"

@@ -12,7 +12,7 @@ interface AudioStemImportModalProps {
 
 export const AudioStemImportModal: React.FC<AudioStemImportModalProps> = ({ isOpen, onClose }) => {
   const { handleAnalyzeAudioFile, handleImportAudioFile } = useStudioSession();
-  const [activeTab, setActiveTab] = useState<'STEMS_4WAY' | 'SINGLE_TRACK'>('STEMS_4WAY');
+  const [activeTab, setActiveTab] = useState<'STEMS_4WAY' | 'SINGLE_TRACK' | 'MELODY'>('STEMS_4WAY');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processProgress, setProcessProgress] = useState(0);
@@ -73,11 +73,14 @@ export const AudioStemImportModal: React.FC<AudioStemImportModalProps> = ({ isOp
     setResult(null);
     setIsProcessing(true);
     setProcessProgress(20);
-    const mode = activeTab === 'STEMS_4WAY' ? 'FULL_MIX' : 'SOLO_PERFORMANCE';
+    const mode =
+      activeTab === 'STEMS_4WAY' ? 'FULL_MIX' : activeTab === 'MELODY' ? 'MELODY' : 'SOLO_PERFORMANCE';
     setStatusMessage(
       mode === 'FULL_MIX'
         ? 'Sending to Demucs stem separation…'
-        : 'Detecting and classifying each sound in the performance…'
+        : mode === 'MELODY'
+          ? 'Following the pitch, note by note…'
+          : 'Detecting and classifying each sound in the performance…'
     );
     try {
       const res = await handleImportAudioFile(selectedFile, mode);
@@ -131,7 +134,7 @@ export const AudioStemImportModal: React.FC<AudioStemImportModalProps> = ({ isOp
             {/* Content Body */}
             <div className="p-6 space-y-5">
               {/* Tab Mode Selector */}
-              <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-bold">
+              <div className="grid grid-cols-3 gap-2 p-1 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-bold">
                 <button
                   type="button"
                   onClick={() => setActiveTab('STEMS_4WAY')}
@@ -155,7 +158,26 @@ export const AudioStemImportModal: React.FC<AudioStemImportModalProps> = ({ isOp
                   }`}
                 >
                   <FileAudio className="w-4 h-4" />
-                  <span>Single Stereo Audio Track</span>
+                  <span>Performance → Channels</span>
+                </button>
+
+                {/*
+                  * The third case. The classifier tells a kick from a snare and
+                  * has no opinion about whether you hummed a C or an E; this
+                  * one follows the pitch and has no opinion about drums.
+                  */}
+                <button
+                  type="button"
+                  id="tab-melody"
+                  onClick={() => setActiveTab('MELODY')}
+                  className={`py-2.5 rounded-xl transition cursor-pointer flex items-center justify-center space-x-2 ${
+                    activeTab === 'MELODY'
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Music className="w-4 h-4" />
+                  <span>Hum → Notes</span>
                 </button>
               </div>
 
@@ -286,6 +308,17 @@ export const AudioStemImportModal: React.FC<AudioStemImportModalProps> = ({ isOp
                   className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-[11px] text-emerald-200 font-sans leading-snug"
                 >
                   {result.message}
+                  {result.transcription && (
+                    <div
+                      id="transcription-detail"
+                      className="mt-1.5 pt-1.5 border-t border-emerald-500/25 font-mono text-[10px] text-emerald-300/80"
+                    >
+                      {result.transcription.lowestNote}–{result.transcription.highestNote} ·{' '}
+                      {result.transcription.windows} window
+                      {result.transcription.windows === 1 ? '' : 's'} through{' '}
+                      {result.transcription.engine.replace(/_/g, ' ').toLowerCase()}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -325,7 +358,13 @@ export const AudioStemImportModal: React.FC<AudioStemImportModalProps> = ({ isOp
                   }`}
                 >
                   <Disc className="w-3.5 h-3.5" />
-                  <span>{activeTab === 'STEMS_4WAY' ? 'SEPARATE INTO STEMS' : 'SEPARATE PERFORMANCE INTO CHANNELS'}</span>
+                  <span>
+                    {activeTab === 'STEMS_4WAY'
+                      ? 'SEPARATE INTO STEMS'
+                      : activeTab === 'MELODY'
+                        ? 'TRANSCRIBE THE MELODY'
+                        : 'SEPARATE PERFORMANCE INTO CHANNELS'}
+                  </span>
                 </button>
               </div>
             </div>

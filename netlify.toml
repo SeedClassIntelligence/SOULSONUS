@@ -26,6 +26,23 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
+# The wasm runtime must be served as wasm. Without the type the browser refuses
+# to stream-compile it; and if the SPA catch-all answers instead, the loader
+# reports "expected magic word 00 61 73 6d, found 3c 21 64 6f" -- the first
+# four bytes of `<!do`. Static files win over the catch-all, so the header is
+# what matters here; the .mjs beside it must keep its own type.
+[[headers]]
+  for = "/ort/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/ort/*.mjs"
+  [headers.values]
+    Content-Type = "text/javascript"
+    Cache-Control = "public, max-age=31536000, immutable"
+
 [[headers]]
   for = "/models/*"
   [headers.values]

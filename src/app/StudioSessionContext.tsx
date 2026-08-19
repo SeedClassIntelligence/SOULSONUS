@@ -77,6 +77,7 @@ import { midiNoteToCaptureEvent } from '../audio/midiCapture';
 import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
 import { toMono } from '../audio/fft';
 import { renderMasterBounce } from '../audio/masterRender';
+import { transcribe } from '../audio/basicPitch';
 import { defaultTrackDsp } from '../audio/trackStrip';
 import { registerAudioAsset, makeClip, PlaceClipOptions } from '../audio/audioClips';
 import { buildDeliveryPackage, disposeDelivery, DeliveryPackage } from '../audio/deliveryPackage';
@@ -108,7 +109,16 @@ import {
   saveProject,
 } from '../lib/projectPersistence';
 
-export type AudioImportMode = 'SOLO_PERFORMANCE' | 'FULL_MIX';
+/**
+ * `MELODY` is the third case, and it was missing.
+ *
+ * SOLO_PERFORMANCE classifies percussive hits; FULL_MIX separates stems.
+ * Neither turns a hummed line into pitched notes, which is the half of
+ * "beatbox my composition into its proper tracks" that a classifier cannot
+ * reach: it can tell a kick from a snare, but it has no opinion about whether
+ * you hummed a C or an E.
+ */
+export type AudioImportMode = 'SOLO_PERFORMANCE' | 'FULL_MIX' | 'MELODY';
 
 /**
  * Editor state that belongs to the creator's session rather than to a
@@ -161,8 +171,16 @@ export interface AudioImportResult {
   mode: AudioImportMode;
   message: string;
   eventCount?: number;
-  /** Hits detected past the four-bar note grid, reported rather than clamped. */
+  /** Hits detected past the end of the song, reported rather than clamped. */
   droppedBeyondGrid?: number;
+  /** MELODY only: what the transcription actually heard. */
+  transcription?: {
+    noteCount: number;
+    lowestNote: string;
+    highestNote: string;
+    engine: string;
+    windows: number;
+  };
   classes?: string[];
   content?: ContentAnalysis;
   stems?: { role: string; durationSec: number; peakAmplitude: number; url: string }[];
@@ -1445,9 +1463,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         // Identical pipeline to the live mic take, sourced from the file.
         const { events: allEvents, content } = analyzePerformanceBuffer(buffer, 'MOUTH');
 
-        // The note grid is four bars. Anything past that is reported as left
-        // behind rather than clamped onto the final step, which would silently
-        // pile the tail of a long file into one place.
+        // Anything past the end of the song is reported as left behind rather
+        // than clamped onto the final step, which would silently pile the tail
+        // of a long file into one place.
         const ticksPerSecond = ((bpmRef.current || 110) / 60) * 480;
         const gridSeconds = songTicksRef.current / ticksPerSecond;
         const events = allEvents.filter((e) => (e.atSeconds ?? 0) < gridSeconds);
@@ -1468,7 +1486,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         commitCaptureEvents(events);
         const classes = [...new Set(events.map((e) => e.klass))];
         const truncation = droppedBeyondGrid
-          ? ` ${droppedBeyondGrid} hits past the four-bar grid were left out — trim the file or raise the project length to keep them.`
+          ? ` ${droppedBeyondGrid} hits past the end of the song were left out — trim the file, or lengthen the song to keep them.`
           : '';
         return {
           ok: true,
@@ -1480,6 +1498,98 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           droppedBeyondGrid,
           classes,
           content,
+        };
+      }
+
+      if (mode === 'MELODY') {
+        // A hummed or played melodic line, through the Basic Pitch model that
+        // has been sitting in public/models/ since before this audit began.
+        // The engine that held a session for it was imported by no file, fed
+        // the tensor under the wrong input name so every call threw, and
+        // discarded the result anyway while reporting itself as neural.
+        const buffer = await decodeAudioFile(file);
+        const channel = buffer.getChannelData(0);
+        const result = await transcribe(channel, buffer.sampleRate);
+
+        if (!result.notes.length) {
+          // Nothing heard is reported as nothing heard. The model returns no
+          // notes for silence and for noise, and that is the correct answer.
+          return {
+            ok: false,
+            mode,
+            message:
+              'No pitched notes were heard in this file. Basic Pitch follows sung, hummed or played ' +
+              'lines; percussion has no pitch to follow, so import that as a performance instead.',
+          };
+        }
+
+        const bpm = bpmRef.current || 110;
+        const ticksPerSecond = (bpm / 60) * 480;
+        const songEnd = songTicksRef.current;
+        const all = result.notes.map((n) => ({
+          startTick: Math.round(n.startSeconds * ticksPerSecond),
+          durationTicks: Math.max(60, Math.round(n.durationSeconds * ticksPerSecond)),
+          midiNote: n.midiNote,
+          // Velocity from the onset head, not a constant. A soft note and a
+          // hard one came back with different activations, so they should not
+          // arrive on the grid identical.
+          velocity: Math.max(20, Math.min(127, Math.round(n.onsetStrength * 127))),
+          confidence: n.sustainStrength,
+        }));
+        const kept = all.filter((n) => n.startTick < songEnd);
+        const droppedBeyondGrid = all.length - kept.length;
+
+        const track = tracksRef.current.find((t) => t.instrument === 'melody') || tracksRef.current[0];
+        if (!track) {
+          return { ok: false, mode, message: 'There is no channel to write the melody to.' };
+        }
+
+        pendingLabelRef.current = `Transcribe ${file.name}`;
+        updateTracksWithHistory((prev) =>
+          prev.map((t) =>
+            t.id === track.id
+              ? {
+                  ...t,
+                  noteEvents: [
+                    ...(t.noteEvents || []),
+                    ...kept.map((n, i) => ({
+                      id: `tr_${Date.now()}_${i}`,
+                      startTick: n.startTick,
+                      durationTicks: n.durationTicks,
+                      midiNote: n.midiNote,
+                      velocity: n.velocity,
+                      provenance: {
+                        origin: 'IMPORTED_MIDI' as const,
+                        // The model's own frame activation, carried through
+                        // rather than replaced with a flattering constant.
+                        detectionConfidence: n.confidence,
+                        creatorEdited: false,
+                      },
+                    })),
+                  ],
+                }
+              : t
+          )
+        );
+
+        const pitches = kept.map((n) => n.midiNote);
+        const truncation = droppedBeyondGrid
+          ? ` ${droppedBeyondGrid} notes past the end of the song were left out — lengthen the song to keep them.`
+          : '';
+        return {
+          ok: true,
+          mode,
+          message:
+            `Heard ${kept.length} notes and wrote them to ${track.name}.${truncation}`,
+          eventCount: kept.length,
+          droppedBeyondGrid,
+          transcription: {
+            noteCount: kept.length,
+            lowestNote: midiToNoteName(Math.min(...pitches)),
+            highestNote: midiToNoteName(Math.max(...pitches)),
+            engine: result.engine,
+            windows: result.windows,
+          },
         };
       }
 
