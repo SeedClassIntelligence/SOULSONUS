@@ -173,7 +173,10 @@ export const SeedCaptureStudio: React.FC = () => {
     await audioEngine.init();
     audioEngine.startSequencer(
       () => tracks,
-      (step) => setDawState((prev) => ({ ...prev, currentStep: step }))
+      (step) => setDawState((prev) => ({ ...prev, currentStep: step })),
+      // The capture metronome has to wrap where the song wraps; a fixed 64
+      // would loop back at bar 4 while the arrangement runs on to bar 32.
+      () => (dawState.songBars || 4) * 16
     );
     setDawState((prev) => ({ ...prev, isPlaying: true, isRecordingMic: true }));
   };

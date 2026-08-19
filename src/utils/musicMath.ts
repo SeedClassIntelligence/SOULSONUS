@@ -13,8 +13,22 @@ export const PPQ = 480;
 export const TICKS_PER_16TH = 120;
 export const TICKS_PER_BEAT = 480;
 export const TICKS_PER_BAR = 1920;
+/**
+ * The old fixed song length: four bars, sixty-four sixteenth-note steps.
+ *
+ * Kept as the default a new project starts at, not as a limit. Song length is
+ * `dawState.songBars` now, and anything that positions, plays, renders or draws
+ * should derive its span with the two helpers below rather than assuming these.
+ */
+export const DEFAULT_SONG_BARS = 4;
 export const TICKS_PER_4_BARS = 7680;
 export const TOTAL_STEPS = 64;
+
+/** Total ticks in a song of `bars` bars, at 4/4. */
+export const songTicks = (bars: number) => Math.max(1, Math.round(bars)) * TICKS_PER_BAR;
+
+/** Total sixteenth-note steps in a song of `bars` bars. */
+export const songSteps = (bars: number) => Math.max(1, Math.round(bars)) * 16;
 
 export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
 
@@ -86,10 +100,15 @@ export function stepToTick(step: number): number {
 }
 
 /**
- * Converts tick offset to closest step index (0..63)
+ * Converts a tick offset to its sixteenth-step index.
+ *
+ * There is no upper clamp. A clamp at 63 made every note past bar 4 report as
+ * step 63, so in a longer song they all fired at once on the last step of the
+ * first four bars, and in a shortened song the render's "past the end" guard
+ * never triggered. Callers that need a bound compare against their own.
  */
 export function tickToStep(tick: number): number {
-  return Math.max(0, Math.min(TOTAL_STEPS - 1, Math.floor(tick / TICKS_PER_16TH)));
+  return Math.max(0, Math.floor(tick / TICKS_PER_16TH));
 }
 
 /**
@@ -97,9 +116,11 @@ export function tickToStep(tick: number): number {
  * (e.g. 120 for 16th, 240 for 8th, 480 for quarter)
  */
 export function snapTick(tick: number, divisionTicks: number = TICKS_PER_16TH): number {
-  if (divisionTicks <= 0) return Math.max(0, Math.min(TICKS_PER_4_BARS, tick));
+  if (divisionTicks <= 0) return Math.max(0, tick);
   const snapped = Math.round(tick / divisionTicks) * divisionTicks;
-  return Math.max(0, Math.min(TICKS_PER_4_BARS, snapped));
+  // No upper clamp: the song is as long as the project says, and a snap helper
+  // is the wrong place to decide that.
+  return Math.max(0, snapped);
 }
 
 /**
@@ -140,14 +161,19 @@ export function snapMidiToScale(midi: number, rootKey: string = 'C', scale: stri
 }
 
 /**
- * Derives a 64-boolean step array from NoteEvents for fast grid rendering or drum views
+ * Derives a step array from NoteEvents for fast grid rendering or drum views.
+ * The array is as long as the song, not a fixed four bars.
  */
-export function deriveStepArrayFromNoteEvents(events: NoteEvent[] = []): boolean[] {
-  const steps = Array(TOTAL_STEPS).fill(false);
+export function deriveStepArrayFromNoteEvents(
+  events: NoteEvent[] = [],
+  totalSteps: number = TOTAL_STEPS
+): boolean[] {
+  const bound = Math.max(1, Math.round(totalSteps));
+  const steps = Array(bound).fill(false);
   events.forEach((ev) => {
     const startStep = tickToStep(ev.startTick);
     const endStep = tickToStep(ev.startTick + Math.max(1, ev.durationTicks - 1));
-    for (let s = startStep; s <= endStep && s < TOTAL_STEPS; s++) {
+    for (let s = startStep; s <= endStep && s < bound; s++) {
       steps[s] = true;
     }
   });
@@ -155,7 +181,7 @@ export function deriveStepArrayFromNoteEvents(events: NoteEvent[] = []): boolean
 }
 
 /**
- * Converts a legacy 64-boolean step array into structured NoteEvents
+ * Converts a legacy boolean step array into structured NoteEvents.
  */
 export function convertStepsToNoteEvents(
   steps: boolean[] = [],
@@ -167,7 +193,7 @@ export function convertStepsToNoteEvents(
   const defaultMidi = noteNameToMidi(basePitch);
 
   let i = 0;
-  while (i < steps.length && i < TOTAL_STEPS) {
+  while (i < steps.length) {
     if (steps[i]) {
       const startStep = i;
       const pitchName = notesArray?.[i] || basePitch;

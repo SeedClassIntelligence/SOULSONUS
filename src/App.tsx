@@ -309,11 +309,12 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       await audioEngine.syncAudioClips(tracks, audioAssets, dawState.bpm || 110);
       audioEngine.startSequencer(
         () => tracks,
-        (step) => handleStepChange(step)
+        (step) => handleStepChange(step),
+        () => (dawState.songBars || 4) * 16
       );
       setDawState((prev) => ({ ...prev, isPlaying: true }));
     }
-  }, [dawState.isPlaying, tracks, audioAssets, dawState.bpm, handleStepChange, setDawState]);
+  }, [dawState.isPlaying, tracks, audioAssets, dawState.bpm, dawState.songBars, handleStepChange, setDawState]);
 
   const handleStop = useCallback(() => {
     audioEngine.stopSequencer();

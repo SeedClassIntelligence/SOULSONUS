@@ -2,7 +2,7 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Track } from '../types/daw';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { ticksToSeconds, secondsToTicks } from '../audio/audioClips';
-import { TICKS_PER_4_BARS } from '../utils/musicMath';
+import { songTicks, TICKS_PER_BAR } from '../utils/musicMath';
 
 interface TrackClipLaneProps {
   track: Track;
@@ -37,13 +37,14 @@ export const TrackClipLane: React.FC<TrackClipLaneProps> = ({ track, snapTicks }
 
   const clips = track.audioClips || [];
   const bpm = dawState.bpm || 110;
+  const songSpanTicks = songTicks(dawState.songBars || 4);
 
   const tickAtClientX = useCallback((clientX: number) => {
     const el = laneRef.current;
     if (!el) return 0;
     const rect = el.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)));
-    return ratio * TICKS_PER_4_BARS;
+    return ratio * songSpanTicks;
   }, []);
 
   const beginGesture = (e: React.PointerEvent, next: Gesture) => {
@@ -151,12 +152,12 @@ export const TrackClipLane: React.FC<TrackClipLaneProps> = ({ track, snapTicks }
       {clips.map((clip) => {
         const asset = audioAssets[clip.assetId];
         const shown = preview[clip.id] || { startTick: clip.startTick, durationTicks: clip.durationTicks };
-        const leftPercent = (shown.startTick / TICKS_PER_4_BARS) * 100;
-        const widthPercent = (shown.durationTicks / TICKS_PER_4_BARS) * 100;
+        const leftPercent = (shown.startTick / songSpanTicks) * 100;
+        const widthPercent = (shown.durationTicks / songSpanTicks) * 100;
         const isSelected = selectedClipId === clip.id;
         // Clips can legitimately sit past the four bars this grid draws; they
         // are marked rather than hidden, so nothing is silently invisible.
-        const offGrid = shown.startTick >= TICKS_PER_4_BARS;
+        const offGrid = shown.startTick >= songSpanTicks;
 
         if (offGrid) {
           return (
@@ -167,7 +168,7 @@ export const TrackClipLane: React.FC<TrackClipLaneProps> = ({ track, snapTicks }
               title={`${clip.provenance.sourceDescription || asset?.name || 'Clip'} sits at tick ${clip.startTick}, past the four bars this grid draws`}
             >
               <span className="text-[8px] font-mono font-bold text-cyan-300 bg-slate-950/90 border border-cyan-500/40 rounded px-1 py-0.5">
-                ▸ {Math.floor(clip.startTick / 1920) + 1}
+                ▸ {Math.floor(clip.startTick / TICKS_PER_BAR) + 1}
               </span>
             </div>
           );

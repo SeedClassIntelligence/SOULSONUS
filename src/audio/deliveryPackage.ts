@@ -73,6 +73,8 @@ export interface BuildDeliveryOptions {
   masterVersion?: string;
   /** Assets backing timeline clips, so the export contains them. */
   audioAssets?: Record<string, AudioAsset>;
+  /** Song length. Without it the export would stop at the old four bars. */
+  bars?: number;
   /** Progress for the UI: 0..1 with a short label. */
   onProgress?: (fraction: number, label: string) => void;
 }
@@ -222,6 +224,7 @@ export async function buildDeliveryPackage(options: BuildDeliveryOptions): Promi
     seedRecords = [],
     masterVersion = '1.0.0',
     audioAssets = {},
+    bars,
     onProgress,
   } = options;
 
@@ -229,7 +232,7 @@ export async function buildDeliveryPackage(options: BuildDeliveryOptions): Promi
   const base = slugify(projectName);
 
   report(0.05, 'Rendering master');
-  const master = await renderMasterBounce({ tracks, bpm, chain, audioAssets });
+  const master = await renderMasterBounce({ tracks, bpm, chain, audioAssets, bars });
   if (master.eventsRendered === 0) {
     throw new Error('Nothing to export — the project rendered silent. Add or unmute a track first.');
   }
@@ -260,7 +263,7 @@ export async function buildDeliveryPackage(options: BuildDeliveryOptions): Promi
   for (let i = 0; i < tracks.length; i++) {
     const track = tracks[i];
     report(0.35 + (0.45 * i) / Math.max(1, tracks.length), `Bouncing stem: ${track.name}`);
-    const stem = await renderMasterBounce({ tracks, bpm, chain, audioAssets, onlyTrackIds: [track.id] });
+    const stem = await renderMasterBounce({ tracks, bpm, chain, audioAssets, bars, onlyTrackIds: [track.id] });
     if (stem.eventsRendered === 0) {
       silentTracks.push(track.name);
       continue;

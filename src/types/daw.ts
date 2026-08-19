@@ -446,9 +446,14 @@ export interface DAWState {
   reverbLevel: number; // 0 to 1
   delayLevel: number; // 0 to 1
   swing: number; // 0 to 0.5
-  activeBarView: 'all' | 1 | 2 | 3 | 4; // view focus filter for sequencer
+  activeBarView: 'all' | number; // which bar the sequencer is focused on, or all of them
   soulFlowState: SoulFlowState;
   projectName: string;
+  /**
+   * Song length in bars. Four is where a project starts, not where it stops —
+   * every span that used to assume four bars derives from this.
+   */
+  songBars: number;
   /** Shown in the status bar and written into the delivery package. */
   projectVersion?: string;
   /** Bar the playhead is in, derived from currentStep where it is set. */

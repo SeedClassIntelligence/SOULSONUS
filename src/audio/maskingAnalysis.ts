@@ -98,7 +98,8 @@ function bandActivity(mono: Float32Array, sampleRate: number): { shares: Record<
 export async function analyzeMasking(
   tracks: Track[],
   bpm: number,
-  chain: MasteringDspChain
+  chain: MasteringDspChain,
+  bars?: number
 ): Promise<MaskingReport> {
   const audible = tracks.filter((t) => !t.mute && ((t.noteEvents?.length ?? 0) > 0 || t.steps.some(Boolean)));
   if (audible.length < 2) {
@@ -117,7 +118,7 @@ export async function analyzeMasking(
   let framesAnalyzed = 0;
 
   for (const track of audible) {
-    const rendered = await renderMasterBounce({ tracks, bpm, chain, onlyTrackIds: [track.id], tailSeconds: 0.5 });
+    const rendered = await renderMasterBounce({ tracks, bpm, chain, bars, onlyTrackIds: [track.id], tailSeconds: 0.5 });
     if (rendered.eventsRendered === 0) continue;
     const mono = toMono(rendered.buffer);
     const { shares, frames } = bandActivity(mono, rendered.sampleRate);

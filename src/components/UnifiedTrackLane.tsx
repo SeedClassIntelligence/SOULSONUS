@@ -4,8 +4,8 @@ import { useStudioSession } from '../app/StudioSessionContext';
 import { TrackClipLane } from './TrackClipLane';
 import { audioEngine } from '../audio/audioEngine';
 import {
+  songTicks,
   TICKS_PER_16TH,
-  TICKS_PER_4_BARS,
   midiToNoteName,
   noteNameToMidi,
   snapTick,
@@ -105,6 +105,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
     setSelectedNoteIds,
     setSelectionContext,
     setTracks,
+    dawState,
   } = useStudioSession();
 
   const isDrum =
@@ -124,6 +125,10 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
   const defaultMidi = noteNameToMidi(
     track.pitch || (track.instrument === 'kick' ? 'C1' : track.instrument === 'snare' ? 'D1' : track.instrument === 'hihat' ? 'F#1' : 'C2')
   );
+
+  // The lane spans the song, not a fixed four bars.
+  const songSpanTicks = songTicks(dawState.songBars || 4);
+  const songBarCount = Math.max(1, Math.round(dawState.songBars || 4));
 
   const notes = track.noteEvents || [];
   const trackColor = track.color || (isDrum ? '#f59e0b' : '#a855f7');
@@ -156,7 +161,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const tick = Math.max(0, Math.min(TICKS_PER_4_BARS - 1, Math.round((x / rect.width) * TICKS_PER_4_BARS)));
+    const tick = Math.max(0, Math.min(songSpanTicks - 1, Math.round((x / rect.width) * songSpanTicks)));
     const snapped = snapTick(tick, snapGridTicks || TICKS_PER_16TH);
 
     let targetMidi = defaultMidi;
@@ -195,7 +200,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
       if (!laneContainerRef.current) return;
       const rect = laneContainerRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
-      const splitTick = Math.max(0, Math.min(TICKS_PER_4_BARS, Math.round((x / rect.width) * TICKS_PER_4_BARS)));
+      const splitTick = Math.max(0, Math.min(songSpanTicks, Math.round((x / rect.width) * songSpanTicks)));
       handleSplitNote(track.id, note.id, splitTick);
       return;
     }
@@ -233,11 +238,11 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
       const deltaY = moveEvent.clientY - startY;
 
       const rect = laneContainerRef.current.getBoundingClientRect();
-      const deltaTicks = Math.round((deltaX / rect.width) * TICKS_PER_4_BARS);
+      const deltaTicks = Math.round((deltaX / rect.width) * songSpanTicks);
 
       if (action === 'MOVE') {
         const newStart = snapTick(
-          Math.max(0, Math.min(TICKS_PER_4_BARS - initialDuration, initialStartTick + deltaTicks)),
+          Math.max(0, Math.min(songSpanTicks - initialDuration, initialStartTick + deltaTicks)),
           snapGridTicks || TICKS_PER_16TH
         );
         let newMidi = initialMidi;
@@ -696,8 +701,11 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
           <TrackClipLane track={track} snapTicks={snapGridTicks} />
 
           {/* Continuous 4-Bar Timeline Grid Lines (Global alignment) */}
-            <div className="absolute inset-0 grid grid-cols-4 pointer-events-none">
-              {[0, 1, 2, 3].map((b) => (
+            <div
+              className="absolute inset-0 grid pointer-events-none"
+              style={{ gridTemplateColumns: `repeat(${songBarCount}, minmax(0, 1fr))` }}
+            >
+              {Array.from({ length: songBarCount }, (_, i) => i).map((b) => (
                 <div key={b} className="border-r border-slate-800/70 relative">
                   {/* 16th-note subtle ticks */}
                   <div className="absolute inset-0 grid grid-cols-4">
@@ -724,8 +732,8 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                 const liveDuration = isBeingDragged ? activeDrag.durationTicks : note.durationTicks;
                 const liveMidi = isBeingDragged ? activeDrag.midiNote : note.midiNote;
 
-                const leftPercent = (liveStartTick / TICKS_PER_4_BARS) * 100;
-                const widthPercent = Math.max(1.2, (liveDuration / TICKS_PER_4_BARS) * 100);
+                const leftPercent = (liveStartTick / songSpanTicks) * 100;
+                const widthPercent = Math.max(1.2, (liveDuration / songSpanTicks) * 100);
                 const isNoteSelected = selectedNoteIds.includes(note.id);
                 const noteName = isDrum ? track.name.split(' ')[0].toUpperCase() : midiToNoteName(liveMidi);
 
@@ -799,7 +807,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
             {showVelocityLane && (
               <div className="absolute bottom-0 left-0 right-0 h-5 bg-slate-900/80 border-t border-slate-800/80 pointer-events-none flex items-end">
                 {notes.map((note) => {
-                  const leftPercent = (note.startTick / TICKS_PER_4_BARS) * 100;
+                  const leftPercent = (note.startTick / songSpanTicks) * 100;
                   const hPercent = (note.velocity / 127) * 100;
                   return (
                     <div

@@ -31,7 +31,7 @@ export interface RenderOptions {
   tracks: Track[];
   bpm: number;
   chain: MasteringDspChain;
-  /** Bars to render. The note grid is four bars. */
+  /** Bars to render. Defaults to four; the project passes its own song length. */
   bars?: number;
   sampleRate?: number;
   /** Extra seconds so reverb and release tails are not cut off. */
@@ -69,6 +69,7 @@ export async function renderMasterBounce(options: RenderOptions): Promise<Render
     : allTracks;
   const { chain } = options;
   const bpm = options.bpm > 0 ? options.bpm : 110;
+  // The bounce is as long as the song unless the caller asks for a slice.
   const bars = options.bars ?? 4;
   const sampleRate = options.sampleRate ?? 48000;
   const tail = options.tailSeconds ?? 2.5;

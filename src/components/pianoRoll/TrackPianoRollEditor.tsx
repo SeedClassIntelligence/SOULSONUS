@@ -7,8 +7,6 @@ import {
   TICKS_PER_16TH,
   TICKS_PER_BEAT,
   TICKS_PER_BAR,
-  TICKS_PER_4_BARS,
-  TOTAL_STEPS,
   NOTE_NAMES,
   midiToNoteName,
   noteNameToMidi,
@@ -144,7 +142,7 @@ export const TrackPianoRollEditor: React.FC<TrackPianoRollEditorProps> = ({ trac
       const y = e.clientY - rect.top + gridContainerRef.current.scrollTop;
 
       const totalWidth = rect.width;
-      const tick = Math.max(0, Math.min(TICKS_PER_4_BARS, Math.round((x / totalWidth) * TICKS_PER_4_BARS)));
+      const tick = Math.max(0, Math.min(songSpanTicks, Math.round((x / totalWidth) * songSpanTicks)));
       const snappedTick = snapTick(tick, snapGridTicks);
 
       if (isDrumTrack) {
@@ -220,7 +218,7 @@ export const TrackPianoRollEditor: React.FC<TrackPianoRollEditorProps> = ({ trac
       const deltaX = e.clientX - dragStartPos.x;
       const deltaY = e.clientY - dragStartPos.y;
 
-      const deltaTicksRaw = (deltaX / rect.width) * TICKS_PER_4_BARS;
+      const deltaTicksRaw = (deltaX / rect.width) * songSpanTicks;
       const deltaTicks = snapTick(deltaTicksRaw, snapGridTicks);
 
       const rowHeight = 22;
@@ -229,7 +227,7 @@ export const TrackPianoRollEditor: React.FC<TrackPianoRollEditorProps> = ({ trac
       if (dragAction === 'MOVE') {
         const newStartTick = Math.max(
           0,
-          Math.min(TICKS_PER_4_BARS - dragActiveNote.durationTicks, dragStartPos.tick + deltaTicks)
+          Math.min(songSpanTicks - dragActiveNote.durationTicks, dragStartPos.tick + deltaTicks)
         );
         let newMidi = Math.max(MIN_MIDI, Math.min(MAX_MIDI, dragStartPos.midi + deltaPitches));
         if (snapToScale) {
@@ -247,7 +245,7 @@ export const TrackPianoRollEditor: React.FC<TrackPianoRollEditorProps> = ({ trac
       } else if (dragAction === 'RESIZE_RIGHT') {
         const newDuration = Math.max(
           snapGridTicks,
-          Math.min(TICKS_PER_4_BARS - dragActiveNote.startTick, dragActiveNote.durationTicks + deltaTicks)
+          Math.min(songSpanTicks - dragActiveNote.startTick, dragActiveNote.durationTicks + deltaTicks)
         );
         if (newDuration !== dragActiveNote.durationTicks) {
           handleResizeNote(track.id, dragActiveNote.id, newDuration);
@@ -280,7 +278,10 @@ export const TrackPianoRollEditor: React.FC<TrackPianoRollEditorProps> = ({ trac
   };
 
   // Playhead position in percent
-  const playheadPercent = (dawState.currentStep / TOTAL_STEPS) * 100;
+  // This roll spans the song, not a fixed four bars.
+  const songBarCount = Math.max(1, Math.round(dawState.songBars || 4));
+  const songSpanTicks = songBarCount * TICKS_PER_BAR;
+  const playheadPercent = ((dawState.currentStep % (songBarCount * 16)) / (songBarCount * 16)) * 100;
 
   return (
     <div className="w-full bg-slate-950 border border-slate-800/90 rounded-2xl overflow-hidden shadow-2xl flex flex-col font-mono text-xs select-none">
@@ -503,14 +504,20 @@ export const TrackPianoRollEditor: React.FC<TrackPianoRollEditorProps> = ({ trac
                 {/* Horizontal Grid Row (64 16th subdivisions across 4 bars) */}
                 <div className="flex-1 grid grid-cols-64 relative">
                   {/* Subtle Bar Lines */}
-                  <div className="absolute inset-0 grid grid-cols-4 pointer-events-none">
-                    {[0, 1, 2, 3].map((b) => (
+                  <div
+                    className="absolute inset-0 grid pointer-events-none"
+                    style={{ gridTemplateColumns: `repeat(${songBarCount}, minmax(0, 1fr))` }}
+                  >
+                    {Array.from({ length: songBarCount }).map((_, b) => (
                       <div key={b} className="border-r border-slate-800/60" />
                     ))}
                   </div>
                   {/* Beat Lines */}
-                  <div className="absolute inset-0 grid grid-cols-16 pointer-events-none">
-                    {Array.from({ length: 16 }).map((_, b) => (
+                  <div
+                    className="absolute inset-0 grid pointer-events-none"
+                    style={{ gridTemplateColumns: `repeat(${songBarCount * 4}, minmax(0, 1fr))` }}
+                  >
+                    {Array.from({ length: songBarCount * 4 }).map((_, b) => (
                       <div key={b} className="border-r border-slate-900/40" />
                     ))}
                   </div>
@@ -525,8 +532,8 @@ export const TrackPianoRollEditor: React.FC<TrackPianoRollEditorProps> = ({ trac
               const rowHeight = isDrumTrack ? 36 : 22;
               const pitchIndex = isDrumTrack ? 0 : MAX_MIDI - note.midiNote;
               const rowTop = pitchIndex * rowHeight;
-              const leftPercent = (note.startTick / TICKS_PER_4_BARS) * 100;
-              const widthPercent = Math.max(1.2, (note.durationTicks / TICKS_PER_4_BARS) * 100);
+              const leftPercent = (note.startTick / songSpanTicks) * 100;
+              const widthPercent = Math.max(1.2, (note.durationTicks / songSpanTicks) * 100);
               const noteSelection = selectedNoteIds || [];
               const isSelected = noteSelection.includes(note.id);
               const noteColor = track.color || '#a855f7';
@@ -597,7 +604,7 @@ export const TrackPianoRollEditor: React.FC<TrackPianoRollEditorProps> = ({ trac
           </div>
           <div className="flex-1 relative left-[60px]">
             {notes.map((note) => {
-              const leftPercent = (note.startTick / TICKS_PER_4_BARS) * 100;
+              const leftPercent = (note.startTick / songSpanTicks) * 100;
               const heightPercent = (note.velocity / 127) * 100;
               const isSelected = selectedNoteIds.includes(note.id);
 

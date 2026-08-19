@@ -62,7 +62,10 @@ import {
   noteNameToMidi,
   snapTick,
   TICKS_PER_16TH,
-  TICKS_PER_4_BARS,
+  DEFAULT_SONG_BARS,
+  songTicks,
+  songSteps,
+  TICKS_PER_BAR,
 } from '../utils/musicMath';
 
 import { PRESETS } from '../data/presets';
@@ -118,7 +121,7 @@ export interface EditorPreferences {
   universalSnapTicks: number;
   universalSnapToScale: boolean;
   showVelocityLane: boolean;
-  activeBarView: 'all' | 1 | 2 | 3 | 4;
+  activeBarView: 'all' | number;
   seedTargetMode: 'NEW_TRACK' | 'ADD_LAYER';
 }
 
@@ -484,6 +487,11 @@ export interface StudioSessionState {
   /** Registers a recorded take's audio and places it on a track at the playhead. */
   handlePlaceTakeOnTimeline: (trackId: string, takeId: string) => Promise<AudioClip | null>;
   handleRemoveAudioClip: (clipId: string) => void;
+  /**
+   * Changes the song's length in bars, resizing every track to match.
+   * Returns what would fall outside a shortened song, so the caller can say so.
+   */
+  handleSetSongBars: (bars: number) => { notesPastEnd: number; clipsPastEnd: number };
   handleUpdateSections: (
     next: ArrangementSection[] | ((prev: ArrangementSection[]) => ArrangementSection[]),
     label?: string
@@ -710,6 +718,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     delayLevel: 0.1,
     swing: 0,
     activeBarView: 'all',
+    songBars: DEFAULT_SONG_BARS,
     soulFlowState: 'CAPTURED',
     projectName: 'Dubler Vocal Beatbox Master',
   });
@@ -823,6 +832,14 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const HISTORY_GROUP_IDLE_MS = 2000;
 
   /** Committed sections, so a history snapshot can capture them without a dep. */
+  /**
+   * The song's length in ticks, kept in a ref so handlers that run outside
+   * render — capture, note edits, the sequencer — read the current value
+   * without every one of them taking a dependency on dawState.
+   */
+  const songTicksRef = useRef<number>(songTicks(DEFAULT_SONG_BARS));
+  const songStepsRef = useRef<number>(songSteps(DEFAULT_SONG_BARS));
+
   const sectionsRef = useRef<ArrangementSection[]>([]);
 
   /**
@@ -876,6 +893,11 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     sectionsRef.current = sections;
   }, [sections]);
+
+  useEffect(() => {
+    songTicksRef.current = songTicks(dawState.songBars || DEFAULT_SONG_BARS);
+    songStepsRef.current = songSteps(dawState.songBars || DEFAULT_SONG_BARS);
+  }, [dawState.songBars]);
 
   // --- Audio on the timeline -------------------------------------------
   //
@@ -969,6 +991,56 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       });
     },
     [handleRegisterAudioAsset, handlePlaceAudioClip]
+  );
+
+  /**
+   * Growing keeps everything and adds empty bars. Shrinking keeps everything
+   * too: notes and clips beyond the new end stay in the data rather than being
+   * deleted, because silently destroying a creator's work to satisfy a number
+   * in a field is the wrong trade. The count of what now sits past the end is
+   * returned so the interface can say what happened.
+   */
+  const handleSetSongBars = useCallback(
+    (bars: number) => {
+      const nextBars = Math.max(1, Math.min(256, Math.round(bars)));
+      const nextSteps = songSteps(nextBars);
+      const nextTicks = songTicks(nextBars);
+
+      const notesPastEnd = tracksRef.current.reduce(
+        (n, t) => n + (t.noteEvents || []).filter((e) => e.startTick >= nextTicks).length,
+        0
+      );
+      const clipsPastEnd = tracksRef.current.reduce(
+        (n, t) => n + (t.audioClips || []).filter((c) => c.startTick >= nextTicks).length,
+        0
+      );
+
+      songTicksRef.current = nextTicks;
+      songStepsRef.current = nextSteps;
+      pendingLabelRef.current = `Song length ${nextBars} bars`;
+
+      updateTracksWithHistory((prev) =>
+        prev.map((t) => {
+          const steps = new Array(nextSteps).fill(false);
+          (t.steps || []).slice(0, nextSteps).forEach((on, i) => {
+            steps[i] = on;
+          });
+          const next: Track = { ...t, steps };
+          if (t.notes) {
+            const notes = new Array(nextSteps).fill(t.pitch || 'C3');
+            t.notes.slice(0, nextSteps).forEach((n, i) => {
+              notes[i] = n;
+            });
+            next.notes = notes;
+          }
+          return next;
+        })
+      );
+      setDawState((prev) => ({ ...prev, songBars: nextBars }));
+
+      return { notesPastEnd, clipsPastEnd };
+    },
+    [updateTracksWithHistory]
   );
 
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
@@ -1228,9 +1300,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         // the playhead at the moment they arrive.
         const startTick =
           typeof event.atSeconds === 'number'
-            ? Math.max(0, Math.min(TICKS_PER_4_BARS - 120, Math.round(event.atSeconds * ticksPerSecond)))
+            ? Math.max(0, Math.min(songTicksRef.current - 120, Math.round(event.atSeconds * ticksPerSecond)))
             : playheadStep * 120;
-        const step = Math.max(0, Math.min(63, Math.floor(startTick / 120)));
+        const step = Math.max(0, Math.min(songStepsRef.current - 1, Math.floor(startTick / 120)));
 
         const origin: NoteProvenance['origin'] =
           event.source === 'MIDI'
@@ -1264,7 +1336,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
               : event.pitch
                 ? noteNameToMidi(event.pitch)
                 : noteNameToMidi(spec.pitch);
-          const steps = new Array(64).fill(false);
+          const steps = new Array(songStepsRef.current).fill(false);
           steps[step] = true;
           next = [
             ...next,
@@ -1377,7 +1449,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         // behind rather than clamped onto the final step, which would silently
         // pile the tail of a long file into one place.
         const ticksPerSecond = ((bpmRef.current || 110) / 60) * 480;
-        const gridSeconds = TICKS_PER_4_BARS / ticksPerSecond;
+        const gridSeconds = songTicksRef.current / ticksPerSecond;
         const events = allEvents.filter((e) => (e.atSeconds ?? 0) < gridSeconds);
         const droppedBeyondGrid = allEvents.length - events.length;
 
@@ -1463,7 +1535,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           id: `stem_${role}_${timestamp}`,
           name: `${baseName} (${spec.label})`,
           instrument: spec.instrument,
-          steps: new Array(64).fill(false),
+          steps: new Array(songStepsRef.current).fill(false),
           mute: false,
           solo: false,
           volume: 0,
@@ -1545,8 +1617,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       id: `tr_${Date.now()}`,
       name: name || `${type.toUpperCase()} Track ${tracks.length + 1}`,
       instrument: type,
-      steps: new Array(64).fill(false),
-      notes: type === 'melody' || type === 'bass' ? new Array(64).fill('C3') : undefined,
+      steps: new Array(songStepsRef.current).fill(false),
+      notes: type === 'melody' || type === 'bass' ? new Array(songStepsRef.current).fill('C3') : undefined,
       mute: false,
       solo: false,
       volume: 0,
@@ -1607,7 +1679,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     updateTracksWithHistory((prevTracks) =>
       prevTracks.map((track) => {
         if (track.id === trackId) {
-          const newNotes = track.notes ? [...track.notes] : new Array(64).fill(track.pitch || 'C3');
+          const newNotes = track.notes ? [...track.notes] : new Array(songStepsRef.current).fill(track.pitch || 'C3');
           newNotes[stepIndex] = note;
           const midi = noteNameToMidi(note);
 
@@ -1636,7 +1708,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           if (track.id === trackId) {
             const newNote: NoteEvent = {
               id: `note_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
-              startTick: Math.max(0, Math.min(TICKS_PER_4_BARS - 1, noteData.startTick)),
+              startTick: Math.max(0, Math.min(songTicksRef.current - 1, noteData.startTick)),
               durationTicks: Math.max(15, noteData.durationTicks),
               midiNote: Math.max(0, Math.min(127, noteData.midiNote)),
               velocity: Math.max(1, Math.min(127, noteData.velocity ?? 100)),
@@ -1652,7 +1724,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
             };
 
             const updatedNotes = [...(track.noteEvents || []), newNote];
-            const updatedSteps = deriveStepArrayFromNoteEvents(updatedNotes);
+            const updatedSteps = deriveStepArrayFromNoteEvents(updatedNotes, songStepsRef.current);
 
             return {
               ...track,
@@ -1675,7 +1747,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           if (track.id === trackId && track.noteEvents) {
             const updatedNotes = track.noteEvents.map((note) => {
               if (noteIds.includes(note.id)) {
-                const newStart = Math.max(0, Math.min(TICKS_PER_4_BARS - note.durationTicks, note.startTick + deltaTicks));
+                const newStart = Math.max(0, Math.min(songTicksRef.current - note.durationTicks, note.startTick + deltaTicks));
                 const newMidi = Math.max(0, Math.min(127, note.midiNote + deltaMidi));
                 return {
                   ...note,
@@ -1686,7 +1758,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
               }
               return note;
             });
-            const updatedSteps = deriveStepArrayFromNoteEvents(updatedNotes);
+            const updatedSteps = deriveStepArrayFromNoteEvents(updatedNotes, songStepsRef.current);
             return { ...track, noteEvents: updatedNotes, steps: updatedSteps };
           }
           return track;
@@ -1703,7 +1775,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           if (track.id === trackId && track.noteEvents) {
             const updatedNotes = track.noteEvents.map((note) => {
               if (note.id === noteId) {
-                const maxDuration = TICKS_PER_4_BARS - note.startTick;
+                const maxDuration = songTicksRef.current - note.startTick;
                 const safeDuration = Math.max(15, Math.min(maxDuration, newDurationTicks));
                 return {
                   ...note,
@@ -1713,7 +1785,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
               }
               return note;
             });
-            const updatedSteps = deriveStepArrayFromNoteEvents(updatedNotes);
+            const updatedSteps = deriveStepArrayFromNoteEvents(updatedNotes, songStepsRef.current);
             return { ...track, noteEvents: updatedNotes, steps: updatedSteps };
           }
           return track;
@@ -1759,7 +1831,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
               .filter((n) => n.id !== noteId)
               .concat([firstNote, secondNote]);
 
-            const updatedSteps = deriveStepArrayFromNoteEvents(updatedNotes);
+            const updatedSteps = deriveStepArrayFromNoteEvents(updatedNotes, songStepsRef.current);
             return { ...track, noteEvents: updatedNotes, steps: updatedSteps };
           }
           return track;
@@ -1776,7 +1848,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         prevTracks.map((track) => {
           if (track.id === trackId && track.noteEvents) {
             const updatedNotes = track.noteEvents.filter((n) => !noteIds.includes(n.id));
-            const updatedSteps = deriveStepArrayFromNoteEvents(updatedNotes);
+            const updatedSteps = deriveStepArrayFromNoteEvents(updatedNotes, songStepsRef.current);
             return { ...track, noteEvents: updatedNotes, steps: updatedSteps };
           }
           return track;
@@ -1892,7 +1964,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
               }
               return note;
             });
-            const updatedSteps = deriveStepArrayFromNoteEvents(updatedNotes);
+            const updatedSteps = deriveStepArrayFromNoteEvents(updatedNotes, songStepsRef.current);
             return { ...track, noteEvents: updatedNotes, steps: updatedSteps };
           }
           return track;
@@ -2101,7 +2173,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       id: sourceTrackId,
       name,
       instrument,
-      steps: Array(64).fill(false),
+      steps: Array(songStepsRef.current).fill(false),
       mute: false,
       solo: false,
       volume: 0,
@@ -2159,9 +2231,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           .filter(([, notes]) => notes.length > 0)
           .map(([klass, notes]) => {
             const spec = CLASS_SPEC[klass] || CLASS_SPEC.tonal_high;
-            const steps = new Array(64).fill(false);
+            const steps = new Array(songStepsRef.current).fill(false);
             for (const n of notes) {
-              const step = Math.max(0, Math.min(63, Math.floor(n.startTick / 120)));
+              const step = Math.max(0, Math.min(songStepsRef.current - 1, Math.floor(n.startTick / 120)));
               steps[step] = true;
             }
             return {
@@ -2191,7 +2263,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           const ticksPerSecond = ((bpmRef.current || 110) / 60) * 480;
           const grouped = new Map<string, NoteEvent[]>();
           for (const ev of events) {
-            const startTick = Math.max(0, Math.min(TICKS_PER_4_BARS - 120, Math.round((ev.atSeconds ?? 0) * ticksPerSecond)));
+            const startTick = Math.max(0, Math.min(songTicksRef.current - 120, Math.round((ev.atSeconds ?? 0) * ticksPerSecond)));
             const note: NoteEvent = {
               id: `ext_${timestamp}_${Math.random().toString(36).slice(2, 8)}`,
               startTick,
@@ -2288,7 +2360,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!sourceTrack) return;
 
     const timestamp = Date.now();
-    const targetSteps = new Array(64).fill(false);
+    const targetSteps = new Array(songStepsRef.current).fill(false);
     if (targetInstrument === 'kick') {
       [0, 6, 10, 12, 16, 22, 26, 28, 32, 38, 42, 44, 48, 54, 58, 60].forEach(i => targetSteps[i] = true);
     } else if (targetInstrument === 'snare') {
@@ -3646,7 +3718,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const handleNewProject = useCallback(() => {
     audioEngine.stopSequencer();
-    setTracks(PRESETS[0].tracks.map((t) => ({ ...t, noteEvents: [], steps: new Array(64).fill(false) })));
+    setTracks(PRESETS[0].tracks.map((t) => ({ ...t, noteEvents: [], steps: new Array(songStepsRef.current).fill(false) })));
     setSeedRecords([]);
     setLineageRecords([]);
     setDecisionRecords([]);
@@ -3670,6 +3742,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       bpm: bpmRef.current || 110,
       chain: masteringChainRef.current,
       audioAssets: audioAssetsRef.current,
+      bars: dawStateRef.current.songBars || DEFAULT_SONG_BARS,
     });
     const left = result.buffer.getChannelData(0);
     const right = result.buffer.numberOfChannels > 1 ? result.buffer.getChannelData(1) : left;
@@ -3683,7 +3756,12 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const handleAnalyzeMasking = useCallback(async (): Promise<MaskingReport> => {
     setIsAnalyzingMasking(true);
     try {
-      const report = await analyzeMasking(tracksRef.current, bpmRef.current || 110, masteringChainRef.current);
+      const report = await analyzeMasking(
+        tracksRef.current,
+        bpmRef.current || 110,
+        masteringChainRef.current,
+        dawStateRef.current.songBars || DEFAULT_SONG_BARS
+      );
       setMaskingReport(report);
       return report;
     } finally {
@@ -3870,6 +3948,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         creatorName,
         seedRecords,
         audioAssets: audioAssetsRef.current,
+        bars: dawStateRef.current.songBars || DEFAULT_SONG_BARS,
         onProgress: (fraction, label) => setDeliveryProgress({ fraction, label }),
       });
       // The previous package's object URLs are released only once its
@@ -3920,6 +3999,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       sections,
       setSections,
       handleUpdateSections,
+      handleSetSongBars,
       audioAssets,
       handleRegisterAudioAsset,
       handlePlaceAudioClip,

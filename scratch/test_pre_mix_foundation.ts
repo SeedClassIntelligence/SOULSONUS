@@ -32,6 +32,7 @@ const mockDawState: DAWState = {
   delayLevel: 0.15,
   swing: 0,
   activeBarView: 'all',
+  songBars: 4,
   soulFlowState: 'COMPOSED',
   projectName: 'Cyber Groove Master',
 };

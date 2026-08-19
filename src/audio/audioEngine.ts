@@ -502,7 +502,11 @@ export class AudioEngine {
     this.clipPlayers = [];
   }
 
-  public startSequencer(tracksRef: () => Track[], onStepChange: (step: number) => void) {
+  public startSequencer(
+    tracksRef: () => Track[],
+    onStepChange: (step: number) => void,
+    totalStepsRef: () => number = () => 64
+  ) {
     if (!this.initialized) return;
 
     this.stopSequencer();
@@ -511,7 +515,9 @@ export class AudioEngine {
     let currentStep = 0;
 
     this.loopEventId = Tone.getTransport().scheduleRepeat((time) => {
-      const step = currentStep % 64;
+      // The loop is as long as the song, not as long as four bars.
+      const totalSteps = Math.max(1, totalStepsRef());
+      const step = currentStep % totalSteps;
       const tracks = tracksRef();
       const bpm = Tone.getTransport().bpm.value || 110;
 

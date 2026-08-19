@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { Track, PianoRollTool } from '../types/daw';
 import { UnifiedTrackLane } from './UnifiedTrackLane';
@@ -221,6 +221,7 @@ export const StudioCanvas: React.FC = () => {
     setIsAudioImportModalOpen,
     editorPrefs,
     updateEditorPrefs,
+    handleSetSongBars,
   } = useStudioSession();
 
   // Editor state lives in the session: this component unmounts on a room
@@ -237,7 +238,7 @@ export const StudioCanvas: React.FC = () => {
   const setUniversalSnapTicks = (v: number) => updateEditorPrefs({ universalSnapTicks: v });
   const setUniversalSnapToScale = (v: boolean) => updateEditorPrefs({ universalSnapToScale: v });
   const setShowVelocityLane = (v: boolean) => updateEditorPrefs({ showVelocityLane: v });
-  const setActiveBarView = (v: 'all' | 1 | 2 | 3 | 4) => updateEditorPrefs({ activeBarView: v });
+  const setActiveBarView = (v: 'all' | number) => updateEditorPrefs({ activeBarView: v });
   const setSeedTargetMode = (v: 'NEW_TRACK' | 'ADD_LAYER') => updateEditorPrefs({ seedTargetMode: v });
 
   const [isAddTrackOpen, setIsAddTrackOpen] = useState(false);
@@ -247,23 +248,46 @@ export const StudioCanvas: React.FC = () => {
   const selectedTrack = tracks.find((t) => t.id === selectionContext.selectedTrackId) || tracks[0] || null;
 
   // Real-time Global Sweeping Playhead
-  const playheadPercent = ((dawState.currentStep % 64) / 64) * 100;
+  const songBarCount = Math.max(1, Math.round(dawState.songBars || 4));
+  const totalSongSteps = songBarCount * 16;
+  const playheadPercent = ((dawState.currentStep % totalSongSteps) / totalSongSteps) * 100;
 
-  // Determine slice indices for active bar view
+  // Shortening a song does not delete what falls past the new end -- the
+  // material stays on the track and comes back if the song is lengthened
+  // again. This notice is how the creator learns that happened.
+  const [songLengthNotice, setSongLengthNotice] = useState<string | null>(null);
+  const [barsDraft, setBarsDraft] = useState<string>(String(songBarCount));
+
+  useEffect(() => {
+    setBarsDraft(String(songBarCount));
+  }, [songBarCount]);
+
+  const applySongBars = (raw: number) => {
+    const next = Math.max(1, Math.min(256, Math.round(raw)));
+    if (next === songBarCount) {
+      setBarsDraft(String(songBarCount));
+      return;
+    }
+    const { notesPastEnd, clipsPastEnd } = handleSetSongBars(next);
+    if (typeof activeBarView === 'number' && activeBarView > next) setActiveBarView('all');
+    const stranded: string[] = [];
+    if (notesPastEnd) stranded.push(`${notesPastEnd} note${notesPastEnd === 1 ? '' : 's'}`);
+    if (clipsPastEnd) stranded.push(`${clipsPastEnd} clip${clipsPastEnd === 1 ? '' : 's'}`);
+    setSongLengthNotice(
+      stranded.length
+        ? `${next} bars - ${stranded.join(' and ')} now sit past the end (kept, not deleted)`
+        : `Song is now ${next} bars`
+    );
+  };
+
+
+  // Which bar the step grid is showing. 'all' spans the song; a number focuses
+  // one bar, which is what makes a long song editable in a fixed width.
   let stepStart = 0;
-  let stepEnd = 64;
-  if (activeBarView === 1) {
-    stepStart = 0;
-    stepEnd = 16;
-  } else if (activeBarView === 2) {
-    stepStart = 16;
-    stepEnd = 32;
-  } else if (activeBarView === 3) {
-    stepStart = 32;
-    stepEnd = 48;
-  } else if (activeBarView === 4) {
-    stepStart = 48;
-    stepEnd = 64;
+  let stepEnd = totalSongSteps;
+  if (typeof activeBarView === 'number' && activeBarView >= 1 && activeBarView <= songBarCount) {
+    stepStart = (activeBarView - 1) * 16;
+    stepEnd = stepStart + 16;
   }
 
   const visibleStepsCount = stepEnd - stepStart;
@@ -279,7 +303,7 @@ export const StudioCanvas: React.FC = () => {
           id,
           name: `Audio Performance ${tracks.filter((t) => t.id.includes('audio')).length + 1}`,
           instrument: 'custom',
-          steps: Array(64).fill(false),
+          steps: Array(totalSongSteps).fill(false),
           mute: false,
           solo: false,
           volume: 0,
@@ -292,7 +316,7 @@ export const StudioCanvas: React.FC = () => {
           id,
           name: `Lead Vocal Track ${tracks.filter((t) => t.instrument === 'vocal_synth').length + 1}`,
           instrument: 'vocal_synth',
-          steps: Array(64).fill(false),
+          steps: Array(totalSongSteps).fill(false),
           mute: false,
           solo: false,
           volume: 0,
@@ -305,7 +329,7 @@ export const StudioCanvas: React.FC = () => {
           id,
           name: `Percussion ${tracks.filter((t) => t.instrument === 'kick' || t.instrument === 'snare').length + 1}`,
           instrument: 'percussion',
-          steps: Array(64).fill(false),
+          steps: Array(totalSongSteps).fill(false),
           mute: false,
           solo: false,
           volume: -1,
@@ -318,7 +342,7 @@ export const StudioCanvas: React.FC = () => {
           id,
           name: `808 / Sub Bass ${tracks.filter((t) => t.instrument === 'bass').length + 1}`,
           instrument: 'bass',
-          steps: Array(64).fill(false),
+          steps: Array(totalSongSteps).fill(false),
           mute: false,
           solo: false,
           volume: -2,
@@ -332,8 +356,8 @@ export const StudioCanvas: React.FC = () => {
           id,
           name: `Lead Synth / Keys ${tracks.filter((t) => t.instrument === 'melody').length + 1}`,
           instrument: 'melody',
-          steps: Array(64).fill(false),
-          notes: Array(64).fill('C3'),
+          steps: Array(totalSongSteps).fill(false),
+          notes: Array(totalSongSteps).fill('C3'),
           mute: false,
           solo: false,
           volume: -3,
@@ -500,9 +524,74 @@ export const StudioCanvas: React.FC = () => {
                 ))}
               </div>
 
+              {/* Song Length */}
+              <div
+                id="song-length-control"
+                className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-xl border border-slate-800 text-[10px] font-mono"
+              >
+                <span className="text-slate-500 font-bold px-1.5">BARS</span>
+                <button
+                  type="button"
+                  id="btn-song-bars-dec"
+                  onClick={() => applySongBars(songBarCount - 1)}
+                  disabled={songBarCount <= 1}
+                  className="px-1.5 py-0.5 rounded-lg font-bold text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  title="One bar shorter"
+                >
+                  &minus;
+                </button>
+                <input
+                  id="input-song-bars"
+                  type="number"
+                  min={1}
+                  max={256}
+                  value={barsDraft}
+                  onChange={(e) => setBarsDraft(e.target.value)}
+                  onBlur={() => {
+                    const n = Number(barsDraft);
+                    if (Number.isFinite(n) && n >= 1) applySongBars(n);
+                    else setBarsDraft(String(songBarCount));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                    if (e.key === 'Escape') setBarsDraft(String(songBarCount));
+                  }}
+                  className="w-12 bg-slate-950 border border-slate-800 rounded-lg px-1.5 py-0.5 text-center text-amber-300 font-bold focus:outline-none focus:border-amber-500/60"
+                  title="Song length in bars (1-256)"
+                />
+                <button
+                  type="button"
+                  id="btn-song-bars-inc"
+                  onClick={() => applySongBars(songBarCount + 1)}
+                  disabled={songBarCount >= 256}
+                  className="px-1.5 py-0.5 rounded-lg font-bold text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  title="One bar longer"
+                >
+                  +
+                </button>
+                <span className="w-px h-3 bg-slate-800 mx-0.5" />
+                {[4, 8, 16, 32, 64].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    id={`btn-song-bars-${preset}`}
+                    onClick={() => applySongBars(preset)}
+                    className={`px-1.5 py-0.5 rounded-lg font-bold transition cursor-pointer ${
+                      songBarCount === preset
+                        ? 'bg-amber-500 text-slate-950 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-200'
+                    }`}
+                    title={`${preset} bars`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+
               {/* Bar Focus Tabs */}
               <div className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-xl border border-slate-800 text-[10px]">
                 <button
+                  id="btn-bar-view-all"
                   onClick={() => setActiveBarView('all')}
                   className={`px-2.5 py-0.5 rounded-lg font-bold transition cursor-pointer ${
                     activeBarView === 'all'
@@ -510,12 +599,14 @@ export const StudioCanvas: React.FC = () => {
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  ALL 64
+                  ALL {totalSongSteps}
                 </button>
-                {[1, 2, 3, 4].map((barNum) => (
+                {/* One button per bar. A long song gets a long strip, which
+                    scrolls rather than shrinking each bar past legibility. */}
+                {Array.from({ length: songBarCount }, (_, i) => i + 1).map((barNum) => (
                   <button
                     key={barNum}
-                    onClick={() => setActiveBarView(barNum as 1 | 2 | 3 | 4)}
+                    onClick={() => setActiveBarView(barNum)}
                     className={`px-2 py-0.5 rounded-lg font-bold transition cursor-pointer ${
                       activeBarView === barNum
                         ? 'bg-amber-500 text-slate-950 shadow-sm'
@@ -527,6 +618,23 @@ export const StudioCanvas: React.FC = () => {
                 ))}
               </div>
             </div>
+
+            {songLengthNotice && (
+              <div
+                id="song-length-notice"
+                className="flex items-center justify-between gap-2 mb-2 px-2 py-1 rounded-lg border border-amber-500/40 bg-amber-500/10 text-[10px] font-mono text-amber-300"
+              >
+                <span>{songLengthNotice}</span>
+                <button
+                  type="button"
+                  onClick={() => setSongLengthNotice(null)}
+                  className="text-amber-400/70 hover:text-amber-200 font-bold px-1 cursor-pointer"
+                  title="Dismiss"
+                >
+                  &times;
+                </button>
+              </div>
+            )}
 
             {/* 2. UNIVERSAL ARRANGER EDITING TOOLBAR */}
             <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-900/90 rounded-xl border border-slate-800 text-[10px] font-mono mb-2">
