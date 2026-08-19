@@ -23,6 +23,9 @@ export const BuildWorkspace: React.FC = () => {
     canUndo,
     canRedo,
     handleAddTrack,
+    handleUpdateSections,
+    dawState,
+    updateEditorPrefs,
   } = useStudioSession();
 
   const selectedSection = sections.find((s) => s.id === selectionContext.selectedSectionId) || sections[0] || null;
@@ -69,10 +72,10 @@ export const BuildWorkspace: React.FC = () => {
       <div className="w-full">
         <SectionBuilder
           sections={sections}
-          onUpdateSections={setSections}
+          onUpdateSections={handleUpdateSections}
           tracks={tracks}
-          activeSectionId={selectionContext.selectedSectionId || sections[0]?.id || ''}
-          onSelectSection={(secId) => setSelectionContext((prev) => ({ ...prev, selectedSectionId: secId }))}
+          currentStep={dawState.currentStep}
+          onSelectBarView={(barView) => updateEditorPrefs({ activeBarView: barView })}
         />
       </div>
 

@@ -450,6 +450,10 @@ export interface StudioSessionState {
   setTracks: React.Dispatch<React.SetStateAction<Track[]>>;
   sections: ArrangementSection[];
   setSections: React.Dispatch<React.SetStateAction<ArrangementSection[]>>;
+  handleUpdateSections: (
+    next: ArrangementSection[] | ((prev: ArrangementSection[]) => ArrangementSection[]),
+    label?: string
+  ) => void;
   vocalState: VocalTrackState;
   setVocalState: React.Dispatch<React.SetStateAction<VocalTrackState>>;
   detectionSettings: DetectionSettings;
@@ -751,8 +755,17 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   ]);
 
   // History Stack
-  const [past, setPast] = useState<Track[][]>([]);
-  const [future, setFuture] = useState<Track[][]>([]);
+  //
+  // An entry holds the tracks and the arrangement together. Sections used to sit
+  // outside history entirely, so adding or deleting one could not be undone
+  // while every note edit could — and an undo taken after an arrangement change
+  // would silently leave the arrangement where it was.
+  interface HistoryEntry {
+    tracks: Track[];
+    sections: ArrangementSection[];
+  }
+  const [past, setPast] = useState<HistoryEntry[]>([]);
+  const [future, setFuture] = useState<HistoryEntry[]>([]);
 
   /**
    * Snapshot taken before an edit, flushed into the undo stack by an effect.
@@ -760,7 +773,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    * updaters twice under StrictMode and may re-run them, so a setState there
    * duplicates history entries and can cost the edit itself.
    */
-  const pendingUndoRef = useRef<Track[] | null>(null);
+  const pendingUndoRef = useRef<HistoryEntry | null>(null);
 
   /**
    * An open run of related edits that undo should treat as one.
@@ -772,6 +785,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    */
   const historyGroupRef = useRef<{ key: string; at: number } | null>(null);
   const HISTORY_GROUP_IDLE_MS = 2000;
+
+  /** Committed sections, so a history snapshot can capture them without a dep. */
+  const sectionsRef = useRef<ArrangementSection[]>([]);
 
   /**
    * What the pending entry should be called, if anything named it.
@@ -811,10 +827,34 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (JSON.stringify(prevTracks) !== JSON.stringify(nextTracks)) {
           // Guarded so a double-invoked updater records the snapshot only once.
-          if (!continuesGroup && pendingUndoRef.current === null) pendingUndoRef.current = prevTracks;
+          if (!continuesGroup && pendingUndoRef.current === null) {
+            pendingUndoRef.current = { tracks: prevTracks, sections: sectionsRef.current };
+          }
         }
         return nextTracks;
       });
+    },
+    []
+  );
+
+  useEffect(() => {
+    sectionsRef.current = sections;
+  }, [sections]);
+
+  /**
+   * Changes the arrangement and records it in the same stack as everything
+   * else, so one press of undo takes back whichever kind of edit came last.
+   */
+  const handleUpdateSections = useCallback(
+    (next: ArrangementSection[] | ((prev: ArrangementSection[]) => ArrangementSection[]), label?: string) => {
+      if (label) pendingLabelRef.current = label;
+      historyGroupRef.current = null;
+      const resolved = typeof next === 'function' ? next(sectionsRef.current) : next;
+      if (JSON.stringify(resolved) === JSON.stringify(sectionsRef.current)) return;
+      if (pendingUndoRef.current === null) {
+        pendingUndoRef.current = { tracks: tracksRef.current, sections: sectionsRef.current };
+      }
+      setSections(resolved);
     },
     []
   );
@@ -835,7 +875,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     });
     setFuture([]);
     setFutureLabels([]);
-  }, [tracks]);
+  }, [tracks, sections]);
 
   const canUndo = past.length > 0;
   const canRedo = future.length > 0;
@@ -844,8 +884,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   // piece of state once. They used to call setState from inside another
   // updater, which StrictMode invokes twice — the one place where a doubled
   // invocation silently corrupts the stack it is maintaining.
-  const pastRef = useRef<Track[][]>([]);
-  const futureRef = useRef<Track[][]>([]);
+  const pastRef = useRef<HistoryEntry[]>([]);
+  const futureRef = useRef<HistoryEntry[]>([]);
   useEffect(() => {
     pastRef.current = past;
     futureRef.current = future;
@@ -860,7 +900,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     const prevPast = pastRef.current;
     if (prevPast.length === 0) return null;
     const previousState = prevPast[prevPast.length - 1];
-    const currentTracks = tracksRef.current;
+    const current: HistoryEntry = { tracks: tracksRef.current, sections: sectionsRef.current };
     const labels = labelsRef.current;
     const label = labels.past[labels.past.length - 1] || 'Edit';
 
@@ -869,7 +909,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     historyGroupRef.current = null;
 
     pastRef.current = prevPast.slice(0, prevPast.length - 1);
-    futureRef.current = [currentTracks, ...futureRef.current];
+    futureRef.current = [current, ...futureRef.current];
     labelsRef.current = {
       past: labels.past.slice(0, labels.past.length - 1),
       future: [label, ...labels.future],
@@ -878,7 +918,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     setFuture(futureRef.current);
     setPastLabels(labelsRef.current.past);
     setFutureLabels(labelsRef.current.future);
-    setTracks(previousState);
+    setTracks(previousState.tracks);
+    setSections(previousState.sections);
+    sectionsRef.current = previousState.sections;
     return label;
   }, []);
 
@@ -886,14 +928,14 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     const prevFuture = futureRef.current;
     if (prevFuture.length === 0) return null;
     const nextState = prevFuture[0];
-    const currentTracks = tracksRef.current;
+    const current: HistoryEntry = { tracks: tracksRef.current, sections: sectionsRef.current };
     const labels = labelsRef.current;
     const label = labels.future[0] || 'Edit';
 
     historyGroupRef.current = null;
 
     futureRef.current = prevFuture.slice(1);
-    pastRef.current = [...pastRef.current, currentTracks];
+    pastRef.current = [...pastRef.current, current];
     labelsRef.current = {
       past: [...labels.past, label],
       future: labels.future.slice(1),
@@ -902,7 +944,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     setPast(pastRef.current);
     setPastLabels(labelsRef.current.past);
     setFutureLabels(labelsRef.current.future);
-    setTracks(nextState);
+    setTracks(nextState.tracks);
+    setSections(nextState.sections);
+    sectionsRef.current = nextState.sections;
     return label;
   }, []);
 
@@ -3662,6 +3706,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setTracks,
       sections,
       setSections,
+      handleUpdateSections,
       vocalState,
       setVocalState,
       detectionSettings,

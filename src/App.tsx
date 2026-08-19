@@ -19,6 +19,7 @@ import { MixWorkspace } from './components/mix/MixWorkspace';
 import { FinishMasterWorkspace } from './components/finish/FinishMasterWorkspace';
 import { FinalizationGateAndSign } from './components/finish/FinalizationGateAndSign';
 import { WriteRecordWorkspace } from './components/workspaces/WriteRecordWorkspace';
+import { BuildWorkspace } from './components/workspaces/BuildWorkspace';
 import { evaluateRealizationContract } from './lib/realizationVerifier';
 import { RealizationRouter } from './lib/realizationRouter';
 import { GenerationCandidate, RealizationRoute } from './types/daw';
@@ -212,10 +213,10 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const autoOpenedRooms = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (autoOpenedRooms.current.has(activeWorkspace)) return;
-    if (activeWorkspace === 'BUILD') {
-      autoOpenedRooms.current.add(activeWorkspace);
-      setIsTrackWorkstationOpen(true);
-    } else if (activeWorkspace === 'WRITE_RECORD') {
+    // Build no longer auto-opens the track workstation: now that the room
+    // renders the arrangement workspace, that drawer covered the section
+    // builder's own controls on arrival.
+    if (activeWorkspace === 'WRITE_RECORD') {
       autoOpenedRooms.current.add(activeWorkspace);
       setIsSongwritingSuiteOpen(true);
     }
@@ -416,6 +417,11 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
           </div>
         ) : activeWorkspace === 'WRITE_RECORD' ? (
           <WriteRecordWorkspace />
+        ) : activeWorkspace === 'BUILD' ? (
+          // Build rendered the Create canvas, so the arrangement workspace —
+          // the section builder, the section-scoped lanes and the undo cluster —
+          // was in the tree of no room at all.
+          <BuildWorkspace />
         ) : (
           <StudioCanvas />
         )}

@@ -165,7 +165,6 @@ export const SectionBuilder: React.FC<SectionBuilderProps> = ({
   onSelectBarView,
   onApplySectionMutes,
 }) => {
-  const [activeTab, setActiveTab] = useState<'timeline' | 'heuristics' | 'custom'>('timeline');
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [structureStyle, setStructureStyle] = useState<'dynamic' | 'pop' | 'edm' | 'hiphop'>('dynamic');
 
@@ -585,6 +584,7 @@ export const SectionBuilder: React.FC<SectionBuilderProps> = ({
                     <input
                       type="text"
                       value={sec.name}
+                      data-testid={`section-name-${sec.id}`}
                       onChange={(e) => handleUpdateSectionField(sec.id, 'name', e.target.value)}
                       className="bg-transparent text-xs font-black text-slate-100 focus:outline-none border-b border-transparent focus:border-amber-400"
                     />
@@ -660,6 +660,7 @@ export const SectionBuilder: React.FC<SectionBuilderProps> = ({
                     <Eye className="w-3.5 h-3.5" />
                   </button>
                   <button
+                    data-testid={`delete-section-${sec.id}`}
                     onClick={() => handleDeleteSection(sec.id)}
                     className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition"
                     title="Delete section"
