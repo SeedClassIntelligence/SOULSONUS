@@ -1,0 +1,447 @@
+<title>The Session Band</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground: #f1f2f4;
+    --surface: #ffffff;
+    --sunk: #e7e9ec;
+    --ink: #14181f;
+    --muted: #616773;
+    --faint: #838a96;
+    --rule: #dcdfe4;
+    --rule-strong: #bfc4cd;
+    --accent: #1f3a6e;
+    --accent-soft: #e6ebf4;
+    --brass: #8a6a1f;
+    --figure-accent: #3f66b0;
+
+    --display: "Instrument Serif", Georgia, "Times New Roman", serif;
+    --body: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101319;
+      --surface: #191d25;
+      --sunk: #20252f;
+      --ink: #e8ebf0;
+      --muted: #9aa2b0;
+      --faint: #7a828f;
+      --rule: #282e39;
+      --rule-strong: #3c4453;
+      --accent: #8fb0e8;
+      --accent-soft: #16202f;
+      --brass: #d6ad60;
+      --figure-accent: #7ea3e2;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101319;
+    --surface: #191d25;
+    --sunk: #20252f;
+    --ink: #e8ebf0;
+    --muted: #9aa2b0;
+    --faint: #7a828f;
+    --rule: #282e39;
+    --rule-strong: #3c4453;
+    --accent: #8fb0e8;
+    --accent-soft: #16202f;
+    --brass: #d6ad60;
+    --figure-accent: #7ea3e2;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1020px;
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 4rem) clamp(1rem, 4vw, 2.25rem) 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.25rem, 4vw, 3.25rem);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--brass);
+  }
+
+  .masthead { display: flex; flex-direction: column; gap: 0.85rem; }
+  .masthead h1 {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(2.6rem, 7vw, 4.4rem);
+    line-height: 1;
+    letter-spacing: -0.015em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .masthead h1 em { font-style: italic; color: var(--accent); }
+  .standfirst { max-width: 64ch; font-size: 1.06rem; color: var(--muted); margin: 0; }
+  .stamp {
+    font-family: var(--mono);
+    font-size: 0.73rem;
+    color: var(--faint);
+    border-top: 1px solid var(--rule);
+    padding-top: 0.8rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.5rem;
+  }
+
+  section { display: flex; flex-direction: column; gap: 1rem; }
+  h2 {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: 2rem;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h3 { font-family: var(--body); font-weight: 600; font-size: 1.02rem; margin: 0; }
+  p { margin: 0; max-width: 70ch; }
+  .lede { color: var(--muted); }
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--sunk);
+    padding: 0.08em 0.34em;
+    border-radius: 2px;
+  }
+
+  .pull {
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-left: 4px solid var(--brass);
+    padding: 1.15rem 1.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  figure { margin: 0; display: flex; flex-direction: column; gap: 0.7rem; }
+  .figscroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); padding: 1.1rem; }
+  figure svg { max-width: 100%; height: auto; display: block; min-width: 720px; }
+  figcaption { font-size: 0.88rem; color: var(--muted); max-width: 72ch; }
+
+  .scroller { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.88rem; min-width: 620px; }
+  th, td { text-align: left; padding: 0.6rem 1.1rem 0.6rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+    font-weight: 500;
+  }
+  td.role { font-weight: 600; white-space: nowrap; }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 0.16rem 0.42rem;
+    white-space: nowrap;
+    border: 1px solid currentColor;
+  }
+  .t-note { color: var(--accent); background: var(--accent-soft); }
+  .t-audio { color: var(--brass); background: var(--sunk); }
+
+  .grants { display: flex; flex-direction: column; gap: 0; }
+  .grant {
+    display: grid;
+    grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+    gap: 0.4rem 1.4rem;
+    padding: 1.05rem 0;
+    border-top: 1px solid var(--rule);
+  }
+  .grant .name { font-family: var(--mono); font-weight: 600; font-size: 0.85rem; letter-spacing: 0.04em; }
+  .grant .name span { display: block; font-family: var(--body); font-weight: 400; font-size: 0.82rem; color: var(--faint); letter-spacing: 0; margin-top: 0.15rem; }
+  .grant .detail { display: flex; flex-direction: column; gap: 0.4rem; }
+  .grant .check { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); }
+  .grant .check b { color: var(--ink); font-weight: 600; }
+
+  ul { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: 0.4rem; max-width: 72ch; }
+  li::marker { color: var(--faint); }
+
+  .decisions { display: flex; flex-direction: column; gap: 0; }
+  .decision { padding: 1.05rem 0; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 0.4rem; }
+  .decision .q { font-family: var(--display); font-size: 1.3rem; line-height: 1.25; }
+  .decision .a { color: var(--muted); }
+  .decision .a b { color: var(--ink); font-weight: 600; }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Feature concept · entered into planning</div>
+    <h1>The <em>Session Band</em></h1>
+    <p class="standfirst">Instrument-specialist agents that take direction, read the room, and hand back a performance the creator can keep while changing the sound. Recorded here as a design, with what already exists to build it on and the decisions it forces.</p>
+    <div class="stamp">
+      <span>Author: creator · captured by Claude</span>
+      <span>SoulSonus <code>main</code> @ <code>ecb59fb</code></span>
+      <span>19 Aug 2026</span>
+    </div>
+  </header>
+
+  <section class="pull">
+    <h2>The idea</h2>
+    <p>The Co-Producer does not play bass. It turns to the bass player and says: here is the groove, the key, the vocal phrasing, and what the creator asked for — give us a take. The bass player reads the actual session, plays what it hears, and hands back three takes: pocket, melodic, adventurous.</p>
+    <p>What it hands back is <strong>a performance, not a sound</strong>. A bassline as <code>NoteEvent[]</code>, which can then be played through a sampled bass, a synth, ACE, or a future native renderer. So <em>"I like take B, but make it fretless"</em> keeps the take and changes only the engine — and <em>"keep the first two bars, play something different in bar four"</em> is a direction to a musician rather than a re-roll of a black box.</p>
+    <p>The creator is not summoning AI music. The creator walks into a studio with a producer, an engineer and a band, and remains the bandleader.</p>
+  </section>
+
+  <section>
+    <h2>Where the authority actually sits</h2>
+    <figure>
+      <div class="figscroll">
+        <svg viewBox="0 0 1000 400" role="img" aria-label="A bass request flows from the creator through the co-producer to the bass player, which reads the whole session but may write only its own track and section. It returns a symbolic take that any of three engines can realize, so changing the instrument does not lose the performance.">
+          <defs>
+            <marker id="sb-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+            </marker>
+            <marker id="sb-arrow-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--figure-accent)"></path>
+            </marker>
+          </defs>
+
+          <g fill="none" stroke="currentColor" stroke-width="1.25">
+            <rect x="20" y="130" width="120" height="60"></rect>
+            <rect x="185" y="130" width="150" height="60"></rect>
+            <rect x="400" y="130" width="180" height="60"></rect>
+            <rect x="350" y="22" width="530" height="42" stroke-dasharray="0"></rect>
+          </g>
+
+          <rect x="378" y="100" width="224" height="122" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="5 4" opacity="0.75"></rect>
+
+          <g fill="none" stroke="var(--figure-accent)" stroke-width="1.6">
+            <rect x="645" y="130" width="150" height="60"></rect>
+          </g>
+
+          <g fill="none" stroke="currentColor" stroke-width="1.1">
+            <rect x="850" y="88" width="130" height="36"></rect>
+            <rect x="850" y="142" width="130" height="36"></rect>
+            <rect x="850" y="196" width="130" height="36"></rect>
+            <rect x="700" y="300" width="160" height="56"></rect>
+            <rect x="420" y="300" width="200" height="56"></rect>
+            <rect x="185" y="300" width="180" height="56"></rect>
+          </g>
+
+          <g stroke="currentColor" stroke-width="1.25" fill="none" marker-end="url(#sb-arrow)">
+            <line x1="140" y1="160" x2="180" y2="160"></line>
+            <line x1="335" y1="160" x2="395" y2="160"></line>
+            <line x1="580" y1="160" x2="640" y2="160"></line>
+            <line x1="490" y1="64" x2="490" y2="126"></line>
+            <line x1="795" y1="152" x2="845" y2="120"></line>
+            <line x1="795" y1="160" x2="845" y2="160"></line>
+            <line x1="795" y1="168" x2="845" y2="200"></line>
+            <line x1="915" y1="232" x2="915" y2="296" ></line>
+            <line x1="915" y1="296" x2="866" y2="328"></line>
+            <line x1="695" y1="328" x2="626" y2="328"></line>
+            <line x1="415" y1="328" x2="371" y2="328"></line>
+          </g>
+
+          <g stroke="var(--figure-accent)" stroke-width="1.4" fill="none" stroke-dasharray="6 4" marker-end="url(#sb-arrow-a)">
+            <path d="M 760 300 C 790 250, 800 230, 820 214"></path>
+          </g>
+
+          <g font-family="IBM Plex Sans, sans-serif" fill="currentColor">
+            <text x="80" y="156" text-anchor="middle" font-size="13" font-weight="600">CREATOR</text>
+            <text x="80" y="175" text-anchor="middle" font-size="10.5" opacity="0.7">bandleader</text>
+
+            <text x="260" y="156" text-anchor="middle" font-size="13" font-weight="600">CO-PRODUCER</text>
+            <text x="260" y="175" text-anchor="middle" font-size="10.5" opacity="0.7">musical director</text>
+
+            <text x="490" y="156" text-anchor="middle" font-size="13" font-weight="600">BASS PLAYER</text>
+            <text x="490" y="175" text-anchor="middle" font-size="10.5" opacity="0.7">performance intelligence</text>
+
+            <text x="615" y="41" text-anchor="middle" font-size="11" font-weight="600" letter-spacing="0.08em">SESSION CONTEXT</text>
+            <text x="615" y="56" text-anchor="middle" font-size="10">bpm · key · sections · kick transients · vocal melody · every existing part</text>
+
+            <text x="490" y="115" text-anchor="middle" font-size="10" font-weight="600" letter-spacing="0.06em" opacity="0.8">MAY WRITE: BASS TRACK · VERSE 1–2</text>
+
+            <text x="915" y="110" text-anchor="middle" font-size="11">sampled bass</text>
+            <text x="915" y="164" text-anchor="middle" font-size="11">synth bass</text>
+            <text x="915" y="218" text-anchor="middle" font-size="11">ACE lego</text>
+
+            <text x="780" y="324" text-anchor="middle" font-size="12" font-weight="600">CANDIDATE</text>
+            <text x="780" y="341" text-anchor="middle" font-size="10.5" opacity="0.7">audio + lineage</text>
+
+            <text x="520" y="324" text-anchor="middle" font-size="12" font-weight="600">GOVERNOR</text>
+            <text x="520" y="341" text-anchor="middle" font-size="10.5" opacity="0.7">did the take honour the grant?</text>
+
+            <text x="275" y="324" text-anchor="middle" font-size="12" font-weight="600">CREATOR</text>
+            <text x="275" y="341" text-anchor="middle" font-size="10.5" opacity="0.7">audition · accept · reject</text>
+          </g>
+
+          <g font-family="IBM Plex Mono, monospace" fill="currentColor" font-size="10" opacity="0.85">
+            <text x="160" y="152" text-anchor="middle">brief</text>
+            <text x="365" y="152" text-anchor="middle">scoped</text>
+            <text x="503" y="98" text-anchor="middle">reads all</text>
+          </g>
+
+          <g font-family="IBM Plex Mono, monospace" font-size="10.5">
+            <text x="720" y="152" text-anchor="middle" fill="var(--figure-accent)" font-weight="600">TAKE</text>
+            <text x="720" y="170" text-anchor="middle" fill="var(--figure-accent)" font-size="11">NoteEvent[]</text>
+            <text x="800" y="262" text-anchor="start" fill="var(--figure-accent)" font-size="10">“make it fretless”</text>
+            <text x="800" y="276" text-anchor="start" fill="var(--figure-accent)" font-size="10">same take, new engine</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>The player reads the whole session but may write only inside its grant — one track, named sections. Because the take it returns is symbolic, the three engines on the right are interchangeable after the fact: the blue path is the one the split makes possible, and the one a whole-song generator cannot offer.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>What already exists to build this on</h2>
+    <p class="lede">More than I expected. Four of the concept's load-bearing ideas are already types in the codebase — unfinished, but not hypothetical.</p>
+    <ul>
+      <li><strong>Performance separated from realization.</strong> <code>RealizerBackend</code> already lists <code>SampleRealizer</code>, <code>SynthRealizer</code>, <code>ACERealizer</code> and <code>SoulSonusNativeRealizer</code> alongside <code>SoulSonusPerformanceTransfer</code>. The distinction the whole design rests on is already in the type system.</li>
+      <li><strong>Symbolic output as a first-class candidate.</strong> <code>CandidateRoute</code> in <code>src/lib/studioIntelligenceRouter.ts</code> carries <code>proposedMidiNotes</code> and <code>proposedSteps</code>, not only <code>candidateAudioUrl</code>. There is already a slot for a take that is notes.</li>
+      <li><strong>A scoped-authority record.</strong> <code>CoproducerContext</code> holds <code>lockedProperties</code> and <code>mutableProperties</code>, and the Co-Producer already varies them by room. It is property-scoped where the band needs track-and-section scope — a widening, not a new idea.</li>
+      <li><strong>A governance loop that is mounted.</strong> <code>GenerationCandidate</code> carries <code>preservedProperties</code>, <code>modifiedProperties</code>, <code>preservationScores</code>, <code>violations</code>, <code>creatorDecision</code> and <code>governanceState</code>; the candidate drawer with audition, commit and reject is rendered in the app today. The take a player returns has somewhere to arrive.</li>
+      <li><strong>A pluggable reasoning provider.</strong> <code>ReasoningProvider</code> is a real interface with a local Ollama implementation that genuinely posts to a model. That is the substrate an adapter family plugs into.</li>
+    </ul>
+    <p>What is missing is not the vocabulary. It is that the router is <strong>typed by operation, not by role</strong>: <code>CreatorIntent.intentType</code> is a closed union of six verbs — <code>TIMBRE_SCULPT</code>, <code>PERFORMANCE_TRANSFER</code>, <code>REGIONAL_REPAINT</code> and so on. "Bass player, play what you feel" is addressed to a <em>who</em>. Adding a role dimension beside the verb is the first real piece of work this concept needs.</p>
+  </section>
+
+  <section>
+    <h2>The roster, and the split inside it</h2>
+    <p class="lede">The players are not one kind of thing. Most can hand back notes; two cannot, and pretending otherwise is how a design like this goes wrong six months in.</p>
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr><th>Player</th><th>Hands back</th><th>Its muscle memory</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="role">Bass</td>
+            <td><span class="tag t-note">NoteEvent[]</span></td>
+            <td>Pocket, root movement, chord tones, approach notes, syncopation, kick interaction, register, slides, ghost notes</td>
+          </tr>
+          <tr>
+            <td class="role">Drummer</td>
+            <td><span class="tag t-note">NoteEvent[]</span></td>
+            <td>Groove, subdivision, fills, kick–snare relationship, velocity, ghost notes, cymbal orchestration</td>
+          </tr>
+          <tr>
+            <td class="role">Keys</td>
+            <td><span class="tag t-note">NoteEvent[]</span></td>
+            <td>Voicings, extensions, inversions, comping density, voice leading</td>
+          </tr>
+          <tr>
+            <td class="role">Guitar</td>
+            <td><span class="tag t-note">NoteEvent[]</span></td>
+            <td>Voicing, strumming and picking, fretboard range, comping versus lead, crowding the keys</td>
+          </tr>
+          <tr>
+            <td class="role">Strings</td>
+            <td><span class="tag t-note">NoteEvent[]</span></td>
+            <td>Range, divisi, voice leading, articulation, countermelody, ensemble spacing</td>
+          </tr>
+          <tr>
+            <td class="role">Background vocals</td>
+            <td><span class="tag t-audio">Audio</span></td>
+            <td>Words, timbre, breath and blend. A note grid cannot express a stacked "ooh" — this player needs an audio engine and its own realization path</td>
+          </tr>
+          <tr>
+            <td class="role">Texture / FX</td>
+            <td><span class="tag t-audio">Audio</span></td>
+            <td>Risers, impacts, atmospheres. There is no symbolic form of a sound design gesture; the take <em>is</em> the audio</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The consequence is small but structural: the band interface returns <code>{ kind: 'performance', notes }</code> or <code>{ kind: 'audio', asset }</code>, and the audio players cannot offer the "keep the take, change the engine" move. Better to have that in the shape from the first commit than to discover it when the vocal arranger arrives.</p>
+  </section>
+
+  <section>
+    <h2>The three grants — and how each is actually checked</h2>
+    <p class="lede">This project has already shipped a control that reported success while changing nothing. A freedom level written into a prompt and never verified is the same failure wearing a nicer name. Each grant needs a check that can fail.</p>
+    <div class="grants">
+      <div class="grant">
+        <div class="name">PLAY EXACTLY<span>follow my notes and rhythm</span></div>
+        <div class="detail">
+          <p>The creator's phrase is the performance. The player may set velocity, articulation and micro-timing, nothing else.</p>
+          <p class="check"><b>Check:</b> onset times within ±30 ms of the source, pitch set identical, note count identical. Any deviation is a violation, not a style choice.</p>
+        </div>
+      </div>
+      <div class="grant">
+        <div class="name">PLAY AROUND IT<span>preserve the phrase, embellish</span></div>
+        <div class="detail">
+          <p>The skeleton survives; the player adds passing notes, ghost notes, fills.</p>
+          <p class="check"><b>Check:</b> every source onset still has a note within ±60 ms; added notes are permitted; a <em>removed</em> source onset is a violation.</p>
+        </div>
+      </div>
+      <div class="grant">
+        <div class="name">PLAY WHAT YOU FEEL<span>your call, inside your lane</span></div>
+        <div class="detail">
+          <p>Broad musical authority — over one track, in named sections, and nothing else.</p>
+          <p class="check"><b>Check:</b> the diff touches only the granted track and bar range. Freedom is unlimited inside the lane and zero outside it, which is what makes it safe to grant.</p>
+        </div>
+      </div>
+    </div>
+    <p>All three are measurable against note data, which is the quiet argument for symbolic takes: <strong>you cannot verify a grant against a rendered waveform.</strong> "Did it keep my phrase?" is arithmetic on <code>NoteEvent[]</code> and guesswork on audio.</p>
+  </section>
+
+  <section>
+    <h2>Decisions this forces</h2>
+    <div class="decisions">
+      <div class="decision">
+        <div class="q">Who plays first?</div>
+        <div class="a">A real band plays at once; agents cannot. If the bassist reads the drums, the drums must already exist. So <b>call order is itself a musical opinion</b>, and it belongs to the Co-Producer: rhythm section, then harmony, then colour. Worth deciding deliberately, because it silently determines who gets to react to whom.</div>
+      </div>
+      <div class="decision">
+        <div class="q">Three takes, eagerly or on request?</div>
+        <div class="a">Three takes × several players × several sections multiplies cost fast, and most takes are never heard. <b>Generate one, offer the other two as "give me another".</b> The first take should be the pocket read — the safe one — because that is the one most likely to be kept.</div>
+      </div>
+      <div class="decision">
+        <div class="q">What does a player see of the others?</div>
+        <div class="a">"The guitarist avoids crowding the keys" is the line that makes this feel like a band rather than parallel stem generators — and it is also the expensive part, since every player's context then includes every other part. <b>Start with the parts that share the player's register and role</b>, not the whole session, or the context cost grows with the arrangement.</div>
+      </div>
+      <div class="decision">
+        <div class="q">Where do the specialists actually come from?</div>
+        <div class="a">Adapters over one reasoner is the right shape, but tuning needs a corpus of session-context-to-performance examples with preference signal. <b>That corpus is a by-product of the governance loop already built</b>: every accept and reject on a candidate is a labelled preference pair. Shipping audition-and-decide early is not just UX — it is data collection, and it compounds.</div>
+      </div>
+      <div class="decision">
+        <div class="q">Does the Engineer belong in this hierarchy at all?</div>
+        <div class="a">"The bass is masking the kick" and "the bassline is too busy" are different authorities, and the split is right. But the Engineer already has real instruments in this codebase — the masking analysis and the mastering telemetry both measure rather than assert. <b>The Engineer can be built on measurement where the players need judgement</b>, which makes it the cheaper of the two to make honest.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where it sits</h2>
+    <p>This is a planning entry, not a queue jump. It sits behind two things it depends on, and one of them it shares with the ACE work.</p>
+    <ul>
+      <li><strong>A song-length timeline.</strong> A session player writing into four bars is a demo. This concept assumes verses and choruses exist as real regions.</li>
+      <li><strong><code>AudioClip</code>.</strong> The two audio-returning players — background vocals and texture — have nowhere to put a take without it. The same type the ACE slice needs.</li>
+      <li><strong>A role dimension on the router.</strong> The one piece of work unique to this concept that can start immediately, is small, and is useful on its own: address a request to a <em>who</em>, not only a <em>what</em>.</li>
+    </ul>
+    <p class="lede">The honest summary: the band is further out than the timeline work, and closer than it looks, because the governance, the candidate lifecycle and the performance-versus-realization split are already in the codebase waiting to be used.</p>
+  </section>
+
+</div>
