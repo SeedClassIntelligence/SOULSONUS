@@ -310,8 +310,8 @@
     <h1>SoulSonus Signal Map</h1>
     <p class="standfirst">Every component in the six rooms, sorted by whether it actually processes anything. Consolidated from all prior verification passes and re-checked against the current branch, so there is one map to plan from instead of several.</p>
     <div class="stamp">
-      <span>Describes the code at <code>main</code> @ <code>1d6985c</code> — the branch Netlify deploys (this map is the commit after it)</span>
-      <span>Updated 19 Aug 2026 · Layers 0 and 1 complete · Layer 2 in progress — AUDITION sweep, real export, a working true-peak limiter, per-track EQ, undoable takes, a single undo stack, playable take audio, a working arrangement room, a type gate that checks component props, audio on the timeline, a song that is no longer four bars long, an E05 seam with no invented scores behind it, a Session Band whose grants are actually checked, and a hum that becomes real notes have landed</span>
+      <span>Describes the code at <code>main</code> @ <code>512aa09</code> — the branch Netlify deploys (this map is the commit after it)</span>
+      <span>Updated 19 Aug 2026 · Layers 0 and 1 complete · Layer 2 in progress — AUDITION sweep, real export, a working true-peak limiter, per-track EQ, undoable takes, a single undo stack, playable take audio, a working arrangement room, a type gate that checks component props, audio on the timeline, a song that is no longer four bars long, an E05 seam with no invented scores behind it, a Session Band whose grants are actually checked, a hum that becomes real notes, and a sound vault that changes the sound have landed</span>
       <span>Method: live headless browser + synthetic mic + source read</span>
     </div>
   </header>
@@ -325,17 +325,17 @@
   <section>
     <div class="bridge">
       <div class="cell work">
-        <span class="fig">112</span>
+        <span class="fig">116</span>
         <span class="lab">Working</span>
-        <span class="note">Processes real data end to end. Demonstrated, not assumed. 58 of these were broken and fixed during the audit.</span>
+        <span class="note">Processes real data end to end. Demonstrated, not assumed. 62 of these were broken and fixed during the audit.</span>
       </div>
       <div class="cell dark">
-        <span class="fig">6</span>
+        <span class="fig">7</span>
         <span class="lab">Partly / unplugged</span>
         <span class="note">A real implementation that nothing reaches, or one that works in some paths and not others.</span>
       </div>
       <div class="cell deco">
-        <span class="fig">4</span>
+        <span class="fig">3</span>
         <span class="lab">Decorative</span>
         <span class="note">Presents literals as measurements, or the control does nothing.</span>
       </div>
@@ -350,18 +350,18 @@
       <span><span class="pill p-dark">Unplugged</span></span>
       <span><span class="pill p-deco">Decorative</span></span>
       <span><span class="pill p-none">Not built</span></span>
-      <span>Evidence column cites the file and line, or the live test that produced the result. 127 rows in total.</span>
+      <span>Evidence column cites the file and line, or the live test that produced the result. 131 rows in total.</span>
     </div>
   </section>
 
   <section class="callout">
-    <h3>21% of <code>src/</code> is not reachable from the app the browser loads</h3>
-    <p>Measured rather than sampled. <code>scripts/dsp/reachability.cjs</code> walks the import graph from <code>src/main.tsx</code> &mdash; the file <code>index.html</code> actually requests &mdash; and reports what never gets pulled in: <strong>27 of 135 files, 7,653 lines</strong>. Three separate times a row in this map said &ldquo;not built&rdquo; when the truth was &ldquo;built and unreachable&rdquo;, and each was found by accident. This makes it a check.</p>
+    <h3>20% of <code>src/</code> is not reachable from the app the browser loads</h3>
+    <p>Measured rather than sampled. <code>scripts/dsp/reachability.cjs</code> walks the import graph from <code>src/main.tsx</code> &mdash; the file <code>index.html</code> actually requests &mdash; and reports what never gets pulled in: <strong>26 of 135 files, 7,459 lines</strong>. Three separate times a row in this map said &ldquo;not built&rdquo; when the truth was &ldquo;built and unreachable&rdquo;, and each was found by accident. This makes it a check.</p>
     <div class="scroller">
       <table>
         <thead><tr><th>What the orphan is</th><th>Examples</th><th>Why it matters</th></tr></thead>
         <tbody>
-          <tr><td>A real implementation the app claims but reaches a fake for</td><td><code>audio/transcriptionEngine.ts</code> (now replaced) · <code>lib/clapEmbeddingMatcher.ts</code> · <code>audio/soundfontEngine.ts</code></td><td>The feature exists. Wiring it replaces a fabrication with working code, which is cheaper than building either</td></tr>
+          <tr><td>A real implementation the app claims but reaches a fake for</td><td><code>audio/transcriptionEngine.ts</code> and <code>lib/clapEmbeddingMatcher.ts</code>, both now off the list · <code>audio/soundfontEngine.ts</code> next</td><td>The feature exists. Wiring it replaces a fabrication with working code, which is cheaper than building either</td></tr>
           <tr><td>A duplicate of something mounted, quietly drifting</td><td><code>MasterMixerConsole</code> · <code>TrackPianoRollEditor</code> · <code>SoulSonusIntelligenceDock</code> · <code>TimelinePrimitive</code></td><td>Two copies, one reachable. A fix applied to the wrong one looks landed and changes nothing &mdash; which has happened here</td></tr>
           <tr><td>Reached only from another orphan</td><td><code>capabilityRegistry.ts</code> and <code>SeedCaptureStudio.tsx</code>, both only via <code>IntelligenceLaneInspector</code></td><td>Branches of one dead tree. The ACE manifest sits here, which is what &ldquo;registered, not integrated&rdquo; looks like in the import graph</td></tr>
         </tbody>
@@ -389,7 +389,11 @@
       <div class="row"><div class="what">The model was here the whole time</div><div><span class="pill p-work">Fixed</span></div><div class="ev"><code>public/models/basic_pitch.onnx</code> is a genuine Spotify Basic Pitch export. The engine holding a session for it was imported by no file &mdash; and where it called the model it fed the tensor as <code>input</code> while the graph expects <code>serving_default_input_2:0</code>, so every call threw. It discarded the result regardless and reported <code>ONNX_BASIC_PITCH_NEURAL</code> over notes produced by autocorrelation, alongside a hardcoded key of C minor and five literal confidences. Deleted</div></div>
       <div class="row"><div class="what">Which output head is which was measured, not assumed</div><div><span class="pill p-work">Working</span></div><div class="ev">The model was run on a synthesised A4 followed by a C5 and the heads read: the onset head lit <code>5</code> cells at exactly MIDI 69 and 72, the frame head lit <code>153</code>. Offline the decoder gets the pitches exactly right on a single tone, a four-note melody, a polyphonic triad and two octaves apart &mdash; and returns <code>0</code> notes for silence and <code>0</code> for white noise, which is the check that separates a transcriber from a note generator</div></div>
       <div class="row"><div class="what">Two deployment faults that would have killed it silently</div><div><span class="pill p-work">Fixed</span></div><div class="ev">The wasm runtime fetched itself from the app origin, the SPA catch-all answered with <code>index.html</code>, and the loader reported &ldquo;expected magic word 00 61 73 6d, found <code>3c 21 64 6f</code>&rdquo; &mdash; the first four bytes of <code>&lt;!do</code>, the same redirect trap as the realization route. And in dev the runtime's dynamic import arrives as <code>.mjs?import</code>, which vite's transform pipeline answers with a 500 on emscripten glue. Both surfaced only by driving the real modal</div></div>
-      <div class="row"><div class="what">Sound vault CLAP match scores</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">TrackProductionStrip.tsx:56 — <code>clapMatchScore</code> is a fixed integer per sample</div></div>
+      <div class="row"><div class="what">Choosing a sound changes the sound</div><div><span class="pill p-work">Fixed</span></div><div class="ev">Committing a preset renamed the track. That was the entire effect &mdash; &ldquo;90s BoomBap Gritty Kick&rdquo; and &ldquo;Analog 909 Tight Dance Kick&rdquo; were the same kick with different labels. Each preset now carries settings that drive the channel strip, moving in the direction its own description claims. Live: <code>4200&nbsp;Hz</code> with air at <code>&minus;5&nbsp;dB</code> against <code>14000&nbsp;Hz</code> at <code>+4&nbsp;dB</code>, a measurable difference in the rendered master, and one undo takes the name and the channel back together</div></div>
+      <div class="row"><div class="what">The audition was a pulsing icon over silence</div><div><span class="pill p-work">Fixed</span></div><div class="ev">The panel read &ldquo;LIVE IN-CONTEXT AUDITION (SONG LOOPING)&rdquo; and constructed no audio nodes at all, so the control for comparing two sounds could not play either of them. Auditioning now applies the preset to the real strip and triggers the track's own voice through it. Counted by sources actually <em>started</em>: <code>14</code>, where the old panel started <code>0</code></div></div>
+      <div class="row"><div class="what">It was never CLAP<small><code>clapEmbeddingMatcher.ts</code> → <code>soundVaultSearch.ts</code></small></div><div><span class="pill p-work">Fixed</span></div><div class="ev">The file's own header disclaimed the name it carried: real LAION CLAP is a neural audio-text model with ~600&nbsp;MB of weights and none of it is here. <code>textToFeatureVector</code> hashed <em>characters</em> into 512 bins and <code>cosineSimilarity</code> compared them &mdash; neither was ever called by the ranking, so <code>matchedVectorDimensions: 512</code> reported the width of an embedding that took no part in anything. <code>similarityScore</code> is now the matched terms themselves: <em>matched analog, saturated</em> says why a sound came up, and <code>0.83</code> does not</div></div>
+      <div class="row"><div class="what">The search box matched only literal phrases</div><div><span class="pill p-work">Fixed</span></div><div class="ev">A substring test against three fields, so the query its own placeholder suggested &mdash; <em>&ldquo;punchy 80Hz thump&rdquo;</em> &mdash; matched nothing at all. And the ranking module that could have answered it ranked a different six entries that nothing on screen ever saw. One ranking now, over the catalogue actually displayed: <code>2</code> results for &ldquo;analog saturated&rdquo; where the old filter returned <code>0</code>, and nothing for a query that matches nothing</div></div>
+      <div class="row"><div class="what"><code>Track.instrumentParams</code> reaches no audio code</div><div><span class="pill p-dark">Unplugged</span></div><div class="ev">Found while wiring the vault, recorded rather than folded into it. Twelve controls in the same drawer &mdash; attack, decay, filter cutoff, drive, glide &mdash; write track state that no file in <code>src/audio</code> reads. The channel-strip fields beside them were fixed in an earlier pass and do drive the engine, so half that drawer works and half does not</div></div>
       <div class="row"><div class="what">MOUTH / BODY seed track<small>Created on capture as a lineage marker</small></div><div><span class="pill p-dark">Unplugged</span></div><div class="ev">Created with instrument <code>custom</code>, so separated notes route past it and it stays visibly empty. Lineage survives on note provenance.</div></div>
       <div class="row"><div class="what">Project persistence<small>Save, autosave, reopen</small></div><div><span class="pill p-work">Working</span></div><div class="ev">IndexedDB, chosen because a session holds vocal takes as Blobs. Verified across a real reload: notes, tracks, bpm, fader moves, mastering chain, room and a recorded vocal take all survive. The demo pattern was never a bug in the pattern — there was simply nothing else to load</div></div>
     </div>
@@ -602,7 +606,7 @@
       <div class="row"><div class="what"><code>ContextualToolPanel</code> was imported by nothing</div><div><span class="pill p-work">Fixed</span></div><div class="ev">It held <code>IntelligenceLaneInspector</code> and the Create room's FX tab, neither reachable in the current layout. The panel has been deleted rather than left as a broken duplicate; the inspector remains in the tree, still unmounted</div></div>
       <div class="row"><div class="what">Nothing reached the deployed site until now<small>Ten commits of fixes sat unmerged</small></div><div><span class="pill p-work">Fixed</span></div><div class="ev">Netlify builds <code>main</code>, which was still at <code>abc3cbe</code> from before the audit. Clicking into the studio gave 0 elements and <code>ReferenceError: useStudioSession is not defined</code> — the round-one crash, still live. <code>main</code> fast-forwarded to the audited branch and verified rendering 319 controls before pushing</div></div>
       <div class="row"><div class="what">Favicon and page metadata</div><div><span class="pill p-work">Fixed</span></div><div class="ev">A 404 on <code>/favicon.ico</code> was the last console error on a clean load, and left the browser tab blank. Console is now clean end to end</div></div>
-      <div class="row"><div class="what">Verification harness</div><div><span class="pill p-work">Working</span></div><div class="ev">scripts/live-verification — 40 tests driving real Chromium with a synthetic mic, reading committed React state, plus scripts/dsp for arithmetic that needs no browser</div></div>
+      <div class="row"><div class="what">Verification harness</div><div><span class="pill p-work">Working</span></div><div class="ev">scripts/live-verification — 41 tests driving real Chromium with a synthetic mic, reading committed React state, plus scripts/dsp for arithmetic that needs no browser</div></div>
     </div>
   </section>
 
@@ -612,7 +616,8 @@
     <p class="lede">Layers 0 and 1 are complete, and Layer 2 has landed: the AUDITION sweep, clips on the timeline, and the song length itself are all recorded above. The timeline is no longer four bars long. What remains is ordered by value returned per unit of work, given what already exists on disk.</p>
     <ol class="next">
       <li><div><strong>A host, and the first real <code>extract</code>.</strong><p>Everything on our side of the seam is in place and tested without a network. What is left is not code: a machine with the pinned checkpoint and enough VRAM. Until one exists, the honest status of realization is &ldquo;can be attempted, has not been&rdquo; &mdash; and the app now says exactly that rather than showing a score.</p></div></li>
-      <li><div><strong>Work the reachability list down.</strong><p>The sweep exists now and names 27 files. Transcription was the first one taken off it and turned out to be a working model behind a broken call. <code>clapEmbeddingMatcher</code> is the same shape &mdash; real similarity search, while the vault shows a fixed integer per sample &mdash; and <code>soundfontEngine</code> after it. The duplicates are a separate decision: delete, or mount and retire the one on screen.</p></div></li>
+      <li><div><strong>Work the reachability list down.</strong><p>Two off, 26 left. Transcription was a working model behind a broken call; the vault search was real ranking pointed at a catalogue nobody saw. Both took an afternoon and both replaced something decorative in a reachable path. <code>soundfontEngine</code> is next by the same reasoning. The duplicates are a separate decision: delete, or mount and retire the one on screen.</p></div></li>
+      <li><div><strong>Make the instrument panel do something, or take it out.</strong><p>Twelve controls in the track workstation write <code>Track.instrumentParams</code>, which no file in <code>src/audio</code> reads. The channel-strip fields beside them were fixed in an earlier pass and do drive the engine, so half that drawer works and half is scenery &mdash; and there is nothing on screen to tell them apart.</p></div></li>
       <li><div><strong>Turn on <code>strict</code>.</strong><p>Made concrete this pass: <code>preservationScores</code> became nullable and every unguarded read of it still typechecked, so the fabricated-number fixes had to be found by hand rather than by the gate. <code>strictNullChecks</code> is the difference between the compiler finding those and a person finding them.</p></div></li>
     </ol>
   </section>
