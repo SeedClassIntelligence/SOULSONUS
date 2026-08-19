@@ -83,6 +83,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     handleUndo,
     handleRedo,
     handleUpdateTrack,
+    audioAssets,
   } = useStudioSession();
 
   // Undo was reachable only from the Build room's control cluster, while takes
@@ -299,19 +300,24 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const handleTogglePlay = useCallback(async () => {
     if (dawState.isPlaying) {
       audioEngine.stopSequencer();
+      audioEngine.clearAudioClips();
       setDawState((prev) => ({ ...prev, isPlaying: false }));
     } else {
       await audioEngine.init();
+      // Clips are scheduled before the transport rolls, since a player synced
+      // after the start would miss its own cue.
+      await audioEngine.syncAudioClips(tracks, audioAssets, dawState.bpm || 110);
       audioEngine.startSequencer(
         () => tracks,
         (step) => handleStepChange(step)
       );
       setDawState((prev) => ({ ...prev, isPlaying: true }));
     }
-  }, [dawState.isPlaying, tracks, handleStepChange, setDawState]);
+  }, [dawState.isPlaying, tracks, audioAssets, dawState.bpm, handleStepChange, setDawState]);
 
   const handleStop = useCallback(() => {
     audioEngine.stopSequencer();
+    audioEngine.clearAudioClips();
     handleStepChange(0);
     setDawState((prev) => ({ ...prev, isPlaying: false }));
   }, [handleStepChange, setDawState]);

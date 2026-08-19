@@ -22,6 +22,8 @@ import {
   SNARE_OPTIONS,
 } from './instrumentVoices';
 import { buildTrackStrip } from './trackStrip';
+import { AudioAsset } from '../types/daw';
+import { resolveClips, ticksToSeconds, clipsEndTick } from './audioClips';
 import { midiToNoteName, tickToStep } from '../utils/musicMath';
 import { limitTruePeak, TruePeakLimitResult } from './truePeakLimiter';
 
@@ -36,6 +38,8 @@ export interface RenderOptions {
   tailSeconds?: number;
   /** Render only these tracks. Used to bounce one track at a time for analysis. */
   onlyTrackIds?: string[];
+  /** Assets backing any timeline clips. Without these, clips bounce silent. */
+  audioAssets?: Record<string, AudioAsset>;
 }
 
 export interface RenderResult {
@@ -69,11 +73,16 @@ export async function renderMasterBounce(options: RenderOptions): Promise<Render
   const sampleRate = options.sampleRate ?? 48000;
   const tail = options.tailSeconds ?? 2.5;
 
+  const audioAssets = options.audioAssets || {};
+
   const secondsPerBeat = 60 / bpm;
   const secondsPerStep = secondsPerBeat / 4;
   const totalSteps = bars * STEPS_PER_BAR;
   const bodySeconds = totalSteps * secondsPerStep;
-  const duration = bodySeconds + tail;
+  // A clip may run past the note grid, and cutting the render at the grid would
+  // truncate it silently. The bounce is as long as the longest thing in it.
+  const clipSeconds = ticksToSeconds(clipsEndTick(tracks), bpm);
+  const duration = Math.max(bodySeconds, clipSeconds) + tail;
 
   let eventsRendered = 0;
   // When rendering a subset for analysis, existing solo flags must not also
@@ -117,6 +126,29 @@ export async function renderMasterBounce(options: RenderOptions): Promise<Render
       delaySend.connect(delay);
 
       strips.set(track.id, { input: strip.input });
+    }
+
+    // Timeline clips, into the same strips as the instruments. A clip that
+    // plays live and vanishes from the bounce would make the export a
+    // different piece of music from the one the creator heard.
+    for (const { track, clip, asset } of resolveClips(tracks, audioAssets)) {
+      const strip = strips.get(track.id);
+      if (!strip) continue;
+      const player = new Tone.Player({
+        url: asset.url,
+        fadeIn: clip.fadeInMs / 1000,
+        fadeOut: clip.fadeOutMs / 1000,
+      });
+      player.volume.value = clip.gainDb;
+      player.connect(strip.input);
+      await Tone.loaded();
+      if (!player.buffer || !player.buffer.loaded) continue;
+      player.start(
+        ticksToSeconds(clip.startTick, bpm),
+        clip.sourceOffsetSeconds,
+        clip.sourceDurationSeconds || undefined
+      );
+      eventsRendered++;
     }
 
     // A small round-robin voice pool per track. One voice per track is enough

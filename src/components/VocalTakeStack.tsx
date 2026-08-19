@@ -22,6 +22,7 @@ export const VocalTakeStack: React.FC<VocalTakeStackProps> = ({ track }) => {
     handleSetActiveTake,
     handleDeleteTake,
     handleUpdateTakeRating,
+    handlePlaceTakeOnTimeline,
     vocalSelectionContext,
     setVocalSelectionContext,
   } = useStudioSession();
@@ -33,6 +34,7 @@ export const VocalTakeStack: React.FC<VocalTakeStackProps> = ({ track }) => {
   const [playingTakeId, setPlayingTakeId] = useState<string | null>(null);
   const [isLoopRecording, setIsLoopRecording] = useState(false);
   const [recordError, setRecordError] = useState<string | null>(null);
+  const [placingTakeId, setPlacingTakeId] = useState<string | null>(null);
   const playbackRef = useRef<AuditionHandle | null>(null);
   const recordingRef = useRef<TakeRecording | null>(null);
 
@@ -156,6 +158,31 @@ export const VocalTakeStack: React.FC<VocalTakeStackProps> = ({ track }) => {
             >
               {/* Left: Take Info & Rating */}
               <div className="flex items-center space-x-3">
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!hasAudio) return;
+                    setPlacingTakeId(take.id);
+                    try {
+                      await handlePlaceTakeOnTimeline(currentTrack.id, take.id);
+                    } finally {
+                      setPlacingTakeId(null);
+                    }
+                  }}
+                  disabled={!hasAudio}
+                  data-testid={`place-take-${take.id}`}
+                  className={`h-8 px-2 rounded-xl text-[9px] font-black tracking-wide flex items-center justify-center transition ${
+                    !hasAudio
+                      ? 'bg-slate-950 border border-slate-900 text-slate-700 cursor-not-allowed'
+                      : placingTakeId === take.id
+                      ? 'bg-cyan-400 text-slate-950 animate-pulse cursor-pointer'
+                      : 'bg-slate-950 border border-slate-800 text-cyan-300 hover:border-cyan-500 cursor-pointer'
+                  }`}
+                  title={hasAudio ? 'Place this take on the timeline at the playhead' : 'No recorded audio behind this take'}
+                >
+                  {placingTakeId === take.id ? '…' : '→ TIMELINE'}
+                </button>
+
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

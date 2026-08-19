@@ -175,6 +175,8 @@ export interface NoteEvent {
 }
 
 export interface Track {
+  /** Audio placed on this track's timeline. Notes and clips can coexist. */
+  audioClips?: AudioClip[];
   /** Where the sound came from. Read by the track lane's SOURCE label. */
   originType?: LayerOriginType;
   /** Vault preset name, written by the lane's sound selector. */
@@ -657,11 +659,84 @@ export interface SoundAsset {
   provenance: string;
 }
 
-export interface AudioAsset extends SoundAsset {
+/**
+ * A record in the sound library. Renamed from `AudioAsset` so that name could
+ * go to the timeline asset below, which is a different thing: this describes a
+ * browsable sound, that one describes immutable bytes on a track.
+ */
+export interface SoundLibraryAsset extends SoundAsset {
   audioBlob?: Blob;
   audioUrl?: string;
   duration?: number;
   seedSignatureHash?: string;
+}
+
+/**
+ * Immutable audio in the project.
+ *
+ * An asset is never edited in place — a trim, a gain change or a new take makes
+ * a clip that points at it, or a new asset derived from it. That is what makes
+ * lineage checkable: the bytes behind `sha256` are the bytes that were rendered,
+ * recorded or returned, and nothing can quietly change underneath a record that
+ * claims them.
+ */
+export interface AudioAsset {
+  id: string;
+  name: string;
+  sampleRate: number;
+  channels: number;
+  durationSeconds: number;
+  byteLength: number;
+  /** SHA-256 over the encoded bytes, computed once at registration. */
+  sha256: string;
+  originType: AudioAssetOrigin;
+  /** What this was derived from. A fresh recording has none. */
+  parentAssetIds: string[];
+  createdAt: number;
+  /**
+   * Object URL for playback. Rebuilt from the stored blob on load and never
+   * persisted — a URL from a previous session points at nothing.
+   */
+  url: string;
+}
+
+export type AudioAssetOrigin =
+  | 'RECORDED'
+  | 'IMPORTED'
+  | 'BOUNCED'
+  | 'SEPARATED'
+  | 'GENERATED';
+
+/**
+ * Audio placed on a track at a musical position.
+ *
+ * The audio counterpart of `NoteEvent`, and deliberately in the same tick
+ * domain (480 PPQ) so a clip and a note describe position the same way. A track
+ * may hold notes, clips, or both.
+ */
+export interface AudioClip {
+  id: string;
+  trackId: string;
+  assetId: string;
+  /** Timeline position in ticks — same domain as `NoteEvent.startTick`. */
+  startTick: number;
+  durationTicks: number;
+  /** Which part of the asset sounds. Trimming moves these, never the asset. */
+  sourceOffsetSeconds: number;
+  sourceDurationSeconds: number;
+  gainDb: number;
+  fadeInMs: number;
+  fadeOutMs: number;
+  /** Set when the clip arrived as a realization candidate. */
+  candidateId?: string;
+  provenance: AudioClipProvenance;
+}
+
+export interface AudioClipProvenance {
+  origin: AudioAssetOrigin;
+  creatorEdited: boolean;
+  /** Where it came from in the creator's terms, e.g. "Take 05 (Loop Capture)". */
+  sourceDescription?: string;
 }
 
 export type DatasetAdmissionStatus = 'APPROVED' | 'APPROVED WITH CONDITIONS' | 'RESEARCH ONLY' | 'REJECTED';

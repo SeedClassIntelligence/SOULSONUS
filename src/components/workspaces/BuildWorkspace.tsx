@@ -2,6 +2,7 @@ import React from 'react';
 import { useStudioSession } from '../../app/StudioSessionContext';
 import { SectionBuilder } from '../SectionBuilder';
 import { ShootAroundControls } from '../ShootAroundControls';
+import { TimelineAudioPanel } from '../TimelineAudioPanel';
 import { Layers, Wand2, Plus, Sparkles, RefreshCw, Grid } from 'lucide-react';
 import { ArrangementSection } from '../../types/daw';
 
@@ -136,6 +137,11 @@ export const BuildWorkspace: React.FC = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Audio on the timeline */}
+      <div className="w-full">
+        <TimelineAudioPanel />
       </div>
 
       {/* Shoot Around Transformation Panel */}

@@ -13,7 +13,7 @@
  * the actual exported bytes rather than over a description of them.
  */
 
-import { MasteringDspChain, SeedSignatureRecord, Track } from '../types/daw';
+import { AudioAsset, MasteringDspChain, SeedSignatureRecord, Track } from '../types/daw';
 import { renderMasterBounce } from './masterRender';
 import { masteringTelemetryEngine, LoudnessTelemetryReport } from './masteringTelemetryEngine';
 import { audioEncoders } from '../lib/audioEncoders';
@@ -71,6 +71,8 @@ export interface BuildDeliveryOptions {
   creatorName?: string;
   seedRecords?: SeedSignatureRecord[];
   masterVersion?: string;
+  /** Assets backing timeline clips, so the export contains them. */
+  audioAssets?: Record<string, AudioAsset>;
   /** Progress for the UI: 0..1 with a short label. */
   onProgress?: (fraction: number, label: string) => void;
 }
@@ -219,6 +221,7 @@ export async function buildDeliveryPackage(options: BuildDeliveryOptions): Promi
     creatorName,
     seedRecords = [],
     masterVersion = '1.0.0',
+    audioAssets = {},
     onProgress,
   } = options;
 
@@ -226,7 +229,7 @@ export async function buildDeliveryPackage(options: BuildDeliveryOptions): Promi
   const base = slugify(projectName);
 
   report(0.05, 'Rendering master');
-  const master = await renderMasterBounce({ tracks, bpm, chain });
+  const master = await renderMasterBounce({ tracks, bpm, chain, audioAssets });
   if (master.eventsRendered === 0) {
     throw new Error('Nothing to export — the project rendered silent. Add or unmute a track first.');
   }
@@ -257,7 +260,7 @@ export async function buildDeliveryPackage(options: BuildDeliveryOptions): Promi
   for (let i = 0; i < tracks.length; i++) {
     const track = tracks[i];
     report(0.35 + (0.45 * i) / Math.max(1, tracks.length), `Bouncing stem: ${track.name}`);
-    const stem = await renderMasterBounce({ tracks, bpm, chain, onlyTrackIds: [track.id] });
+    const stem = await renderMasterBounce({ tracks, bpm, chain, audioAssets, onlyTrackIds: [track.id] });
     if (stem.eventsRendered === 0) {
       silentTracks.push(track.name);
       continue;

@@ -5,6 +5,8 @@ import { vocalDspProcessor } from './vocalDspProcessor';
 import { tickToStep, midiToNoteName } from '../utils/musicMath';
 import { createInstrumentVoices, HIHAT_FREQUENCY } from './instrumentVoices';
 import { buildTrackStrip, TrackStrip } from './trackStrip';
+import { AudioAsset, AudioClip } from '../types/daw';
+import { resolveClips, ticksToSeconds } from './audioClips';
 import { BuiltMasteringChain, buildMasteringChain } from './masteringChain';
 import { MasteringDspChain } from '../types/daw';
 
@@ -39,6 +41,8 @@ export class AudioEngine {
   private trackNodeMap = new Map<string, TrackChannelNodes>();
 
   private loopEventId: number | null = null;
+  /** Players for timeline clips, rebuilt whenever the clips change. */
+  private clipPlayers: Tone.Player[] = [];
   private stepCallback: ((step: number) => void) | null = null;
   private vocalPlayer: Tone.Player | null = null;
   private vocalVolumeNode: Tone.Volume | null = null;
@@ -441,6 +445,61 @@ export class AudioEngine {
 
   public getIsVocalRecording(): boolean {
     return this.isVocalRecording;
+  }
+
+  /**
+   * Schedules every timeline clip against the transport.
+   *
+   * Each clip plays into its own track's channel strip, so a clip is subject to
+   * the same EQ, dynamics, pan and sends as anything else on that channel —
+   * audio on a track behaves like the track, not like a separate player bolted
+   * to the master bus.
+   */
+  public async syncAudioClips(tracks: Track[], assets: Record<string, AudioAsset>, bpm: number): Promise<number> {
+    if (!this.initialized) return 0;
+    this.clearAudioClips();
+
+    const entries = resolveClips(tracks, assets);
+    if (!entries.length) return 0;
+
+    for (const { track, clip, asset } of entries) {
+      const nodes = this.getOrCreateTrackNodes(track);
+      if (!nodes) continue;
+      const player = new Tone.Player({ url: asset.url, fadeIn: clip.fadeInMs / 1000, fadeOut: clip.fadeOutMs / 1000 });
+      player.volume.value = clip.gainDb;
+      player.connect(nodes.strip.input);
+      this.clipPlayers.push(player);
+    }
+
+    await Tone.loaded();
+
+    // Position is scheduled after loading: a player started before its buffer
+    // arrives is silently dropped by the transport.
+    let scheduled = 0;
+    entries.forEach(({ clip }, index) => {
+      const player = this.clipPlayers[index];
+      if (!player || !player.buffer || !player.buffer.loaded) return;
+      const startSeconds = ticksToSeconds(clip.startTick, bpm);
+      try {
+        player.sync().start(startSeconds, clip.sourceOffsetSeconds, clip.sourceDurationSeconds || undefined);
+        scheduled++;
+      } catch (err) {
+        console.warn('[audioEngine] could not schedule clip', clip.id, err);
+      }
+    });
+    return scheduled;
+  }
+
+  public clearAudioClips() {
+    for (const player of this.clipPlayers) {
+      try {
+        player.unsync();
+        player.dispose();
+      } catch {
+        /* already gone */
+      }
+    }
+    this.clipPlayers = [];
   }
 
   public startSequencer(tracksRef: () => Track[], onStepChange: (step: number) => void) {

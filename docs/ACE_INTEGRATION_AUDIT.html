@@ -434,7 +434,8 @@
 <strong>≤6 GB</strong> &nbsp;2B turbo only, LM disabled<br><br>
 <strong>XL weights:</strong> ~9 GB bf16 (vs ~4.7 GB for the 2B family) · 50 inference steps, not 8
           </div>
-          <p>Read plainly: a creator's laptop will not run the surgical tasks. ACE belongs behind a service we host, and the wrapper should be written from the start as if the model is on another machine — because it will be.</p>
+          <p><strong>Corrected after review.</strong> An earlier version of this line read "a creator's laptop will not run the surgical tasks", which the source does not support. What the table actually says is that the configuration we want is heavy — everything resident wants ≥24&nbsp;GB, and XL runs at ≥12&nbsp;GB with offload and quantization at reduced capability. That is an operational fact about today's hardware and today's checkpoints, not a permanent one.</p>
+          <p>So: <strong>V1 assumes hosted inference</strong>, and the wrapper is written as if the model is on another machine, because in V1 it is. But the architecture should not be frozen around "local is impossible". The seam to hold open is a provider interface — <code>E05RealizationProvider</code>, with <code>HostedAceStepProvider</code> today and room for <code>LocalAceStepProvider</code> and <code>SoulSonusNativeProvider</code> — so that quantization, distillation or a native renderer changes an implementation rather than the design.</p>
         </div>
       </div>
 

@@ -48,6 +48,9 @@ import {
   MasteringProcessorType,
   MasteringProcessorSlot,
   MasteringDspChain,
+  AudioAsset,
+  AudioAssetOrigin,
+  AudioClip,
   MasterCandidate,
   FinalizationGateStatus,
 } from '../types/daw';
@@ -72,6 +75,7 @@ import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerfo
 import { toMono } from '../audio/fft';
 import { renderMasterBounce } from '../audio/masterRender';
 import { defaultTrackDsp } from '../audio/trackStrip';
+import { registerAudioAsset, makeClip, PlaceClipOptions } from '../audio/audioClips';
 import { buildDeliveryPackage, disposeDelivery, DeliveryPackage } from '../audio/deliveryPackage';
 import { MaskingReport, analyzeMasking } from '../audio/maskingAnalysis';
 import { masteringTelemetryEngine, LoudnessTelemetryReport } from '../audio/masteringTelemetryEngine';
@@ -464,6 +468,18 @@ export interface StudioSessionState {
   setTracks: React.Dispatch<React.SetStateAction<Track[]>>;
   sections: ArrangementSection[];
   setSections: React.Dispatch<React.SetStateAction<ArrangementSection[]>>;
+  /** Immutable audio in the project, by id. Append-only. */
+  audioAssets: Record<string, AudioAsset>;
+  /** Registers a blob as an asset: decodes it, hashes the bytes, keeps the blob. */
+  handleRegisterAudioAsset: (
+    blob: Blob,
+    options: { name: string; originType: AudioAssetOrigin; parentAssetIds?: string[] }
+  ) => Promise<AudioAsset>;
+  handlePlaceAudioClip: (trackId: string, assetId: string, options?: PlaceClipOptions) => AudioClip | null;
+  handleMoveAudioClip: (clipId: string, deltaTicks: number) => void;
+  /** Registers a recorded take's audio and places it on a track at the playhead. */
+  handlePlaceTakeOnTimeline: (trackId: string, takeId: string) => Promise<AudioClip | null>;
+  handleRemoveAudioClip: (clipId: string) => void;
   handleUpdateSections: (
     next: ArrangementSection[] | ((prev: ArrangementSection[]) => ArrangementSection[]),
     label?: string
@@ -856,6 +872,114 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     sectionsRef.current = sections;
   }, [sections]);
+
+  // --- Audio on the timeline -------------------------------------------
+  //
+  // Assets are append-only and immutable; clips are ordinary track state, so
+  // they ride the existing history stack and undo for free. Undoing a placement
+  // therefore removes the clip and keeps the asset, which is the right
+  // asymmetry: the bytes were still recorded, and can be placed again.
+  const [audioAssets, setAudioAssets] = useState<Record<string, AudioAsset>>({});
+  const audioAssetBlobsRef = useRef<Map<string, Blob>>(new Map());
+  const audioAssetsRef = useRef<Record<string, AudioAsset>>({});
+  useEffect(() => {
+    audioAssetsRef.current = audioAssets;
+  }, [audioAssets]);
+
+  const handleRegisterAudioAsset = useCallback(
+    async (
+      blob: Blob,
+      options: { name: string; originType: AudioAssetOrigin; parentAssetIds?: string[] }
+    ): Promise<AudioAsset> => {
+      const asset = await registerAudioAsset(blob, options);
+      audioAssetBlobsRef.current.set(asset.id, blob);
+      setAudioAssets((prev) => ({ ...prev, [asset.id]: asset }));
+      audioAssetsRef.current = { ...audioAssetsRef.current, [asset.id]: asset };
+      return asset;
+    },
+    []
+  );
+
+  const handlePlaceAudioClip = useCallback(
+    (trackId: string, assetId: string, options: PlaceClipOptions = {}): AudioClip | null => {
+      const asset = audioAssetsRef.current[assetId];
+      if (!asset) return null;
+      const clip = makeClip(asset, trackId, bpmRef.current || 110, options);
+      pendingLabelRef.current = `Place ${asset.name}`;
+      updateTracksWithHistory((prev) =>
+        prev.map((t) => (t.id === trackId ? { ...t, audioClips: [...(t.audioClips || []), clip] } : t))
+      );
+      return clip;
+    },
+    [updateTracksWithHistory]
+  );
+
+  const handleMoveAudioClip = useCallback(
+    (clipId: string, deltaTicks: number) => {
+      pendingLabelRef.current = 'Move clip';
+      updateTracksWithHistory((prev) =>
+        prev.map((t) => {
+          if (!t.audioClips?.some((c) => c.id === clipId)) return t;
+          return {
+            ...t,
+            audioClips: t.audioClips.map((c) =>
+              c.id === clipId
+                ? {
+                    ...c,
+                    startTick: Math.max(0, c.startTick + deltaTicks),
+                    provenance: { ...c.provenance, creatorEdited: true },
+                  }
+                : c
+            ),
+          };
+        })
+      );
+    },
+    [updateTracksWithHistory]
+  );
+
+  /**
+   * The first real producer of timeline audio: a take the creator recorded.
+   *
+   * Deliberately the same path anything else will use — the take's blob becomes
+   * an ordinary asset and an ordinary clip, with no special case for having
+   * come from the microphone.
+   */
+  const handlePlaceTakeOnTimeline = useCallback(
+    async (trackId: string, takeId: string): Promise<AudioClip | null> => {
+      const blob = takeAudioRef.current.get(takeId);
+      if (!blob) return null;
+      const track = tracksRef.current.find((t) => t.id === trackId);
+      const take = track?.vocalTakes?.find((v) => v.id === takeId);
+
+      const asset = await handleRegisterAudioAsset(blob, {
+        name: take?.name || 'Recorded take',
+        originType: 'RECORDED',
+      });
+
+      // At the playhead, on the grid the notes use.
+      const startTick = (currentStepRef.current || 0) * TICKS_PER_16TH;
+      return handlePlaceAudioClip(trackId, asset.id, {
+        startTick,
+        sourceDescription: take?.name,
+      });
+    },
+    [handleRegisterAudioAsset, handlePlaceAudioClip]
+  );
+
+  const handleRemoveAudioClip = useCallback(
+    (clipId: string) => {
+      pendingLabelRef.current = 'Remove clip';
+      updateTracksWithHistory((prev) =>
+        prev.map((t) =>
+          t.audioClips?.some((c) => c.id === clipId)
+            ? { ...t, audioClips: t.audioClips.filter((c) => c.id !== clipId) }
+            : t
+        )
+      );
+    },
+    [updateTracksWithHistory]
+  );
 
   /**
    * Changes the arrangement and records it in the same stack as everything
@@ -3277,6 +3401,13 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
             waveformData: vocalState.waveformData || [],
           }
         : null,
+      // Timeline audio. The asset's URL is deliberately not stored — it is
+      // remade from the blob on load, because a URL from a previous session
+      // points at nothing.
+      audioAssets: Object.values(audioAssets).map((asset) => ({
+        asset: { ...asset, url: '' },
+        blob: audioAssetBlobsRef.current.get(asset.id) || null,
+      })),
       // Every take that carries a recording, so the pool is not empty of audio
       // after a reload. Only takes still present on a track are written.
       takeAudio: tracks.flatMap((t) =>
@@ -3292,7 +3423,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       dawState, tracks, sections, lyricSections, masteringChain, masterCandidates,
       activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
       seedRecords, lineageRecords, decisionRecords, detectionSettings, activeWorkspace,
-      editorPrefs, writeRoomDraft,
+      editorPrefs, writeRoomDraft, audioAssets,
       vocalState.audioBlob, vocalState.duration, vocalState.waveformData,
     ]
   );
@@ -3308,6 +3439,23 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       restoredUrls.set(entry.takeId, URL.createObjectURL(entry.blob));
     }
     takeAudioRef.current = restoredAudio;
+
+    // Assets come back with fresh URLs over the same bytes, so a clip that
+    // referenced an asset before the reload still resolves to the same audio.
+    const restoredAssets: Record<string, AudioAsset> = {};
+    const restoredBlobs = new Map<string, Blob>();
+    for (const entry of (snap.audioAssets || []) as { asset: AudioAsset; blob: Blob | null }[]) {
+      if (!entry?.asset) continue;
+      if (entry.blob) {
+        restoredBlobs.set(entry.asset.id, entry.blob);
+        restoredAssets[entry.asset.id] = { ...entry.asset, url: URL.createObjectURL(entry.blob) };
+      } else {
+        restoredAssets[entry.asset.id] = { ...entry.asset, url: '' };
+      }
+    }
+    audioAssetBlobsRef.current = restoredBlobs;
+    audioAssetsRef.current = restoredAssets;
+    setAudioAssets(restoredAssets);
 
     const restoredTracks = (snap.tracks as Track[]).map((t) =>
       t.vocalTakes?.length
@@ -3488,6 +3636,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       tracks: tracksRef.current,
       bpm: bpmRef.current || 110,
       chain: masteringChainRef.current,
+      audioAssets: audioAssetsRef.current,
     });
     const left = result.buffer.getChannelData(0);
     const right = result.buffer.numberOfChannels > 1 ? result.buffer.getChannelData(1) : left;
@@ -3687,6 +3836,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         projectName: dawStateRef.current.projectName || 'SoulSonus Master',
         creatorName,
         seedRecords,
+        audioAssets: audioAssetsRef.current,
         onProgress: (fraction, label) => setDeliveryProgress({ fraction, label }),
       });
       // The previous package's object URLs are released only once its
@@ -3737,6 +3887,12 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       sections,
       setSections,
       handleUpdateSections,
+      audioAssets,
+      handleRegisterAudioAsset,
+      handlePlaceAudioClip,
+      handleMoveAudioClip,
+      handlePlaceTakeOnTimeline,
+      handleRemoveAudioClip,
       vocalState,
       setVocalState,
       detectionSettings,

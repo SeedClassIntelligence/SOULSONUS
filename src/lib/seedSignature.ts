@@ -1,4 +1,4 @@
-import { SeedSignatureRecord, MidiAsset, AudioAsset } from '../types/daw';
+import { SeedSignatureRecord, MidiAsset, SoundLibraryAsset } from '../types/daw';
 
 /**
  * SeedSignature Engine
@@ -50,10 +50,10 @@ export async function signMidiAsset(
 }
 
 export async function signAudioAsset(
-  audioAsset: AudioAsset,
+  audioAsset: SoundLibraryAsset,
   signerName: string,
   parentHashes: string[] = []
-): Promise<{ audioAsset: AudioAsset; record: SeedSignatureRecord }> {
+): Promise<{ audioAsset: SoundLibraryAsset; record: SeedSignatureRecord }> {
   const record = await createSeedSignatureRecord(audioAsset.id, 'audio', signerName, { id: audioAsset.id, name: audioAsset.name, category: audioAsset.category, license: audioAsset.license }, parentHashes);
   return {
     audioAsset: { ...audioAsset, seedSignatureHash: record.hash },

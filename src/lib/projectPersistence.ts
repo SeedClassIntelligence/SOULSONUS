@@ -57,6 +57,11 @@ export interface ProjectSnapshot {
    * and the URL is remade from it on load. Added after v1 shipped.
    */
   takeAudio?: { takeId: string; blob: Blob }[];
+  /**
+   * Timeline audio assets. The blob is the durable part; the asset's object URL
+   * is dropped on save and remade on load. Added after v1 shipped.
+   */
+  audioAssets?: { asset: unknown; blob: Blob | null }[];
 }
 
 export interface ProjectSummary {
