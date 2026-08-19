@@ -51,6 +51,12 @@ export interface ProjectSnapshot {
   writeRoomDraft?: Record<string, unknown>;
   /** The recorded vocal take, stored as the encoded blob it was captured as. */
   vocalTake: { blob: Blob; duration: number; waveformData: number[] } | null;
+  /**
+   * Audio for every take in the pool that carries a recording. A take's
+   * sourceAudioId is an object URL and cannot survive a reload; the blob can,
+   * and the URL is remade from it on load. Added after v1 shipped.
+   */
+  takeAudio?: { takeId: string; blob: Blob }[];
 }
 
 export interface ProjectSummary {

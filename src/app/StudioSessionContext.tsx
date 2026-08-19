@@ -2350,15 +2350,30 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   // Step 3: Vocal Takes & Recording Actions
-  const handleAddVocalTake = useCallback((trackId: string, takeData: Partial<VocalTake>) => {
+  /**
+   * Audio for takes that carry a real recording, kept beside the take records.
+   *
+   * A take's `sourceAudioId` is an object URL, which does not survive a reload —
+   * the blob behind it does, so it is held here and written into the project
+   * snapshot, then given a fresh URL when the project is reopened.
+   */
+  const takeAudioRef = useRef<Map<string, Blob>>(new Map());
+
+  const handleAddVocalTake = useCallback((trackId: string, takeData: Partial<VocalTake> & { audioBlob?: Blob }) => {
     const timestamp = Date.now();
+    const takeId = takeData.id || `take_${timestamp}`;
+    // A supplied blob is the source of truth: the URL is made here so the take
+    // record and the stored audio can never disagree about which is which.
+    const audioUrl = takeData.audioBlob ? URL.createObjectURL(takeData.audioBlob) : undefined;
+    if (takeData.audioBlob) takeAudioRef.current.set(takeId, takeData.audioBlob);
+
     const newTake: VocalTake = {
-      id: takeData.id || `take_${timestamp}`,
-      takeId: takeData.takeId || `take_${timestamp}`,
+      id: takeId,
+      takeId: takeData.takeId || takeId,
       trackId,
       takeNumber: (takeData.takeNumber || 1),
       name: takeData.name || `Take ${(takeData.takeNumber || 1)}`,
-      sourceAudioId: takeData.sourceAudioId || `ast_vox_${timestamp}`,
+      sourceAudioId: audioUrl || takeData.sourceAudioId || `ast_vox_${timestamp}`,
       rawAudioAssetId: takeData.rawAudioAssetId || `raw_ast_vox_${timestamp}`,
       sectionId: takeData.sectionId || 'sec_hook',
       recordedAt: timestamp,
@@ -2368,7 +2383,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       isActive: false,
       isScratchVocal: takeData.isScratchVocal || false,
       rating: takeData.rating || 4,
-      waveformData: takeData.waveformData || [0.2, 0.4, 0.7, 0.9, 0.6, 0.8, 0.5, 0.3, 0.7, 0.9, 0.8, 0.4],
+      waveformData: takeData.waveformData || [],
       inputSettings: takeData.inputSettings || {
         inputDeviceId: 'default_mic',
         sampleRate: 48000,
@@ -3188,6 +3203,16 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
             waveformData: vocalState.waveformData || [],
           }
         : null,
+      // Every take that carries a recording, so the pool is not empty of audio
+      // after a reload. Only takes still present on a track are written.
+      takeAudio: tracks.flatMap((t) =>
+        (t.vocalTakes || [])
+          .map((take) => {
+            const blob = takeAudioRef.current.get(take.id);
+            return blob ? { takeId: take.id, blob } : null;
+          })
+          .filter((entry): entry is { takeId: string; blob: Blob } => entry !== null)
+      ),
     }),
     [
       dawState, tracks, sections, lyricSections, masteringChain, masterCandidates,
@@ -3199,7 +3224,29 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const applySnapshot = useCallback(async (snap: ProjectSnapshot) => {
-    setTracks(snap.tracks as Track[]);
+    // Object URLs from the session that saved this project are long gone; the
+    // blobs are not, so each take gets a fresh URL pointing at its own audio.
+    const restoredAudio = new Map<string, Blob>();
+    const restoredUrls = new Map<string, string>();
+    for (const entry of (snap.takeAudio || []) as { takeId: string; blob: Blob }[]) {
+      if (!entry?.blob) continue;
+      restoredAudio.set(entry.takeId, entry.blob);
+      restoredUrls.set(entry.takeId, URL.createObjectURL(entry.blob));
+    }
+    takeAudioRef.current = restoredAudio;
+
+    const restoredTracks = (snap.tracks as Track[]).map((t) =>
+      t.vocalTakes?.length
+        ? {
+            ...t,
+            vocalTakes: t.vocalTakes.map((take) =>
+              restoredUrls.has(take.id) ? { ...take, sourceAudioId: restoredUrls.get(take.id) as string } : take
+            ),
+          }
+        : t
+    );
+
+    setTracks(restoredTracks);
     setSections(snap.sections as ArrangementSection[]);
     setLyricSections(snap.lyricSections as Record<string, LyricSection>);
     setMasteringChain(snap.masteringChain as MasteringDspChain);

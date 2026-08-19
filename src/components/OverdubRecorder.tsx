@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Track, PunchRegion, RecordingInputSettings } from '../types/daw';
 import { useStudioSession } from '../app/StudioSessionContext';
+import { startTakeRecording, TakeRecording } from '../audio/takeRecorder';
 import {
   Mic,
   Circle,
@@ -41,9 +42,8 @@ export const OverdubRecorder: React.FC<OverdubRecorderProps> = ({ track }) => {
   const [isMonitoring, setIsMonitoring] = useState(inputSettings.monitoringEnabled);
   const [latencyCompMs, setLatencyCompMs] = useState(inputSettings.latencyCompensationMs);
   const [inputGainDb, setInputGainDb] = useState(inputSettings.inputGain);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [recordStartTime, setRecordStartTime] = useState<number>(0);
-  const audioChunksRef = React.useRef<Blob[]>([]);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const recordingRef = React.useRef<TakeRecording | null>(null);
 
   // Punch-In / Punch-Out Region
   const [punchRegion, setPunchRegionState] = useState<PunchRegion>(
@@ -59,86 +59,47 @@ export const OverdubRecorder: React.FC<OverdubRecorderProps> = ({ track }) => {
   );
 
   const handleToggleRecord = async () => {
-    if (!isRecording) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: false,
-            autoGainControl: false,
-          },
-        });
-        audioChunksRef.current = [];
-        const recorder = new MediaRecorder(stream);
+    const takeName = () =>
+      punchRegion.isEnabled
+        ? `Punch Take (Bars ${punchRegion.startBar}\u2013${punchRegion.endBar})`
+        : `Overdub Take ${String((currentTrack.vocalTakes?.length || 0) + 1).padStart(2, '0')}`;
 
-        recorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            audioChunksRef.current.push(event.data);
-          }
-        };
-
-        recorder.onstop = () => {
-          stream.getTracks().forEach((track) => track.stop());
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          const audioUrl = URL.createObjectURL(audioBlob);
-          const duration = Math.max(1.0, Math.round(((Date.now() - recordStartTime) / 1000) * 10) / 10);
-          const takeNum = (currentTrack.vocalTakes?.length || 0) + 1;
-
-          // Generate waveform visualization points
-          const waveform = Array.from({ length: 16 }, () => Math.round((0.2 + Math.random() * 0.7) * 100) / 100);
-
-          handleAddVocalTake(currentTrack.id, {
-            takeNumber: takeNum,
-            name: punchRegion.isEnabled
-              ? `Punch Take (Bars ${punchRegion.startBar}–${punchRegion.endBar})`
-              : `Overdub Take 0${takeNum}`,
-            sectionId: 'sec_hook',
-            timelineStart: punchRegion.isEnabled ? punchRegion.startBar : 13,
-            timelineEnd: punchRegion.isEnabled ? punchRegion.endBar : 20,
-            duration,
-            waveformData: waveform,
-            sourceAudioId: audioUrl,
-            inputSettings: {
-              ...inputSettings,
-              latencyCompensationMs: latencyCompMs,
-              inputGain: inputGainDb,
-            },
-          });
-        };
-
-        recorder.start(100);
-        setMediaRecorder(recorder);
-        setRecordStartTime(Date.now());
-        setIsRecording(true);
-      } catch (err) {
-        console.error('[OverdubRecorder] Failed to start microphone recording:', err);
-        // Fallback for environments without mic permissions
-        setIsRecording(true);
-        setRecordStartTime(Date.now());
-      }
-    } else {
+    if (recordingRef.current) {
+      const recording = recordingRef.current;
+      recordingRef.current = null;
       setIsRecording(false);
-      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
-        setMediaRecorder(null);
-      } else {
-        const takeNum = (currentTrack.vocalTakes?.length || 0) + 1;
-        handleAddVocalTake(currentTrack.id, {
-          takeNumber: takeNum,
-          name: punchRegion.isEnabled
-            ? `Punch Take (Bars ${punchRegion.startBar}–${punchRegion.endBar})`
-            : `Overdub Take 0${takeNum}`,
-          sectionId: 'sec_hook',
-          timelineStart: punchRegion.isEnabled ? punchRegion.startBar : 13,
-          timelineEnd: punchRegion.isEnabled ? punchRegion.endBar : 20,
-          duration: Math.max(1.0, Math.round(((Date.now() - recordStartTime) / 1000) * 10) / 10),
-          inputSettings: {
-            ...inputSettings,
-            latencyCompensationMs: latencyCompMs,
-            inputGain: inputGainDb,
-          },
-        });
-      }
+      const audio = await recording.stop();
+      handleAddVocalTake(currentTrack.id, {
+        takeNumber: (currentTrack.vocalTakes?.length || 0) + 1,
+        name: takeName(),
+        sectionId: 'sec_hook',
+        timelineStart: punchRegion.isEnabled ? punchRegion.startBar : 13,
+        timelineEnd: punchRegion.isEnabled ? punchRegion.endBar : 20,
+        // Length and waveform both come from the decoded recording. The
+        // waveform used to be sixteen Math.random() values — an invented
+        // picture of a real performance.
+        duration: Math.round(audio.durationSeconds * 100) / 100,
+        waveformData: audio.waveform,
+        audioBlob: audio.blob,
+        inputSettings: {
+          ...inputSettings,
+          latencyCompensationMs: latencyCompMs,
+          inputGain: inputGainDb,
+        },
+      });
+      return;
+    }
+
+    setRecordError(null);
+    try {
+      recordingRef.current = await startTakeRecording();
+      setIsRecording(true);
+    } catch (err) {
+      // A take with no audio behind it used to be created here, which reported
+      // a recording that never happened. The failure is shown instead.
+      console.error('[OverdubRecorder] Failed to start microphone recording:', err);
+      setRecordError(err instanceof Error ? err.message : 'Microphone unavailable.');
+      setIsRecording(false);
     }
   };
 
@@ -201,7 +162,14 @@ export const OverdubRecorder: React.FC<OverdubRecorderProps> = ({ track }) => {
 
           <div className="space-y-0.5 text-[10px]">
             <div className="text-slate-200 font-bold">
-              Status: {isRecording ? <span className="text-red-400 font-black animate-pulse">RECORDING ACTIVE</span> : <span className="text-slate-400">READY</span>}
+              Status:{' '}
+              {recordError ? (
+                <span className="text-rose-300 font-black" data-testid="overdub-error">{recordError}</span>
+              ) : isRecording ? (
+                <span className="text-red-400 font-black animate-pulse">RECORDING ACTIVE</span>
+              ) : (
+                <span className="text-slate-400">READY</span>
+              )}
             </div>
             <div className="text-slate-500 text-[9px]">
               Input: USB Audio (48.0kHz / 24-bit) • Latency: <span className="text-cyan-300 font-bold">{latencyCompMs}ms Comp</span>

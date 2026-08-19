@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Track, VocalTake } from '../types/daw';
 import { useStudioSession } from '../app/StudioSessionContext';
+import { startTakeRecording, TakeRecording } from '../audio/takeRecorder';
+import { auditionCompSegment, isPlayableAudioSource, AuditionHandle } from '../audio/vocalAudition';
 import {
   Layers,
   Play,
@@ -25,36 +27,80 @@ export const VocalTakeStack: React.FC<VocalTakeStackProps> = ({ track }) => {
   } = useStudioSession();
 
   const currentTrack = track || tracks.find((t) => t.id === 't-vocal') || tracks[0];
-  if (!currentTrack) return <div className='p-6 text-center text-neutral-500'>No vocal track selected</div>;
 
   const takes = currentTrack?.vocalTakes || [];
 
-  const [auditioningTakeId, setAuditioningTakeId] = useState<string | null>(null);
+  const [playingTakeId, setPlayingTakeId] = useState<string | null>(null);
   const [isLoopRecording, setIsLoopRecording] = useState(false);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const playbackRef = useRef<AuditionHandle | null>(null);
+  const recordingRef = useRef<TakeRecording | null>(null);
 
-  const handleAudition = (takeId: string) => {
-    setAuditioningTakeId(takeId);
-    setTimeout(() => {
-      setAuditioningTakeId(null);
-    }, 3000);
+  useEffect(
+    () => () => {
+      playbackRef.current?.stop();
+      recordingRef.current?.cancel();
+    },
+    []
+  );
+
+  if (!currentTrack) return <div className='p-6 text-center text-neutral-500'>No vocal track selected</div>;
+
+  // Plays the take's own recording. A take with nothing behind it says so
+  // rather than glowing for three seconds over silence.
+  const handlePlayTake = async (take: VocalTake) => {
+    if (playbackRef.current) {
+      playbackRef.current.stop();
+      playbackRef.current = null;
+      if (playingTakeId === take.id) {
+        setPlayingTakeId(null);
+        return;
+      }
+    }
+    if (!isPlayableAudioSource(take.sourceAudioId)) return;
+
+    setPlayingTakeId(take.id);
+    try {
+      const handle = await auditionCompSegment({ sourceUrl: take.sourceAudioId, gainTrimDb: take.gainTrim || 0 });
+      playbackRef.current = handle;
+      await handle.finished;
+    } catch (err) {
+      console.warn('[VocalTakeStack] take playback failed:', err);
+    } finally {
+      playbackRef.current = null;
+      setPlayingTakeId((current) => (current === take.id ? null : current));
+    }
   };
 
-  const handleRecordLoopTake = () => {
-    setIsLoopRecording(true);
-    const takeNum = takes.length + 1;
-    setTimeout(() => {
+  // Records for real. This used to be a setTimeout that produced a take record
+  // with an invented waveform and no audio at all.
+  const handleRecordLoopTake = async () => {
+    if (recordingRef.current) {
+      const recording = recordingRef.current;
+      recordingRef.current = null;
+      const audio = await recording.stop();
+      setIsLoopRecording(false);
+      const takeNum = takes.length + 1;
       handleAddVocalTake(currentTrack.id, {
         takeNumber: takeNum,
-        name: `Take 0${takeNum} (Loop Capture)`,
+        name: `Take ${String(takeNum).padStart(2, '0')} (Loop Capture)`,
         sectionId: 'sec_hook',
         timelineStart: 13,
         timelineEnd: 20,
-        duration: 8.72,
-        rating: 4,
-        waveformData: [0.25, 0.5, 0.75, 0.9, 0.65, 0.8, 0.7, 0.45, 0.8, 0.9, 0.85, 0.5],
+        duration: Math.round(audio.durationSeconds * 100) / 100,
+        waveformData: audio.waveform,
+        audioBlob: audio.blob,
       });
-      setIsLoopRecording(false);
-    }, 1200);
+      return;
+    }
+
+    setRecordError(null);
+    try {
+      recordingRef.current = await startTakeRecording();
+      setIsLoopRecording(true);
+    } catch (err) {
+      setRecordError(err instanceof Error ? err.message : 'Microphone unavailable.');
+    }
   };
 
   return (
@@ -74,7 +120,7 @@ export const VocalTakeStack: React.FC<VocalTakeStackProps> = ({ track }) => {
         {/* Record Take in Loop Button */}
         <button
           onClick={handleRecordLoopTake}
-          disabled={isLoopRecording}
+          data-testid="record-loop-take"
           className={`px-3.5 py-1.5 rounded-xl font-black text-xs flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-md ${
             isLoopRecording
               ? 'bg-rose-500 text-white animate-pulse'
@@ -82,14 +128,15 @@ export const VocalTakeStack: React.FC<VocalTakeStackProps> = ({ track }) => {
           }`}
         >
           <Repeat className={`w-3.5 h-3.5 ${isLoopRecording ? 'animate-spin' : ''}`} />
-          <span>{isLoopRecording ? 'RECORDING TAKE IN LOOP...' : '+ RECORD TAKE (HOOK LOOP)'}</span>
+          <span>{isLoopRecording ? 'STOP & KEEP TAKE' : '+ RECORD TAKE (HOOK LOOP)'}</span>
         </button>
       </div>
 
       {/* 2. Takes List */}
       <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
         {takes.map((take) => {
-          const isAuditioning = auditioningTakeId === take.id;
+          const isPlaying = playingTakeId === take.id;
+          const hasAudio = isPlayableAudioSource(take.sourceAudioId);
           const isContextSelected = vocalSelectionContext.takeId === take.id;
 
           return (
@@ -112,14 +159,18 @@ export const VocalTakeStack: React.FC<VocalTakeStackProps> = ({ track }) => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleAudition(take.id);
+                    void handlePlayTake(take);
                   }}
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition cursor-pointer ${
-                    isAuditioning
-                      ? 'bg-amber-400 text-slate-950 animate-pulse'
-                      : 'bg-slate-950 border border-slate-800 text-pink-300 hover:border-pink-500'
+                  disabled={!hasAudio}
+                  data-testid={`play-take-${take.id}`}
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition ${
+                    !hasAudio
+                      ? 'bg-slate-950 border border-slate-900 text-slate-700 cursor-not-allowed'
+                      : isPlaying
+                      ? 'bg-amber-400 text-slate-950 animate-pulse cursor-pointer'
+                      : 'bg-slate-950 border border-slate-800 text-pink-300 hover:border-pink-500 cursor-pointer'
                   }`}
-                  title="Audition Take"
+                  title={hasAudio ? 'Play this take' : 'No recorded audio behind this take'}
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
                 </button>
@@ -149,15 +200,25 @@ export const VocalTakeStack: React.FC<VocalTakeStackProps> = ({ track }) => {
 
               {/* Center: Waveform Amplitude Visualization */}
               <div className="flex-1 w-full md:w-auto h-8 bg-slate-950 rounded-lg p-1.5 flex items-center justify-between border border-slate-800/80 gap-0.5">
-                {take.waveformData.map((amp, aIdx) => (
-                  <div
-                    key={aIdx}
-                    className={`flex-1 rounded-full transition-all ${
-                      isAuditioning ? 'bg-pink-400' : take.isActive ? 'bg-emerald-400' : 'bg-slate-600'
-                    }`}
-                    style={{ height: `${Math.max(15, amp * 100)}%` }}
-                  />
-                ))}
+                {take.waveformData.length === 0 && (
+                  <span className="text-[9px] text-slate-600 w-full text-center">no audio recorded</span>
+                )}
+                {take.waveformData.map((amp, aIdx) => {
+                  // Older take records store peaks as 0..100, newer ones as
+                  // 0..1. Drawing both on one scale would make one of them a
+                  // flat line and the other overflow the box.
+                  const peak = Math.max(...take.waveformData);
+                  const normalised = peak > 1 ? amp / 100 : amp;
+                  return (
+                    <div
+                      key={aIdx}
+                      className={`flex-1 rounded-full transition-all ${
+                        isPlaying ? 'bg-pink-400' : take.isActive ? 'bg-emerald-400' : 'bg-slate-600'
+                      }`}
+                      style={{ height: `${Math.max(8, Math.min(100, normalised * 100))}%` }}
+                    />
+                  );
+                })}
               </div>
 
               {/* Right: Actions (Set Active, Star Rating, Delete) */}
