@@ -310,8 +310,8 @@
     <h1>SoulSonus Signal Map</h1>
     <p class="standfirst">Every component in the six rooms, sorted by whether it actually processes anything. Consolidated from all prior verification passes and re-checked against the current branch, so there is one map to plan from instead of several.</p>
     <div class="stamp">
-      <span>Describes the code at <code>main</code> @ <code>149a46a</code> — the branch Netlify deploys (this map is the commit after it)</span>
-      <span>Updated 19 Aug 2026 · Layers 0 and 1 complete · Layer 2 in progress — AUDITION sweep, real export, a working true-peak limiter and per-track EQ have landed</span>
+      <span>Describes the code at <code>main</code> @ <code>bbffe53</code> — the branch Netlify deploys (this map is the commit after it)</span>
+      <span>Updated 19 Aug 2026 · Layers 0 and 1 complete · Layer 2 in progress — AUDITION sweep, real export, a working true-peak limiter, per-track EQ and undoable takes have landed</span>
       <span>Method: live headless browser + synthetic mic + source read</span>
     </div>
   </header>
@@ -528,10 +528,14 @@
     </div>
     <div class="rows">
       <div class="row"><div class="what">Type checking is now gated in CI</div><div><span class="pill p-work">Fixed</span></div><div class="ev"><code>vite build</code> still does not typecheck, which is how two crash-class errors shipped green and white-screened the studio. <code>.github/workflows/ci.yml</code> now runs <code>tsc --noEmit</code> before the build. The 23 <code>NoteEvent.provenance</code> errors are gone — they were the import modal's hardcoded notes, deleted when that path became real — so the gate starts green</div></div>
-      <div class="row"><div class="what">Side effects inside React state updaters</div><div><span class="pill p-dark">Partly fixed</span></div><div class="ev">Fixed in the history writer and the capture handler. Three remain: undo, redo, and monitoring-mode toggles all call <code>setState</code> from inside another updater, which StrictMode invokes twice.</div></div>
+      <div class="row"><div class="what">Side effects inside React state updaters</div><div><span class="pill p-dark">Partly fixed</span></div><div class="ev">Fixed in the history writer, the capture handler, the channel-strip writer, and now undo and redo — which called <code>setState</code> from inside another updater while maintaining the stack that a doubled invocation corrupts. The monitoring-mode toggles still do it.</div></div>
+      <div class="row"><div class="what">A recorded take can be undone</div><div><span class="pill p-work">Fixed</span></div><div class="ev">Captured notes were written with <code>setTracks</code> directly, so the stack never saw them. They go through the history writer now, grouped so one press takes back the take rather than one note: measured on a 25-note take, one press returns to 100 notes and redo restores all 25</div></div>
+      <div class="row"><div class="what">Every path that adds a channel is undoable</div><div><span class="pill p-work">Fixed</span></div><div class="ev">Creating a source channel from a modality button, importing separated stems and extracting a single all wrote around history too. Each is its own entry — arming a modality creates the channel and recording fills it, which are two actions, so one undo takes back the take and leaves the channel</div></div>
+      <div class="row"><div class="what">Undo is reachable from every room</div><div><span class="pill p-work">Fixed</span></div><div class="ev">It lived only in the Build room's control cluster, while takes are recorded in Create — undoing one meant leaving the room it was made in. Cmd/Ctrl+Z works anywhere now, and steps aside only for genuine text entry: a first version of that guard treated a focused fader as typing and killed undo entirely</div></div>
+      <div class="row"><div class="what">Two separate undo stacks</div><div><span class="pill p-dark">Partly working</span></div><div class="ev">The session keeps track-state history; <code>productionHistory</code> keeps a second operation stack for the co-producer and Studio Intelligence. Pressing undo in one does not take back what the other did</div></div>
       <div class="row"><div class="what">Nothing reached the deployed site until now<small>Ten commits of fixes sat unmerged</small></div><div><span class="pill p-work">Fixed</span></div><div class="ev">Netlify builds <code>main</code>, which was still at <code>abc3cbe</code> from before the audit. Clicking into the studio gave 0 elements and <code>ReferenceError: useStudioSession is not defined</code> — the round-one crash, still live. <code>main</code> fast-forwarded to the audited branch and verified rendering 319 controls before pushing</div></div>
       <div class="row"><div class="what">Favicon and page metadata</div><div><span class="pill p-work">Fixed</span></div><div class="ev">A 404 on <code>/favicon.ico</code> was the last console error on a clean load, and left the browser tab blank. Console is now clean end to end</div></div>
-      <div class="row"><div class="what">Verification harness</div><div><span class="pill p-work">Working</span></div><div class="ev">scripts/live-verification — 29 tests driving real Chromium with a synthetic mic, reading committed React state, plus scripts/dsp for arithmetic that needs no browser</div></div>
+      <div class="row"><div class="what">Verification harness</div><div><span class="pill p-work">Working</span></div><div class="ev">scripts/live-verification — 30 tests driving real Chromium with a synthetic mic, reading committed React state, plus scripts/dsp for arithmetic that needs no browser</div></div>
     </div>
   </section>
 
@@ -540,7 +544,7 @@
     <h2>Where the leverage is</h2>
     <p class="lede">Layers 0 and 1 are complete, and Layer 2 has started — the AUDITION sweep has landed and is recorded above. What remains is ordered by value returned per unit of work, given what already exists on disk.</p>
     <ol class="next">
-      <li><div><strong>Captured notes bypass undo.</strong><p>A take currently cannot be undone. The history stack is real; capture writes around it.</p></div></li>
+      <li><div><strong>Join the two undo stacks.</strong><p>Track-state history and the co-producer's operation stack are separate, so undo means different things in different panels. Both are real; nothing reconciles them.</p></div></li>
       <li><div><strong>Bind audio to vocal takes.</strong><p>Takes, ratings and comp segments are real records with no audio attached, and take playback does not exist. Persistence now stores one take per session, so this is the next step to make comping mean anything.</p></div></li>
       <li><div><strong>Arrangement sections.</strong><p>Confirmed not built — initial state literal only, no add, rename or delete handler anywhere.</p></div></li>
     </ol>
