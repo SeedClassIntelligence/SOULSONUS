@@ -52,6 +52,7 @@ much faster than wall-clock, so treat elapsed-time assertions with care.
 | `test-23-masking-analysis` | Is the Mix advisor measured — and silent on an empty canvas? |
 | `test-24-vocal-take-persistence` | Does a recorded vocal Blob survive a reload and re-decode? |
 | `test-25-global-utilities` | Are all nine utility triggers reachable and working from all six rooms? |
+| `test-26-room-switch-state` | Do editor state and the Write & Record draft survive a room switch and a reload? |
 
 ## Two harness traps these tests hit
 

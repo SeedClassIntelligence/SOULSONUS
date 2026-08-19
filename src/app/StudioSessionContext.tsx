@@ -101,6 +101,32 @@ import {
 
 export type AudioImportMode = 'SOLO_PERFORMANCE' | 'FULL_MIX';
 
+/**
+ * Editor state that belongs to the creator's session rather than to a
+ * component. It lived inside StudioCanvas, which unmounts whenever the room
+ * switches to one that renders a different workspace, so the selected tool and
+ * bar view silently reset every time.
+ */
+export interface EditorPreferences {
+  universalTool: PianoRollTool;
+  universalSnapTicks: number;
+  universalSnapToScale: boolean;
+  showVelocityLane: boolean;
+  activeBarView: 'all' | 1 | 2 | 3 | 4;
+  seedTargetMode: 'NEW_TRACK' | 'ADD_LAYER';
+}
+
+/**
+ * The Write & Record room's draft. This is written work, not preference: it
+ * was component-local, so leaving the room to check the mix destroyed whatever
+ * had been typed and restored the demo text.
+ */
+export interface WriteRoomDraft {
+  lyrics: string;
+  cadence: string;
+  takes: VocalTake[];
+}
+
 export interface StemExtractionResult {
   ok: boolean;
   message: string;
@@ -467,6 +493,11 @@ export interface StudioSessionState {
   creatorName: string;
 
   // Source Track Creation & Extraction
+  editorPrefs: EditorPreferences;
+  updateEditorPrefs: (updates: Partial<EditorPreferences>) => void;
+  writeRoomDraft: WriteRoomDraft;
+  updateWriteRoomDraft: (updates: Partial<WriteRoomDraft>) => void;
+
   // Project persistence
   isHydrating: boolean;
   lastSavedAt: number | null;
@@ -2930,6 +2961,42 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isBouncing, setIsBouncing] = useState(false);
   const [masterMeasurement, setMasterMeasurement] = useState<LoudnessTelemetryReport | null>(null);
 
+  // --- Session-level editor state ---------------------------------------
+  // These live here rather than in a workspace component because a room switch
+  // unmounts the workspace, and losing them on a room switch is either a
+  // silent reset (preferences) or silent data loss (the write-room draft).
+  const [editorPrefs, setEditorPrefs] = useState<EditorPreferences>({
+    universalTool: 'POINTER',
+    universalSnapTicks: TICKS_PER_16TH,
+    universalSnapToScale: true,
+    showVelocityLane: false,
+    activeBarView: 'all',
+    seedTargetMode: 'NEW_TRACK',
+  });
+  const updateEditorPrefs = useCallback(
+    (updates: Partial<EditorPreferences>) => setEditorPrefs((prev) => ({ ...prev, ...updates })),
+    []
+  );
+
+  const [writeRoomDraft, setWriteRoomDraft] = useState<WriteRoomDraft>({
+    lyrics:
+      '[Chorus — Hook]\nBounce on the beatbox, beat on the grid,\n' +
+      'SoulSonus catch every rhythm I did.\nLow kick thump when the baseline slide,\n' +
+      'SoulFlow lock it when the voices align.\n\n[Verse]\nHumming the melody, baseline groove,\n' +
+      'Tap on the table, watch the playhead move...',
+    cadence: '4/4 Syncopated Southern Soul / Trap Cadence at 110 BPM',
+    takes: [
+      { id: 'take_1', name: 'Lead Vocal — Main Take', type: 'lead', muted: false, volume: 0 },
+      { id: 'take_2', name: 'Harmony 1 — High Third', type: 'harmony', muted: false, volume: -3 },
+      { id: 'take_3', name: 'Harmony 2 — Low Fifth', type: 'harmony', muted: true, volume: -4 },
+      { id: 'take_4', name: 'Ad-Libs & Accents', type: 'adlib', muted: false, volume: -2 },
+    ],
+  });
+  const updateWriteRoomDraft = useCallback(
+    (updates: Partial<WriteRoomDraft>) => setWriteRoomDraft((prev) => ({ ...prev, ...updates })),
+    []
+  );
+
   // --- Project persistence ----------------------------------------------
   const [isHydrating, setIsHydrating] = useState(true);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
@@ -2975,6 +3042,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       decisionRecords,
       detectionSettings,
       activeWorkspace,
+      editorPrefs,
+      writeRoomDraft,
       // The decoded AudioBuffer cannot be stored; the encoded blob it came
       // from can, and the buffer is rebuilt from it on load.
       vocalTake: vocalState.audioBlob
@@ -2989,6 +3058,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       dawState, tracks, sections, lyricSections, masteringChain, masterCandidates,
       activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
       seedRecords, lineageRecords, decisionRecords, detectionSettings, activeWorkspace,
+      editorPrefs, writeRoomDraft,
       vocalState.audioBlob, vocalState.duration, vocalState.waveformData,
     ]
   );
@@ -3009,6 +3079,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     setDecisionRecords(snap.decisionRecords as GenerationDecisionRecord[]);
     setDetectionSettings((prev) => ({ ...prev, ...(snap.detectionSettings as object), enabled: false, micConnected: false }));
     setActiveWorkspace(snap.activeWorkspace as WorkspaceTab);
+    // Older snapshots predate these, so fall back rather than clobber defaults.
+    if (snap.editorPrefs) setEditorPrefs((prev) => ({ ...prev, ...(snap.editorPrefs as object) }));
+    if (snap.writeRoomDraft) setWriteRoomDraft((prev) => ({ ...prev, ...(snap.writeRoomDraft as object) }));
     setDawState((prev) => ({
       ...prev,
       ...(snap.dawState as object),
@@ -3080,7 +3153,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     isHydrating, tracks, sections, lyricSections, masteringChain, masterCandidates,
     activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
     seedRecords, lineageRecords, decisionRecords, detectionSettings, activeWorkspace,
-    dawState, vocalState.audioBlob,
+    editorPrefs, writeRoomDraft, dawState, vocalState.audioBlob,
   ]);
 
   const handleSaveProjectAs = useCallback(
@@ -3424,6 +3497,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setCalibratingTrackId,
       creatorName,
       coproducerContext,
+      editorPrefs,
+      updateEditorPrefs,
+      writeRoomDraft,
+      updateWriteRoomDraft,
       isHydrating,
       lastSavedAt,
       persistenceError,
@@ -3575,6 +3652,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       calibratingTrackId,
       creatorName,
       coproducerContext,
+      editorPrefs,
+      updateEditorPrefs,
+      writeRoomDraft,
+      updateWriteRoomDraft,
       isHydrating,
       lastSavedAt,
       persistenceError,

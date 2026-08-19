@@ -21,22 +21,20 @@ export const WriteRecordWorkspace: React.FC = () => {
     setSelectionContext,
     dawState,
     tracks,
+    writeRoomDraft,
+    updateWriteRoomDraft,
   } = useStudioSession();
 
   const selectedSection = sections.find((s) => s.id === selectionContext.selectedSectionId) || sections[0];
 
-  const [lyrics, setLyrics] = useState(
-    `[Chorus — ${selectedSection?.name || 'Hook'}]\nBounce on the beatbox, beat on the grid,\nSoulSonus catch every rhythm I did.\nLow kick thump when the baseline slide,\nSoulFlow lock it when the voices align.\n\n[Verse]\nHumming the melody, baseline groove,\nTap on the table, watch the playhead move...`
-  );
-
-  const [cadence, setCadence] = useState('4/4 Syncopated Southern Soul / Trap Cadence at 110 BPM');
-
-  const [takes, setTakes] = useState<VocalTake[]>([
-    { id: 'take_1', name: 'Lead Vocal — Main Take', type: 'lead', muted: false, volume: 0 },
-    { id: 'take_2', name: 'Harmony 1 — High Third', type: 'harmony', muted: false, volume: -3 },
-    { id: 'take_3', name: 'Harmony 2 — Low Fifth', type: 'harmony', muted: true, volume: -4 },
-    { id: 'take_4', name: 'Ad-Libs & Accents', type: 'adlib', muted: false, volume: -2 },
-  ]);
+  // The draft lives in the session. Held locally, leaving this room to check
+  // the mix destroyed whatever had been written and restored the demo text.
+  const { lyrics, cadence, takes } = writeRoomDraft;
+  const setLyrics = (v: string | ((p: string) => string)) =>
+    updateWriteRoomDraft({ lyrics: typeof v === 'function' ? v(lyrics) : v });
+  const setCadence = (v: string) => updateWriteRoomDraft({ cadence: v });
+  const setTakes = (v: VocalTake[] | ((p: VocalTake[]) => VocalTake[])) =>
+    updateWriteRoomDraft({ takes: typeof v === 'function' ? v(takes) : v });
 
   const handleStartVocalRecording = async () => {
     setVocalState((prev) => ({ ...prev, isRecording: true }));

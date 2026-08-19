@@ -46,6 +46,9 @@ export interface ProjectSnapshot {
   decisionRecords: unknown[];
   detectionSettings: Record<string, unknown>;
   activeWorkspace: string;
+  /** Added after v1 shipped; older snapshots simply lack them. */
+  editorPrefs?: Record<string, unknown>;
+  writeRoomDraft?: Record<string, unknown>;
   /** The recorded vocal take, stored as the encoded blob it was captured as. */
   vocalTake: { blob: Blob; duration: number; waveformData: number[] } | null;
 }

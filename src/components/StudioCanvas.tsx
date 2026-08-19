@@ -219,17 +219,30 @@ export const StudioCanvas: React.FC = () => {
     detectionSettings,
     setDetectionSettings,
     setIsAudioImportModalOpen,
+    editorPrefs,
+    updateEditorPrefs,
   } = useStudioSession();
 
-  const [activeBarView, setActiveBarView] = useState<'all' | 1 | 2 | 3 | 4>('all');
+  // Editor state lives in the session: this component unmounts on a room
+  // switch, and a selected tool that silently resets is a bug, not a default.
+  const {
+    universalTool,
+    universalSnapTicks,
+    universalSnapToScale,
+    showVelocityLane,
+    activeBarView,
+    seedTargetMode,
+  } = editorPrefs;
+  const setUniversalTool = (v: PianoRollTool) => updateEditorPrefs({ universalTool: v });
+  const setUniversalSnapTicks = (v: number) => updateEditorPrefs({ universalSnapTicks: v });
+  const setUniversalSnapToScale = (v: boolean) => updateEditorPrefs({ universalSnapToScale: v });
+  const setShowVelocityLane = (v: boolean) => updateEditorPrefs({ showVelocityLane: v });
+  const setActiveBarView = (v: 'all' | 1 | 2 | 3 | 4) => updateEditorPrefs({ activeBarView: v });
+  const setSeedTargetMode = (v: 'NEW_TRACK' | 'ADD_LAYER') => updateEditorPrefs({ seedTargetMode: v });
+
   const [isAddTrackOpen, setIsAddTrackOpen] = useState(false);
-  const [seedTargetMode, setSeedTargetMode] = useState<'NEW_TRACK' | 'ADD_LAYER'>('NEW_TRACK');
 
   // Universal Arranger Toolbar State
-  const [universalTool, setUniversalTool] = useState<PianoRollTool>('POINTER');
-  const [universalSnapTicks, setUniversalSnapTicks] = useState<number>(TICKS_PER_16TH);
-  const [universalSnapToScale, setUniversalSnapToScale] = useState<boolean>(true);
-  const [showVelocityLane, setShowVelocityLane] = useState<boolean>(false);
 
   const selectedTrack = tracks.find((t) => t.id === selectionContext.selectedTrackId) || tracks[0] || null;
 
