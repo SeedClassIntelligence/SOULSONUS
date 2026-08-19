@@ -17,7 +17,7 @@ import { vocalDspProcessor } from '../src/audio/vocalDspProcessor';
 import { AudioEncoders } from '../src/lib/audioEncoders';
 import { signatureService } from '../src/lib/seedSignature';
 import { SoulFlowGovernor, SOULFLOW_STAGE_ORDER } from '../src/lib/soulFlowGovernor';
-import { SoundVaultSemanticMatcher } from '../src/lib/clapEmbeddingMatcher';
+import { SoundVaultSemanticMatcher } from '../src/lib/soundVaultSearch';
 import { SoulSonusServiceProvider } from '../src/lib/inference/e05Provider';
 import { DemucsClient } from '../src/lib/inference/demucsClient';
 import { autocorrelationPitchTrajectory } from '../src/lib/inference/audioPreservationScoring';

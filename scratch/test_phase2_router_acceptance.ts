@@ -1,5 +1,5 @@
 import { studioIntelligenceRouter, CreatorIntent, SessionContext } from '../src/lib/studioIntelligenceRouter';
-import { clapEmbeddingMatcher } from '../src/lib/clapEmbeddingMatcher';
+import { soundVaultSearch } from '../src/lib/soundVaultSearch';
 import { audioEncoders } from '../src/lib/audioEncoders';
 import { Track, ArrangementSection } from '../src/types/daw';
 
@@ -61,21 +61,21 @@ async function testTranscription() {
   console.log('  Covered by scripts/dsp/test-basic-pitch.ts — see that suite.\n');
 }
 
-// 3. CLAP QUANTIZED EMBEDDING SEARCH TEST
-console.log('[TEST 3] CLAP SEMANTIC SOUND VAULT SEARCH:');
+// 3. SOUND VAULT TERM SEARCH
+console.log('[TEST 3] SOUND VAULT TERM SEARCH:');
 async function testClapSearch() {
   const query = 'heavy analog punch sub kick';
-  const matches = await clapEmbeddingMatcher.searchSoundVault(query, 'drums', 3);
+  const matches = await soundVaultSearch.search(query, 'drums', 3);
 
-  if (matches.length === 0 || matches[0].similarityScore < 0.8) {
-    throw new Error('CLAP search failed to find relevant sound vault assets');
+  if (matches.length === 0) {
+    throw new Error('Vault search found nothing for a query its own tags contain');
   }
 
   console.log(`  Query: "${query}"`);
   console.log(`  Top Matched Vault Asset: "${matches[0].name}" (${matches[0].licenseStatus})`);
-  console.log(`  Acoustic Similarity Score: ${matches[0].similarityScore * 100}% Match`);
+  console.log(`  Matched on: ${matches[0].matchedTerms.map((m) => `${m.term} (${m.on})`).join(', ')}`);
   console.log(`  Asset Tags: ${matches[0].tags.join(', ')}`);
-  console.log('  ✓ PASS: TEST 3 (CLAP Semantic Search)\n');
+  console.log('  ✓ PASS: TEST 3 (Sound Vault Term Search)\n');
 }
 
 // 4. LOSSLESS 24-BIT PCM WAV & FLAC ENCODING TEST

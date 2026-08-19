@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Track, AutomationLane, AutomationPoint, InstrumentParameters, TrackDspSettings } from '../types/daw';
+import { audioEngine } from '../audio/audioEngine';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { productionHistory, ProductionOperation } from '../lib/productionOperations';
 import {
@@ -46,39 +47,52 @@ interface VaultSoundItem {
   subGenre: string;
   freqRange: string;
   character: string;
-  clapMatchScore: number;
   sampleRate: string;
   license: string;
+  /**
+   * What choosing this sound actually does.
+   *
+   * Every entry used to be metadata only: committing a sound renamed the
+   * track and changed nothing you could hear, and the panel's "LIVE
+   * IN-CONTEXT AUDITION" was a pulsing icon over silence. These settings
+   * drive the same channel strip the mixer writes to, so the difference
+   * between a boombap kick and a 909 kick is now audible and survives into
+   * the bounce.
+   */
+  sound: {
+    pitch?: string;
+    dsp: Partial<TrackDspSettings>;
+  };
 }
 
 const EXTENDED_VAULT_CATALOG: { [instrument: string]: VaultSoundItem[] } = {
   kick: [
-    { id: 'snd_k1', name: 'TR-808 Sub Kick (54Hz)', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Sub Kick', subGenre: 'Modern Trap / Hip-Hop', freqRange: '35Hz – 90Hz', character: 'Deep Sub, Clean Sine Tail', clapMatchScore: 99, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
-    { id: 'snd_k2', name: 'Punchy Acoustic Studio Kick', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Acoustic', subGenre: 'Live / Neo-Soul', freqRange: '60Hz – 120Hz', character: 'Fast Transient, Punchy Mid-Thump', clapMatchScore: 95, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
-    { id: 'snd_k3', name: '90s BoomBap Gritty Kick', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Vintage', subGenre: 'East Coast BoomBap', freqRange: '50Hz – 110Hz', character: 'Analog Tape Saturated, Warm Dirt', clapMatchScore: 92, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
-    { id: 'snd_k4', name: 'Analog 909 Tight Dance Kick', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Electronic', subGenre: 'House / Techno / Pop', freqRange: '70Hz – 140Hz', character: 'Snappy Click, Dense Low-Mid', clapMatchScore: 89, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
+    { id: 'snd_k1', name: 'TR-808 Sub Kick (54Hz)', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Sub Kick', subGenre: 'Modern Trap / Hip-Hop', freqRange: '35Hz – 90Hz', character: 'Deep Sub, Clean Sine Tail', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C1', dsp: { lowCutHz: 24, lowGain: 6, midFreqHz: 700, midGain: -6, highGain: -8, filterFreq: 2200, filterType: 'lowpass', compressorThreshold: -20, compressorRatio: 3, reverbSend: 0.02 } } },
+    { id: 'snd_k2', name: 'Punchy Acoustic Studio Kick', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Acoustic', subGenre: 'Live / Neo-Soul', freqRange: '60Hz – 120Hz', character: 'Fast Transient, Punchy Mid-Thump', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'D1', dsp: { lowCutHz: 40, lowGain: 2, midFreqHz: 1600, midGain: 4, highGain: 1, filterFreq: 9000, filterType: 'lowpass', compressorThreshold: -14, compressorRatio: 5, reverbSend: 0.10 } } },
+    { id: 'snd_k3', name: '90s BoomBap Gritty Kick', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Vintage', subGenre: 'East Coast BoomBap', freqRange: '50Hz – 110Hz', character: 'Analog Tape Saturated, Warm Dirt', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C1', dsp: { lowCutHz: 45, lowGain: 4, midFreqHz: 900, midGain: 3, highGain: -5, filterFreq: 4200, filterType: 'lowpass', compressorThreshold: -22, compressorRatio: 8, reverbSend: 0.14 } } },
+    { id: 'snd_k4', name: 'Analog 909 Tight Dance Kick', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Electronic', subGenre: 'House / Techno / Pop', freqRange: '70Hz – 140Hz', character: 'Snappy Click, Dense Low-Mid', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'E1', dsp: { lowCutHz: 55, lowGain: 1, midFreqHz: 2600, midGain: 5, highGain: 4, filterFreq: 14000, filterType: 'lowpass', compressorThreshold: -12, compressorRatio: 6, reverbSend: 0.03 } } },
   ],
   snare: [
-    { id: 'snd_s1', name: 'Crispy Vintage Snare', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Vintage', subGenre: 'Soul / Funk / Hip-Hop', freqRange: '180Hz – 4.5kHz', character: 'Crisp Wire Resonance, Organic Wood', clapMatchScore: 98, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
-    { id: 'snd_s2', name: 'Analog 909 Layered Handclap', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Clap', subGenre: 'Pop / Electronic / Trap', freqRange: '300Hz – 8kHz', character: 'Multi-Tap Stereo Spread', clapMatchScore: 94, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
+    { id: 'snd_s1', name: 'Crispy Vintage Snare', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Vintage', subGenre: 'Soul / Funk / Hip-Hop', freqRange: '180Hz – 4.5kHz', character: 'Crisp Wire Resonance, Organic Wood', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'D2', dsp: { lowCutHz: 140, lowGain: -2, midFreqHz: 900, midGain: 3, highGain: 4, filterFreq: 12000, filterType: 'lowpass', compressorThreshold: -16, compressorRatio: 4, reverbSend: 0.22 } } },
+    { id: 'snd_s2', name: 'Analog 909 Layered Handclap', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Clap', subGenre: 'Pop / Electronic / Trap', freqRange: '300Hz – 8kHz', character: 'Multi-Tap Stereo Spread', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'E2', dsp: { lowCutHz: 260, lowGain: -6, midFreqHz: 1800, midGain: 1, highGain: 7, filterFreq: 16000, filterType: 'lowpass', compressorThreshold: -10, compressorRatio: 3, reverbSend: 0.34 } } },
   ],
   hihat: [
-    { id: 'snd_h1', name: 'Tight Closed Studio Hat', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Closed Hat', subGenre: 'Studio Hip-Hop / Pop', freqRange: '4kHz – 16kHz', character: 'Crisp Top End, Short Natural Decay', clapMatchScore: 97, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
-    { id: 'snd_h2', name: '808 Metallic Trap Hat', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Electronic', subGenre: 'Modern Trap / Drill', freqRange: '6kHz – 18kHz', character: 'Bright Sizzle, Rolls-Friendly', clapMatchScore: 96, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
+    { id: 'snd_h1', name: 'Tight Closed Studio Hat', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Closed Hat', subGenre: 'Studio Hip-Hop / Pop', freqRange: '4kHz – 16kHz', character: 'Crisp Top End, Short Natural Decay', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'F#3', dsp: { lowCutHz: 300, lowGain: -8, midFreqHz: 3000, midGain: -2, highGain: 3, filterFreq: 13000, filterType: 'lowpass', compressorThreshold: -18, compressorRatio: 2.5, reverbSend: 0.08 } } },
+    { id: 'snd_h2', name: '808 Metallic Trap Hat', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Electronic', subGenre: 'Modern Trap / Drill', freqRange: '6kHz – 18kHz', character: 'Bright Sizzle, Rolls-Friendly', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'A#3', dsp: { lowCutHz: 400, lowGain: -10, midFreqHz: 5000, midGain: 2, highGain: 9, filterFreq: 18000, filterType: 'lowpass', compressorThreshold: -14, compressorRatio: 2, reverbSend: 0.05 } } },
   ],
   bass: [
-    { id: 'snd_b1', name: '808 Sub Glide (Sustained)', vault: 'R03', vaultLabel: 'R03 Synth Patch', category: '808 Sub', subGenre: 'Trap / R&B / Pop', freqRange: '30Hz – 120Hz', character: 'Monophonic Portamento, Clean Saturation', clapMatchScore: 99, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
-    { id: 'snd_b2', name: 'Moog Minitaur Analog Sub', vault: 'R03', vaultLabel: 'R03 Synth Patch', category: 'Analog Synth', subGenre: 'Funk / Electronic', freqRange: '35Hz – 250Hz', character: 'Dual Oscillator Warmth, Ladder Filter', clapMatchScore: 96, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
-    { id: 'snd_b3', name: 'Upright Acoustic Double Bass', vault: 'R02', vaultLabel: 'R02 SoundFont', category: 'Acoustic Instrument', subGenre: 'Jazz / Neo-Soul / BoomBap', freqRange: '40Hz – 350Hz', character: 'Wood Body Resonance, Finger Pluck', clapMatchScore: 92, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
+    { id: 'snd_b1', name: '808 Sub Glide (Sustained)', vault: 'R03', vaultLabel: 'R03 Synth Patch', category: '808 Sub', subGenre: 'Trap / R&B / Pop', freqRange: '30Hz – 120Hz', character: 'Monophonic Portamento, Clean Saturation', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C1', dsp: { lowCutHz: 22, lowGain: 5, midFreqHz: 600, midGain: -4, highGain: -7, filterFreq: 1800, filterType: 'lowpass', compressorThreshold: -18, compressorRatio: 4, reverbSend: 0.02 } } },
+    { id: 'snd_b2', name: 'Moog Minitaur Analog Sub', vault: 'R03', vaultLabel: 'R03 Synth Patch', category: 'Analog Synth', subGenre: 'Funk / Electronic', freqRange: '35Hz – 250Hz', character: 'Dual Oscillator Warmth, Ladder Filter', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C1', dsp: { lowCutHz: 30, lowGain: 3, midFreqHz: 1100, midGain: 2, highGain: -2, filterFreq: 3600, filterType: 'lowpass', compressorThreshold: -16, compressorRatio: 3, reverbSend: 0.06 } } },
+    { id: 'snd_b3', name: 'Upright Acoustic Double Bass', vault: 'R02', vaultLabel: 'R02 SoundFont', category: 'Acoustic Instrument', subGenre: 'Jazz / Neo-Soul / BoomBap', freqRange: '40Hz – 350Hz', character: 'Wood Body Resonance, Finger Pluck', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'E1', dsp: { lowCutHz: 38, lowGain: 1, midFreqHz: 800, midGain: 4, highGain: 2, filterFreq: 6500, filterType: 'lowpass', compressorThreshold: -20, compressorRatio: 2.5, reverbSend: 0.18 } } },
   ],
   melody: [
-    { id: 'snd_m1', name: 'Rhodes Mark I Electric Piano', vault: 'R02', vaultLabel: 'R02 SoundFont', category: 'Keys', subGenre: 'Soul / R&B / Jazz', freqRange: '80Hz – 6kHz', character: 'Tine Warmth, Bell-Like Dynamic Velocity', clapMatchScore: 98, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
-    { id: 'snd_m2', name: 'Cinematic Chamber Strings', vault: 'R02', vaultLabel: 'R02 SoundFont', category: 'Orchestral', subGenre: 'Cinematic / Scoring / Hip-Hop', freqRange: '65Hz – 10kHz', character: 'Lush Legato, Warm Bowed Celli & Violins', clapMatchScore: 99, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
-    { id: 'snd_m3', name: 'DX7 Classic FM Electric Piano', vault: 'R03', vaultLabel: 'R03 Synth Patch', category: 'FM Synth', subGenre: '80s / Retro R&B', freqRange: '100Hz – 8kHz', character: 'Glassy Attack, Crystalline FM Timbres', clapMatchScore: 91, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
+    { id: 'snd_m1', name: 'Rhodes Mark I Electric Piano', vault: 'R02', vaultLabel: 'R02 SoundFont', category: 'Keys', subGenre: 'Soul / R&B / Jazz', freqRange: '80Hz – 6kHz', character: 'Tine Warmth, Bell-Like Dynamic Velocity', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C3', dsp: { lowCutHz: 70, lowGain: 2, midFreqHz: 1400, midGain: 1, highGain: -1, filterFreq: 7000, filterType: 'lowpass', compressorThreshold: -18, compressorRatio: 3, reverbSend: 0.20 } } },
+    { id: 'snd_m2', name: 'Cinematic Chamber Strings', vault: 'R02', vaultLabel: 'R02 SoundFont', category: 'Orchestral', subGenre: 'Cinematic / Scoring / Hip-Hop', freqRange: '65Hz – 10kHz', character: 'Lush Legato, Warm Bowed Celli & Violins', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'G3', dsp: { lowCutHz: 60, lowGain: 0, midFreqHz: 900, midGain: 3, highGain: 2, filterFreq: 11000, filterType: 'lowpass', compressorThreshold: -22, compressorRatio: 2, reverbSend: 0.42 } } },
+    { id: 'snd_m3', name: 'DX7 Classic FM Electric Piano', vault: 'R03', vaultLabel: 'R03 Synth Patch', category: 'FM Synth', subGenre: '80s / Retro R&B', freqRange: '100Hz – 8kHz', character: 'Glassy Attack, Crystalline FM Timbres', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C4', dsp: { lowCutHz: 90, lowGain: -2, midFreqHz: 3200, midGain: 2, highGain: 8, filterFreq: 16000, filterType: 'lowpass', compressorThreshold: -14, compressorRatio: 4, reverbSend: 0.16 } } },
   ],
   vocal_synth: [
-    { id: 'snd_v1', name: 'Warm Tube Lead Vocal Chain', vault: 'R04', vaultLabel: 'R04 DSP Chain', category: 'Vocal DSP', subGenre: 'Modern R&B / Pop', freqRange: '100Hz – 16kHz', character: 'Tube Saturation, Optical 3:1 Compression', clapMatchScore: 99, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
-    { id: 'snd_v2', name: 'Stereo Harmony Doubler Chain', vault: 'R04', vaultLabel: 'R04 DSP Chain', category: 'Vocal DSP', subGenre: 'Pop / Soul Harmonies', freqRange: '120Hz – 15kHz', character: 'Stereo Widening, Pitch Micro-Shift', clapMatchScore: 96, sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' },
+    { id: 'snd_v1', name: 'Warm Tube Lead Vocal Chain', vault: 'R04', vaultLabel: 'R04 DSP Chain', category: 'Vocal DSP', subGenre: 'Modern R&B / Pop', freqRange: '100Hz – 16kHz', character: 'Tube Saturation, Optical 3:1 Compression', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C3', dsp: { lowCutHz: 95, lowGain: 1, midFreqHz: 2400, midGain: 3, highGain: 5, filterFreq: 16000, filterType: 'lowpass', compressorThreshold: -20, compressorRatio: 3, reverbSend: 0.18 } } },
+    { id: 'snd_v2', name: 'Stereo Harmony Doubler Chain', vault: 'R04', vaultLabel: 'R04 DSP Chain', category: 'Vocal DSP', subGenre: 'Pop / Soul Harmonies', freqRange: '120Hz – 15kHz', character: 'Stereo Widening, Pitch Micro-Shift', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C3', dsp: { lowCutHz: 120, lowGain: -3, midFreqHz: 1800, midGain: -1, highGain: 6, filterFreq: 15000, filterType: 'lowpass', compressorThreshold: -16, compressorRatio: 2.5, reverbSend: 0.30, delaySend: 0.22 } } },
   ],
 };
 
@@ -227,9 +241,55 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
     return matchesCategory && matchesQuery;
   });
 
+  /**
+   * Auditions a sound by actually making it.
+   *
+   * The panel said "LIVE IN-CONTEXT AUDITION (SONG LOOPING)" over a pulsing
+   * play icon and constructed no audio nodes at all -- picking a sound set a
+   * string. The preset's settings are pushed to this track's real channel
+   * strip and the track's own voice is triggered through it, so the audition
+   * is the sound. Leaving without committing puts the committed settings back.
+   */
+  const auditionSound = async (soundItem: VaultSoundItem) => {
+    setAuditionSoundItem(soundItem);
+    if (!track) return;
+    await audioEngine.init();
+    const merged = { ...(track.dspSettings || {}), ...soundItem.sound.dsp };
+    audioEngine.applyTrackDsp(track.id, merged as TrackDspSettings, track.instrument);
+    const pitch = soundItem.sound.pitch || track.pitch || 'C3';
+    const previewTrack = { ...track, dspSettings: merged, pitch } as Track;
+    switch (track.instrument) {
+      case 'kick':
+        audioEngine.triggerKick(pitch, undefined, 0.9, previewTrack);
+        break;
+      case 'snare':
+        audioEngine.triggerSnare(undefined, 0.9, previewTrack);
+        break;
+      case 'hihat':
+        audioEngine.triggerHiHat(undefined, 0.9, previewTrack);
+        break;
+      case 'bass':
+        audioEngine.triggerBass(pitch, undefined, 0.9, previewTrack, 0.6);
+        break;
+      default:
+        audioEngine.triggerMelody(pitch, undefined, 0.9, previewTrack, 0.6);
+        break;
+    }
+  };
+
+  /** Puts the committed sound back on the engine after an uncommitted audition. */
+  const cancelAudition = () => {
+    setAuditionSoundItem(null);
+    if (track) audioEngine.applyTrackDsp(track.id, track.dspSettings, track.instrument);
+  };
+
   // Commit audition sound to canonical track
   const handleCommitSound = (soundItem: VaultSoundItem) => {
     const prevName = track.name;
+    const prevPitch = track.pitch;
+    const prevDsp = track.dspSettings;
+    const nextPitch = soundItem.sound.pitch || track.pitch;
+    const nextDsp = { ...(track.dspSettings || {}), ...soundItem.sound.dsp };
     const op: ProductionOperation = {
       id: `op_snd_${Date.now()}`,
       type: 'ASSIGN_SOUND',
@@ -237,12 +297,15 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
       description: `Assigned ${soundItem.name} (${soundItem.vault}) to ${track.name}`,
       source: 'MANUAL_UI',
       timestamp: Date.now(),
-      undo: (tracks) => tracks.map((t) => (t.id === track.id ? { ...t, name: prevName } : t)),
-      redo: (tracks) => tracks.map((t) => (t.id === track.id ? { ...t, name: soundItem.name } : t)),
+      undo: (tracks) =>
+        tracks.map((t) => (t.id === track.id ? { ...t, name: prevName, pitch: prevPitch, dspSettings: prevDsp } : t)),
+      redo: (tracks) =>
+        tracks.map((t) => (t.id === track.id ? { ...t, name: soundItem.name, pitch: nextPitch, dspSettings: nextDsp } : t)),
     };
     productionHistory.recordOperation(op);
 
-    onUpdateTrack?.({ name: soundItem.name });
+    // The name was the only thing this ever wrote. The sound goes with it now.
+    onUpdateTrack?.({ name: soundItem.name, pitch: nextPitch, dspSettings: nextDsp });
     setAuditionSoundItem(null);
   };
 
@@ -402,6 +465,7 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
               MATRIX
             </button>
             <button
+              data-testid="open-sound-vault"
               onClick={() => { setActiveTab('SOUND'); setIsExpanded(true); }}
               className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-[10px] font-bold transition cursor-pointer"
               title="Open Sound Vault"
@@ -505,6 +569,7 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
             </button>
 
             <button
+              data-testid="tab-sound-vault"
               onClick={() => setActiveTab('SOUND')}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center space-x-1 ${
                 activeTab === 'SOUND'
@@ -828,7 +893,7 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
               <div className="space-y-1">
                 <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-bold">
                   <Radio className="w-3 h-3 animate-pulse text-emerald-400" />
-                  <span>LIVE IN-CONTEXT AUDITION (SONG LOOPING)</span>
+                  <span>AUDITION — PLAYS THROUGH THIS CHANNEL</span>
                 </div>
                 <div className="text-sm font-black text-emerald-300 flex items-center space-x-2">
                   <Play className="w-3.5 h-3.5 fill-emerald-400 text-emerald-400 animate-pulse" />
@@ -839,11 +904,22 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
               <div className="flex items-center space-x-2">
                 {auditionSoundItem ? (
                   <button
+                    data-testid="commit-sound"
                     onClick={() => handleCommitSound(auditionSoundItem)}
                     className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-mono font-black flex items-center space-x-1.5 shadow-lg shadow-emerald-500/25 transition cursor-pointer active:scale-98"
                   >
                     <Check className="w-4 h-4" />
                     <span>✔ COMMIT SOUND TO TRACK</span>
+                  </button>
+                ) : null}
+                {auditionSoundItem ? (
+                  <button
+                    data-testid="cancel-audition"
+                    onClick={cancelAudition}
+                    className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 text-[11px] font-bold transition cursor-pointer"
+                    title="Put the committed sound back"
+                  >
+                    KEEP CURRENT
                   </button>
                 ) : (
                   <span className="px-3 py-1.5 rounded-xl bg-slate-950 text-slate-400 border border-slate-800 text-[11px] font-bold">
@@ -857,7 +933,8 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
               {filteredSounds.map((snd) => (
                 <div
                   key={snd.id}
-                  onClick={() => setAuditionSoundItem(snd)}
+                  data-testid={`vault-sound-${snd.id}`}
+                  onClick={() => void auditionSound(snd)}
                   className={`p-3 rounded-xl border transition cursor-pointer flex flex-col justify-between ${
                     activeAuditionSound === snd.name ? 'bg-slate-900 border-emerald-500 ring-1 ring-emerald-500/40' : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900/90'
                   }`}
