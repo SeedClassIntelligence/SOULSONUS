@@ -79,6 +79,7 @@ const inspect = (page, url) => page.evaluate(`(${INSPECT_FN})(${JSON.stringify(u
       zip: p.stemsZip ? { name: p.stemsZip.name, url: p.stemsZip.url, bytes: p.stemsZip.byteLength } : null,
       provenance: { name: p.provenance.name, url: p.provenance.url, bytes: p.provenance.byteLength },
       silent: p.silentTracks,
+      tpl: p.truePeakLimiting,
     });
   }`);
   check('a package exists in session state', !!pkg, pkg ? '' : 'deliveryPackage is null');
@@ -144,6 +145,16 @@ const inspect = (page, url) => page.evaluate(`(${INSPECT_FN})(${JSON.stringify(u
   check('provenance carries the real measurement', prov.loudness && prov.loudness.integratedLufs === P.lufs,
         prov.loudness ? `${prov.loudness.integratedLufs} LUFS, ${prov.loudness.truePeakDbtp} dBTP` : 'missing');
   check('provenance names no invented URLs', !JSON.stringify(prov).includes('/export/'), '');
+
+  // --- the ceiling the chain advertises must be the ceiling the file respects ---
+  const ceiling = await session(page, `s => s.masteringChain.targetDbtp`);
+  console.log(`  true-peak stage: ${P.tpl ? `${P.tpl.inputTruePeakDbtp} -> ${P.tpl.outputTruePeakDbtp} dBTP, -${P.tpl.maxGainReductionDb} dB` : 'bypassed'}`);
+  check('exported master respects the dBTP ceiling', P.lufs !== undefined && Number(prov.loudness.truePeakDbtp) <= ceiling + 0.05,
+        `${prov.loudness.truePeakDbtp} dBTP against a ${ceiling} dBTP ceiling`);
+  check('the limiter reports staying within the ceiling', !!P.tpl && P.tpl.withinCeiling,
+        P.tpl ? `after ${P.tpl.maxGainReductionDb} dB of reduction` : 'no limiting reported');
+  check('reduction is proportionate to the overshoot', !!P.tpl && P.tpl.maxGainReductionDb < (P.tpl.inputTruePeakDbtp - ceiling) + 1.5,
+        P.tpl ? `-${P.tpl.maxGainReductionDb} dB for ${(P.tpl.inputTruePeakDbtp - ceiling).toFixed(2)} dB over` : '');
 
   console.log(`\n${failures === 0 ? 'ALL CHECKS PASSED' : failures + ' CHECK(S) FAILED'}`);
   await browser.close();

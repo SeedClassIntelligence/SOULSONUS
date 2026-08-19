@@ -114,6 +114,13 @@ export function buildMasteringChain(chain: MasteringDspChain): BuiltMasteringCha
   // threshold it still passes +5.7 dBFS, so a stage advertising a ceiling
   // would not hold it. Fast hard-knee gain reduction does the musical work,
   // then a hard ceiling guarantees the sample peak the control promises.
+  //
+  // Sample peak is all this can promise: no Web Audio node can see between
+  // samples, and clipping is itself what creates inter-sample peaks. The
+  // true-peak half of the ceiling is enforced in ./truePeakLimiter, applied to
+  // the rendered buffer in masterRender — which covers everything measured and
+  // everything exported. Live monitoring can still overshoot the dBTP number
+  // between samples; that is audible to a converter, not to the room.
   const limiter = new Tone.Compressor({ threshold: -1, ratio: 20, knee: 0, attack: 0.001, release: 0.05 });
   const ceiling = new Tone.WaveShaper(hardCeilingCurve(Math.pow(10, -1 / 20)));
 

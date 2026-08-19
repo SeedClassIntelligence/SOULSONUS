@@ -23,6 +23,7 @@ import {
   defaultFilterFreqFor,
 } from './instrumentVoices';
 import { midiToNoteName, tickToStep } from '../utils/musicMath';
+import { limitTruePeak, TruePeakLimitResult } from './truePeakLimiter';
 
 export interface RenderOptions {
   tracks: Track[];
@@ -43,6 +44,8 @@ export interface RenderResult {
   sampleRate: number;
   /** Voices actually triggered — zero means the project is silent. */
   eventsRendered: number;
+  /** What the true-peak stage did, or null when it is bypassed. */
+  truePeakLimiting: TruePeakLimitResult | null;
 }
 
 const STEPS_PER_BAR = 16;
@@ -220,10 +223,36 @@ export async function renderMasterBounce(options: RenderOptions): Promise<Render
 
   }, duration, 2, sampleRate);
 
+  const buffer = rendered.get() as AudioBuffer;
+
+  // The chain's last stage clips in the sample domain, which holds sample peak
+  // on the ceiling and leaves inter-sample peaks above it. Web Audio has no
+  // node that can see between samples, so the true-peak stage runs here, on the
+  // rendered buffer — which is what gets measured and what gets exported.
+  const limiterSlot = chain.slots.find((slot) => slot.type === 'true_peak_limiter');
+  const limiterActive = !!limiterSlot && limiterSlot.enabled !== false && !limiterSlot.bypassed;
+  let truePeakLimiting: TruePeakLimitResult | null = null;
+
+  if (limiterActive && eventsRendered > 0) {
+    const channels: Float32Array[] = [];
+    for (let c = 0; c < buffer.numberOfChannels; c++) channels.push(buffer.getChannelData(c));
+    const params = limiterSlot!.parameters || {};
+    truePeakLimiting = limitTruePeak(channels, {
+      ceilingDbtp: typeof params.ceilingDbtp === 'number' ? params.ceilingDbtp : -1,
+      sampleRate: buffer.sampleRate,
+      lookaheadMs: typeof params.lookaheadMs === 'number' ? params.lookaheadMs : 4.5,
+      releaseMs: typeof params.releaseMs === 'number' ? params.releaseMs : 80,
+    });
+    for (let c = 0; c < buffer.numberOfChannels; c++) {
+      buffer.getChannelData(c).set(truePeakLimiting.channels[c]);
+    }
+  }
+
   return {
-    buffer: rendered.get() as AudioBuffer,
+    buffer,
     durationSeconds: duration,
     sampleRate,
     eventsRendered,
+    truePeakLimiting,
   };
 }

@@ -3,6 +3,8 @@
  * Implements genuine ITU-R BS.1770-4 K-Weighting Loudness (LUFS-I, LUFS-S, LUFS-M) & True-Peak (dBTP).
  */
 
+import { channelTruePeak } from './oversampling';
+
 export interface LoudnessTelemetryReport {
   integratedLufs: number; // e.g. -14.0 LUFS
   shortTermLufs: number; // 3-second sliding window
@@ -88,68 +90,12 @@ function applyBiquad(input: Float32Array, coeffs: BiquadCoeffs): Float32Array {
 }
 
 /**
- * Polyphase windowed-sinc coefficients for 4x upsampling.
+ * Loudest inter-sample peak across both channels.
  *
- * Phase 0 is the sample itself. Phases 1..3 reconstruct the signal a quarter,
- * half and three-quarters of a sample later, which is where inter-sample peaks
- * live. A previous version averaged adjacent samples and called that "4x
- * sinc"; linear interpolation systematically *under*-reads true peak, which is
- * the one direction a compliance meter must never err in.
+ * The 4x reconstruction itself lives in ./oversampling, shared with the
+ * true-peak limiter so the meter and the limiter cannot disagree about where
+ * the peaks are.
  */
-const TP_TAPS = 24;
-const TP_PHASES = 4;
-
-function buildPolyphaseKernels(): Float32Array[] {
-  const kernels: Float32Array[] = [];
-  for (let phase = 0; phase < TP_PHASES; phase++) {
-    const frac = phase / TP_PHASES;
-    const k = new Float32Array(TP_TAPS);
-    let sum = 0;
-    for (let n = 0; n < TP_TAPS; n++) {
-      const x = n - TP_TAPS / 2 + 1 - frac;
-      // Normalised sinc, band-limited to Nyquist.
-      const sinc = x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x);
-      // Blackman-Harris window keeps the stopband down so the reconstruction
-      // does not invent peaks that are not in the signal.
-      const w = n / (TP_TAPS - 1);
-      const win =
-        0.35875 -
-        0.48829 * Math.cos(2 * Math.PI * w) +
-        0.14128 * Math.cos(4 * Math.PI * w) -
-        0.01168 * Math.cos(6 * Math.PI * w);
-      k[n] = sinc * win;
-      sum += k[n];
-    }
-    // Unity DC gain per phase, so a constant signal reconstructs to itself.
-    if (sum !== 0) for (let n = 0; n < TP_TAPS; n++) k[n] /= sum;
-    kernels.push(k);
-  }
-  return kernels;
-}
-
-const TP_KERNELS = buildPolyphaseKernels();
-
-/** Peak of one channel after genuine 4x band-limited upsampling. */
-function channelTruePeak(x: Float32Array): number {
-  let peak = 0;
-  const half = TP_TAPS / 2;
-  for (let i = 0; i < x.length; i++) {
-    const a = Math.abs(x[i]);
-    if (a > peak) peak = a;
-    for (let phase = 1; phase < TP_PHASES; phase++) {
-      const k = TP_KERNELS[phase];
-      let acc = 0;
-      for (let n = 0; n < TP_TAPS; n++) {
-        const idx = i - half + 1 + n;
-        if (idx >= 0 && idx < x.length) acc += x[idx] * k[n];
-      }
-      const av = Math.abs(acc);
-      if (av > peak) peak = av;
-    }
-  }
-  return peak;
-}
-
 function computeTruePeak(samplesL: Float32Array, samplesR: Float32Array): number {
   return Math.max(1e-6, channelTruePeak(samplesL), channelTruePeak(samplesR));
 }

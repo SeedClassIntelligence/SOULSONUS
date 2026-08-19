@@ -104,6 +104,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen = true, onClose
             <span>{deliveryPackage.measurement.truePeakDbtp} dBTP</span>
             <span>{deliveryPackage.eventsRendered} voices</span>
             <span>{deliveryPackage.stems.length} stems</span>
+            {deliveryPackage.truePeakLimiting && deliveryPackage.truePeakLimiting.maxGainReductionDb > 0.01 && (
+              <span>
+                true-peak limiter: {deliveryPackage.truePeakLimiting.inputTruePeakDbtp} →{' '}
+                {deliveryPackage.truePeakLimiting.outputTruePeakDbtp} dBTP (−
+                {deliveryPackage.truePeakLimiting.maxGainReductionDb} dB)
+              </span>
+            )}
             {deliveryPackage.silentTracks.length > 0 && (
               <span className="text-amber-300">silent, not exported: {deliveryPackage.silentTracks.join(', ')}</span>
             )}

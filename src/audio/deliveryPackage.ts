@@ -54,6 +54,13 @@ export interface DeliveryPackage {
   provenance: DeliveryFile;
   /** Tracks that rendered silent, named so the gap is visible rather than implied. */
   silentTracks: string[];
+  /** What the true-peak stage did to the master, or null when bypassed. */
+  truePeakLimiting: {
+    inputTruePeakDbtp: number;
+    outputTruePeakDbtp: number;
+    maxGainReductionDb: number;
+    withinCeiling: boolean;
+  } | null;
 }
 
 export interface BuildDeliveryOptions {
@@ -291,6 +298,15 @@ export async function buildDeliveryPackage(options: BuildDeliveryOptions): Promi
     durationSeconds: Number(master.durationSeconds.toFixed(3)),
     sampleRate: master.sampleRate,
     voicesRendered: master.eventsRendered,
+    truePeakLimiter: master.truePeakLimiting
+      ? {
+          ceilingDbtp: chain.targetDbtp,
+          beforeDbtp: master.truePeakLimiting.inputTruePeakDbtp,
+          afterDbtp: master.truePeakLimiting.outputTruePeakDbtp,
+          maxGainReductionDb: master.truePeakLimiting.maxGainReductionDb,
+          withinCeiling: master.truePeakLimiting.withinCeiling,
+        }
+      : null,
     loudness: {
       integratedLufs: measurement.integratedLufs,
       truePeakDbtp: measurement.truePeakDbtp,
@@ -357,6 +373,14 @@ export async function buildDeliveryPackage(options: BuildDeliveryOptions): Promi
     stemsZip,
     provenance,
     silentTracks,
+    truePeakLimiting: master.truePeakLimiting
+      ? {
+          inputTruePeakDbtp: master.truePeakLimiting.inputTruePeakDbtp,
+          outputTruePeakDbtp: master.truePeakLimiting.outputTruePeakDbtp,
+          maxGainReductionDb: master.truePeakLimiting.maxGainReductionDb,
+          withinCeiling: master.truePeakLimiting.withinCeiling,
+        }
+      : null,
   };
 }
 
