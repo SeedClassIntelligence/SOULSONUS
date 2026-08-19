@@ -310,8 +310,8 @@
     <h1>SoulSonus Signal Map</h1>
     <p class="standfirst">Every component in the six rooms, sorted by whether it actually processes anything. Consolidated from all prior verification passes and re-checked against the current branch, so there is one map to plan from instead of several.</p>
     <div class="stamp">
-      <span>Describes <code>main</code> @ <code>PENDING</code> — the commit Netlify deploys</span>
-      <span>Updated 18 Aug 2026 · Layer 0 complete — 0.1 through 0.8 landed and live</span>
+      <span>Describes <code>main</code> @ <code>1ce8a23</code> — the commit Netlify deploys</span>
+      <span>Updated 19 Aug 2026 · Layer 0 complete; Layer 1 complete — shell reachability and room-switch state loss both landed and live</span>
       <span>Method: live headless browser + synthetic mic + source read</span>
     </div>
   </header>
@@ -514,7 +514,6 @@
     <div class="rows">
       <div class="row"><div class="what">Type checking is now gated in CI</div><div><span class="pill p-work">Fixed</span></div><div class="ev"><code>vite build</code> still does not typecheck, which is how two crash-class errors shipped green and white-screened the studio. <code>.github/workflows/ci.yml</code> now runs <code>tsc --noEmit</code> before the build. The 23 <code>NoteEvent.provenance</code> errors are gone — they were the import modal's hardcoded notes, deleted when that path became real — so the gate starts green</div></div>
       <div class="row"><div class="what">Side effects inside React state updaters</div><div><span class="pill p-dark">Partly fixed</span></div><div class="ev">Fixed in the history writer and the capture handler. Three remain: undo, redo, and monitoring-mode toggles all call <code>setState</code> from inside another updater, which StrictMode invokes twice.</div></div>
-      <div class="row"><div class="what">Project persistence</div><div><span class="pill p-none">Not built</span></div><div class="ev">No save or load anywhere. A reload discards the session, which is why every project opens on the same demo pattern.</div></div>
       <div class="row"><div class="what">Nothing reached the deployed site until now<small>Ten commits of fixes sat unmerged</small></div><div><span class="pill p-work">Fixed</span></div><div class="ev">Netlify builds <code>main</code>, which was still at <code>abc3cbe</code> from before the audit. Clicking into the studio gave 0 elements and <code>ReferenceError: useStudioSession is not defined</code> — the round-one crash, still live. <code>main</code> fast-forwarded to the audited branch and verified rendering 319 controls before pushing</div></div>
       <div class="row"><div class="what">Favicon and page metadata</div><div><span class="pill p-work">Fixed</span></div><div class="ev">A 404 on <code>/favicon.ico</code> was the last console error on a clean load, and left the browser tab blank. Console is now clean end to end</div></div>
       <div class="row"><div class="what">Verification harness</div><div><span class="pill p-work">Working</span></div><div class="ev">scripts/live-verification — nine tests driving real Chromium with a synthetic mic, reading committed React state</div></div>
@@ -524,11 +523,9 @@
   <!-- NEXT -->
   <section>
     <h2>Where the leverage is</h2>
-    <p class="lede">Layer 0 is complete. What follows is ordered by value returned per unit of work, given what already exists on disk.</p>
+    <p class="lede">Layer 0 and Layer 1 are complete — the two shell items that were listed here, the drawer row and the workspace-local state, have landed and are recorded above. What remains is ordered by value returned per unit of work, given what already exists on disk.</p>
     <ol class="next">
       <li><div><strong>Sweep the remaining decorative AUDITION controls.</strong><p>One shape, four known locations in the vocal suite: <code>setState(true)</code> → <code>setTimeout</code> → <code>setState(false)</code>, no audio. Studio Intelligence shows what a real one looks like — it builds actual audio nodes — so this is a pattern to copy, not to design.</p></div></li>
-      <li><div><strong>Move the utility drawer row out of <code>StudioCanvas</code>.</strong><p>Eight workstations are unreachable from four of six rooms purely because of where the trigger row is rendered.</p></div></li>
-      <li><div><strong>Lift workspace-local UI state into context.</strong><p>Selected tool and bar view reset whenever the canvas unmounts on a switch to rooms 3–6. Narrower than the architecture implied — session data, playback and live capture already survive — so this is a small fix, not a re-architecture.</p></div></li>
       <li><div><strong>Point the Room 6 export panel at the real bounce.</strong><p>The bounce, encoders and measurement all work; <code>ExportModal</code> and the delivery manifest still write a text file and fabricate URLs. Pure plumbing now.</p></div></li>
       <li><div><strong>Per-track EQ.</strong><p>Distinct from the bus graph, which is done. <code>lowGain</code>/<code>midGain</code>/<code>highGain</code> are written by the Vocal DSP tab and read by nothing — and the masking analysis now says exactly which bands would need it.</p></div></li>
       <li><div><strong>Captured notes bypass undo.</strong><p>A take currently cannot be undone. The history stack is real; capture writes around it.</p></div></li>
