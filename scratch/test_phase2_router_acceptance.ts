@@ -44,7 +44,8 @@ async function testRouter() {
   console.log(`  Locked Invariants: ${routeResult.lockedInvariants.join(', ')}`);
   console.log(`  Synthesized Routes:`);
   routeResult.candidates.forEach((c) => {
-    console.log(`   - [${c.routeId}] (${c.engineId}): ${c.title} (Conf: ${c.confidenceScore})`);
+    console.log(`   - [${c.routeId}] (${c.engineId}): ${c.title}`);
+    c.rationale.forEach((r) => console.log(`       ${r}`));
   });
   console.log(`  Recommended Route: ${routeResult.recommendedRouteId}`);
   console.log('  ✓ PASS: TEST 1 (Studio Intelligence Router)\n');

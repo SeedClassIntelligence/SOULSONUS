@@ -291,6 +291,7 @@ export const SoulSonusIntelligenceDock: React.FC<SoulSonusIntelligenceDockProps>
         <div className="flex-1 max-w-xl flex items-center space-x-2">
           <div className="relative flex-1">
             <input
+              id="intelligence-input"
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
@@ -303,6 +304,7 @@ export const SoulSonusIntelligenceDock: React.FC<SoulSonusIntelligenceDockProps>
           </div>
 
           <button
+            id="intelligence-ask"
             onClick={() => handleSendMessage()}
             disabled={isLoading || !inputText.trim()}
             className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center space-x-1 transition cursor-pointer shadow-md shadow-amber-500/20"
@@ -377,7 +379,7 @@ export const SoulSonusIntelligenceDock: React.FC<SoulSonusIntelligenceDockProps>
                         : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-none space-y-2'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                    <div className={`whitespace-pre-wrap${isUser ? '' : ' intelligence-reply'}`}>{msg.content}</div>
 
                     {/* Actionable Non-Destructive Candidate Card */}
                     {msg.actionProposal && (

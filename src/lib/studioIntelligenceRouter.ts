@@ -1,10 +1,23 @@
 import { Track, GenerationCandidate, TrackDspSettings, ArrangementSection } from '../types/daw';
+import { BandRole, GrantLevel } from './sessionBand';
 
 export interface CreatorIntent {
   rawPrompt: string;
   targetTrackId?: string;
   targetSectionId?: string;
   targetBarRange?: [number, number];
+  /**
+   * Who is being addressed.
+   *
+   * Everything below this is a *what* -- a closed union of six verbs. "Bass
+   * player, play what you feel" is addressed to a who, and there was nowhere
+   * to put one, so a request to a musician had to be flattened into an
+   * operation on a track. The role sits beside the verb rather than replacing
+   * it: "make the kick fatter" still has no role, and should not be given one.
+   */
+  role?: BandRole;
+  /** How much authority that player is granted. Only meaningful with a role. */
+  grantLevel?: GrantLevel;
   intentType:
     | 'TIMBRE_SCULPT' // e.g. "Make kick fatter"
     | 'PERFORMANCE_TRANSFER' // e.g. "Turn hum into synth bass"
@@ -35,7 +48,16 @@ export interface CandidateRoute {
   proposedDspChanges?: Partial<TrackDspSettings>;
   proposedMidiNotes?: string[];
   proposedSteps?: boolean[];
-  confidenceScore: number;
+  /**
+   * Why this route is being offered.
+   *
+   * This was `confidenceScore: number`, and every route carried a literal --
+   * 0.94, 0.98, 0.96, 0.95, 0.92 -- so the same five figures were presented
+   * for every prompt on every project. Nothing computes a confidence here, so
+   * rather than keep a number that means nothing, the route states its reason
+   * and the creator judges it.
+   */
+  rationale: string[];
 }
 
 export interface RouterExecutionResult {
@@ -88,8 +110,10 @@ export class StudioIntelligenceRouter {
       title: `Search Vault: Punchy ${targetTrack?.name || 'Instrument'} Candidate`,
       description: `Ranks top matching samples from R01 sound vaults using zero-shot CLAP acoustic embeddings.`,
       lockedInvariants: [...lockedInvariants],
-      candidateAudioUrl: `/audio/vault/preview_${targetTrack?.instrument || 'kick'}_a.wav`,
-      confidenceScore: 0.94,
+      rationale: [
+        `Matches against the vault by acoustic embedding rather than by file name.`,
+        `Nothing is rendered until a match is chosen, so no preview URL is named here.`,
+      ],
     });
 
     // Route B: Deterministic Channel DSP (E10 DSP)
@@ -104,7 +128,10 @@ export class StudioIntelligenceRouter {
         compressorRatio: 2.5,
         compressorThreshold: -16,
       },
-      confidenceScore: 0.98,
+      rationale: [
+        `Deterministic: the same settings produce the same result every time.`,
+        `Changes the channel, not the performance -- the notes are untouched.`,
+      ],
     });
 
     // Route C: Generative Realization (E05.E ACE-Step 1.5 / E05.B SFZ)
@@ -115,8 +142,10 @@ export class StudioIntelligenceRouter {
         title: `ACE-Step 1.5: Vocal-to-BGM Accompaniment Realization`,
         description: `Analyzes vocal hook melody and generates synchronized Drums, 808, and Keys accompaniment stems in ${context.key || 'C Minor'}.`,
         lockedInvariants: [...lockedInvariants, 'vocal_lead_preserved_unaltered'],
-        candidateAudioUrl: `/audio/realization/vocal2bgm_candidate_01.wav`,
-        confidenceScore: 0.96,
+        rationale: [
+          `The vocal is the source and stays unaltered; the accompaniment is what is generated.`,
+          `Needs a realization host. Nothing is rendered until one answers.`,
+        ],
       });
     } else if (intent.intentType === 'REGIONAL_REPAINT') {
       candidates.push({
@@ -125,8 +154,10 @@ export class StudioIntelligenceRouter {
         title: `ACE-Step 1.5: Inpainted Region Performance (Bars ${intent.targetBarRange?.[0] || 17}-${intent.targetBarRange?.[1] || 24})`,
         description: `Regenerates selected phrase with musical variation while preserving surrounding non-target bars.`,
         lockedInvariants: [...lockedInvariants, 'crossfade_boundaries_smoothed'],
-        candidateAudioUrl: `/audio/realization/repaint_candidate_01.wav`,
-        confidenceScore: 0.95,
+        rationale: [
+          `Repaint is duration-locked, so the regenerated bars return the length they replaced.`,
+          `Needs a realization host. Nothing is rendered until one answers.`,
+        ],
       });
     } else {
       candidates.push({
@@ -134,9 +165,11 @@ export class StudioIntelligenceRouter {
         engineId: 'E05_ACE_STEP',
         title: `ACE-Step 1.5: Performance Transfer Realization`,
         description: `Transforms raw performance timbre to high-fidelity target while mathematically preserving micro-timing onsets.`,
-        lockedInvariants: [...lockedInvariants, 'rhythm_contour_fidelity_95pct'],
-        candidateAudioUrl: `/audio/realization/perf_transfer_candidate_01.wav`,
-        confidenceScore: 0.92,
+        lockedInvariants: [...lockedInvariants, 'rhythm_contour_preserved'],
+        rationale: [
+          `Keeps the performance and changes the timbre; how much it kept is measured afterwards.`,
+          `Needs a realization host. Nothing is rendered until one answers.`,
+        ],
       });
     }
 

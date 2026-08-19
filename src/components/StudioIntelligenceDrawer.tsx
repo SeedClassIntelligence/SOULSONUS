@@ -54,6 +54,7 @@ import {
   StudioEmphasis,
   StudioIntelligenceConfig,
   loadAiConfig,
+  queryStudioIntelligence,
   saveAiConfig,
 } from '../lib/studioIntelligenceService';
 import * as Tone from 'tone';
@@ -69,9 +70,12 @@ interface ProposalOption {
   description: string;
   targetParameter: string;
   proposedValue: any;
-  confidence: number;
-  rhythmScore: number;
-  timingScore: number;
+  /**
+   * `confidence`, `rhythmScore` and `timingScore` used to live here, and every
+   * option in this file carried a literal for all three -- 98 / 99.4 / 98.8
+   * and so on -- rendered as a "% MATCH" badge. Nothing computed them. A
+   * suggestion is worth judging on what it proposes, so it says that instead.
+   */
   operationType: string;
   lockedInvariants: string[];
   mutableParams: string[];
@@ -127,61 +131,21 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
   >([
     {
       sender: 'intelligence',
-      text: `SoulSonus Studio Intelligence active for **${creatorName || 'Creator'}** in Room **${activeWorkspace}** (${tracks.length} tracks at ${dawState.bpm} BPM in C Minor).\n\nAsk any question or issue a production instruction above. All proposed changes appear as auditionable candidate cards requiring your explicit approval.`,
+      // This opened on a scripted exchange: a creator line nobody typed, and a
+      // reply asserting "the 808 is holding a 140ms sustain against the Bar 11
+      // kick transient" over three options badged 98% / 95% / 92% MATCH. None
+      // of it was read from the session, and none of the percentages were
+      // computed. It opens empty now, and answers what is actually asked.
+      text:
+        `SoulSonus Studio Intelligence, ${config.emphasis.replace(/_/g, ' ').toLowerCase()}, ` +
+        `for **${creatorName || 'Creator'}** in Room **${activeWorkspace}** — ` +
+        `${tracks.length} tracks at ${dawState.bpm} BPM.\n\n` +
+        `Ask a question, issue a directive, or address a player: *"bass player, play what you feel in the hook"*. ` +
+        `Anything that changes the session arrives as a candidate you approve.`,
       timestamp: Date.now(),
     },
-    {
-      sender: 'creator',
-      text: "Something about this hook isn't hitting. I think the bass needs to move more but don't change my drums.",
-      timestamp: Date.now() + 1000,
-    },
-    {
-      sender: 'intelligence',
-      text: "I hear it. Listening across the whole session: The 808 Sub Bass is holding a 140ms sustain against the Bar 11 Kick transient, causing low-end frequency mud. I have prepared three realization candidates while locking 100% of your drum patterns:",
-      timestamp: Date.now() + 2000,
-      options: [
-        {
-          id: 'opt-1',
-          title: 'Option A: Shorten 808 Decay to 650ms + 1/8th Bounce',
-          description: 'Tightens the sub release curve so the kick punches through with zero frequency masking.',
-          targetParameter: '808 Release Decay',
-          proposedValue: '650ms',
-          confidence: 98,
-          rhythmScore: 99.4,
-          timingScore: 98.8,
-          operationType: 'TIGHTEN_SUB',
-          lockedInvariants: ['Kick & Snare Pattern', 'Hi-Hat Groove', 'Master BPM (94)'],
-          mutableParams: ['808 Decay (650ms)', 'Low-End EQ Carve (-2.5dB @ 60Hz)'],
-        },
-        {
-          id: 'opt-2',
-          title: 'Option B: Add Portamento Glide (140ms) on Bar 12',
-          description: 'Adds an expressive vocal-style glide on the 808 note transition into the hook turnaround.',
-          targetParameter: 'Portamento Glide',
-          proposedValue: '140ms',
-          confidence: 95,
-          rhythmScore: 98.9,
-          timingScore: 98.2,
-          operationType: 'ADD_GLIDE',
-          lockedInvariants: ['Drum Kit Samples', 'Chord Structure (C Minor)'],
-          mutableParams: ['Portamento Time (140ms)', 'Pitch Bend Range (+2)'],
-        },
-        {
-          id: 'opt-3',
-          title: 'Option C: Octave Jump on 4th Beat + Tube Saturation',
-          description: 'Lifts the energy into the hook with a +12 semitone bounce and subtle analog tape warmth.',
-          targetParameter: 'Octave Lift & Tube Drive',
-          proposedValue: '+1 Octave / +2.5dB Drive',
-          confidence: 92,
-          rhythmScore: 98.0,
-          timingScore: 97.6,
-          operationType: 'OCTAVE_LIFT',
-          lockedInvariants: ['Drum Pattern Grid', 'Vocal Space Pocket'],
-          mutableParams: ['Note Pitch (+12st)', 'Drive Saturation (+2.5dB)'],
-        },
-      ],
-    },
   ]);
+  const [isThinking, setIsThinking] = useState(false);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -280,72 +244,80 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
     ]);
   };
 
-  const handleSendPrompt = (textToSend?: string) => {
-    const userText = textToSend || promptInput.trim();
-    if (!userText) return;
+  /**
+   * Asks the reasoning provider, rather than answering from a script.
+   *
+   * This function used to hold its own canned replies: two `if` branches
+   * matching on keywords, each returning a fixed option list with a literal
+   * confidence. Meanwhile a real reasoning provider existed, with a real
+   * bounded-context compiler and operation planner behind it, and nothing in
+   * the app reached it -- this drawer is the mounted one, and the dock that
+   * did call the provider is imported by no file. So the reachable path was
+   * the scripted one and the honest path was the dead one.
+   */
+  const handleSendPrompt = async (textToSend?: string) => {
+    const userText = (textToSend || promptInput).trim();
+    if (!userText || isThinking) return;
 
     setPromptInput('');
     setMessages((prev) => [
       ...prev,
       { sender: 'creator', text: userText, timestamp: Date.now() },
     ]);
+    setIsThinking(true);
 
-    const lower = userText.toLowerCase();
-    let replyText = `Understood. Analyzing full session context for "${userText}" on ${selectedTrack.name} in Room ${activeWorkspace}...`;
-    let proposalOptions: ProposalOption[] = [];
+    try {
+      const answer = await queryStudioIntelligence(
+        userText,
+        config,
+        dawState,
+        tracks,
+        activeWorkspace,
+        selectedTrack || null
+      );
 
-    if (lower.includes('kick') && lower.includes('808')) {
-      replyText = `Understood. Resolving frequency masking between ${selectedTrack.name} and the Sub Kick:`;
-      proposalOptions = [
-        {
-          id: `opt-carve-${Date.now()}`,
-          title: `Dynamic Sidechain Ducking (2.5dB @ 60Hz) on 808 Bass`,
-          description: `Automatically dips the 808 transient by 2.5dB during the first 45ms of each kick strike, eliminating sub-bass mud.`,
-          targetParameter: 'Dynamic EQ Cut',
-          proposedValue: '-2.5dB @ 60Hz',
-          confidence: 99,
-          rhythmScore: 99.5,
-          timingScore: 99.2,
-          operationType: 'SIDECHAIN_EQ',
-          lockedInvariants: ['Kick Pattern', '808 Groove', 'Master BPM'],
-          mutableParams: ['808 EQ 60Hz Cut', 'Sidechain Trigger Envelope'],
-          apply: {
-            targetInstrument: 'bass',
-            dspSettings: { lowGain: -2.5 },
-            summary: 'low-band gain set to -2.5 dB',
-          },
-        },
-      ];
-    } else if (lower.includes('chord') || lower.includes('chords')) {
-      replyText = `Here are three diatonic chord progression candidates in C Minor for the next section:`;
-      proposalOptions = [
-        {
-          id: `opt-chords-${Date.now()}`,
-          title: `i - VI - III - VII (Cm - Ab - Eb - Bb) Neo-Soul Cadence`,
-          description: `Rich 7th & 9th voice leading with smooth harmonic tension into the chorus turnaround.`,
-          targetParameter: 'Track NoteEvents',
-          proposedValue: 'Cm9 - AbMaj7 - EbMaj9 - Bb7',
-          confidence: 97,
-          rhythmScore: 98.8,
-          timingScore: 98.4,
-          operationType: 'SET_CHORD_PROGRESSION',
-          lockedInvariants: ['Drum Kit Groove', 'Scale: C Minor'],
-          mutableParams: ['Keys Voice Leading', 'Chord Extensions'],
-        },
-      ];
-    }
+      const proposal = answer.actionProposal;
+      const options: ProposalOption[] | undefined = proposal
+        ? [
+            {
+              id: proposal.id,
+              title: proposal.title,
+              description: proposal.description,
+              targetParameter: proposal.category,
+              proposedValue: proposal.proposedChanges.actionSummary,
+              operationType: proposal.category,
+              lockedInvariants:
+                proposal.proposedChanges.realizationCandidate?.preservedProperties || [],
+              mutableParams:
+                proposal.proposedChanges.realizationCandidate?.modifiedProperties || [],
+              apply: proposal.proposedChanges.dspSettings
+                ? {
+                    dspSettings: proposal.proposedChanges.dspSettings,
+                    summary: proposal.proposedChanges.actionSummary,
+                  }
+                : undefined,
+            },
+          ]
+        : undefined;
 
-    setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        { sender: 'intelligence', text: answer.content, options, timestamp: Date.now() },
+      ]);
+    } catch (err) {
+      // Say what went wrong. A reasoning failure that renders as a confident
+      // answer is the failure mode this whole pass exists to remove.
       setMessages((prev) => [
         ...prev,
         {
           sender: 'intelligence',
-          text: replyText,
-          options: proposalOptions.length > 0 ? proposalOptions : undefined,
+          text: `I couldn't answer that: ${err instanceof Error ? err.message : String(err)}`,
           timestamp: Date.now(),
         },
       ]);
-    }, 600);
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -397,6 +369,7 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
           {/* Prominent "Ask Studio Intelligence" Prompt Bar Right At The Top */}
           <div className="flex items-center space-x-1.5 bg-slate-900 border border-amber-500/40 rounded-xl p-1 shadow-lg shadow-amber-500/5">
             <input
+              id="intelligence-input"
               type="text"
               value={promptInput}
               onChange={(e) => setPromptInput(e.target.value)}
@@ -409,8 +382,9 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
             />
 
             <button
+              id="intelligence-ask"
               onClick={() => handleSendPrompt()}
-              disabled={!promptInput.trim()}
+              disabled={!promptInput.trim() || isThinking}
               className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-black text-[10px] flex items-center space-x-1 transition cursor-pointer shadow-md"
             >
               <Send className="w-3 h-3" />
@@ -545,7 +519,7 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
                       : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-none space-y-2'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                  <div className={`whitespace-pre-wrap${msg.sender === 'intelligence' ? ' intelligence-reply' : ''}`}>{msg.text}</div>
 
                   {/* Render Action Proposal Cards if present */}
                   {msg.options && (
@@ -557,8 +531,8 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
                         >
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-amber-400 text-xs">{opt.title}</span>
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold">
-                              {opt.confidence}% MATCH
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-bold">
+                              {opt.operationType.replace(/_/g, ' ')}
                             </span>
                           </div>
 
