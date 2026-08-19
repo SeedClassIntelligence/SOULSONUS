@@ -151,7 +151,35 @@ async function openVault(page) {
     `909 ${with909.lufs} LUFS / ${with909.peak} dBFS · 808 sub ${with808.lufs} LUFS / ${with808.peak} dBFS`
   );
 
-  // ---- 5. it is one undo ----
+  // ---- 5. the search box ranks, and says why ----
+  console.log('\n-- the search --');
+  const box = page.locator('[data-testid="vault-search"]').first();
+  await box.scrollIntoViewIfNeeded();
+  // Two words, neither of them a substring of any single field together. The
+  // old filter tested the query as one literal phrase, so this matched nothing.
+  await box.fill('analog saturated');
+  await page.waitForTimeout(600);
+  const shown = await page.locator('[data-testid^="vault-sound-"]').count();
+  check('a multi-word query returns results', shown > 0, `${shown} presets — the old substring filter returned 0`);
+  const firstCard = await page.locator('[data-testid^="vault-sound-"]').first().innerText();
+  check('and each result says what it matched', /matched /.test(firstCard), firstCard.split('\n').filter(Boolean).pop() || '');
+  check(
+    'no percentage is shown for the match',
+    !/\d+%/.test(firstCard),
+    /\d+%/.test(firstCard) ? firstCard.match(/\d+%/g).join(', ') : 'none'
+  );
+
+  await box.fill('bagpipes theremin');
+  await page.waitForTimeout(600);
+  const none = await page.locator('[data-testid^="vault-sound-"]').count();
+  check('a query matching nothing shows nothing', none === 0, `${none} presets`);
+  await box.fill('');
+  // Undo steps aside for genuine text entry, so leave the search box before
+  // pressing it -- with focus still in there the guard is doing its job.
+  await box.blur();
+  await page.waitForTimeout(500);
+
+  // ---- 6. it is one undo ----
   console.log('\n-- and it is undoable --');
   const committed = await kick(page);
   await page.keyboard.press('Control+z');

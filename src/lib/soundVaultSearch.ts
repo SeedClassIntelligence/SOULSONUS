@@ -101,6 +101,43 @@ const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
  */
 const MATCH_WEIGHT = { category: 3, name: 2.5, tag: 2 } as const;
 
+/**
+ * The same ranking, over anything with searchable text.
+ *
+ * The vault browser in the workstation carries its own catalogue and did its
+ * own `includes()` filter, so this module ranked a different six entries that
+ * nothing on screen ever saw. One ranking, used by both.
+ */
+export function rankByTerms<T>(
+  query: string,
+  items: T[],
+  fields: (item: T) => { category: string; name: string; tags: string[] }
+): { item: T; matchedTerms: { term: string; on: 'category' | 'name' | 'tag' }[]; matchWeight: number }[] {
+  const terms = [...new Set(query.toLowerCase().split(/[\s,._\-]+/).filter(Boolean))];
+  if (!terms.length) return items.map((item) => ({ item, matchedTerms: [], matchWeight: 0 }));
+
+  return items
+    .map((item) => {
+      const f = fields(item);
+      const name = f.name.toLowerCase();
+      const category = f.category.toLowerCase();
+      const tags = f.tags.map((t) => t.toLowerCase());
+      const matchedTerms: { term: string; on: 'category' | 'name' | 'tag' }[] = [];
+      for (const term of terms) {
+        if (category === term || category.includes(term)) matchedTerms.push({ term, on: 'category' });
+        else if (name.includes(term)) matchedTerms.push({ term, on: 'name' });
+        else if (tags.some((t) => t.includes(term))) matchedTerms.push({ term, on: 'tag' });
+      }
+      return {
+        item,
+        matchedTerms,
+        matchWeight: matchedTerms.reduce((n, m) => n + MATCH_WEIGHT[m.on], 0),
+      };
+    })
+    .filter((r) => r.matchWeight > 0)
+    .sort((a, b) => b.matchWeight - a.matchWeight);
+}
+
 function matchTerms(query: string, entry: VaultAcousticEntry) {
   const terms = [...new Set(query.toLowerCase().split(/[\s,._\-]+/).filter(Boolean))];
   const name = entry.name.toLowerCase();

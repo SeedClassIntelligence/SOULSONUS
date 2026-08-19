@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Track, AutomationLane, AutomationPoint, InstrumentParameters, TrackDspSettings } from '../types/daw';
 import { audioEngine } from '../audio/audioEngine';
+import { rankByTerms } from '../lib/soundVaultSearch';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { productionHistory, ProductionOperation } from '../lib/productionOperations';
 import {
@@ -231,15 +232,21 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
 
   // Sub-genres available for filtering
   const availableSubGenres = ['ALL', ...Array.from(new Set(vaultList.map((v) => v.category)))];
-  const filteredSounds = vaultList.filter((s) => {
-    const matchesCategory = selectedSubGenreFilter === 'ALL' || s.category === selectedSubGenreFilter;
-    const matchesQuery = semanticQuery
-      ? s.name.toLowerCase().includes(semanticQuery.toLowerCase()) ||
-        s.subGenre.toLowerCase().includes(semanticQuery.toLowerCase()) ||
-        s.character.toLowerCase().includes(semanticQuery.toLowerCase())
-      : true;
-    return matchesCategory && matchesQuery;
-  });
+  // One ranking, shared with the vault registry. This used to be a substring
+  // test against three fields, which meant "punchy 80Hz thump" matched nothing
+  // at all -- a multi-word query only ever matched as a literal phrase.
+  const inCategory = vaultList.filter(
+    (v) => selectedSubGenreFilter === 'ALL' || v.category === selectedSubGenreFilter
+  );
+  const ranked = semanticQuery.trim()
+    ? rankByTerms(semanticQuery, inCategory, (v) => ({
+        category: v.category,
+        name: v.name,
+        tags: [v.subGenre, v.character, v.freqRange, v.vaultLabel],
+      }))
+    : inCategory.map((item) => ({ item, matchedTerms: [] as { term: string; on: 'category' | 'name' | 'tag' }[], matchWeight: 0 }));
+  const filteredSounds = ranked.map((r) => r.item);
+  const matchReason = new Map(ranked.map((r) => [r.item.id, r.matchedTerms]));
 
   /**
    * Auditions a sound by actually making it.
@@ -883,7 +890,8 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                   type="text"
                   value={semanticQuery}
                   onChange={(e) => setSemanticQuery(e.target.value)}
-                  placeholder="E04 Search: 'punchy 80Hz thump'..."
+                  data-testid="vault-search"
+                  placeholder="Search: punchy analog sub…"
                   className="bg-transparent text-xs text-slate-200 focus:outline-none w-56 font-mono"
                 />
               </div>
@@ -945,6 +953,12 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                     <span>{snd.subGenre}</span>
                     <span className="text-slate-400">Audition 🔊</span>
                   </div>
+                  {/* Why this one came up, rather than a score for how much. */}
+                  {(matchReason.get(snd.id) || []).length > 0 && (
+                    <div className="text-[9px] text-amber-300/80 font-mono pt-1">
+                      matched {(matchReason.get(snd.id) || []).map((m) => m.term).join(', ')}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
