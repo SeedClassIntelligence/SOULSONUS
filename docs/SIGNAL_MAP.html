@@ -310,8 +310,8 @@
     <h1>SoulSonus Signal Map</h1>
     <p class="standfirst">Every component in the six rooms, sorted by whether it actually processes anything. Consolidated from all prior verification passes and re-checked against the current branch, so there is one map to plan from instead of several.</p>
     <div class="stamp">
-      <span>Describes the code at <code>main</code> @ <code>e27b9a5</code> — the branch Netlify deploys (this map is the commit after it)</span>
-      <span>Updated 19 Aug 2026 · Layers 0 and 1 complete · Layer 2 in progress — AUDITION sweep, real export, a working true-peak limiter, per-track EQ, undoable takes, a single undo stack, playable take audio, a working arrangement room a type gate that checks component props, audio on the timeline, and a song that is no longer four bars long have landed</span>
+      <span>Describes the code at <code>main</code> @ <code>972f05c</code> — the branch Netlify deploys (this map is the commit after it)</span>
+      <span>Updated 19 Aug 2026 · Layers 0 and 1 complete · Layer 2 in progress — AUDITION sweep, real export, a working true-peak limiter, per-track EQ, undoable takes, a single undo stack, playable take audio, a working arrangement room, a type gate that checks component props, audio on the timeline, a song that is no longer four bars long, and an E05 seam with no invented scores behind it have landed</span>
       <span>Method: live headless browser + synthetic mic + source read</span>
     </div>
   </header>
@@ -325,24 +325,24 @@
   <section>
     <div class="bridge">
       <div class="cell work">
-        <span class="fig">41</span>
+        <span class="fig">101</span>
         <span class="lab">Working</span>
-        <span class="note">Processes real data end to end. Demonstrated, not assumed. Includes 6 rows fixed during the audit.</span>
+        <span class="note">Processes real data end to end. Demonstrated, not assumed. 52 of these were broken and fixed during the audit.</span>
       </div>
       <div class="cell dark">
-        <span class="fig">2</span>
-        <span class="lab">Real, unplugged</span>
-        <span class="note">Genuine implementation that nothing imports or reaches.</span>
+        <span class="fig">6</span>
+        <span class="lab">Partly / unplugged</span>
+        <span class="note">A real implementation that nothing reaches, or one that works in some paths and not others.</span>
       </div>
       <div class="cell deco">
-        <span class="fig">10</span>
+        <span class="fig">5</span>
         <span class="lab">Decorative</span>
         <span class="note">Presents literals as measurements, or the control does nothing.</span>
       </div>
       <div class="cell none">
-        <span class="fig">6</span>
+        <span class="fig">4</span>
         <span class="lab">Not built</span>
-        <span class="note">The UI implies it, or the shell has a structural gap; no implementation exists.</span>
+        <span class="note">The UI implies it, or the shell has a structural gap; no implementation exists. One row was removed rather than fixed.</span>
       </div>
     </div>
     <div class="legend">
@@ -350,12 +350,12 @@
       <span><span class="pill p-dark">Unplugged</span></span>
       <span><span class="pill p-deco">Decorative</span></span>
       <span><span class="pill p-none">Not built</span></span>
-      <span>Evidence column cites the file and line, or the live test that produced the result. Counts are the pills below, plus one row removed and one partly fixed — 61 in total.</span>
+      <span>Evidence column cites the file and line, or the live test that produced the result. 116 rows in total.</span>
     </div>
   </section>
 
   <section class="callout">
-    <h3>The single largest finding: seven real modules that nothing imports</h3>
+    <h3>Real modules that nothing imports</h3>
     <p>These are not stubs. They contain working implementations — in two cases the exact functionality the UI claims to be performing — and no file in the app references them. Wiring them is far cheaper than building the features they already implement.</p>
     <div class="scroller">
       <table>
@@ -364,7 +364,7 @@
           <tr><td><code>audio/transcriptionEngine.ts</code></td><td>245 lines of audio-to-note transcription</td><td>Four literal <code>NoteEvent</code>s on audio import</td></tr>
           <tr><td><code>audio/soundfontEngine.ts</code></td><td>SoundFont playback via <code>spessasynth_core</code></td><td>Synth presets only</td></tr>
           <tr><td><code>lib/clapEmbeddingMatcher.ts</code></td><td>CLAP embedding similarity</td><td>Fixed <code>clapMatchScore</code> integers per sample</td></tr>
-          <tr><td><code>lib/inference/demucsClient.ts</code></td><td>Stem-separation client</td><td>Canned stem patterns</td></tr>
+          <tr><td><code>lib/inference/demucsClient.ts</code></td><td>Stem-separation client</td><td>Canned stem patterns &mdash; and it addresses the host directly from the browser, which its CORS policy refuses</td></tr>
           <tr><td><code>lib/studioIntelligenceRouter.ts</code></td><td>Intelligence request routing</td><td>Bypassed</td></tr>
         </tbody>
       </table>
@@ -538,6 +538,27 @@
     </div>
   </section>
 
+  <!-- UNDER THE DAW -->
+  <section class="room">
+    <div class="roomhead">
+      <span class="roomno">Under the DAW</span>
+      <h2>E05 Realization</h2>
+      <span class="roomrole">Not a room. The capability the Co-Producer and the DAW actions reach for</span>
+    </div>
+    <div class="rows">
+      <div class="row"><div class="what">A seam, where there was a bill of materials</div><div><span class="pill p-work">Fixed</span></div><div class="ev">ACE was <em>registered, not integrated</em>: seven manifest records naming repository URLs and a frozen commit, and no client, no endpoint invocation, no audio return path. There is now one interface &mdash; <code>E05RealizationProvider</code> &mdash; with the six task types, which of them lock output length to the source, and what each needs. A local host or a native backend plugs in behind it without a caller changing</div></div>
+      <div class="row"><div class="what">The browser never addresses ACE</div><div><span class="pill p-work">Working</span></div><div class="ev">Not a preference. ACE's own CORS policy admits only localhost origins, so a call from a deployed browser is refused before the model is consulted &mdash; which is exactly how the Demucs client failed, and it failed quietly. Requests go to a SoulSonus service route which holds the endpoint and the key server-side; source audio goes up as multipart, because we hold Blobs in a browser and not files on the inference host. Live: nothing in the served page names the host or the key</div></div>
+      <div class="row"><div class="what">The old client could never have finished a job</div><div><span class="pill p-work">Fixed</span></div><div class="ev">It compared ACE's status against the strings <code>'SUCCESS'</code> and <code>'FAILED'</code>. The server sends integers &mdash; 0 running, 1 succeeded, 2 failed &mdash; so a completed job would have polled until it timed out and then reported a timeout. No type could catch this; it is checked directly now, including that a status of <code>"SUCCESS"</code> is <em>not</em> read as done</div></div>
+      <div class="row"><div class="what">Duration locking is carried in the contract</div><div><span class="pill p-work">Working</span></div><div class="ev">Four of the six tasks return audio the same length as the audio sent in. That is timeline alignment for free, and it is the property that makes ACE usable from a sequencer at all, so it is named in the type rather than left as folklore: <code>cover</code>, <code>repaint</code>, <code>extract</code> and <code>lego</code> are duration-locked; <code>text2music</code> invents a length and must be placed deliberately</div></div>
+      <div class="row"><div class="what">Five demo candidates with invented scores</div><div><span class="pill p-work">Fixed</span></div><div class="ev">The Co-Producer hand-wrote five candidates, each carrying its own literal preservation scores &mdash; <code>0.978</code> rhythm, <code>0.970</code> timing, <code>0.965</code> pitch contour, and four other sets &mdash; identical for every creator, every performance and every take, because they were constants in the source. All five are gone; a proposal is now built in one place and carries no score at all</div></div>
+      <div class="row"><div class="what">The audition offered a file that was never written</div><div><span class="pill p-work">Fixed</span></div><div class="ev">Every candidate's <code>audioArtifactUrl</code> was built from <code>Date.now()</code>, so it named a fresh filename that could not exist; others pointed at <code>/audio/samples/</code> and <code>/audio/instruments/</code>, directories that are not in the build. Live: all three return the SPA's HTML, not audio. No route names an artifact it has not rendered</div></div>
+      <div class="row"><div class="what">An unmeasured candidate passed the contract by accident</div><div><span class="pill p-work">Fixed</span></div><div class="ev">A missing score defaulted to <code>0.9</code>, which sits above most thresholds. And an unrealized candidate was judged anyway, so the drawer reported that a property had missed its threshold in audio that had never been rendered. A contract is a statement about rendered audio, so it is only evaluated once there is some &mdash; and <code>passedIntentContract</code> is now nullable, so &ldquo;unevaluated&rdquo; is a state rather than a <code>false</code></div></div>
+      <div class="row"><div class="what">A score can no longer hide its own provenance</div><div><span class="pill p-work">Working</span></div><div class="ev">Every candidate carries a required <code>scoreBasis</code>: MEASURED, BY_CONSTRUCTION or NOT_MEASURED. Deterministic routes keep values but only <code>1</code> or <code>0</code>, shown as &ldquo;kept&rdquo; / &ldquo;not kept&rdquo; &mdash; a near-miss decimal is the shape a measurement has and would be read as one. Live: no percentage appears anywhere in the drawer, and the commit button is disabled with a reason</div></div>
+      <div class="row"><div class="what">The dock invented numbers when it had none</div><div><span class="pill p-work">Fixed</span></div><div class="ev">Three tiles read <code>preservationScores?.rhythm || 0.978</code>, so a candidate carrying no scores at all displayed 97.8% / 97.0% / 96.5% in confident green. There is no fallback now: no measurement, no number</div></div>
+      <div class="row"><div class="what">First real <code>extract</code></div><div><span class="pill p-none">Not built</span></div><div class="ev">The seam is in and the timeline can hold what comes back, now that clips exist. What remains is a running host with the pinned <code>acestep-v15-xl-base</code> checkpoint &mdash; the only XL variant exposing Extract, Lego and Complete &mdash; and &ge;24&nbsp;GB of VRAM. Cannot be settled without a machine</div></div>
+    </div>
+  </section>
+
   <!-- CROSS-CUTTING -->
   <section class="room">
     <div class="roomhead">
@@ -561,7 +582,7 @@
       <div class="row"><div class="what"><code>ContextualToolPanel</code> was imported by nothing</div><div><span class="pill p-work">Fixed</span></div><div class="ev">It held <code>IntelligenceLaneInspector</code> and the Create room's FX tab, neither reachable in the current layout. The panel has been deleted rather than left as a broken duplicate; the inspector remains in the tree, still unmounted</div></div>
       <div class="row"><div class="what">Nothing reached the deployed site until now<small>Ten commits of fixes sat unmerged</small></div><div><span class="pill p-work">Fixed</span></div><div class="ev">Netlify builds <code>main</code>, which was still at <code>abc3cbe</code> from before the audit. Clicking into the studio gave 0 elements and <code>ReferenceError: useStudioSession is not defined</code> — the round-one crash, still live. <code>main</code> fast-forwarded to the audited branch and verified rendering 319 controls before pushing</div></div>
       <div class="row"><div class="what">Favicon and page metadata</div><div><span class="pill p-work">Fixed</span></div><div class="ev">A 404 on <code>/favicon.ico</code> was the last console error on a clean load, and left the browser tab blank. Console is now clean end to end</div></div>
-      <div class="row"><div class="what">Verification harness</div><div><span class="pill p-work">Working</span></div><div class="ev">scripts/live-verification — 37 tests driving real Chromium with a synthetic mic, reading committed React state, plus scripts/dsp for arithmetic that needs no browser</div></div>
+      <div class="row"><div class="what">Verification harness</div><div><span class="pill p-work">Working</span></div><div class="ev">scripts/live-verification — 38 tests driving real Chromium with a synthetic mic, reading committed React state, plus scripts/dsp for arithmetic that needs no browser</div></div>
     </div>
   </section>
 
@@ -570,8 +591,8 @@
     <h2>Where the leverage is</h2>
     <p class="lede">Layers 0 and 1 are complete, and Layer 2 has landed: the AUDITION sweep, clips on the timeline, and the song length itself are all recorded above. The timeline is no longer four bars long. What remains is ordered by value returned per unit of work, given what already exists on disk.</p>
     <ol class="next">
-      <li><div><strong>The ACE service adapter.</strong><p>ACE is registered, not integrated: a bill of materials rather than a runtime. The next real step is a thin server-side adapter with the browser routed through the SoulSonus service layer &mdash; never straight at ACE &mdash; and a first proof on <code>extract</code>, which is the task whose output the timeline can already hold now that clips exist. Blocked only on a running host.</p></div></li>
-      <li><div><strong>Retire the demo candidates.</strong><p>The candidate path still carries invented IDs and literal preservation scores. Once <code>extract</code> returns something real, those come out; until then they are the last decorative numbers left in a production path.</p></div></li>
+      <li><div><strong>A host, and the first real <code>extract</code>.</strong><p>Everything on our side of the seam is in place and tested without a network. What is left is not code: a machine with the pinned checkpoint and enough VRAM. Until one exists, the honest status of realization is &ldquo;can be attempted, has not been&rdquo; &mdash; and the app now says exactly that rather than showing a score.</p></div></li>
+      <li><div><strong>The Session Band role dimension.</strong><p>Instrument-specialist agents under the same governance the Co-Producer already uses. It needs a role dimension on the router and nothing from ACE, so it can start before a host exists.</p></div></li>
       <li><div><strong>Turn on <code>strict</code>.</strong><p>The type gate now checks props, but <code>strictNullChecks</code> is still off, so an optional field read without a guard is invisible. That is the next tier of the same class of bug, and the same argument applies: it will surface a batch at once, which is a reason to schedule it rather than fold it into something else.</p></div></li>
     </ol>
   </section>
