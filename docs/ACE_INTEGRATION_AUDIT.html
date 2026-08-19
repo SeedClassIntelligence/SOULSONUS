@@ -1,0 +1,552 @@
+<title>ACE Integration Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground: #f4f4f5;
+    --surface: #ffffff;
+    --sunk: #eceaeb;
+    --ink: #16181a;
+    --muted: #6b6467;
+    --faint: #8a8286;
+    --rule: #e0dcdd;
+    --rule-strong: #c6c0c1;
+    --accent: #9b2c3f;
+    --accent-soft: #f6e8ea;
+
+    --e-fork: #2e6b41;
+    --e-fork-bg: #e7f2ea;
+    --e-ours: #1d5a86;
+    --e-ours-bg: #e4eef6;
+    --e-open: #8a6410;
+    --e-open-bg: #f7eedc;
+
+    --display: "Newsreader", Georgia, "Times New Roman", serif;
+    --body: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #131112;
+      --surface: #1c191b;
+      --sunk: #221e20;
+      --ink: #ece8e9;
+      --muted: #a0999c;
+      --faint: #7c7478;
+      --rule: #2b2629;
+      --rule-strong: #413a3d;
+      --accent: #ef8a99;
+      --accent-soft: #2c1a1e;
+
+      --e-fork: #74d69a;
+      --e-fork-bg: #16281d;
+      --e-ours: #7fc2ec;
+      --e-ours-bg: #142430;
+      --e-open: #f0c26e;
+      --e-open-bg: #2b2211;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #131112;
+    --surface: #1c191b;
+    --sunk: #221e20;
+    --ink: #ece8e9;
+    --muted: #a0999c;
+    --faint: #7c7478;
+    --rule: #2b2629;
+    --rule-strong: #413a3d;
+    --accent: #ef8a99;
+    --accent-soft: #2c1a1e;
+
+    --e-fork: #74d69a;
+    --e-fork-bg: #16281d;
+    --e-ours: #7fc2ec;
+    --e-ours-bg: #142430;
+    --e-open: #f0c26e;
+    --e-open-bg: #2b2211;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 4rem) clamp(1rem, 4vw, 2.25rem) 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.25rem, 4vw, 3.25rem);
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead { display: flex; flex-direction: column; gap: 0.9rem; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .masthead h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(2.2rem, 5.5vw, 3.5rem);
+    line-height: 1.04;
+    letter-spacing: -0.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .standfirst { max-width: 64ch; font-size: 1.05rem; color: var(--muted); margin: 0; }
+  .stamp {
+    font-family: var(--mono);
+    font-size: 0.73rem;
+    color: var(--faint);
+    border-top: 1px solid var(--rule);
+    padding-top: 0.8rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.5rem;
+  }
+
+  /* ---------- verdict ---------- */
+  .verdict {
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-left: 4px solid var(--accent);
+    padding: 1.2rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+  .verdict h2 { font-size: 1.15rem; }
+
+  /* ---------- generic ---------- */
+  section { display: flex; flex-direction: column; gap: 1rem; }
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.6rem;
+    letter-spacing: -0.012em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h3 { font-family: var(--display); font-weight: 600; font-size: 1.12rem; margin: 0; text-wrap: balance; }
+  p { margin: 0; max-width: 70ch; }
+  .lede { color: var(--muted); }
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--sunk);
+    padding: 0.08em 0.34em;
+    border-radius: 2px;
+  }
+  a { color: var(--accent); }
+
+  /* ---------- answer key ---------- */
+  .scroller { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.88rem; min-width: 560px; }
+  th, td {
+    text-align: left;
+    padding: 0.55rem 1rem 0.55rem 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+    font-weight: 500;
+  }
+  td.q { font-family: var(--mono); color: var(--faint); font-variant-numeric: tabular-nums; width: 3ch; }
+
+  /* ---------- answers ---------- */
+  .answers { display: flex; flex-direction: column; gap: 0; }
+  .answer {
+    display: grid;
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+    gap: 0.6rem 1.1rem;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--rule);
+  }
+  .answer .num {
+    font-family: var(--mono);
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--accent);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    padding-top: 0.15rem;
+  }
+  .answer .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 0.8rem; }
+  .answer .body { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.45rem;
+    white-space: nowrap;
+    border: 1px solid currentColor;
+  }
+  .c-fork { color: var(--e-fork); background: var(--e-fork-bg); }
+  .c-ours { color: var(--e-ours); background: var(--e-ours-bg); }
+  .c-open { color: var(--e-open); background: var(--e-open-bg); }
+
+  .facts {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.7;
+    padding: 0.85rem 1rem;
+    overflow-x: auto;
+    color: var(--muted);
+  }
+  .facts strong { color: var(--ink); font-weight: 600; }
+  .facts .path { color: var(--accent); }
+
+  ul { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: 0.35rem; max-width: 70ch; }
+  li::marker { color: var(--faint); }
+
+  /* ---------- slice ---------- */
+  ol.slice { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0; counter-reset: step; }
+  ol.slice li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 2.4rem minmax(0, 1fr);
+    gap: 0.9rem;
+    padding: 0.85rem 0;
+    border-top: 1px solid var(--rule);
+  }
+  ol.slice li::before {
+    content: counter(step);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--surface);
+    background: var(--accent);
+    width: 1.65rem;
+    height: 1.65rem;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+  }
+  ol.slice strong { font-weight: 600; }
+  ol.slice p { font-size: 0.92rem; color: var(--muted); margin-top: 0.15rem; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.2rem;
+    align-items: center;
+    font-size: 0.82rem;
+    color: var(--muted);
+    border-top: 1px solid var(--rule);
+    padding-top: 0.9rem;
+  }
+
+  @media (max-width: 620px) {
+    .answer { grid-template-columns: 1fr; }
+    .answer .num { font-size: 1.1rem; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Integration audit · E05 realization backend</div>
+    <h1>The ACE Seam</h1>
+    <p class="standfirst">What stands between the capability registry and a working ACE runtime inside SoulSonus — read from the pinned fork rather than recalled, with every answer marked by where its evidence came from.</p>
+    <div class="stamp">
+      <span>Fork <code>seedclassintelligence/ace-step-1.5</code> @ <code>6d467e4</code></span>
+      <span>SoulSonus <code>main</code> @ <code>028e34f</code></span>
+      <span>19 Aug 2026</span>
+    </div>
+  </header>
+
+  <section class="verdict">
+    <h2>The finding in one paragraph</h2>
+    <p>ACE is not integrated. <code>src/lib/capabilityRegistry.ts</code> holds seven manifest records naming repository URLs, a frozen commit, a checkpoint and source-file paths — and nothing in the app calls any of it. There is no client, no endpoint invocation, no audio return path. One entry is <code>CAP-003_REST_API</code> pointing at <code>acestep/server/api.py</code>; no client for it exists.</p>
+    <p>The good news is larger than the gap. The fork ships a complete asynchronous HTTP service, the checkpoint already named in our registry is the one variant that supports the surgical multi-track tasks, and — the detail that matters most for a DAW — <strong>ACE locks output duration to the source audio for cover, repaint, lego and extract</strong>. A generated part comes back the same length as the context you sent it. That is timeline alignment for free.</p>
+    <p>What is genuinely missing on our side is one structural type: a first-class audio clip. Everything else needed for the first vertical slice — candidate governance, audition, commit, reject, lineage, undo — already exists in some form.</p>
+  </section>
+
+  <section>
+    <h2>Answer key</h2>
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Question</th><th>Short answer</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="q">1</td><td>Which checkpoints are present or obtainable?</td><td>None in-repo; all pulled at runtime from Hugging Face or ModelScope</td></tr>
+          <tr><td class="q">2</td><td>Which task types does our checkpoint support?</td><td><code>xl-base</code> supports all six, and is the only XL variant that does</td></tr>
+          <tr><td class="q">3</td><td>Which Python entry point?</td><td><code>acestep.inference.generate_music()</code>, with two handlers</td></tr>
+          <tr><td class="q">4</td><td>Existing REST server, or build a wrapper?</td><td>Run theirs; wrap it thinly. Do not reimplement</td></tr>
+          <tr><td class="q">5</td><td>What inputs does each task need?</td><td>Four of six need only <code>src_audio</code> + <code>instruction</code></td></tr>
+          <tr><td class="q">6</td><td>What comes back?</td><td>File URLs plus resolved metadata, seeds and model names</td></tr>
+          <tr><td class="q">7</td><td>Runtime requirements?</td><td>≥24 GB VRAM for the tasks we actually want</td></tr>
+          <tr><td class="q">8</td><td>Where does the 5Hz LM participate?</td><td>Skipped for cover, repaint, extract — by task type, in code</td></tr>
+          <tr><td class="q">9</td><td>Cleanest seam for our own planner?</td><td>Already a seam: the LM only fills fields we can fill ourselves</td></tr>
+          <tr><td class="q">10</td><td>What DAW state is missing?</td><td><code>AudioClip</code>. Almost everything else exists</td></tr>
+          <tr><td class="q">11</td><td>Smallest honest vertical slice?</td><td>Extract one stem from an existing take, six steps</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="legend">
+      <span class="chip c-fork">From the fork</span> read in the cloned repository
+      <span class="chip c-ours">From our code</span> read in SoulSonus
+      <span class="chip c-open">Needs a machine</span> cannot be settled without a GPU
+    </div>
+  </section>
+
+  <section>
+    <h2>The eleven answers</h2>
+
+    <div class="answers">
+
+      <div class="answer">
+        <div class="num">01</div>
+        <div class="body">
+          <div class="head"><h3>Which checkpoints are present or obtainable</h3><span class="chip c-fork">From the fork</span></div>
+          <p>No weights ship in the repository — there is no <code>checkpoints/</code> directory and nothing under LFS. Models are fetched at first run through <code>huggingface_hub.snapshot_download</code>, with ModelScope as an alternate source, into a directory set by <code>ACESTEP_CHECKPOINTS_DIR</code>.</p>
+          <div class="facts">
+<strong>Obtainable DiT:</strong> acestep-v15-base · -sft · -turbo (2B) — acestep-v15-xl-base · -xl-sft · -xl-turbo (4B)<br>
+<strong>Obtainable LM:</strong> acestep-5Hz-lm-0.6B · -1.7B · -4B<br>
+<strong>Downloader:</strong> <span class="path">acestep/api/model_download.py</span><br>
+<strong>Our registry names:</strong> acestep-v15-xl-base — a real, published checkpoint
+          </div>
+          <p>Whether that checkpoint is already on any machine of ours is not answerable from source. <span class="chip c-open">Needs a machine</span></p>
+        </div>
+      </div>
+
+      <div class="answer">
+        <div class="num">02</div>
+        <div class="body">
+          <div class="head"><h3>Which task types our checkpoint supports</h3><span class="chip c-fork">From the fork</span></div>
+          <p>The model zoo table in <code>README.md</code> is explicit, and it vindicates the choice already recorded in the registry: <strong><code>acestep-v15-xl-base</code> is the only XL variant that exposes Extract, Lego and Complete.</strong> The SFT and Turbo variants stop at text2music, cover and repaint.</p>
+          <div class="facts">
+<strong>xl-base</strong> &nbsp;text2music ✓ &nbsp;cover ✓ &nbsp;repaint ✓ &nbsp;<strong>extract ✓ &nbsp;lego ✓ &nbsp;complete ✓</strong> &nbsp;· 50 steps · CFG ✓<br>
+<strong>xl-sft</strong> &nbsp;&nbsp;text2music ✓ &nbsp;cover ✓ &nbsp;repaint ✓ &nbsp;extract ✗ &nbsp;lego ✗ &nbsp;complete ✗<br>
+<strong>xl-turbo</strong> text2music ✓ &nbsp;cover ✓ &nbsp;repaint ✓ &nbsp;extract ✗ &nbsp;lego ✗ &nbsp;complete ✗ · 8 steps · no CFG
+          </div>
+          <p>The three tasks only base exposes are precisely the three that fit a multi-track studio. Whoever pinned that checkpoint chose correctly.</p>
+        </div>
+      </div>
+
+      <div class="answer">
+        <div class="num">03</div>
+        <div class="body">
+          <div class="head"><h3>Which Python entry point to invoke</h3><span class="chip c-fork">From the fork</span></div>
+          <p>One function, two long-lived handlers. The handlers hold the loaded models; the function is stateless per call.</p>
+          <div class="facts">
+<span class="path">from acestep.handler import AceStepHandler</span><br>
+<span class="path">from acestep.llm_inference import LLMHandler</span><br>
+<span class="path">from acestep.inference import GenerationParams, GenerationConfig, generate_music</span><br><br>
+<strong>generate_music(</strong>dit_handler, llm_handler, params, config, save_dir=None, progress=None<strong>) -&gt; GenerationResult</strong>
+          </div>
+          <p>Defined at <code>acestep/inference.py:503</code>. Helper functions <code>understand_music</code>, <code>create_sample</code> and <code>format_sample</code> live alongside it for analysis and prompt shaping.</p>
+        </div>
+      </div>
+
+      <div class="answer">
+        <div class="num">04</div>
+        <div class="body">
+          <div class="head"><h3>Existing REST server, or our own wrapper</h3><span class="chip c-fork">From the fork</span></div>
+          <p>A full asynchronous job service already exists. Run it; do not rebuild it. Our wrapper's job is translation and governance, not inference orchestration.</p>
+          <div class="facts">
+<strong>POST /release_task</strong> &nbsp;submit, returns <code>task_id</code> and queue position<br>
+<strong>POST /query_result</strong> &nbsp;batch poll — status 0 running · 1 succeeded · 2 failed<br>
+<strong>GET&nbsp; /v1/audio?path=</strong> &nbsp;download the rendered file<br>
+<strong>GET&nbsp; /v1/models</strong> &nbsp;list loaded checkpoints<br>
+<strong>POST /format_input</strong> &nbsp;LM caption and lyric shaping<br><br>
+<strong>Launch:</strong> <span class="path">./run_api_server.sh</span> · default port 8001 · optional <code>ACESTEP_API_KEY</code><br>
+<strong>Accepts:</strong> JSON with server-side paths, <em>or</em> multipart upload of <code>src_audio</code> / <code>reference_audio</code>
+          </div>
+          <p>Multipart upload is the important half for us: SoulSonus holds Blobs in a browser, not files on the inference host, so we post the bytes and never think about shared filesystems.</p>
+          <p><strong>One trap, and we have hit its twin before.</strong> CORS in <code>acestep/api/route_setup.py:62</code> allows only <code>localhost</code> and <code>127.0.0.1</code> origins. A browser on any other host is refused before the model is ever consulted — exactly how the Demucs client failed. Either the service runs beside the app, or our wrapper is the only thing the browser talks to.</p>
+        </div>
+      </div>
+
+      <div class="answer">
+        <div class="num">05</div>
+        <div class="body">
+          <div class="head"><h3>What inputs each task requires</h3><span class="chip c-fork">From the fork</span></div>
+          <p>Four of the six need nothing more than source audio and an instruction string. That is a low bar for a first integration.</p>
+          <div class="facts">
+<strong>text2music</strong> &nbsp;caption · lyrics · optional bpm, key_scale, time_signature, duration (10–600 s)<br>
+<strong>cover</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;src_audio · caption · audio_cover_strength (0.0–1.0; 0.2 ≈ style transfer)<br>
+<strong>repaint</strong> &nbsp;&nbsp;&nbsp;&nbsp;src_audio · repainting_start · repainting_end (−1 = to end) · caption<br>
+<strong>lego</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;src_audio · instruction "Generate the {TRACK} track based on the audio context:" · caption<br>
+<strong>extract</strong> &nbsp;&nbsp;&nbsp;&nbsp;src_audio · instruction "Extract the {TRACK} track from the audio:"<br>
+<strong>complete</strong> &nbsp;&nbsp;&nbsp;src_audio · instruction "Complete the input track with drums, bass, guitar:" · caption<br><br>
+<strong>Track vocabulary:</strong> vocals · backing_vocals · drums · bass · guitar · keyboard · percussion · strings · synth · fx · brass · woodwinds
+          </div>
+          <p>That vocabulary is worth noting against our own <code>ExtractionTargetClass</code> union, which now carries the same names plus <code>music</code> and <code>keys</code>. The overlap is close enough to map directly, and the two extras are ours, not ACE's.</p>
+        </div>
+      </div>
+
+      <div class="answer">
+        <div class="num">06</div>
+        <div class="body">
+          <div class="head"><h3>What each task returns</h3><span class="chip c-fork">From the fork</span></div>
+          <p>Audio plus the metadata the model actually resolved — which matters, because on some tasks the model overrides what you asked for.</p>
+          <div class="facts">
+<strong>In-process:</strong> GenerationResult { audios[], status_message, extra_outputs, success, error }<br>
+<strong>Over HTTP:</strong> result[] { file, status, metas{bpm, duration, keyscale, timesignature, genres},<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;generation_info, seed_value, lm_model, dit_model }<br>
+<strong>Formats:</strong> flac · wav · wav32 · mp3 · opus · aac &nbsp;— take <code>flac</code> or <code>wav32</code><br>
+<strong>Batch:</strong> up to 8 renders per request; every one is a separate candidate
+          </div>
+          <p><strong>The alignment gift.</strong> At <code>acestep/inference.py:819</code>, duration is forced to the source length for <code>cover</code>, <code>repaint</code>, <code>lego</code> and <code>extract</code> — whatever the caller passed is discarded. Send four bars of context, get four bars back. The returned audio drops onto the timeline at a known start with a known length, with no stretching and no guesswork.</p>
+          <p>The exception is <code>complete</code>, which is not in that list. Treat its output as a clip of unknown length until measured.</p>
+        </div>
+      </div>
+
+      <div class="answer">
+        <div class="num">07</div>
+        <div class="body">
+          <div class="head"><h3>Runtime requirements</h3><span class="chip c-fork">From the fork</span></div>
+          <p>The tasks we want are the expensive ones. This is the line item that decides whether ACE is a local feature or a hosted service.</p>
+          <div class="facts">
+<strong>≥24 GB</strong> &nbsp;xl-base for extract / lego / complete + <code>acestep-5Hz-lm-4B</code> — everything resident<br>
+<strong>20–24 GB</strong> &nbsp;XL turbo/sft, LM 1.7B, vLLM backend<br>
+<strong>≥12 GB</strong> &nbsp;XL runs with CPU offload and quantization<br>
+<strong>≤6 GB</strong> &nbsp;2B turbo only, LM disabled<br><br>
+<strong>XL weights:</strong> ~9 GB bf16 (vs ~4.7 GB for the 2B family) · 50 inference steps, not 8
+          </div>
+          <p>Read plainly: a creator's laptop will not run the surgical tasks. ACE belongs behind a service we host, and the wrapper should be written from the start as if the model is on another machine — because it will be.</p>
+        </div>
+      </div>
+
+      <div class="answer">
+        <div class="num">08</div>
+        <div class="body">
+          <div class="head"><h3>Where the 5Hz LM participates</h3><span class="chip c-fork">From the fork</span></div>
+          <p>The split is hard-coded by task type, not configurable, and it is in our favour.</p>
+          <div class="facts">
+<span class="path">acestep/inference.py:612</span><br>
+skip_lm_tasks = {"cover", "cover-nofsq", "repaint", "extract"}<br><br>
+<strong>LM bypassed entirely:</strong> cover · repaint · extract — <code>thinking=true</code> has no effect<br>
+<strong>LM participates:</strong> text2music · lego · complete<br><br>
+<strong>Two distinct jobs when it does run:</strong><br>
+&nbsp;&nbsp;Phase 1a — fill missing metadata: bpm, key_scale, time_signature, duration, caption, language<br>
+&nbsp;&nbsp;Phase 1b — generate <code>audio_code_string</code>, the 5 Hz semantic plan, only when <code>thinking=true</code>
+          </div>
+          <p>The code comment on the extract case is instructive: LM-generated captions <em>conflict</em> with the extract instruction and make the model reconstruct its input instead of isolating a stem. On these tasks the planner is not merely unnecessary — it is harmful, and they excluded it for that reason.</p>
+        </div>
+      </div>
+
+      <div class="answer">
+        <div class="num">09</div>
+        <div class="body">
+          <div class="head"><h3>The seam for SoulSonusMusicPlanner</h3><span class="chip c-fork">From the fork</span></div>
+          <p>There is nothing to carve out. The seam is already a parameter boundary, and it is narrow.</p>
+          <div class="facts">
+<strong>Everything the LM produces is a plain field on <code>params</code>:</strong><br>
+&nbsp;&nbsp;bpm · keyscale · timesignature · duration · caption · vocal_language · audio_code_string<br><br>
+<strong>To become the planner, supply them and switch it off:</strong><br>
+&nbsp;&nbsp;thinking=false · use_cot_caption=false · use_cot_language=false · use_cot_metas=false<br><br>
+<strong>Guard at <span class="path">inference.py:634</span>:</strong> use_lm = (thinking or need_lm_for_cot) and initialized and not skip_lm
+          </div>
+          <p>So the replacement lands in three tiers, and only the third is real work:</p>
+          <ul>
+            <li><strong>Already ours.</strong> Repaint, extract and cover take no planner at all. Choosing the region, the stem and the preservation contract <em>is</em> the planning, and SoulSonus does it.</li>
+            <li><strong>Ours by simply filling fields.</strong> Lego and complete need bpm, key, time signature and a caption. We hold all four as session state — the session is a better source than a model guessing from audio.</li>
+            <li><strong>Genuinely open.</strong> Only <code>audio_code_string</code>, the 5 Hz semantic plan, has no equivalent on our side. That single field is the whole substance of a native planner, and it can be deferred indefinitely: leave <code>thinking=false</code> and the DiT runs without it.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="answer">
+        <div class="num">10</div>
+        <div class="body">
+          <div class="head"><h3>What DAW state is missing</h3><span class="chip c-ours">From our code</span></div>
+          <p>Less than expected. The governance shell is built; the timeline representation is not.</p>
+          <div class="facts">
+<strong>Missing outright</strong><br>
+&nbsp;&nbsp;AudioClip — no equivalent exists anywhere in <span class="path">src/types/daw.ts</span><br>
+&nbsp;&nbsp;A track can hold NoteEvents. It cannot hold audio at a position.<br><br>
+<strong>Exists but is the wrong shape</strong><br>
+&nbsp;&nbsp;AudioAsset — a sound-library record (SoundAsset + blob), not an immutable timeline asset<br>
+&nbsp;&nbsp;no sampleRate, channels, hash, or parentAssetIds<br><br>
+<strong>Exists and is usable now</strong><br>
+&nbsp;&nbsp;GenerationCandidate — candidateId, audioAssetId, backend, seed, preservation scores,<br>
+&nbsp;&nbsp;violations, creatorDecision, governanceState, commit transaction, idempotency key<br>
+&nbsp;&nbsp;RealizationCandidateDrawer — mounted, with audition / commit / reject wired<br>
+&nbsp;&nbsp;AssetLineageRecord — written on commit<br>
+&nbsp;&nbsp;History — one stack over tracks and arrangement, with labelled entries
+          </div>
+          <p>The candidate that drawer receives today is fabricated: <code>src/App.tsx:139</code> builds it from an asset id ending <code>_demo</code> and four literal preservation scores, and the lineage record it commits carries <code>sourceAssetId: 'ast_src_orig'</code>. No audio passes through any of it. But the shape is right, the lifecycle is right, and it is mounted — the work is filling it with a real render, not designing it.</p>
+          <p>Your proposed <code>AudioClip</code> and <code>AudioAsset</code> pair is the correct model and I would not change the fields. Two notes from our side: <code>startTick</code> and <code>durationTicks</code> should match the existing <code>NoteEvent</code> tick domain (480 PPQ) so clips and notes share one timebase; and clip audio needs the same treatment take audio just received — the blob persisted in the project snapshot, with the object URL rebuilt on load, because a URL does not survive a reload.</p>
+        </div>
+      </div>
+
+      <div class="answer">
+        <div class="num">11</div>
+        <div class="body">
+          <div class="head"><h3>The smallest honest vertical slice</h3><span class="chip c-ours">From our code</span></div>
+          <p>Not the slice you proposed — a smaller one. <code>extract</code> beats <code>lego</code> as the first proof, for three reasons that all reduce what has to be true on the first attempt.</p>
+          <ul>
+            <li>It needs <strong>no caption, no lyrics, no planner</strong> — one instruction string and a file. The LM never runs, so the whole LM configuration surface stays out of the first test.</li>
+            <li>Its output is <strong>duration-locked to the input</strong>, so clip placement is arithmetic, not judgement.</li>
+            <li>It is <strong>verifiable by measurement</strong>: extract the vocals from a mix we made, and the result must correlate with the vocal we recorded. A generated part can only be judged by ear; an extracted one can be checked.</li>
+          </ul>
+          <p>That last point is what makes it an honest first proof rather than a demo.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Slice one, step by step</h2>
+    <p class="lede">Every step ends in something observable. Nothing here requires a new room, a new workspace, or a redesign of the DAW.</p>
+    <ol class="slice">
+      <li><div><strong>Bounce the source.</strong><p>Render the current project through the existing master bounce and encode it — this already works and needs no change. That file is the <code>src_audio</code>.</p></div></li>
+      <li><div><strong>Post the job.</strong><p>A thin client posts multipart to <code>/release_task</code> with <code>task_type=extract</code>, the bounced file, and <code>instruction="Extract the vocals track from the audio:"</code>, then polls <code>/query_result</code> until status 1 or 2. A failure surfaces as a failure — no placeholder candidate.</p></div></li>
+      <li><div><strong>Fetch and register the asset.</strong><p>Download from <code>/v1/audio</code>, hash the bytes, and store an immutable <code>AudioAsset</code> carrying sampleRate, channels, duration, hash, and the source asset id it came from.</p></div></li>
+      <li><div><strong>Place it as a clip.</strong><p>An <code>AudioClip</code> on a new channel at <code>startTick 0</code>, its <code>durationTicks</code> derived from the measured length — which, on extract, must equal the source. If it does not, that is a bug worth catching on day one.</p></div></li>
+      <li><div><strong>Run it through governance.</strong><p>Hand the drawer a real <code>GenerationCandidate</code> pointing at that asset. Audition plays the clip. Reject discards asset and clip. Commit writes a lineage record naming the true source asset — not <code>ast_src_orig</code>.</p></div></li>
+      <li><div><strong>Prove the invariants.</strong><p>One undo removes clip, asset and candidate together. The project reloads with the clip intact and playable. The provenance record hashes the bytes we actually received.</p></div></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>What this changes about sequencing</h2>
+    <p>Your priority order holds, with one adjustment I would argue for.</p>
+    <p><strong>The audio clip is not step two — it is step one,</strong> and it is worth building for its own sake before ACE is in the picture at all. Recorded takes, imported files and separated stems all currently have nowhere to live on the timeline; that is a gap in the studio whether or not a model ever fills it. Building <code>AudioClip</code> against material we already have — a take we recorded ourselves — proves the type without a GPU in the loop, and turns the ACE slice into plumbing rather than plumbing plus a new core abstraction.</p>
+    <p>The other adjustment is smaller: the planner replacement can be split. Repaint, extract and cover need no planner today, so they can ship while <code>audio_code_string</code> remains ACE's. There is no need to treat the planner as one gate in front of all six tasks.</p>
+  </section>
+
+  <section>
+    <h2>What could not be settled from source</h2>
+    <ul>
+      <li><strong>Whether the checkpoint is in hand.</strong> Nothing in the repository says what any of our machines already hold.</li>
+      <li><strong>Real latency per task.</strong> 50 steps at 4B on a 24 GB card is a measurement, not a number to be read. It decides whether extract is interactive or a background job — and that decides the UI.</li>
+      <li><strong>Extract quality against our material.</strong> Isolating a stem from a dense mix is a different problem from isolating one from four sparse beatbox channels. The docs cannot answer it; a test can.</li>
+      <li><strong>Whether <code>complete</code> returns the source length.</strong> It is absent from the duration-locking rule; that is evidence, not proof.</li>
+    </ul>
+    <p class="lede">All four are one afternoon on a GPU box, and all four should be answered before any of this is scheduled.</p>
+  </section>
+
+</div>
