@@ -477,6 +477,10 @@ export interface StudioSessionState {
   ) => Promise<AudioAsset>;
   handlePlaceAudioClip: (trackId: string, assetId: string, options?: PlaceClipOptions) => AudioClip | null;
   handleMoveAudioClip: (clipId: string, deltaTicks: number) => void;
+  /** One undoable write for a whole drag or trim gesture. */
+  handleUpdateAudioClip: (clipId: string, patch: Partial<AudioClip>, label?: string) => void;
+  selectedClipId: string | null;
+  setSelectedClipId: React.Dispatch<React.SetStateAction<string | null>>;
   /** Registers a recorded take's audio and places it on a track at the playhead. */
   handlePlaceTakeOnTimeline: (trackId: string, takeId: string) => Promise<AudioClip | null>;
   handleRemoveAudioClip: (clipId: string) => void;
@@ -965,6 +969,35 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       });
     },
     [handleRegisterAudioAsset, handlePlaceAudioClip]
+  );
+
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+
+  /**
+   * Applies a finished gesture in one write.
+   *
+   * A drag that wrote on every pointer move would fill the history stack with
+   * sixty entries for one movement of one clip, so the lane previews locally
+   * and calls this once on release.
+   */
+  const handleUpdateAudioClip = useCallback(
+    (clipId: string, patch: Partial<AudioClip>, label?: string) => {
+      pendingLabelRef.current = label || 'Edit clip';
+      updateTracksWithHistory((prev) =>
+        prev.map((t) => {
+          if (!t.audioClips?.some((c) => c.id === clipId)) return t;
+          return {
+            ...t,
+            audioClips: t.audioClips.map((c) =>
+              c.id === clipId
+                ? { ...c, ...patch, provenance: { ...c.provenance, creatorEdited: true } }
+                : c
+            ),
+          };
+        })
+      );
+    },
+    [updateTracksWithHistory]
   );
 
   const handleRemoveAudioClip = useCallback(
@@ -3891,6 +3924,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       handleRegisterAudioAsset,
       handlePlaceAudioClip,
       handleMoveAudioClip,
+      handleUpdateAudioClip,
+      selectedClipId,
+      setSelectedClipId,
       handlePlaceTakeOnTimeline,
       handleRemoveAudioClip,
       vocalState,

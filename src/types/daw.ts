@@ -694,6 +694,12 @@ export interface AudioAsset {
   parentAssetIds: string[];
   createdAt: number;
   /**
+   * Peak magnitudes across the whole asset, 0..1, for drawing. Computed once at
+   * registration from the decoded audio — the alternative is decoding on every
+   * render, or drawing a shape the audio does not have.
+   */
+  peaks: number[];
+  /**
    * Object URL for playback. Rebuilt from the stored blob on load and never
    * persisted — a URL from a previous session points at nothing.
    */

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Track, NoteEvent, PianoRollTool } from '../types/daw';
 import { useStudioSession } from '../app/StudioSessionContext';
+import { TrackClipLane } from './TrackClipLane';
 import { audioEngine } from '../audio/audioEngine';
 import {
   TICKS_PER_16TH,
@@ -691,7 +692,10 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
               </div>
             )}
 
-            {/* Continuous 4-Bar Timeline Grid Lines (Global alignment) */}
+            {/* Audio clips, on the same four bars as the notes */}
+          <TrackClipLane track={track} snapTicks={snapGridTicks} />
+
+          {/* Continuous 4-Bar Timeline Grid Lines (Global alignment) */}
             <div className="absolute inset-0 grid grid-cols-4 pointer-events-none">
               {[0, 1, 2, 3].map((b) => (
                 <div key={b} className="border-r border-slate-800/70 relative">

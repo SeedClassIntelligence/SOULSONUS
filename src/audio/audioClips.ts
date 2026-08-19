@@ -13,6 +13,27 @@
 import { AudioAsset, AudioAssetOrigin, AudioClip, Track } from '../types/daw';
 import { PPQ } from '../utils/musicMath';
 
+/** Points across the whole asset. Enough to read a shape at lane width. */
+const WAVEFORM_POINTS = 256;
+
+/** Peak magnitude per slice, taken from the decoded audio rather than invented. */
+function peaksFromBuffer(buffer: AudioBuffer, points = WAVEFORM_POINTS): number[] {
+  const data = buffer.getChannelData(0);
+  const per = Math.max(1, Math.floor(data.length / points));
+  const out: number[] = [];
+  for (let i = 0; i < points; i++) {
+    let peak = 0;
+    const start = i * per;
+    const end = Math.min(data.length, start + per);
+    for (let j = start; j < end; j++) {
+      const v = data[j] < 0 ? -data[j] : data[j];
+      if (v > peak) peak = v;
+    }
+    out.push(Math.round(peak * 1000) / 1000);
+  }
+  return out;
+}
+
 export interface RegisterAssetOptions {
   name: string;
   originType: AudioAssetOrigin;
@@ -42,6 +63,7 @@ export async function registerAudioAsset(blob: Blob, options: RegisterAssetOptio
   let sampleRate = 48000;
   let channels = 1;
   let durationSeconds = 0;
+  let peaks: number[] = [];
   if (Ctx) {
     const ctx = new Ctx();
     try {
@@ -49,6 +71,7 @@ export async function registerAudioAsset(blob: Blob, options: RegisterAssetOptio
       sampleRate = decoded.sampleRate;
       channels = decoded.numberOfChannels;
       durationSeconds = decoded.duration;
+      peaks = peaksFromBuffer(decoded);
     } catch {
       /* an undecodable blob still gets an asset; its duration stays 0 and the
          caller can see that rather than being handed a confident wrong number */
@@ -68,6 +91,7 @@ export async function registerAudioAsset(blob: Blob, options: RegisterAssetOptio
     originType: options.originType,
     parentAssetIds: options.parentAssetIds || [],
     createdAt: Date.now(),
+    peaks,
     url: URL.createObjectURL(blob),
   };
 }
