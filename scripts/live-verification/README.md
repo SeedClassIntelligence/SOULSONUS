@@ -51,6 +51,7 @@ much faster than wall-clock, so treat elapsed-time assertions with care.
 | `test-22-extract-stems` | Does Extract Stems use the actual take, and refuse honestly when there is none? |
 | `test-23-masking-analysis` | Is the Mix advisor measured — and silent on an empty canvas? |
 | `test-24-vocal-take-persistence` | Does a recorded vocal Blob survive a reload and re-decode? |
+| `test-25-global-utilities` | Are all nine utility triggers reachable and working from all six rooms? |
 
 ## Two harness traps these tests hit
 

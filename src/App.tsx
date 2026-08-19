@@ -34,6 +34,7 @@ import { ExportModal } from './components/ExportModal';
 import { AiControlRoomModal } from './components/AiControlRoomModal';
 import { VirtualPianoKeyboard } from './components/VirtualPianoKeyboard';
 import { ProjectMenu } from './components/ProjectMenu';
+import { StudioUtilityBar } from './components/StudioUtilityBar';
 
 import { audioEngine } from './audio/audioEngine';
 import { detectionEngine } from './audio/detectionEngine';
@@ -360,6 +361,11 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         onSelectWorkspace={setActiveWorkspace}
         soulFlowStageLabel={dawState.soulFlowState}
       />
+
+      {/* Studio utilities: reachable from every room, not only 1-2 */}
+      <div className="pt-3">
+        <StudioUtilityBar />
+      </div>
 
       {/* Main Studio Canvas & 6-Workspace Room Switching */}
       <main className="flex-1 p-3 md:p-4 max-w-[1440px] w-full mx-auto space-y-3">

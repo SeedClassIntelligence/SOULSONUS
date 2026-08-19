@@ -310,7 +310,7 @@
     <h1>SoulSonus Signal Map</h1>
     <p class="standfirst">Every component in the six rooms, sorted by whether it actually processes anything. Consolidated from all prior verification passes and re-checked against the current branch, so there is one map to plan from instead of several.</p>
     <div class="stamp">
-      <span>Describes <code>main</code> @ <code>699e87a</code> — the commit Netlify deploys</span>
+      <span>Describes <code>main</code> @ <code>1a4c1f0</code> — the commit Netlify deploys</span>
       <span>Updated 18 Aug 2026 · Layer 0 complete — 0.1 through 0.8 landed and live</span>
       <span>Method: live headless browser + synthetic mic + source read</span>
     </div>
@@ -490,7 +490,7 @@
     </div>
     <div class="rows">
       <div class="row"><div class="what">Every drawer trigger opens its own drawer</div><div><span class="pill p-work">Working</span></div><div class="ev">All 8 utility triggers and all 8 header triggers tested from a clean load — correct drawer every time, no wrong drawer, no dead button</div></div>
-      <div class="row"><div class="what">Utility drawers reachable only from rooms 1–2</div><div><span class="pill p-none">Gap</span></div><div class="ev">The trigger row lives inside <code>StudioCanvas</code>, which renders only for CREATE and BUILD. Measured 0/8 present in WRITE&nbsp;&amp;&nbsp;RECORD, MIX, MASTER and RELEASE</div></div>
+      <div class="row"><div class="what">Utility drawers reachable from every room</div><div><span class="pill p-work">Fixed</span></div><div class="ev">The trigger row lived inside <code>StudioCanvas</code>, which renders only for CREATE and BUILD — 0/8 reachable from the other four rooms. Extracted to <code>StudioUtilityBar</code> and rendered at app level. Import Audio joined it, and its duplicate in the capture row was removed. Measured 9/9 opening correctly in all six rooms</div></div>
       <div class="row"><div class="what">Session data survives a room switch</div><div><span class="pill p-work">Working</span></div><div class="ev">Tracks, DSP, volume and BPM unchanged across all six rooms — this state correctly lives in context, above the switch</div></div>
       <div class="row"><div class="what">Playback and live capture survive a room switch</div><div><span class="pill p-work">Working</span></div><div class="ev">Playhead kept advancing 9&nbsp;→&nbsp;23&nbsp;→&nbsp;33; an armed mic kept recording 9&nbsp;→&nbsp;16&nbsp;→&nbsp;28 notes while switching mid-take</div></div>
       <div class="row"><div class="what">Open drawers survive a room switch</div><div><span class="pill p-work">Working</span></div><div class="ev">Drawers render at App level, above the room switch, and stay open through it</div></div>
