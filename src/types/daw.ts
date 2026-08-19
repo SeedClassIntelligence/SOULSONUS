@@ -896,6 +896,17 @@ export interface RealizationScoreMap {
   articulation: number;  // 0.0 - 1.0 threshold
 }
 
+/**
+ * How a candidate's preservation scores were arrived at.
+ *
+ * - MEASURED: computed by comparing the realized audio against the source take.
+ * - BY_CONSTRUCTION: entailed by the route rather than measured -- triggering a
+ *   one-shot sample preserves timing exactly because that is what triggering a
+ *   sample does. Honest, but not a reading, and shown as such.
+ * - NOT_MEASURED: no realization happened, or no comparison was run.
+ */
+export type RealizationScoreBasis = 'MEASURED' | 'BY_CONSTRUCTION' | 'NOT_MEASURED';
+
 export interface IntentThresholdPolicy {
   rhythm: number;
   timing: number;
@@ -938,6 +949,12 @@ export type RealizationRoute =
   | 'ACE_GENERATIVE_EXTENSION';
 
 export type CandidateGovernanceState =
+  /**
+   * Proposed but not realized: no audio exists and nothing has been measured.
+   * This state was missing, and its absence is why the candidate path could
+   * present an unrealized proposal as a passing candidate with a score.
+   */
+  | 'UNREALIZED'
   | 'GENERATED'
   | 'CONTRACT_EVALUATED'
   | 'PASS_CANDIDATE'
@@ -985,12 +1002,20 @@ export interface GenerationCandidate {
   idempotencyKey?: string;
   preservedProperties: string[];
   modifiedProperties: string[];
-  preservationScores: RealizationScoreMap;
+  /**
+   * Null when nothing was measured. It is nullable on purpose: the previous
+   * shape made a score mandatory, so every path with no measurement had to
+   * invent one, and the UI could not tell an invention from a reading.
+   */
+  preservationScores: RealizationScoreMap | null;
+  /** Where the scores came from. Required, so an invented number has nowhere to hide. */
+  scoreBasis: RealizationScoreBasis;
   violations: IntentViolation[];
   backend: RealizerBackend;
   modelVersion: string;
   seed: number | null;
-  passedIntentContract: boolean;
+  /** Null when the contract could not be evaluated, because nothing was measured. */
+  passedIntentContract: boolean | null;
   overrideIntentContract: boolean;
   overrideReason?: string;
   overrideTimestamp?: number;
@@ -1019,12 +1044,13 @@ export interface RealizationResult {
   audioAssetId: string;
   preservedProperties: string[];
   modifiedProperties: string[];
-  preservationScores: RealizationScoreMap;
+  preservationScores: RealizationScoreMap | null;
+  scoreBasis: RealizationScoreBasis;
   violations: IntentViolation[];
   backend: RealizerBackend;
   modelVersion: string;
   seed: number | null;
-  passedIntentContract: boolean;
+  passedIntentContract: boolean | null;
 }
 
 // --- Level 4 Creative Resource Registry Models ---

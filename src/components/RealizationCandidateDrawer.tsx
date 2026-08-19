@@ -29,7 +29,7 @@ export const RealizationCandidateDrawer: React.FC<RealizationCandidateDrawerProp
   const [activeAuditionMode, setActiveAuditionMode] = useState<'source' | 'proposal'>('proposal');
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedSoundAsset, setSelectedSoundAsset] = useState<SoundAsset | null>(SOUND_CATALOG[0]);
-  const [overrideReason, setOverrideReason] = useState('Creator manual override for 0.978+ threshold match');
+  const [overrideReason, setOverrideReason] = useState('');
   const [showOverrideModal, setShowOverrideModal] = useState(false);
 
   const handleAuditionToggle = async (mode: 'source' | 'proposal') => {
@@ -64,7 +64,21 @@ export const RealizationCandidateDrawer: React.FC<RealizationCandidateDrawerProp
   };
 
   const hasViolations = candidate.violations.length > 0;
-  const passedContract = candidate.passedIntentContract && !hasViolations;
+  const scores = candidate.preservationScores;
+  /**
+   * Three states, not two.
+   *
+   * A candidate can be unrealized -- proposed, with no audio rendered and
+   * nothing measured. It used to be shown as a pass, complete with a
+   * scorecard, because the type made a score mandatory and the drawer had only
+   * "passed" and "rejected" to render. `passedIntentContract` is now null in
+   * that case and every branch below reads it as a third thing.
+   */
+  const unrealized = candidate.passedIntentContract === null || candidate.governanceState === 'UNREALIZED';
+  const passedContract = !unrealized && candidate.passedIntentContract === true && !hasViolations;
+  const measured = candidate.scoreBasis === 'MEASURED' && !!scores;
+  const byConstruction = candidate.scoreBasis === 'BY_CONSTRUCTION' && !!scores;
+  const pct = (v: number | undefined) => (typeof v === 'number' ? `${(v * 100).toFixed(1)}%` : '--');
 
   return (
     <AnimatePresence>
@@ -104,12 +118,25 @@ export const RealizationCandidateDrawer: React.FC<RealizationCandidateDrawerProp
               {candidate.realizationRoute ? (candidate.realizationRoute === 'ACE_PERFORMANCE_TRANSFER' ? 'PERFORMANCE TRANSFER' : candidate.realizationRoute.replace(/_/g, ' ')) : 'PERFORMANCE TRANSFER'}
             </span>
           </div>
-          {passedContract ? (
-            <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5">
+          {unrealized ? (
+            <span
+              id="candidate-status"
+              className="px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-300 border border-slate-600/40 text-xs font-semibold flex items-center gap-1.5"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" /> NOT YET REALIZED
+            </span>
+          ) : passedContract ? (
+            <span
+              id="candidate-status"
+              className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5"
+            >
               <CheckCircle2 className="w-3.5 h-3.5" /> PASSED INTENT CONTRACT
             </span>
           ) : (
-            <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5">
+            <span
+              id="candidate-status"
+              className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5"
+            >
               <AlertTriangle className="w-3.5 h-3.5" /> REJECTED PREVIEW ONLY
             </span>
           )}
@@ -119,7 +146,11 @@ export const RealizationCandidateDrawer: React.FC<RealizationCandidateDrawerProp
         <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] font-mono">
           <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
             <span className="text-emerald-400 font-bold block mb-0.5">KEEP (INVARIANTS):</span>
-            <span className="text-slate-300 text-[9px]">Rhythm ✓  Timing ✓  Pitch ✓  Phrasing ✓</span>
+            <span className="text-slate-300 text-[9px]">
+              {candidate.preservedProperties.length
+                ? candidate.preservedProperties.join('  ')
+                : 'Nothing confirmed kept yet'}
+            </span>
           </div>
           <div className="p-2 rounded-xl bg-slate-900/80 border border-slate-800">
             <span className="text-amber-400 font-bold block mb-0.5">CHANGE:</span>
@@ -217,51 +248,60 @@ export const RealizationCandidateDrawer: React.FC<RealizationCandidateDrawerProp
         </div>
 
         {/* Intent Preservation Scorecard */}
-        <div className="mt-5 p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
+        <div id="preservation-scorecard" className="mt-5 p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
-            <span>Intent Preservation Scorecard</span>
-            <span className="text-[10px] font-mono text-slate-500">Target vs Source</span>
+            <span>Intent Preservation</span>
+            <span className="text-[10px] font-mono text-slate-500">
+              {measured ? 'MEASURED vs SOURCE' : byConstruction ? 'ENTAILED BY ROUTE' : 'NOT MEASURED'}
+            </span>
           </h4>
 
-          <div className="space-y-3 text-xs">
-            {/* Rhythm */}
-            <div>
-              <div className="flex justify-between font-mono mb-1">
-                <span className="text-slate-400">Rhythm Preservation:</span>
-                <span className="text-emerald-400 font-bold">{(candidate.preservationScores.rhythm * 100).toFixed(1)}%</span>
+          {!scores ? (
+            /*
+             * Nothing measured, so nothing is shown. The scorecard used to
+             * render three green bars here at 97.8 / 97.0 / 96.5 percent
+             * regardless of what had happened, because those figures were
+             * literals in the source rather than readings of any audio.
+             */
+            <p id="scorecard-unmeasured" className="text-[11px] text-slate-400 leading-relaxed">
+              Nothing has been measured. Preservation is computed by comparing the realized audio
+              against your source take, and the realization has not run yet — so there is no number
+              to show you, and this panel will not invent one.
+            </p>
+          ) : (
+            <>
+              {byConstruction && (
+                <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
+                  These are not readings. This route preserves what it preserves because of how it
+                  works — a triggered sample fires on the step it is given — so each value is a
+                  plain yes or no, not a measurement of the rendered audio.
+                </p>
+              )}
+              <div className="space-y-3 text-xs">
+                {([
+                  ['Rhythm', scores.rhythm],
+                  ['Timing', scores.timing],
+                  ['Pitch contour', scores.pitchContour],
+                  ['Articulation', scores.articulation],
+                ] as const).map(([label, value]) => (
+                  <div key={label}>
+                    <div className="flex justify-between font-mono mb-1">
+                      <span className="text-slate-400">{label}:</span>
+                      <span className={value >= 0.9 ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+                        {byConstruction ? (value >= 1 ? 'kept' : 'not kept') : pct(value)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800">
+                      <div
+                        className={value >= 0.9 ? 'bg-emerald-400 h-full rounded-full' : 'bg-amber-400 h-full rounded-full'}
+                        style={{ width: `${Math.max(0, Math.min(1, value)) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800">
-                <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${candidate.preservationScores.rhythm * 100}%` }}></div>
-              </div>
-            </div>
-
-            {/* Timing */}
-            <div>
-              <div className="flex justify-between font-mono mb-1">
-                <span className="text-slate-400">Timing Accuracy:</span>
-                <span className={candidate.preservationScores.timing >= 0.98 ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
-                  {(candidate.preservationScores.timing * 100).toFixed(1)}% {candidate.preservationScores.timing < 0.98 && '(Req 98.0%)'}
-                </span>
-              </div>
-              <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800">
-                <div
-                  className={candidate.preservationScores.timing >= 0.98 ? 'bg-emerald-400 h-full rounded-full' : 'bg-amber-400 h-full rounded-full'}
-                  style={{ width: `${candidate.preservationScores.timing * 100}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Pitch Contour */}
-            <div>
-              <div className="flex justify-between font-mono mb-1">
-                <span className="text-slate-400">Pitch Contour Match:</span>
-                <span className="text-emerald-400 font-bold">{(candidate.preservationScores.pitchContour * 100).toFixed(1)}%</span>
-              </div>
-              <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-800">
-                <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${candidate.preservationScores.pitchContour * 100}%` }}></div>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
 
           {/* Diagnostic Violation Log */}
           {hasViolations && (
@@ -270,8 +310,15 @@ export const RealizationCandidateDrawer: React.FC<RealizationCandidateDrawerProp
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
                 <span>Contract Threshold Warning</span>
               </div>
-              <p className="text-[11px] text-amber-300/80">
-                Timing score of {(candidate.preservationScores.timing * 100).toFixed(1)}% missed threshold (98.0%). You may still explicitly OVERRIDE & COMMIT if you prefer this organic feel.
+              <ul className="text-[11px] text-amber-300/80 space-y-0.5">
+                {candidate.violations.map((v) => (
+                  <li key={v.property}>
+                    {v.property} measured {pct(v.score)} against a {pct(v.requiredThreshold)} threshold.
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[11px] text-amber-300/80 mt-1.5">
+                You may still OVERRIDE &amp; COMMIT if you prefer this take of it.
               </p>
             </div>
           )}
@@ -280,7 +327,27 @@ export const RealizationCandidateDrawer: React.FC<RealizationCandidateDrawerProp
 
       {/* Action Footer */}
       <div className="pt-4 border-t border-slate-800 space-y-2">
-        {passedContract ? (
+        {unrealized ? (
+          /*
+           * There is no audio behind this proposal, so there is nothing to
+           * commit. The button used to be live and green here, which meant
+           * committing a candidate whose artifact URL named a file that had
+           * never been written.
+           */
+          <div id="commit-blocked" className="space-y-1.5">
+            <button
+              disabled
+              className="w-full py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-500 font-bold text-sm flex items-center justify-center space-x-2 cursor-not-allowed"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>NOTHING TO COMMIT YET</span>
+            </button>
+            <p className="text-[10px] font-mono text-slate-500 text-center leading-relaxed">
+              This is a proposal. No audio has been realized, so there is nothing to audition and
+              nothing to commit.
+            </p>
+          </div>
+        ) : passedContract ? (
           <button
             onClick={() => onCommitCandidate(candidate)}
             className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-400 transition-all flex items-center justify-center space-x-2 cursor-pointer"
@@ -314,7 +381,8 @@ export const RealizationCandidateDrawer: React.FC<RealizationCandidateDrawerProp
                 <span>Auditable Creator Contract Override</span>
               </h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                You are accepting a candidate proposal that fell below timing thresholds. This override will be recorded in the <span className="font-mono text-amber-400">GenerationDecisionRecord</span> for cryptographic provenance.
+                You are accepting a candidate that fell below its preservation thresholds. This
+                override is recorded in the <span className="font-mono text-amber-400">GenerationDecisionRecord</span> for provenance.
               </p>
               <div>
                 <label className="text-xs font-medium text-slate-400 block mb-1">Override Rationale:</label>

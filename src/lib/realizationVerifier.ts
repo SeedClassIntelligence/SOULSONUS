@@ -4,6 +4,7 @@ import {
   IntentThresholdPolicy,
   IntentViolation,
   RealizerBackend,
+  RealizationScoreBasis,
   GenerationCandidate,
   CandidateGovernanceState,
 } from '../types/daw';
@@ -29,7 +30,13 @@ export function evaluateRealizationContract(
   backend: RealizerBackend,
   sourceProjectVersionId: string = 'v1.0.0',
   modelVersion: string = 'v1.0.0',
-  seed: number | null = null
+  seed: number | null = null,
+  /**
+   * Where the scores came from. This function is only ever called with scores
+   * in hand, so the default is MEASURED -- a caller passing entailed values
+   * must say so, and cannot have them read as a reading by omission.
+   */
+  scoreBasis: RealizationScoreBasis = 'MEASURED'
 ): RealizationResult {
   const preservedProperties: string[] = [];
   const violations: IntentViolation[] = [];
@@ -63,6 +70,7 @@ export function evaluateRealizationContract(
     preservedProperties,
     modifiedProperties: mutableProperties,
     preservationScores: measuredScores,
+    scoreBasis,
     violations,
     backend,
     modelVersion,
@@ -80,6 +88,7 @@ export function evaluateRealizationContract(
     preservedProperties,
     modifiedProperties: mutableProperties,
     preservationScores: measuredScores,
+    scoreBasis,
     violations,
     backend,
     modelVersion,

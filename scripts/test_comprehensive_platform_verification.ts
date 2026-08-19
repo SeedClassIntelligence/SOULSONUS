@@ -18,7 +18,7 @@ import { AudioEncoders } from '../src/lib/audioEncoders';
 import { signatureService } from '../src/lib/seedSignature';
 import { SoulFlowGovernor, SOULFLOW_STAGE_ORDER } from '../src/lib/soulFlowGovernor';
 import { SoundVaultSemanticMatcher } from '../src/lib/clapEmbeddingMatcher';
-import { AceStepClient } from '../src/lib/inference/aceStepClient';
+import { SoulSonusServiceProvider } from '../src/lib/inference/e05Provider';
 import { DemucsClient } from '../src/lib/inference/demucsClient';
 import { autocorrelationPitchTrajectory } from '../src/lib/inference/audioPreservationScoring';
 import {
@@ -302,9 +302,13 @@ async function runComprehensiveVerification() {
   const deadDemucsHealth = await deadDemucs.health();
   check(!deadDemucsHealth.ok, 'INFERENCE_CLIENT', 'DemucsClient reports ok: false on health() when endpoint is down');
 
-  const deadAce = new AceStepClient('http://127.0.0.1:59999');
-  const deadAceHealth = await deadAce.health();
-  check(!deadAceHealth, 'INFERENCE_CLIENT', 'AceStepClient reports false on health() when endpoint is down');
+  const deadE05 = new SoulSonusServiceProvider('http://127.0.0.1:59999/api/e05');
+  const deadE05Status = await deadE05.status();
+  check(
+    deadE05Status.available === false && deadE05Status.reason === 'UNREACHABLE',
+    'INFERENCE_CLIENT',
+    'E05 provider reports unavailable with a reason when the service route is down'
+  );
 
   console.log('\n========================================================================');
   console.log(`  COMPREHENSIVE PLATFORM VERIFICATION COMPLETE: ${passed} PASSED, ${failed} FAILED`);

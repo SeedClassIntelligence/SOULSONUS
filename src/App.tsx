@@ -20,8 +20,8 @@ import { FinishMasterWorkspace } from './components/finish/FinishMasterWorkspace
 import { FinalizationGateAndSign } from './components/finish/FinalizationGateAndSign';
 import { WriteRecordWorkspace } from './components/workspaces/WriteRecordWorkspace';
 import { BuildWorkspace } from './components/workspaces/BuildWorkspace';
-import { evaluateRealizationContract } from './lib/realizationVerifier';
 import { RealizationRouter } from './lib/realizationRouter';
+import { proposeRealization } from './lib/realizationProposal';
 import { GenerationCandidate, RealizationRoute } from './types/daw';
 
 import { QuickHelpModal } from './components/QuickHelpModal';
@@ -138,18 +138,24 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
 
   const handleOpenProposal = useCallback((trackId?: string) => {
     const targetTrack = tracks.find((t) => t.id === trackId) || tracks[0];
-    const res = evaluateRealizationContract(
-      `ast_e05_${targetTrack?.instrument || 'kick'}_demo`,
-      ['rhythm', 'timing', 'pitchContour'],
-      ['timbre', 'low_freq_energy', 'saturation'],
-      { rhythm: 0.985, timing: 0.98, pitchContour: 0.965, articulation: 0.892 },
-      { rhythm: 0.98, timing: 0.98, pitchContour: 0.50, articulation: 0.90 },
-      'SoulSonusPerformanceTransfer',
-      dawState.projectVersion || 'v1.0.0'
+    // This opened the drawer on a demo candidate: an asset id ending `_demo`
+    // and four literal scores (0.985 / 0.98 / 0.965 / 0.892) that the drawer
+    // then rendered as a passing Intent Contract. Nothing had been realized
+    // and nothing had been measured. It opens on an honest proposal now, and
+    // the drawer shows it as unrealized until a realization actually runs.
+    setActiveCandidate(
+      proposeRealization({
+        route: 'ACE_PERFORMANCE_TRANSFER',
+        targetRole: targetTrack?.instrument || 'kick',
+        prompt: `Realize ${targetTrack?.name || 'this track'}`,
+        backend: 'ACERealizer',
+        modelVersion: 'ace-step-1.5',
+        modifiedProperties: ['timbre', 'low_freq_energy', 'saturation'],
+        intendedInvariants: ['rhythm', 'timing', 'pitchContour'],
+      })
     );
-    setActiveCandidate(res.candidate);
     setIsCandidateDrawerOpen(true);
-  }, [tracks, dawState.projectVersion]);
+  }, [tracks]);
 
   const handleCommitCandidate = useCallback((candidate: GenerationCandidate, overrideReason?: string) => {
     const timestamp_ms = Date.now();

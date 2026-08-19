@@ -5,7 +5,7 @@
 
 import { masteringTelemetryEngine } from '../src/audio/masteringTelemetryEngine';
 import { SoulFlowGovernor } from '../src/lib/soulFlowGovernor';
-import { AceStepClient } from '../src/lib/inference/aceStepClient';
+import { SoulSonusServiceProvider, E05UnavailableError } from '../src/lib/inference/e05Provider';
 import { Track, Project, DetectionSettings, SeedSignatureRecord } from '../src/types/daw';
 
 function createSine(freq: number, sampleRate: number, durationSec: number, amplitude: number): Float32Array {
@@ -180,29 +180,31 @@ async function runTests() {
   // TEST 3: Honest Inference Error Transparency (No Fake Fallback)
   // -------------------------------------------------------------
   console.log('\n[STAGE 3] === HONEST INFERENCE ERROR TRANSPARENCY ===');
-  const offlineClient = new AceStepClient('http://127.0.0.1:59999'); // Non-existent port
+  // A dead route, so realization genuinely cannot be attempted.
+  const offline = new SoulSonusServiceProvider('http://127.0.0.1:59999/api/e05');
 
-  let threwError = false;
+  let unavailable = false;
   try {
-    await offlineClient.submitTask({
-      prompt: 'Realize sub bassline',
-      referenceAudioPath: '/audio/test/test_bass_seed.wav',
-    });
+    await offline.realize(
+      { task: 'cover', instruction: 'Perform this as a sub bass' },
+      { sourceAudio: new Blob([new Uint8Array(16)]) }
+    );
   } catch (err) {
-    threwError = true;
+    // The distinction that matters: not attempted, rather than attempted and failed.
+    unavailable = err instanceof E05UnavailableError;
   }
 
   assert(
-    threwError,
-    'AceStepClient throws explicit error when remote server is unreachable',
-    'Confirmed: zero silent fallback to fabricated audio'
+    unavailable,
+    'Realization reports UNAVAILABLE rather than returning a candidate when the host is unreachable',
+    'Confirmed: zero silent fallback to fabricated audio or fabricated scores'
   );
 
-  const isHealthy = await offlineClient.health();
+  const svc = await offline.status();
   assert(
-    isHealthy === false,
-    'AceStepClient reports false on health() when server is offline',
-    'Health check returns false'
+    svc.available === false && svc.reason === 'UNREACHABLE',
+    'Service status reports the host as unreachable, with a reason',
+    `reason=${svc.reason}`
   );
 
   console.log('\n================================================================');

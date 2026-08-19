@@ -24,6 +24,7 @@ export function testStudioSessionCommitPropagation(): { success: boolean; log: s
       preservedProperties: ['rhythm', 'pitch_contour'],
       modifiedProperties: ['timbre', 'low_freq_energy', 'saturation'],
       preservationScores: { rhythm: 0.985, timing: 0.978, pitchContour: 0.965, articulation: 0.892 },
+      scoreBasis: 'MEASURED',
       violations: [{ property: 'timing', score: 0.978, requiredThreshold: 0.98 }],
       backend: 'SoulSonusPerformanceTransfer',
       modelVersion: 'v1.5.0-ACERealizer',

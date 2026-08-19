@@ -89,6 +89,7 @@ async function runStep5aAceRealRuntimeTest() {
     preservedProperties: ['rhythm', 'timing', 'pitch_contour'],
     modifiedProperties: ['timbre', 'harmonics'],
     preservationScores: { rhythm: 0.985, timing: 0.978, pitchContour: 0.965, articulation: 0.895 },
+    scoreBasis: 'MEASURED',
     violations: [],
     backend: 'ACERealizer',
     modelVersion: 'v1.5.0-ACERealizer-PyTorch',

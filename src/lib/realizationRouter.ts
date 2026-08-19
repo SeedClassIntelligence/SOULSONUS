@@ -22,13 +22,13 @@ import {
   RealizationRoute,
   RealizerBackend,
   RealizationScoreMap,
+  RealizationScoreBasis,
   IntentThresholdPolicy,
   IntentViolation,
 } from '../types/daw';
 import { DEFAULT_THRESHOLD_POLICY } from './realizationVerifier';
-import { AceStepClient } from './inference/aceStepClient';
 import { computePreservationScores } from './inference/audioPreservationScoring';
-import { getInferenceSettings } from './inference/inferenceSettings';
+import { getE05Provider } from './inference/e05Provider';
 
 export interface RealizationRequest {
   sourceTrack: Track;
@@ -68,8 +68,14 @@ export class RealizationRouter {
     let mutableProperties: string[] = ['timbre', 'harmonic_profile', 'acoustic_envelope'];
     let lockedProperties: (keyof RealizationScoreMap)[] = ['rhythm', 'timing', 'pitchContour', 'articulation'];
 
-    let measuredScores: RealizationScoreMap;
-    let audioArtifactUrl: string;
+    // Null until something is actually measured. Nothing here fills it in to
+    // keep a type happy -- that is exactly how the fabricated scores got in.
+    let measuredScores: RealizationScoreMap | null = null;
+    let scoreBasis: RealizationScoreBasis = 'NOT_MEASURED';
+    let audioArtifactUrl: string | undefined;
+    let governanceOverride: 'UNREALIZED' | null = null;
+    // Only a backend that reports the seed it used can fill this in.
+    let resolvedSeed: number | null = null;
 
     switch (req.route) {
       case 'ACE_PERFORMANCE_TRANSFER': {
@@ -79,88 +85,86 @@ export class RealizationRouter {
           modelVersion = 'ace-step-1.5';
           mutableProperties = ['timbre', 'room_acoustics', 'body_resonance', 'saturation'];
 
-          const settings = getInferenceSettings();
-          const client = new AceStepClient(settings.aceStepEndpoint, settings.aceStepApiKey);
+          // Through the SoulSonus service layer, never straight at ACE: its
+          // CORS policy admits only localhost origins, so a direct call from a
+          // deployed browser is refused before the model is consulted.
+          //
+          // `cover` is the task, not text2music: it re-renders the performance
+          // that was sent in, and its output length is locked to the source, so
+          // what comes back lands where the take already sits.
+          const sourceAudio = await fetch(sourceAudioUrl).then((r) => r.blob());
+          const realization = await getE05Provider().realize(
+            {
+              task: 'cover',
+              instruction: req.prompt || `Perform this as ${req.targetRole.replace(/_/g, ' ')}`,
+            },
+            { sourceAudio, sourceFileName: `${req.sourceTrack.id}.wav` }
+          );
+          audioArtifactUrl = URL.createObjectURL(realization.audio);
+          modelVersion = realization.resolvedModel || modelVersion;
+          resolvedSeed = realization.resolvedSeed ?? null;
 
-          // Real generation call -- waits on ACE-Step job if configured
-          const downloadUrls = await client.generateAndWait({
-            prompt: req.prompt || `Realize ${req.targetRole} performance transfer`,
-            referenceAudioPath: sourceAudioUrl,
-          });
-          audioArtifactUrl = downloadUrls[0];
-
-          // Real measurement against output
+          // Measured against the creator's own take, not asserted.
           measuredScores = await computePreservationScores(sourceAudioUrl, audioArtifactUrl);
+          scoreBasis = 'MEASURED';
           break;
         }
 
-        // Graceful fallback for MIDI / Synthesizer tracks without raw take audio
+        // No raw take audio, so there is nothing to transfer a performance
+        // from and nothing to measure a transfer against. This used to return
+        // a score of 0.985/0.980/0.970/0.910 and a `_preview.wav` path that
+        // was never written -- a full passing candidate for a realization that
+        // had not happened.
         backend = 'SoulSonusPerformanceTransfer';
         modelVersion = 'v1.0.0-R02-SoundFont';
         mutableProperties = ['timbre', 'expression_curve', 'room_acoustics'];
-        measuredScores = {
-          rhythm: 0.985,
-          timing: 0.980,
-          pitchContour: 0.970,
-          articulation: 0.910,
-        };
-        audioArtifactUrl = `/samples/${req.sourceTrack.instrument || 'melody'}_preview.wav`;
+        governanceOverride = 'UNREALIZED';
         break;
       }
 
-      // NOTE on the remaining routes: unlike ACE_PERFORMANCE_TRANSFER,
-      // these are deterministic-by-construction, not model outputs, so a
-      // constant score is a defensible approximation rather than a
-      // fabrication -- e.g. mechanically triggering a sample preserves
-      // rhythm/timing near-exactly by definition, and does not preserve a
-      // continuous pitch contour by definition. That said, these are
-      // still approximations rather than direct measurement of the
-      // rendered audio, so they're flagged for a future real-measurement
-      // pass rather than presented as equivalent-confidence to the
-      // ACE route above.
+      // The remaining routes are not model outputs. What they preserve is
+      // entailed by how they work rather than observed, so their scores are
+      // exactly 1 or 0 and carry scoreBasis 'BY_CONSTRUCTION' -- never a
+      // near-miss decimal, which is the shape a measurement has and would read
+      // as one. None of them renders a file at candidate time, so none names
+      // an artifact URL.
 
       case 'SAMPLE':
         backend = 'SampleRealizer';
         modelVersion = 'v1.0.0-R01-SampleVault';
         mutableProperties = ['timbre', 'pitch', 'envelope'];
-        // Deterministic approximation: a triggered one-shot sample preserves
-        // rhythm/timing near-exactly by construction; pitch contour is not
-        // preserved because sample playback has a fixed, unbent pitch.
-        measuredScores = {
-          rhythm: 0.990,
-          timing: 0.985,
-          pitchContour: 0.600,
-          articulation: 0.920,
-        };
-        audioArtifactUrl = `/audio/realization/realization_${req.targetRole}_${candidateId}.wav`;
+        // Entailed by the route rather than measured: a triggered one-shot
+        // fires on the step it is given, so timing is preserved because that
+        // is what triggering a sample does; a fixed, unbent sample cannot
+        // follow a pitch contour. Marked BY_CONSTRUCTION so the drawer never
+        // shows it in the same voice as a reading.
+        measuredScores = { rhythm: 1.0, timing: 1.0, pitchContour: 0.0, articulation: 0.0 };
+        scoreBasis = 'BY_CONSTRUCTION';
+        // The render happens on commit. Naming a file here invented one.
+        governanceOverride = 'UNREALIZED';
         break;
 
       case 'INSTRUMENT':
         backend = 'SoulSonusPerformanceTransfer';
         modelVersion = 'v1.0.0-R02-SoundFont';
         mutableProperties = ['timbre', 'expression_curve'];
-        // Deterministic approximation for SoundFont/SFZ multi-sample rendering.
-        measuredScores = {
-          rhythm: 0.960,
-          timing: 0.955,
-          pitchContour: 0.980,
-          articulation: 0.860,
-        };
-        audioArtifactUrl = `/audio/realization/realization_${req.targetRole}_${candidateId}.wav`;
+        // Entailed: a multi-sampled instrument plays the notes it is given at
+        // the ticks it is given, so rhythm, timing and discrete pitch hold by
+        // construction. Continuous articulation does not, and is not claimed.
+        measuredScores = { rhythm: 1.0, timing: 1.0, pitchContour: 1.0, articulation: 0.0 };
+        scoreBasis = 'BY_CONSTRUCTION';
+        governanceOverride = 'UNREALIZED';
         break;
 
       case 'SYNTH':
         backend = 'SynthRealizer';
         modelVersion = 'v1.0.0-R03-ToneSynth';
         mutableProperties = ['oscillator_type', 'filter_envelope', 'harmonics'];
-        // Deterministic approximation for synth-preset rendering.
-        measuredScores = {
-          rhythm: 0.995,
-          timing: 0.990,
-          pitchContour: 0.990,
-          articulation: 0.940,
-        };
-        audioArtifactUrl = `/audio/realization/realization_${req.targetRole}_${candidateId}.wav`;
+        // Same entailment as INSTRUMENT: the synth is driven by the note
+        // events, so it cannot drift from them.
+        measuredScores = { rhythm: 1.0, timing: 1.0, pitchContour: 1.0, articulation: 0.0 };
+        scoreBasis = 'BY_CONSTRUCTION';
+        governanceOverride = 'UNREALIZED';
         break;
 
       case 'ORIGINAL':
@@ -168,15 +172,13 @@ export class RealizationRouter {
         backend = 'SoulSonusNativeRealizer';
         modelVersion = 'v1.0.0-E01-RootAudio';
         mutableProperties = [];
-        // Exact by definition: the original root performance audio, untouched.
-        measuredScores = {
-          rhythm: 1.0,
-          timing: 1.0,
-          pitchContour: 1.0,
-          articulation: 1.0,
-        };
-        audioArtifactUrl = req.sourceTrack.sourceTakeAudioUrl
-          || `/audio/realization/realization_${req.targetRole}_${candidateId}.wav`;
+        // Exact by definition: this is the creator's own audio, untouched.
+        // The only route where a perfect score is a fact rather than a claim.
+        measuredScores = { rhythm: 1.0, timing: 1.0, pitchContour: 1.0, articulation: 1.0 };
+        scoreBasis = 'BY_CONSTRUCTION';
+        audioArtifactUrl = req.sourceTrack.sourceTakeAudioUrl;
+        // ORIGINAL with no take audio is not a realization of anything.
+        if (!audioArtifactUrl) governanceOverride = 'UNREALIZED';
         break;
     }
 
@@ -196,23 +198,37 @@ export class RealizationRouter {
     const preservedProperties: string[] = [];
     const violations: IntentViolation[] = [];
 
-    for (const prop of lockedProperties) {
-      const score = measuredScores[prop] ?? 0.9;
-      const threshold = policy[prop] ?? 0.85;
+    // A contract is a statement about rendered audio, so it can only be
+    // evaluated once there is some. Two things used to go wrong here: a
+    // missing score defaulted to 0.9, which sits above most thresholds, so an
+    // unmeasured candidate passed by accident; and an unrealized route was
+    // still judged, so the drawer reported that a property had missed its
+    // threshold in audio that had never been rendered.
+    const contractEvaluated = measuredScores !== null && governanceOverride === null;
 
-      if (score >= threshold) {
-        preservedProperties.push(prop);
-      } else {
-        violations.push({
-          property: prop,
-          score,
-          requiredThreshold: threshold,
-        });
+    if (contractEvaluated) {
+      for (const prop of lockedProperties) {
+        const score = measuredScores?.[prop];
+        if (score === undefined) continue;
+        const threshold = policy[prop] ?? 0.85;
+
+        if (score >= threshold) {
+          preservedProperties.push(prop);
+        } else {
+          violations.push({ property: prop, score, requiredThreshold: threshold });
+        }
       }
     }
 
-    const passedIntentContract = violations.length === 0;
-    const governanceState = passedIntentContract ? 'PASS_CANDIDATE' : 'REJECTED_PREVIEW_ONLY';
+    const passedIntentContract = contractEvaluated ? violations.length === 0 : null;
+
+    const governanceState = governanceOverride
+      ? governanceOverride
+      : !contractEvaluated
+        ? 'UNREALIZED'
+        : passedIntentContract
+          ? 'PASS_CANDIDATE'
+          : 'REJECTED_PREVIEW_ONLY';
 
     return {
       candidateId,
@@ -225,10 +241,14 @@ export class RealizationRouter {
       preservedProperties,
       modifiedProperties: mutableProperties,
       preservationScores: measuredScores,
+      scoreBasis,
       violations,
       backend,
       modelVersion,
-      seed: 42,
+      // Hardcoded to 42 for every candidate on every route, including routes
+      // that use no seed at all. Now it is whatever the backend reported, or
+      // null when there was no backend to report one.
+      seed: resolvedSeed,
       passedIntentContract,
       overrideIntentContract: false,
       creatorDecision: 'PENDING',

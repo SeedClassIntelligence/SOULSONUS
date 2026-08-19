@@ -433,34 +433,51 @@ export const SoulSonusIntelligenceDock: React.FC<SoulSonusIntelligenceDockProps>
                             <div className="flex items-center justify-between text-[9px] pt-0.5">
                               <span className="text-slate-400 font-bold">E05 INTENT PRESERVATION:</span>
                               <span className={`font-black px-1.5 py-0.2 rounded ${
-                                msg.actionProposal.proposedChanges.realizationCandidate.passedIntentContract
-                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                                  : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                msg.actionProposal.proposedChanges.realizationCandidate.passedIntentContract === null
+                                  ? 'bg-slate-700/40 text-slate-300 border border-slate-600/40'
+                                  : msg.actionProposal.proposedChanges.realizationCandidate.passedIntentContract
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                               }`}>
                                 {msg.actionProposal.proposedChanges.realizationCandidate.governanceState}
                               </span>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-1.5 text-[8.5px]">
-                              <div className="p-1 rounded bg-slate-950 border border-slate-800 text-center">
-                                <span className="text-slate-500 block">RHYTHM</span>
-                                <span className="text-emerald-400 font-bold">
-                                  {((msg.actionProposal.proposedChanges.realizationCandidate.preservationScores?.rhythm || 0.978) * 100).toFixed(1)}%
-                                </span>
+                            {/*
+                              * These three tiles used to fall back to 0.978 /
+                              * 0.970 / 0.965 when a candidate carried no
+                              * scores, so a proposal that had measured nothing
+                              * displayed 97.8% / 97.0% / 96.5% in confident
+                              * green. There is no fallback now: no measurement,
+                              * no number.
+                              */}
+                            {msg.actionProposal.proposedChanges.realizationCandidate.preservationScores ? (
+                              <div className="grid grid-cols-3 gap-1.5 text-[8.5px]">
+                                {([
+                                  ['RHYTHM', msg.actionProposal.proposedChanges.realizationCandidate.preservationScores.rhythm],
+                                  ['TIMING', msg.actionProposal.proposedChanges.realizationCandidate.preservationScores.timing],
+                                  ['PITCH CONTOUR', msg.actionProposal.proposedChanges.realizationCandidate.preservationScores.pitchContour],
+                                ] as const).map(([label, value]) => (
+                                  <div key={label} className="p-1 rounded bg-slate-950 border border-slate-800 text-center">
+                                    <span className="text-slate-500 block">{label}</span>
+                                    <span className={value >= 0.9 ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+                                      {msg.actionProposal.proposedChanges.realizationCandidate.scoreBasis === 'BY_CONSTRUCTION'
+                                        ? value >= 1
+                                          ? 'kept'
+                                          : 'not kept'
+                                        : `${(value * 100).toFixed(1)}%`}
+                                    </span>
+                                  </div>
+                                ))}
                               </div>
-                              <div className="p-1 rounded bg-slate-950 border border-slate-800 text-center">
-                                <span className="text-slate-500 block">TIMING</span>
-                                <span className="text-emerald-400 font-bold">
-                                  {((msg.actionProposal.proposedChanges.realizationCandidate.preservationScores?.timing || 0.970) * 100).toFixed(1)}%
-                                </span>
-                              </div>
-                              <div className="p-1 rounded bg-slate-950 border border-slate-800 text-center">
-                                <span className="text-slate-500 block">PITCH CONTOUR</span>
-                                <span className="text-emerald-400 font-bold">
-                                  {((msg.actionProposal.proposedChanges.realizationCandidate.preservationScores?.pitchContour || 0.965) * 100).toFixed(1)}%
-                                </span>
-                              </div>
-                            </div>
+                            ) : (
+                              <p
+                                id="proposal-unmeasured"
+                                className="text-[9px] font-mono text-slate-500 leading-relaxed"
+                              >
+                                Not realized yet — nothing measured.
+                              </p>
+                            )}
                           </div>
                         )}
 

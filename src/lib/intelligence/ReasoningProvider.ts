@@ -10,6 +10,7 @@
 import { STUDIO_INTELLIGENCE_KNOW_HOW_DOCUMENT } from '../studioIntelligenceKnowHow';
 
 import { NoteEvent, GenerationCandidate, RealizationRoute } from '../../types/daw';
+import { proposeRealization } from '../realizationProposal';
 
 export type StudioEmphasis =
   | 'CO_PRODUCER'
@@ -107,36 +108,24 @@ export class NativeStudioBrainProvider implements ReasoningProvider {
       (q.includes('sound like') && (q.includes('808') || q.includes('bass')))
     ) {
       const bassTr = context.tracks.find((t) => t.instrument === 'bass' || t.name.toLowerCase().includes('bass')) || target;
-      reply = `**Co-Producer Realization (ACE-Step 1.5 Transfer)**:\n\nRouting your oral bass performance through **E05 Realization Engine (ACE Performance Transfer)**.\n\n• **Preserved Invariants**: Pitch slides, onset microtiming ($97.0\\%$), glide inflection ($96.5\\%$).\n• **Transformed Timbre**: Deep analog sub saturation, sine harmonic overtone drive, aggressive glide curve.\n\nAudition the non-destructive candidate below to compare against your raw take.`;
-      
-      const candidate: GenerationCandidate = {
-        candidateId: `cand_ace_bass_${Date.now()}`,
-        audioAssetId: `ast_ace_bass_${Date.now()}`,
-        audioArtifactUrl: `/audio/realization/realization_bass_cand_ace_${Date.now()}.wav`,
-        realizationRoute: 'ACE_PERFORMANCE_TRANSFER',
+      reply = `**Co-Producer Realization (ACE Performance Transfer)**:\n\nThis routes your oral bass performance through the **E05 Realization Engine**.\n\n• **Intended invariants**: pitch slides, onset microtiming, glide inflection.\n• **Intended change**: deep analog sub saturation, sine harmonic overtone drive, glide curve.\n\nHow much of your performance actually survives is measured against your raw take once the realization runs — it is not known yet, so nothing below claims a number.`;
+
+      const candidate = proposeRealization({
+        route: 'ACE_PERFORMANCE_TRANSFER',
         targetRole: '808_bass',
         prompt,
-        sourceProjectVersionId: 'v1.0.0',
-        preservedProperties: ['rhythm', 'timing', 'pitchContour', 'articulation'],
-        modifiedProperties: ['timbre', 'sub_saturation', 'glide_inflection'],
-        preservationScores: { rhythm: 0.978, timing: 0.970, pitchContour: 0.965, articulation: 0.892 },
-        violations: [],
         backend: 'ACERealizer',
-        modelVersion: 'v1.5.0-ACERealizer-PyTorch',
-        seed: 42,
-        passedIntentContract: true,
-        overrideIntentContract: false,
-        creatorDecision: 'PENDING',
-        governanceState: 'PASS_CANDIDATE',
-        createdTimestamp: Date.now(),
-      };
+        modelVersion: 'ace-step-1.5',
+        modifiedProperties: ['timbre', 'sub_saturation', 'glide_inflection'],
+        intendedInvariants: ['rhythm', 'timing', 'pitchContour', 'articulation'],
+      });
 
       proposal = {
         type: 'REALIZATION',
         targetTrackId: bassTr?.id,
         targetTrackName: bassTr?.name,
         title: `ACE Realization: Nasty Sliding 808 on ${bassTr?.name || 'Bass'}`,
-        description: `Transfer raw oral performance to analog sliding 808 with 97.8% rhythm and 96.5% pitch contour preservation.`,
+        description: `Transfer the raw oral performance to an analog sliding 808, holding rhythm and pitch contour. Preservation is measured after the realization runs, not promised before it.`,
         proposedChanges: {
           actionSummary: `ACE Performance Transfer ➔ Sliding 808 on ${bassTr?.name || 'Bass'}`,
           realizationRoute: 'ACE_PERFORMANCE_TRANSFER',
@@ -151,36 +140,24 @@ export class NativeStudioBrainProvider implements ReasoningProvider {
       q.includes('expressive cello')
     ) {
       const melTr = context.tracks.find((t) => t.instrument === 'melody' || t.instrument === 'strings') || target;
-      reply = `**Co-Producer Realization (ACE Timbral Transfer)**:\n\nTransforming your hum performance into an **Expressive Solo Cello** via E05 Realization Engine.\n\n• **Preserved Invariants**: Vibrato depth, melodic phrasing, note duration articulation ($89.2\\%$).\n• **Transformed Timbre**: Rosin bow friction, wooden body cavity resonance, full harmonic chest warmth.\n\nCandidate generated with full Intent Contract verification ($97.8\\%$ rhythm match).`;
+      reply = `**Co-Producer Realization (ACE Timbral Transfer)**:\n\nThis turns your hum into an **expressive solo cello** through the E05 Realization Engine.\n\n• **Intended invariants**: vibrato depth, melodic phrasing, note-duration articulation.\n• **Intended change**: rosin bow friction, wooden body resonance, chest warmth.\n\nThe Intent Contract is evaluated against the realized audio. Until that audio exists there is no score to show you.`;
 
-      const candidate: GenerationCandidate = {
-        candidateId: `cand_ace_cello_${Date.now()}`,
-        audioAssetId: `ast_ace_cello_${Date.now()}`,
-        audioArtifactUrl: `/audio/realization/realization_cello_cand_ace_${Date.now()}.wav`,
-        realizationRoute: 'ACE_PERFORMANCE_TRANSFER',
+      const candidate = proposeRealization({
+        route: 'ACE_PERFORMANCE_TRANSFER',
         targetRole: 'cello_solo',
         prompt,
-        sourceProjectVersionId: 'v1.0.0',
-        preservedProperties: ['rhythm', 'timing', 'pitchContour', 'articulation'],
-        modifiedProperties: ['timbre', 'bow_friction', 'body_resonance'],
-        preservationScores: { rhythm: 0.982, timing: 0.975, pitchContour: 0.968, articulation: 0.910 },
-        violations: [],
         backend: 'ACERealizer',
-        modelVersion: 'v1.5.0-ACERealizer-PyTorch',
-        seed: 42,
-        passedIntentContract: true,
-        overrideIntentContract: false,
-        creatorDecision: 'PENDING',
-        governanceState: 'PASS_CANDIDATE',
-        createdTimestamp: Date.now(),
-      };
+        modelVersion: 'ace-step-1.5',
+        modifiedProperties: ['timbre', 'bow_friction', 'body_resonance'],
+        intendedInvariants: ['rhythm', 'timing', 'pitchContour', 'articulation'],
+      });
 
       proposal = {
         type: 'REALIZATION',
         targetTrackId: melTr?.id,
         targetTrackName: melTr?.name,
         title: `ACE Realization: Expressive Solo Cello on ${melTr?.name || 'Melody'}`,
-        description: `Realize vocal hum phrasing into solo cello with rosin friction & vibrato preservation.`,
+        description: `Realize the vocal hum phrasing as a solo cello, holding vibrato and phrasing.`,
         proposedChanges: {
           actionSummary: `ACE Performance Transfer ➔ Solo Cello on ${melTr?.name || 'Melody'}`,
           realizationRoute: 'ACE_PERFORMANCE_TRANSFER',
@@ -195,29 +172,17 @@ export class NativeStudioBrainProvider implements ReasoningProvider {
       (q.includes('keep this beat') && q.includes('drums'))
     ) {
       const drumTr = context.tracks.find((t) => t.instrument === 'kick' || t.instrument === 'snare') || target;
-      reply = `**Co-Producer Realization (Studio Drum Transfer)**:\n\nMapping your beatbox performance into a **Studio Acoustic Drum Kit** with multi-mic room acoustics via E05.\n\n• **Preserved Invariants**: Pocket groove ($97.8\\%$), ghost-note dynamics, transient attack envelopes ($97.0\\%$).\n• **Transformed Timbre**: Direct mic close-punch, overhead spatial stereo width, room mic bloom.`;
+      reply = `**Co-Producer Realization (Studio Drum Transfer)**:\n\nThis maps your beatbox performance onto a **studio acoustic kit** with multi-mic room acoustics, through E05.\n\n• **Intended invariants**: pocket groove, ghost-note dynamics, transient attack envelopes.\n• **Intended change**: close-mic punch, overhead stereo width, room bloom.\n\nHow much of the groove survives is measured against your take once it runs.`;
 
-      const candidate: GenerationCandidate = {
-        candidateId: `cand_ace_drums_${Date.now()}`,
-        audioAssetId: `ast_ace_drums_${Date.now()}`,
-        audioArtifactUrl: `/audio/realization/realization_drums_cand_ace_${Date.now()}.wav`,
-        realizationRoute: 'ACE_PERFORMANCE_TRANSFER',
+      const candidate = proposeRealization({
+        route: 'ACE_PERFORMANCE_TRANSFER',
         targetRole: 'studio_drum_kit',
         prompt,
-        sourceProjectVersionId: 'v1.0.0',
-        preservedProperties: ['rhythm', 'timing', 'articulation'],
-        modifiedProperties: ['timbre', 'overhead_ambience', 'close_mic_punch'],
-        preservationScores: { rhythm: 0.988, timing: 0.980, pitchContour: 0.600, articulation: 0.940 },
-        violations: [],
         backend: 'ACERealizer',
-        modelVersion: 'v1.5.0-ACERealizer-PyTorch',
-        seed: 42,
-        passedIntentContract: true,
-        overrideIntentContract: false,
-        creatorDecision: 'PENDING',
-        governanceState: 'PASS_CANDIDATE',
-        createdTimestamp: Date.now(),
-      };
+        modelVersion: 'ace-step-1.5',
+        modifiedProperties: ['timbre', 'overhead_ambience', 'close_mic_punch'],
+        intendedInvariants: ['rhythm', 'timing', 'articulation'],
+      });
 
       proposal = {
         type: 'REALIZATION',
@@ -241,29 +206,17 @@ export class NativeStudioBrainProvider implements ReasoningProvider {
       const isKick = q.includes('kick');
       const tr = context.tracks.find((t) => isKick ? t.instrument === 'kick' : t.instrument === 'snare' || t.instrument === 'bass') || target;
       const sampleName = isKick ? 'TR-808 Heavy Studio Kick (54Hz)' : 'Crispy Vintage Snare (Layered)';
-      reply = `**Co-Producer Recommendation (R01 Sample Vault)**:\n\nAuditioning a fatter sample replacement from **R01 Sample Vault**: **${sampleName}**.\n\n• **Route**: \`R01 SAMPLE\` (Direct one-shot hit replacement preserving step timing).\n• **Contrast**: For performance-preserving oral timbre transformation instead of sample replacement, ask to *"keep my exact mouth transients via ACE"*.\n\nAudition the candidate below to preview in context.`;
+      reply = `**Co-Producer Recommendation (R01 Sample Vault)**:\n\nAuditioning a fatter sample replacement from **R01 Sample Vault**: **${sampleName}**.\n\n• **Route**: \`R01 SAMPLE\` (Direct one-shot hit replacement preserving step timing).\n• **Contrast**: For performance-preserving oral timbre transformation instead of sample replacement, ask to *"keep my exact mouth transients via ACE"*.\n\nThis is a proposal: the swapped audio is rendered when you accept it, and there is nothing to audition until then.`;
 
-      const candidate: GenerationCandidate = {
-        candidateId: `cand_sample_${Date.now()}`,
-        audioAssetId: `ast_sample_${Date.now()}`,
-        audioArtifactUrl: `/audio/samples/${isKick ? 'kick_808_heavy' : 'snare_vintage'}.wav`,
-        realizationRoute: 'SAMPLE',
+      const candidate = proposeRealization({
+        route: 'SAMPLE',
         targetRole: isKick ? 'kick' : 'snare',
         prompt,
-        sourceProjectVersionId: 'v1.0.0',
-        preservedProperties: ['rhythm', 'timing'],
-        modifiedProperties: ['sample_source', 'body_weight'],
-        preservationScores: { rhythm: 1.0, timing: 1.0, pitchContour: 0.5, articulation: 0.95 },
-        violations: [],
         backend: 'SampleRealizer',
         modelVersion: 'R01-Sample-v1.0',
-        seed: 101,
-        passedIntentContract: true,
-        overrideIntentContract: false,
-        creatorDecision: 'PENDING',
-        governanceState: 'PASS_CANDIDATE',
-        createdTimestamp: Date.now(),
-      };
+        modifiedProperties: ['sample_source', 'body_weight'],
+        intendedInvariants: ['rhythm', 'timing'],
+      });
 
       proposal = {
         type: 'REALIZATION',
@@ -286,29 +239,17 @@ export class NativeStudioBrainProvider implements ReasoningProvider {
     ) {
       const tr = context.tracks.find((t) => t.instrument === 'melody' || t.instrument === 'strings') || target;
       const instName = q.includes('rhodes') ? 'Rhodes Mark I Electric Piano' : 'Cinematic Chamber Strings';
-      reply = `**Co-Producer Recommendation (R02 SoundFont / SFZ)**:\n\nRouting track notes through **R02 Multi-Sample Instrument**: **${instName}**.\n\n• **Route**: \`R02 INSTRUMENT\` (Multi-sampled velocity-layered soundfont).\n• **Contrast**: If you want your continuous vocal vibrato, micro-glides, and throat inflection preserved, choose **ACE Performance Transfer**.\n\nAudition the candidate below:`;
+      reply = `**Co-Producer Recommendation (R02 SoundFont / SFZ)**:\n\nRouting track notes through **R02 Multi-Sample Instrument**: **${instName}**.\n\n• **Route**: \`R02 INSTRUMENT\` (Multi-sampled velocity-layered soundfont).\n• **Contrast**: If you want your continuous vocal vibrato, micro-glides, and throat inflection preserved, choose **ACE Performance Transfer**.\n\nThis is a proposal: the instrument render happens when you accept it.`;
 
-      const candidate: GenerationCandidate = {
-        candidateId: `cand_inst_${Date.now()}`,
-        audioAssetId: `ast_inst_${Date.now()}`,
-        audioArtifactUrl: `/audio/instruments/${q.includes('rhodes') ? 'rhodes_mark1' : 'strings_chamber'}.wav`,
-        realizationRoute: 'INSTRUMENT',
+      const candidate = proposeRealization({
+        route: 'INSTRUMENT',
         targetRole: 'keyboard_strings',
         prompt,
-        sourceProjectVersionId: 'v1.0.0',
-        preservedProperties: ['rhythm', 'timing', 'midiNotes'],
-        modifiedProperties: ['timbre', 'acoustic_space'],
-        preservationScores: { rhythm: 1.0, timing: 1.0, pitchContour: 0.90, articulation: 0.88 },
-        violations: [],
         backend: 'SoulSonusNativeRealizer',
         modelVersion: 'R02-SFZ-v1.0',
-        seed: 202,
-        passedIntentContract: true,
-        overrideIntentContract: false,
-        creatorDecision: 'PENDING',
-        governanceState: 'PASS_CANDIDATE',
-        createdTimestamp: Date.now(),
-      };
+        modifiedProperties: ['timbre', 'acoustic_space'],
+        intendedInvariants: ['rhythm', 'timing', 'midiNotes'],
+      });
 
       proposal = {
         type: 'REALIZATION',

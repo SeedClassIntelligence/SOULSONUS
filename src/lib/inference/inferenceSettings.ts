@@ -12,8 +12,15 @@
 const STORAGE_KEY = 'soulsonus.inferenceSettings.v1';
 
 export interface InferenceSettings {
+  /**
+   * Where a locally-run ACE host listens, for a creator hosting their own.
+   *
+   * It is not read by the deployed app: the browser reaches realization
+   * through the SoulSonus service route, which holds the endpoint and the key
+   * server-side. This stays for the local-provider path, so a creator running
+   * their own host has somewhere to put its address.
+   */
   aceStepEndpoint: string;
-  aceStepApiKey?: string;
   demucsEndpoint: string;
 }
 
