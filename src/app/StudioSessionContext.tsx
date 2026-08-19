@@ -70,6 +70,7 @@ import { midiNoteToCaptureEvent } from '../audio/midiCapture';
 import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
 import { toMono } from '../audio/fft';
 import { renderMasterBounce } from '../audio/masterRender';
+import { defaultTrackDsp } from '../audio/trackStrip';
 import { buildDeliveryPackage, disposeDelivery, DeliveryPackage } from '../audio/deliveryPackage';
 import { MaskingReport, analyzeMasking } from '../audio/maskingAnalysis';
 import { masteringTelemetryEngine, LoudnessTelemetryReport } from '../audio/masteringTelemetryEngine';
@@ -2649,31 +2650,27 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const handleUpdateChannelStrip = useCallback((trackId: string, updates: Partial<TrackDspSettings>) => {
+    const track = tracksRef.current.find((t) => t.id === trackId);
+    if (!track) return;
+
+    const merged: TrackDspSettings = { ...defaultTrackDsp(track), ...(track.dspSettings || {}), ...updates };
+
+    // Push to the audio graph here rather than inside the state updater —
+    // StrictMode invokes updaters twice, and an updater is no place for a side
+    // effect. Every writer of channel-strip state now reaches real nodes; the
+    // EQ bands used to be written and never read.
+    audioEngine.applyTrackDsp(trackId, merged, track.instrument);
+
     setTracks((prevTracks) =>
-      prevTracks.map((t) => {
-        if (t.id === trackId) {
-          const currentDsp = t.dspSettings || {
-            lowGain: 0,
-            midGain: 0,
-            highGain: 0,
-            compressorThreshold: -18,
-            compressorRatio: 3,
-            reverbSend: 0.15,
-            delaySend: 0.1,
-            pan: 0,
-            volume: t.volume || 0,
-          };
-          return {
-            ...t,
-            volume: updates.volume !== undefined ? updates.volume : t.volume,
-            dspSettings: {
-              ...currentDsp,
-              ...updates,
-            },
-          };
-        }
-        return t;
-      })
+      prevTracks.map((t) =>
+        t.id === trackId
+          ? {
+              ...t,
+              volume: updates.volume !== undefined ? updates.volume : t.volume,
+              dspSettings: merged,
+            }
+          : t
+      )
     );
   }, []);
 

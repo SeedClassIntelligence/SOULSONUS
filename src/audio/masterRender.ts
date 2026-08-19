@@ -20,8 +20,8 @@ import {
   KICK_OPTIONS,
   MELODY_OPTIONS,
   SNARE_OPTIONS,
-  defaultFilterFreqFor,
 } from './instrumentVoices';
+import { buildTrackStrip } from './trackStrip';
 import { midiToNoteName, tickToStep } from '../utils/musicMath';
 import { limitTruePeak, TruePeakLimitResult } from './truePeakLimiter';
 
@@ -92,33 +92,31 @@ export async function renderMasterBounce(options: RenderOptions): Promise<Render
     await reverb.generate();
     reverb.connect(mixComp);
 
-    // One channel strip per track, mirroring getOrCreateTrackNodes.
-    const strips = new Map<string, { filter: Tone.Filter; send: Tone.Gain }>();
+    // The live engine's delay send, mirrored: without it a track with a delay
+    // send would bounce dry.
+    const delay = new Tone.FeedbackDelay({ delayTime: '8n', feedback: 0.25, wet: 1 }).connect(mixComp);
+
+    // One channel strip per track, from the same builder the live engine uses —
+    // including the four EQ bands, so a bounce carries the EQ the creator set.
+    const strips = new Map<string, { input: Tone.ToneAudioNode }>();
     for (const track of tracks) {
-      const filter = new Tone.Filter({
-        frequency: track.dspSettings?.filterFreq || defaultFilterFreqFor(track.instrument),
-        type: track.dspSettings?.filterType || 'lowpass',
-      });
-      const compressor = new Tone.Compressor({
-        threshold: track.dspSettings?.compressorThreshold ?? -18,
-        ratio: track.dspSettings?.compressorRatio ?? 4,
-        attack: 0.005,
-        release: 0.1,
-      });
+      const strip = buildTrackStrip(track.dspSettings, track.instrument);
       const channel = new Tone.Channel({
         volume: track.volume || 0,
         pan: track.dspSettings?.pan || 0,
         mute: false,
       });
-      const send = new Tone.Gain(track.dspSettings?.reverbSend ?? (track.instrument === 'melody' ? 0.25 : 0));
+      const reverbSend = new Tone.Gain(track.dspSettings?.reverbSend ?? (track.instrument === 'melody' ? 0.25 : 0));
+      const delaySend = new Tone.Gain(track.dspSettings?.delaySend ?? 0);
 
-      filter.connect(compressor);
-      compressor.connect(channel);
+      strip.output.connect(channel);
       channel.connect(mixComp);
-      compressor.connect(send);
-      send.connect(reverb);
+      strip.output.connect(reverbSend);
+      reverbSend.connect(reverb);
+      strip.output.connect(delaySend);
+      delaySend.connect(delay);
 
-      strips.set(track.id, { filter, send });
+      strips.set(track.id, { input: strip.input });
     }
 
     // A small round-robin voice pool per track. One voice per track is enough
@@ -148,7 +146,7 @@ export async function renderMasterBounce(options: RenderOptions): Promise<Render
       const voices: Voice[] = [];
       for (let i = 0; i < VOICES_PER_TRACK; i++) {
         const v = makeVoice(track.instrument);
-        v.connect(strip.filter);
+        v.connect(strip.input);
         voices.push(v);
       }
       pools.set(track.id, { voices, next: 0 });

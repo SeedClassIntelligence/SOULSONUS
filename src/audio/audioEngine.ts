@@ -1,17 +1,19 @@
 import * as Tone from 'tone';
-import { Track, InstrumentType } from '../types/daw';
+import { Track, InstrumentType, TrackDspSettings } from '../types/daw';
 import { vocalRecorder } from './vocalRecorder';
 import { vocalDspProcessor } from './vocalDspProcessor';
 import { tickToStep, midiToNoteName } from '../utils/musicMath';
-import { createInstrumentVoices, defaultFilterFreqFor, HIHAT_FREQUENCY } from './instrumentVoices';
+import { createInstrumentVoices, HIHAT_FREQUENCY } from './instrumentVoices';
+import { buildTrackStrip, TrackStrip } from './trackStrip';
 import { BuiltMasteringChain, buildMasteringChain } from './masteringChain';
 import { MasteringDspChain } from '../types/daw';
 
 interface TrackChannelNodes {
-  filter: Tone.Filter;
-  compressor: Tone.Compressor;
+  strip: TrackStrip;
   channel: Tone.Channel;
   reverbSend: Tone.Gain;
+  delaySend: Tone.Gain;
+  instrument: Track['instrument'];
 }
 
 export class AudioEngine {
@@ -99,19 +101,9 @@ export class AudioEngine {
 
     let nodes = this.trackNodeMap.get(track.id);
     if (!nodes) {
-      const defaultFilterFreq = defaultFilterFreqFor(track.instrument);
-
-      const filter = new Tone.Filter({
-        frequency: track.dspSettings?.filterFreq || defaultFilterFreq,
-        type: track.dspSettings?.filterType || 'lowpass',
-      });
-
-      const compressor = new Tone.Compressor({
-        threshold: track.dspSettings?.compressorThreshold || -18,
-        ratio: track.dspSettings?.compressorRatio || 4,
-        attack: 0.005,
-        release: 0.1,
-      });
+      // Low cut, low shelf, parametric mid, high shelf, character filter and
+      // compressor — the same builder the offline bounce uses.
+      const strip = buildTrackStrip(track.dspSettings, track.instrument);
 
       const channel = new Tone.Channel({
         volume: track.volume || 0,
@@ -120,22 +112,43 @@ export class AudioEngine {
         solo: track.solo,
       });
 
-      const reverbSend = new Tone.Gain(track.dspSettings?.reverbSend || (track.instrument === 'melody' ? 0.25 : 0));
+      const reverbSend = new Tone.Gain(track.dspSettings?.reverbSend ?? (track.instrument === 'melody' ? 0.25 : 0));
+      const delaySend = new Tone.Gain(track.dspSettings?.delaySend ?? 0);
 
-      // Signal Flow: Filter -> Compressor -> Channel -> Master Compressor
-      filter.connect(compressor);
-      compressor.connect(channel);
+      // Signal flow: strip -> Channel -> Master Compressor, with two sends
+      // tapped off the end of the strip.
+      strip.output.connect(channel);
       channel.connect(this.masterCompressor);
 
-      // Reverb Send: Compressor -> ReverbSend -> MasterReverb
-      compressor.connect(reverbSend);
+      strip.output.connect(reverbSend);
       reverbSend.connect(this.masterReverb);
 
-      nodes = { filter, compressor, channel, reverbSend };
+      strip.output.connect(delaySend);
+      if (this.masterDelay) delaySend.connect(this.masterDelay);
+
+      nodes = { strip, channel, reverbSend, delaySend, instrument: track.instrument };
       this.trackNodeMap.set(track.id, nodes);
     }
 
     return nodes;
+  }
+
+  /**
+   * Applies a whole channel-strip state at once.
+   *
+   * Previously each control had its own setter and only the mixer console
+   * called them, so the same numbers written from the Vocal DSP tab or the
+   * channel workstation reached no audio node. One entry point means every
+   * writer works.
+   */
+  public applyTrackDsp(trackId: string, dsp: TrackDspSettings | undefined, instrument?: Track['instrument']) {
+    const nodes = this.trackNodeMap.get(trackId);
+    if (!nodes) return;
+    nodes.strip.update(dsp, instrument || nodes.instrument);
+    if (dsp?.pan !== undefined) nodes.channel.pan.rampTo(dsp.pan, 0.05);
+    if (dsp?.volume !== undefined) nodes.channel.volume.rampTo(dsp.volume, 0.05);
+    if (dsp?.reverbSend !== undefined) nodes.reverbSend.gain.rampTo(dsp.reverbSend, 0.05);
+    if (dsp?.delaySend !== undefined) nodes.delaySend.gain.rampTo(dsp.delaySend, 0.05);
   }
 
   public setTrackVolume(trackId: string, volumeDb: number) {
@@ -153,17 +166,11 @@ export class AudioEngine {
   }
 
   public setTrackFilterFreq(trackId: string, freqHz: number) {
-    const nodes = this.trackNodeMap.get(trackId);
-    if (nodes) {
-      nodes.filter.frequency.rampTo(freqHz, 0.05);
-    }
+    this.applyTrackDsp(trackId, { filterFreq: freqHz } as TrackDspSettings);
   }
 
   public setTrackCompressorThreshold(trackId: string, thresholdDb: number) {
-    const nodes = this.trackNodeMap.get(trackId);
-    if (nodes) {
-      nodes.compressor.threshold.rampTo(thresholdDb, 0.05);
-    }
+    this.applyTrackDsp(trackId, { compressorThreshold: thresholdDb } as TrackDspSettings);
   }
 
   public setTrackReverbSend(trackId: string, sendAmount: number) {
@@ -226,7 +233,7 @@ export class AudioEngine {
       const nodes = targetTrack ? this.getOrCreateTrackNodes(targetTrack) : null;
       if (nodes) {
         this.kickSynth.disconnect();
-        this.kickSynth.connect(nodes.filter);
+        this.kickSynth.connect(nodes.strip.input);
       } else if (this.masterCompressor) {
         this.kickSynth.disconnect();
         this.kickSynth.connect(this.masterCompressor);
@@ -243,7 +250,7 @@ export class AudioEngine {
       const nodes = targetTrack ? this.getOrCreateTrackNodes(targetTrack) : null;
       if (nodes) {
         this.snareSynth.disconnect();
-        this.snareSynth.connect(nodes.filter);
+        this.snareSynth.connect(nodes.strip.input);
       } else if (this.masterCompressor) {
         this.snareSynth.disconnect();
         this.snareSynth.connect(this.masterCompressor);
@@ -260,7 +267,7 @@ export class AudioEngine {
       const nodes = targetTrack ? this.getOrCreateTrackNodes(targetTrack) : null;
       if (nodes) {
         this.hihatSynth.disconnect();
-        this.hihatSynth.connect(nodes.filter);
+        this.hihatSynth.connect(nodes.strip.input);
       } else if (this.masterCompressor) {
         this.hihatSynth.disconnect();
         this.hihatSynth.connect(this.masterCompressor);
@@ -282,7 +289,7 @@ export class AudioEngine {
       const nodes = targetTrack ? this.getOrCreateTrackNodes(targetTrack) : null;
       if (nodes) {
         this.melodySynth.disconnect();
-        this.melodySynth.connect(nodes.filter);
+        this.melodySynth.connect(nodes.strip.input);
       } else if (this.masterCompressor) {
         this.melodySynth.disconnect();
         this.melodySynth.connect(this.masterCompressor);
@@ -299,7 +306,7 @@ export class AudioEngine {
       const nodes = targetTrack ? this.getOrCreateTrackNodes(targetTrack) : null;
       if (nodes) {
         this.bassSynth.disconnect();
-        this.bassSynth.connect(nodes.filter);
+        this.bassSynth.connect(nodes.strip.input);
       } else if (this.masterCompressor) {
         this.bassSynth.disconnect();
         this.bassSynth.connect(this.masterCompressor);
