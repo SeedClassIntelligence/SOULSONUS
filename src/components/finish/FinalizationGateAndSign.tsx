@@ -15,7 +15,8 @@ import {
   Disc,
 } from 'lucide-react';
 import { useStudioSession } from '../../app/StudioSessionContext';
-import { MasterCandidate, MasterDeliveryManifest } from '../../types/daw';
+import { MasterCandidate } from '../../types/daw';
+import { downloadDeliveryFile, formatBytes, DeliveryFile } from '../../audio/deliveryPackage';
 
 export const FinalizationGateAndSign: React.FC = () => {
   const {
@@ -26,13 +27,17 @@ export const FinalizationGateAndSign: React.FC = () => {
     handleCommitMasterCandidate,
     handleSignMasterSeedSignature,
     handleExportMasterDelivery,
+    deliveryPackage,
+    isPackagingDelivery,
+    deliveryProgress,
+    deliveryError,
   } = useStudioSession();
 
   const [activeTab, setActiveTab] = useState<'co_engineer' | 'candidates' | 'finalization_gate' | 'export_delivery'>('co_engineer');
   const [loudnessMatchEnabled, setLoudnessMatchEnabled] = useState(true);
   const [isSigning, setIsSigning] = useState(false);
   const [signatureResult, setSignatureResult] = useState<any | null>(null);
-  const [exportManifest, setExportManifest] = useState<MasterDeliveryManifest | null>(null);
+
 
   // Co-Engineer Mastering Observations
   const masteringObservations = [
@@ -59,16 +64,13 @@ export const FinalizationGateAndSign: React.FC = () => {
     try {
       const sig = await handleSignMasterSeedSignature();
       setSignatureResult(sig);
-      const manifest = handleExportMasterDelivery();
-      setExportManifest(manifest);
       setActiveTab('export_delivery');
+      // Signing now renders and encodes the package. It takes as long as the
+      // bounce takes, which is the honest cost of producing real files.
+      await handleExportMasterDelivery().catch(() => undefined);
     } finally {
       setIsSigning(false);
     }
-  };
-
-  const handleDownloadFile = (fileName: string) => {
-    alert(`Downloaded ${fileName} to local production package.`);
   };
 
   return (
@@ -314,58 +316,129 @@ export const FinalizationGateAndSign: React.FC = () => {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-bold text-slate-200 uppercase text-xs">
-                Master Delivery Package (Ready)
+                {deliveryPackage ? `Master Delivery Package • ${deliveryPackage.projectName}` : 'Master Delivery Package'}
               </span>
-              <span className="text-[10px] text-cyan-400 font-bold font-mono">
-                {exportManifest?.seedSignatureHash?.slice(0, 18) || '0xsha256_signed'}...
-              </span>
+              {deliveryPackage && (
+                <span className="text-[10px] text-cyan-400 font-bold font-mono" title={`SHA-256 of ${deliveryPackage.provenance.name}`}>
+                  {deliveryPackage.provenance.sha256.slice(0, 16)}…
+                </span>
+              )}
             </div>
+
+            {isPackagingDelivery && (
+              <div className="p-3 rounded-xl bg-slate-900 border border-amber-500/40 space-y-1.5" data-testid="delivery-progress">
+                <div className="flex items-center justify-between text-[10px] font-bold text-amber-300">
+                  <span>{deliveryProgress?.label || 'Rendering…'}</span>
+                  <span>{Math.round((deliveryProgress?.fraction || 0) * 100)}%</span>
+                </div>
+                <div className="h-1.5 rounded bg-slate-950 overflow-hidden">
+                  <div className="h-full bg-amber-400 transition-all" style={{ width: `${Math.round((deliveryProgress?.fraction || 0) * 100)}%` }} />
+                </div>
+              </div>
+            )}
+
+            {deliveryError && !isPackagingDelivery && (
+              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/40 text-[10px] text-rose-200" data-testid="delivery-error">
+                {deliveryError}
+              </div>
+            )}
+
+            {!deliveryPackage && !isPackagingDelivery && (
+              <button
+                onClick={() => { void handleExportMasterDelivery().catch(() => undefined); }}
+                data-testid="build-delivery"
+                className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition cursor-pointer"
+              >
+                RENDER & PACKAGE DELIVERY
+              </button>
+            )}
+
+            {deliveryPackage && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[9px] text-slate-400">
+                <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
+                  <div className="text-slate-500">LENGTH</div>
+                  <div className="text-slate-200 font-bold font-mono">{deliveryPackage.durationSeconds.toFixed(1)}s</div>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
+                  <div className="text-slate-500">INTEGRATED</div>
+                  <div className="text-slate-200 font-bold font-mono">{deliveryPackage.measurement.integratedLufs} LUFS</div>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
+                  <div className="text-slate-500">TRUE PEAK</div>
+                  <div className="text-slate-200 font-bold font-mono">{deliveryPackage.measurement.truePeakDbtp} dBTP</div>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
+                  <div className="text-slate-500">VOICES</div>
+                  <div className="text-slate-200 font-bold font-mono">{deliveryPackage.eventsRendered}</div>
+                </div>
+              </div>
+            )}
 
             {/* Master Audio Formats */}
             <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase">Master Audio Files</span>
               <div className="grid grid-cols-2 gap-2">
-                {[
-                  { name: 'Master (24-bit / 48kHz WAV)', size: '48.2 MB' },
-                  { name: 'Master (24-bit / 44.1kHz WAV)', size: '44.3 MB' },
-                  { name: 'Lossless FLAC Master', size: '28.1 MB' },
-                  { name: 'MP3 320kbps Delivery', size: '8.4 MB' },
-                ].map((f, i) => (
+                {(deliveryPackage?.masters || []).map((f: DeliveryFile) => (
                   <button
-                    key={i}
-                    onClick={() => handleDownloadFile(f.name)}
+                    key={f.name}
+                    onClick={() => downloadDeliveryFile(f)}
+                    data-testid={`download-${f.name}`}
+                    title={`SHA-256 ${f.sha256}`}
                     className="p-2 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left transition cursor-pointer flex items-center justify-between"
                   >
                     <div className="truncate">
-                      <p className="font-bold text-[10px] text-slate-200 truncate">{f.name}</p>
-                      <span className="text-[8px] text-slate-500">{f.size}</span>
+                      <p className="font-bold text-[10px] text-slate-200 truncate">{f.label}</p>
+                      <span className="text-[8px] text-slate-500">{formatBytes(f.byteLength)} • {f.name}</span>
                     </div>
                     <Download className="w-3.5 h-3.5 text-cyan-400 shrink-0 ml-1" />
                   </button>
                 ))}
+                {!deliveryPackage && (
+                  <span className="text-[9px] text-slate-500 col-span-2">Nothing rendered yet — sign the master, or render the package above.</span>
+                )}
               </div>
             </div>
 
             {/* Production Stems & Manifest */}
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => handleDownloadFile('Full Multi-Track 24-bit WAV Stems (.ZIP)')}
-                className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-left transition cursor-pointer flex items-center justify-between"
+                onClick={() => deliveryPackage?.stemsZip && downloadDeliveryFile(deliveryPackage.stemsZip)}
+                disabled={!deliveryPackage?.stemsZip}
+                data-testid="download-stems"
+                className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between ${
+                  deliveryPackage?.stemsZip
+                    ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 cursor-pointer'
+                    : 'bg-slate-950 border-slate-900 text-slate-600 cursor-not-allowed'
+                }`}
               >
                 <div>
                   <p className="font-bold text-xs text-slate-200">Production Stems</p>
-                  <span className="text-[9px] text-slate-500">Kick, Snare, 808, Vocals (.ZIP)</span>
+                  <span className="text-[9px] text-slate-500">
+                    {deliveryPackage?.stemsZip
+                      ? `${deliveryPackage.stems.length} stems • ${formatBytes(deliveryPackage.stemsZip.byteLength)} (.ZIP)`
+                      : 'Not rendered yet'}
+                  </span>
                 </div>
                 <Layers className="w-4 h-4 text-purple-400" />
               </button>
 
               <button
-                onClick={() => handleDownloadFile('SeedSignature Cryptographic Provenance Certificate (.JSON)')}
-                className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-left transition cursor-pointer flex items-center justify-between"
+                onClick={() => deliveryPackage && downloadDeliveryFile(deliveryPackage.provenance)}
+                disabled={!deliveryPackage}
+                data-testid="download-provenance"
+                className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between ${
+                  deliveryPackage
+                    ? 'bg-slate-900 hover:bg-slate-800 border-slate-800 cursor-pointer'
+                    : 'bg-slate-950 border-slate-900 text-slate-600 cursor-not-allowed'
+                }`}
               >
                 <div>
-                  <p className="font-bold text-xs text-slate-200">SeedSignature Cert</p>
-                  <span className="text-[9px] text-slate-500">Immutable Lineage & Hash (.JSON)</span>
+                  <p className="font-bold text-xs text-slate-200">SeedSignature Record</p>
+                  <span className="text-[9px] text-slate-500">
+                    {deliveryPackage
+                      ? `${formatBytes(deliveryPackage.provenance.byteLength)} • hashes taken over the exported bytes`
+                      : 'Not rendered yet'}
+                  </span>
                 </div>
                 <FileCheck className="w-4 h-4 text-emerald-400" />
               </button>

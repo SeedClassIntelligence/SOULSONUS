@@ -1295,17 +1295,6 @@ export interface FinalizationGateStatus {
   blockingReasons: string[];
 }
 
-export interface MasterDeliveryManifest {
-  packageId: string;
-  projectName: string;
-  masterVersion: string;
-  committedMasterCandidateId: string;
-  mixPrintId: string;
-  seedSignatureHash: string;
-  formats: { format: string; sampleRate: string; bitDepth: string; url: string }[];
-  stems: { trackName: string; role: string; url: string }[];
-  generatedAt: string;
-}
 
 
 

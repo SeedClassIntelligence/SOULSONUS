@@ -527,10 +527,6 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       <ExportModal
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
-        projectName={dawState.projectName}
-        bpm={dawState.bpm}
-        tracks={tracks}
-        seedRecords={seedRecords}
       />
       <AiControlRoomModal
         isOpen={isAiControlRoomOpen}

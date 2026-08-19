@@ -47,7 +47,14 @@ export interface RenderResult {
 
 const STEPS_PER_BAR = 16;
 
-/** Renders the project to an AudioBuffer. Deterministic: same input, same output. */
+/**
+ * Renders the project to an AudioBuffer.
+ *
+ * Not bit-identical between runs: the snare and hat are noise voices, so two
+ * renders of the same project differ slightly — measured at 0.1 LU of drift on
+ * the demo project, with a different file hash each time. The arrangement,
+ * timing and levels are reproduced exactly; the noise is not.
+ */
 export async function renderMasterBounce(options: RenderOptions): Promise<RenderResult> {
   const allTracks = options.tracks;
   const tracks = options.onlyTrackIds

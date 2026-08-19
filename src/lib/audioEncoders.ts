@@ -324,17 +324,6 @@ export class AudioEncoders {
     };
   }
 
-  /**
-   * Compatibility alias for MP3 export delivering 16-bit / 44.1kHz PCM master
-   */
-  public encodeMp3(
-    leftChannel: Float32Array,
-    rightChannel: Float32Array | null,
-    sampleRate: number = 44100
-  ): EncodedAudioResult {
-    return this.encode16BitWav(leftChannel, rightChannel, sampleRate);
-  }
-
   private writeString(view: DataView, offset: number, string: string) {
     for (let i = 0; i < string.length; i++) {
       view.setUint8(offset + i, string.charCodeAt(i));

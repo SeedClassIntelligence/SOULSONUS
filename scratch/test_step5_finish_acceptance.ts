@@ -4,7 +4,6 @@ import {
   MasteringDspChain,
   MasterCandidate,
   FinalizationGateStatus,
-  MasterDeliveryManifest,
 } from '../src/types/daw';
 import { signatureService } from '../src/lib/seedSignature';
 
@@ -169,29 +168,18 @@ async function runSignTest() {
     }
   );
 
-  const deliveryManifest: MasterDeliveryManifest = {
-    packageId: `pkg_master_${Date.now()}`,
-    projectName: 'Cyber Groove',
-    masterVersion: '1.0.0',
-    committedMasterCandidateId: candidates[0].candidateId,
-    mixPrintId: acceptedMix.mixPrintId,
-    seedSignatureHash: sig.hash,
-    formats: [
-      { format: 'WAV 24-bit / 48kHz', sampleRate: '48000', bitDepth: '24', url: '/export/master_24_48.wav' },
-      { format: 'Lossless FLAC', sampleRate: '48000', bitDepth: '24', url: '/export/master.flac' },
-    ],
-    stems: sampleTracks.map((t) => ({ trackName: t.name, role: t.instrument, url: `/export/stems/${t.id}.wav` })),
-    generatedAt: new Date().toISOString(),
-  };
-
-  if (!sig.hash || deliveryManifest.formats.length !== 2) {
-    throw new Error('SeedSignature or delivery package failed!');
+  if (!sig.hash) {
+    throw new Error('SeedSignature failed!');
   }
 
   console.log(`  Generated E14 SeedSignature: ${sig.hash}`);
-  console.log(`  Master Delivery Formats: ${deliveryManifest.formats.map((f) => f.format).join(', ')}`);
-  console.log(`  Exported Stems: ${deliveryManifest.stems.length} multi-track stems`);
-  console.log('  ✓ PASS: TEST 10 (E14 SeedSignature & Delivery)\n');
+  // The delivery half of this test used to build a manifest literal and then
+  // check that the literal it had just written contained two entries. Delivery
+  // is now produced by buildDeliveryPackage — a real render, real encoders and
+  // hashes taken over the exported bytes — and is verified against the running
+  // app by scripts/live-verification/test-28-export-delivery.cjs.
+  console.log('  Delivery packaging: covered by the live harness, not asserted here');
+  console.log('  ✓ PASS: TEST 10 (E14 SeedSignature)\n');
 }
 
 runSignTest().then(() => {

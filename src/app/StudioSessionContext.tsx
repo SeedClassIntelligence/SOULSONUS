@@ -50,7 +50,6 @@ import {
   MasteringDspChain,
   MasterCandidate,
   FinalizationGateStatus,
-  MasterDeliveryManifest,
 } from '../types/daw';
 import {
   deriveStepArrayFromNoteEvents,
@@ -71,6 +70,7 @@ import { midiNoteToCaptureEvent } from '../audio/midiCapture';
 import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
 import { toMono } from '../audio/fft';
 import { renderMasterBounce } from '../audio/masterRender';
+import { buildDeliveryPackage, disposeDelivery, DeliveryPackage } from '../audio/deliveryPackage';
 import { MaskingReport, analyzeMasking } from '../audio/maskingAnalysis';
 import { masteringTelemetryEngine, LoudnessTelemetryReport } from '../audio/masteringTelemetryEngine';
 import { audioEncoders } from '../lib/audioEncoders';
@@ -623,7 +623,11 @@ export interface StudioSessionState {
   handleAuditionMasterCandidate: (candidateId: string) => void;
   handleCommitMasterCandidate: (candidateId: string) => void;
   handleSignMasterSeedSignature: () => Promise<SeedSignatureRecord>;
-  handleExportMasterDelivery: (format?: string) => MasterDeliveryManifest;
+  handleExportMasterDelivery: () => Promise<DeliveryPackage>;
+  deliveryPackage: DeliveryPackage | null;
+  isPackagingDelivery: boolean;
+  deliveryProgress: { fraction: number; label: string } | null;
+  deliveryError: string | null;
 
   coproducerContext: CoproducerContext;
 }
@@ -3411,25 +3415,44 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     return signature;
   }, [masterCandidates, activeMasterCandidateId, tracks, dawState.bpm, creatorName, acceptedMixPrint]);
 
-  const handleExportMasterDelivery = useCallback((format: string = 'WAV_24_48'): MasterDeliveryManifest => {
-    const activeCand = masterCandidates.find((c) => c.isCommittedMaster) || masterCandidates[0];
-    return {
-      packageId: `pkg_master_${Date.now()}`,
-      projectName: 'Cyber Groove',
-      masterVersion: '1.0.0',
-      committedMasterCandidateId: activeCand.candidateId,
-      mixPrintId: acceptedMixPrint.mixPrintId,
-      seedSignatureHash: '0xsha256_master_seed_sig_' + Date.now(),
-      formats: [
-        { format: 'WAV 24-bit / 48kHz', sampleRate: '48000', bitDepth: '24', url: '/export/master_24_48.wav' },
-        { format: 'WAV 24-bit / 44.1kHz', sampleRate: '44100', bitDepth: '24', url: '/export/master_24_44.wav' },
-        { format: 'Lossless FLAC', sampleRate: '48000', bitDepth: '24', url: '/export/master.flac' },
-        { format: 'MP3 320kbps', sampleRate: '44100', bitDepth: '16', url: '/export/master_320.mp3' },
-      ],
-      stems: tracks.map((t) => ({ trackName: t.name, role: t.instrument, url: `/export/stems/${t.id}.wav` })),
-      generatedAt: new Date().toISOString(),
-    };
-  }, [masterCandidates, acceptedMixPrint, tracks]);
+  // Renders, encodes and packages for real. The previous version returned a
+  // literal: a project name from no session, a hash made from Date.now(), and
+  // four /export/... URLs that were never written to.
+  const [deliveryPackage, setDeliveryPackage] = useState<DeliveryPackage | null>(null);
+  const [isPackagingDelivery, setIsPackagingDelivery] = useState(false);
+  const [deliveryProgress, setDeliveryProgress] = useState<{ fraction: number; label: string } | null>(null);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  const deliveryRef = useRef<DeliveryPackage | null>(null);
+
+  const handleExportMasterDelivery = useCallback(async (): Promise<DeliveryPackage> => {
+    setIsPackagingDelivery(true);
+    setDeliveryError(null);
+    try {
+      const pkg = await buildDeliveryPackage({
+        tracks: tracksRef.current,
+        bpm: bpmRef.current || 110,
+        chain: masteringChainRef.current,
+        projectName: dawStateRef.current.projectName || 'SoulSonus Master',
+        creatorName,
+        seedRecords,
+        onProgress: (fraction, label) => setDeliveryProgress({ fraction, label }),
+      });
+      // The previous package's object URLs are released only once its
+      // replacement exists, so a failed rebuild never leaves dead links.
+      disposeDelivery(deliveryRef.current);
+      deliveryRef.current = pkg;
+      setDeliveryPackage(pkg);
+      setMasterMeasurement(pkg.measurement);
+      return pkg;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Export failed.';
+      setDeliveryError(message);
+      throw err;
+    } finally {
+      setIsPackagingDelivery(false);
+      setDeliveryProgress(null);
+    }
+  }, [creatorName, seedRecords]);
 
   const value = useMemo<StudioSessionState>(
     () => ({
@@ -3589,6 +3612,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       handleCommitMasterCandidate,
       handleSignMasterSeedSignature,
       handleExportMasterDelivery,
+      deliveryPackage,
+      isPackagingDelivery,
+      deliveryProgress,
+      deliveryError,
 
       // Tactile Performance & Note Editor (Piano Roll)
       selectedNoteIds,
@@ -3735,6 +3762,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       handleCommitMasterCandidate,
       handleSignMasterSeedSignature,
       handleExportMasterDelivery,
+      deliveryPackage,
+      isPackagingDelivery,
+      deliveryProgress,
+      deliveryError,
       selectedNoteIds,
       setSelectedNoteIds,
       handleAddNote,

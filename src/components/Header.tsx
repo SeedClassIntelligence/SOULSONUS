@@ -266,7 +266,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onOpenExport}
             className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-mono font-black transition cursor-pointer shadow-md shadow-amber-500/20"
-            title="Export Master Audio Packages (.WAV 24/48, FLAC, MP3, Stems, JSON Metadata)"
+            title="Render and export the master: 24-bit and 16-bit WAV, FLAC, per-track stems and a provenance record"
           >
             <Download className="w-3.5 h-3.5" />
             <span>EXPORT</span>

@@ -113,7 +113,6 @@ async function testAudioEncoders() {
 
   const wavResult = audioEncoders.encode24BitWav(left, right, sampleRate);
   const flacResult = audioEncoders.encodeFlac(left, right, sampleRate);
-  const mp3Result = audioEncoders.encodeMp3(left, right, 44100);
 
   if (wavResult.bitDepth !== 24 || wavResult.sampleRate !== 48000 || wavResult.byteLength < 44) {
     throw new Error('WAV 24-bit encoder produced invalid PCM structure');
@@ -121,7 +120,6 @@ async function testAudioEncoders() {
 
   console.log(`  Encoded 24-bit Master WAV: ${wavResult.byteLength} bytes (24-bit / 48kHz Stereo)`);
   console.log(`  Encoded Lossless FLAC: ${flacResult.byteLength} bytes (~58% compression)`);
-  console.log(`  Encoded MP3 320kbps: ${mp3Result.byteLength} bytes`);
   console.log('  ✓ PASS: TEST 4 (Lossless Audio Encoders)\n');
 }
 
