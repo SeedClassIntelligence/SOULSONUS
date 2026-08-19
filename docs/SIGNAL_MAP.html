@@ -310,8 +310,8 @@
     <h1>SoulSonus Signal Map</h1>
     <p class="standfirst">Every component in the six rooms, sorted by whether it actually processes anything. Consolidated from all prior verification passes and re-checked against the current branch, so there is one map to plan from instead of several.</p>
     <div class="stamp">
-      <span>Describes the code at <code>main</code> @ <code>2ed22ae</code> — the branch Netlify deploys (this map is the commit after it)</span>
-      <span>Updated 19 Aug 2026 · Layers 0 and 1 complete · Layer 2 in progress — AUDITION sweep, real export and a working true-peak limiter have landed</span>
+      <span>Describes the code at <code>main</code> @ <code>149a46a</code> — the branch Netlify deploys (this map is the commit after it)</span>
+      <span>Updated 19 Aug 2026 · Layers 0 and 1 complete · Layer 2 in progress — AUDITION sweep, real export, a working true-peak limiter and per-track EQ have landed</span>
       <span>Method: live headless browser + synthetic mic + source read</span>
     </div>
   </header>
@@ -443,7 +443,10 @@
       <div class="row"><div class="what">Proposal AUDITION / COMMIT buttons</div><div><span class="pill p-none">Removed</span></div><div class="ev">They existed to audition and commit the literal proposals. With the panel now reporting measurements rather than asserting fixes, there is nothing to audition — a suggestion engine on top of real analysis is separate work</div></div>
       <div class="row"><div class="row"><div class="what">Meter bridge<small>LUFS, true peak, phase correlation</small></div><div><span class="pill p-deco">Decorative</span></div><div class="ev">CoEngineerAnalysisSuite.tsx:213 — literals in JSX</div></div>
       <div class="row"><div class="what">Reference track A/B deltas</div><div><span class="pill p-deco">Decorative</span></div><div class="ev">Low-end delta, vocal presence and stereo width are all fixed strings</div></div>
-      <div class="row"><div class="what">Track EQ<small>Low / mid / high gain</small></div><div><span class="pill p-none">Not built</span></div><div class="ev">Still unread at the <em>track</em> level. The master bus now has a real chain, but per-track <code>lowGain</code>/<code>midGain</code>/<code>highGain</code> reach no node — a separate gap from the bus graph</div></div>
+      <div class="row"><div class="what">Track EQ<small>Low / mid / high gain</small></div><div><span class="pill p-work">Fixed</span></div><div class="ev">Every strip now has a low cut, a 100&nbsp;Hz low shelf, a parametric mid and a 10&nbsp;kHz high shelf ahead of the character filter and compressor — one builder shared by live playback and the bounce. Measured on the rendered stems: air&nbsp;+12 lifts the snare above 8&nbsp;kHz by <code>2.46</code> dB, low&nbsp;−12 cuts the kick below 120&nbsp;Hz by <code>5.90</code> dB, mid&nbsp;+12 lifts 1.2&nbsp;kHz on the lead by <code>8.01</code> dB, and an untouched track moves <code>0.00</code> dB</div></div>
+      <div class="row"><div class="what">Why those controls did nothing<small>The shape of the gap, not just the gap</small></div><div><span class="pill p-work">Fixed</span></div><div class="ev">Each parameter had its own engine setter and only the mixer console called them, so the identical numbers written from the Vocal DSP tab or the channel workstation reached no node. One <code>applyTrackDsp</code> entry point now covers every writer — called from outside the state updater, since StrictMode runs updaters twice</div></div>
+      <div class="row"><div class="what">Per-track delay send</div><div><span class="pill p-work">Fixed</span></div><div class="ev">The live engine had a master delay that nothing sent to, and the offline render had no delay at all — a track with a delay send bounced dry. Both now carry the send</div></div>
+      <div class="row"><div class="what">A boost is not a level change<small>Worth knowing before reading the meters</small></div><div><span class="pill p-work">Working</span></div><div class="ev">The strip is EQ into a 4:1 compressor at −18&nbsp;dB, so +12&nbsp;dB of air arrives as about 2.5&nbsp;dB of measured level. On the hi-hat specifically the air shelf is largely undone by that track's own 8&nbsp;kHz character lowpass, which sits after it — the control works, the routing decides how much of it survives</div></div>
     </div>
   </section>
 
@@ -528,7 +531,7 @@
       <div class="row"><div class="what">Side effects inside React state updaters</div><div><span class="pill p-dark">Partly fixed</span></div><div class="ev">Fixed in the history writer and the capture handler. Three remain: undo, redo, and monitoring-mode toggles all call <code>setState</code> from inside another updater, which StrictMode invokes twice.</div></div>
       <div class="row"><div class="what">Nothing reached the deployed site until now<small>Ten commits of fixes sat unmerged</small></div><div><span class="pill p-work">Fixed</span></div><div class="ev">Netlify builds <code>main</code>, which was still at <code>abc3cbe</code> from before the audit. Clicking into the studio gave 0 elements and <code>ReferenceError: useStudioSession is not defined</code> — the round-one crash, still live. <code>main</code> fast-forwarded to the audited branch and verified rendering 319 controls before pushing</div></div>
       <div class="row"><div class="what">Favicon and page metadata</div><div><span class="pill p-work">Fixed</span></div><div class="ev">A 404 on <code>/favicon.ico</code> was the last console error on a clean load, and left the browser tab blank. Console is now clean end to end</div></div>
-      <div class="row"><div class="what">Verification harness</div><div><span class="pill p-work">Working</span></div><div class="ev">scripts/live-verification — 28 tests driving real Chromium with a synthetic mic, reading committed React state, plus scripts/dsp for arithmetic that needs no browser</div></div>
+      <div class="row"><div class="what">Verification harness</div><div><span class="pill p-work">Working</span></div><div class="ev">scripts/live-verification — 29 tests driving real Chromium with a synthetic mic, reading committed React state, plus scripts/dsp for arithmetic that needs no browser</div></div>
     </div>
   </section>
 
@@ -537,7 +540,6 @@
     <h2>Where the leverage is</h2>
     <p class="lede">Layers 0 and 1 are complete, and Layer 2 has started — the AUDITION sweep has landed and is recorded above. What remains is ordered by value returned per unit of work, given what already exists on disk.</p>
     <ol class="next">
-      <li><div><strong>Per-track EQ.</strong><p>Distinct from the bus graph, which is done. <code>lowGain</code>/<code>midGain</code>/<code>highGain</code> are written by the Vocal DSP tab and read by nothing — and the masking analysis now says exactly which bands would need it.</p></div></li>
       <li><div><strong>Captured notes bypass undo.</strong><p>A take currently cannot be undone. The history stack is real; capture writes around it.</p></div></li>
       <li><div><strong>Bind audio to vocal takes.</strong><p>Takes, ratings and comp segments are real records with no audio attached, and take playback does not exist. Persistence now stores one take per session, so this is the next step to make comping mean anything.</p></div></li>
       <li><div><strong>Arrangement sections.</strong><p>Confirmed not built — initial state literal only, no add, rename or delete handler anywhere.</p></div></li>
