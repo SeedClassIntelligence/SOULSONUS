@@ -78,8 +78,17 @@ export function resolveCaptureTarget(tracks: Track[], event: CaptureEvent): Rout
 
   const instruments = CLASS_INSTRUMENT[event.klass];
 
-  // 2. Prefer the seed track just armed for this modality, so a hum lands on the
+  // 2. Prefer a seed track armed for this modality *when it can host this sound
+  //    type* -- a KEYS seed is a melody channel, so a hummed line lands on the
   //    channel the creator visibly created by pressing the button.
+  //
+  //    A MOUTH or BODY seed is deliberately not such a host. Its instrument is
+  //    `custom` or `percussion`, which appears in no class list, so a whole
+  //    beatboxed composition separates onto the instrument channels below
+  //    rather than piling onto one track. What the seed track keeps instead is
+  //    the performance itself: the recorded take is attached to it as a clip,
+  //    which is what makes it the record of what was played and what lets it be
+  //    extracted again later by better analysis.
   const modalitySource = audible.find(
     (t) =>
       t.isSourceTrack &&

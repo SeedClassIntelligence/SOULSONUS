@@ -12,6 +12,13 @@ interface CalibrationDrawerProps {
   tracks: Track[];
   calibratingTrackId: string | null;
   onCalibrateTrack?: (trackId: string) => void;
+  /**
+   * The studio's own mic control. The drawer used to stop the microphone its
+   * own way, which meant the take being kept by the other control was thrown
+   * away when capture was ended from here. There is one way to stop capture
+   * and this is it.
+   */
+  onToggleMic: () => Promise<void>;
 }
 
 export const CalibrationDrawer: React.FC<CalibrationDrawerProps> = ({
@@ -22,18 +29,9 @@ export const CalibrationDrawer: React.FC<CalibrationDrawerProps> = ({
   tracks,
   calibratingTrackId,
   onCalibrateTrack,
+  onToggleMic,
 }) => {
-  const toggleMicDetection = async () => {
-    if (detectionSettings.enabled) {
-      detectionEngine.stop();
-      setDetectionSettings((prev) => ({ ...prev, enabled: false, micConnected: false }));
-    } else {
-      const success = await detectionEngine.start();
-      if (success) {
-        setDetectionSettings((prev) => ({ ...prev, enabled: true, micConnected: true }));
-      }
-    }
-  };
+  const toggleMicDetection = onToggleMic;
 
   const handleGainChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);

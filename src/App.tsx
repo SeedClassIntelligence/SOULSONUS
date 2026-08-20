@@ -90,6 +90,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     handleNudgeTrackPattern,
     handleInvertPattern,
     handleClearTrack,
+    handleStopCapture,
   } = useStudioSession();
 
   // Undo was reachable only from the Build room's control cluster, while takes
@@ -341,16 +342,16 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
 
   const handleToggleMic = useCallback(async () => {
     if (detectionSettings.enabled) {
-      detectionEngine.stop();
-      detectionEngine.setCaptureModality(null);
-      setDetectionSettings((prev) => ({ ...prev, enabled: false, micConnected: false }));
+      // Every control that stops capture goes through the one path, so the
+      // performance is kept whichever button ends it.
+      await handleStopCapture();
     } else {
       const success = await detectionEngine.start();
       if (success) {
         setDetectionSettings((prev) => ({ ...prev, enabled: true, micConnected: true }));
       }
     }
-  }, [detectionSettings.enabled, setDetectionSettings]);
+  }, [detectionSettings.enabled, setDetectionSettings, handleStopCapture]);
 
   /**
    * Runs a voice command and reports what it actually did.
@@ -609,6 +610,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         tracks={tracks}
         calibratingTrackId={calibratingTrackId}
         onCalibrateTrack={handleCalibrateTrack}
+        onToggleMic={handleToggleMic}
       />
 
       <VisualizationDrawer

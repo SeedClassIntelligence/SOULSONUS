@@ -317,6 +317,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Global Record Arm */}
           <button
+            id="btn-mic-arm"
             onClick={onToggleMic}
             className={`px-2.5 h-8 rounded-lg font-mono text-xs font-black flex items-center space-x-1.5 transition border ${
               isMicActive

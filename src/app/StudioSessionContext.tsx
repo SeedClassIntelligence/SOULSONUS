@@ -78,6 +78,7 @@ import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerfo
 import { toMono } from '../audio/fft';
 import { renderMasterBounce } from '../audio/masterRender';
 import { transcribe } from '../audio/basicPitch';
+import { startTakeRecording, TakeRecording } from '../audio/takeRecorder';
 import { LoadedSoundBank, SoundFontUnavailableError, soundFontEngine } from '../audio/soundFont';
 import { defaultTrackDsp } from '../audio/trackStrip';
 import { registerAudioAsset, makeClip, PlaceClipOptions } from '../audio/audioClips';
@@ -591,7 +592,13 @@ export interface StudioSessionState {
   handleDeleteProject: (id: string) => Promise<void>;
   handleNewProject: () => void;
 
-  handleCreateSourceTrack: (modality: SourceModality) => void;
+  handleCreateSourceTrack: (modality: SourceModality) => string;
+  /** Starts keeping the performance that a seed track is the record of. */
+  startSeedRecording: (trackId: string) => Promise<boolean>;
+  /** Attaches the kept performance to its seed track. Null if nothing usable was recorded. */
+  stopSeedRecording: () => Promise<{ trackId: string; seconds: number } | null>;
+  /** Ends capture: classifier off, modality cleared, take kept, microphone released. */
+  handleStopCapture: () => Promise<{ trackId: string; seconds: number } | null>;
 
   // Capture inputs that share one router: mic, uploaded file, MIDI hardware
   isMidiCaptureArmed: boolean;
@@ -890,7 +897,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const updateTracksWithHistory = useCallback(
-    (action: Track[] | ((prev: Track[]) => Track[]), options?: { group?: string }) => {
+    (
+      action: Track[] | ((prev: Track[]) => Track[]),
+      options?: { group?: string; continueOpenGroup?: boolean }
+    ) => {
       // Group bookkeeping happens here rather than inside the updater: React
       // invokes updaters twice under StrictMode, and this decides whether a
       // history entry is written.
@@ -899,7 +909,16 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       let continuesGroup = false;
       if (group) {
         const open = historyGroupRef.current;
-        continuesGroup = !!open && open.key === group && now - open.at < HISTORY_GROUP_IDLE_MS;
+        // The idle window closes a group that has gone quiet, which is right
+        // for a run of edits but wrong for the write that ends an action it
+        // was part of: a take whose last note landed ten seconds before the
+        // performer stopped is still one take. A caller that knows the write
+        // finishes the open action says so, and the elapsed time stops
+        // mattering.
+        continuesGroup =
+          !!open &&
+          open.key === group &&
+          (options?.continueOpenGroup === true || now - open.at < HISTORY_GROUP_IDLE_MS);
         historyGroupRef.current = { key: group, at: now };
       } else {
         historyGroupRef.current = null;
@@ -2350,7 +2369,100 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
 
-  const handleCreateSourceTrack = useCallback((modality: SourceModality) => {
+  /**
+   * Keeps the performance that a seed track is supposed to be the record of.
+   *
+   * Arming a modality created a seed track and started the classifier, and
+   * nothing recorded the audio. So the track the creator made by pressing the
+   * button held no notes (the classifier separates them onto instrument
+   * channels, which is correct) and no audio either -- it was empty in every
+   * sense, and the take that produced the whole session existed nowhere.
+   *
+   * Two things follow from keeping it. The seed track visibly becomes the
+   * performance rather than a label; and `handleExtractStemsFromSource` gets
+   * real audio to analyse instead of falling back to re-grouping notes that
+   * were already separated, which means a performance can be extracted again
+   * later, by better analysis, without being performed again.
+   */
+  const seedRecordingRef = useRef<{ trackId: string; recording: TakeRecording } | null>(null);
+
+  const stopSeedRecording = useCallback(async (): Promise<{ trackId: string; seconds: number } | null> => {
+    const active = seedRecordingRef.current;
+    if (!active) return null;
+    seedRecordingRef.current = null;
+    try {
+      const take = await active.recording.stop();
+      // A tap on the button is not a performance. Below this it is discarded
+      // rather than left as an empty asset with a hash.
+      if (take.durationSeconds < 0.2) return null;
+
+      const track = tracksRef.current.find((t) => t.id === active.trackId);
+      const modality = track?.sourceModality || 'MOUTH';
+
+      // The take becomes an ordinary immutable asset and an ordinary clip, so
+      // it is drawn on the grid, draggable, hashed with its lineage, survives a
+      // reload and reaches the bounce -- all machinery that already exists and
+      // is already tested. A bespoke waveform on a seed track would have been
+      // none of those things.
+      const asset = await handleRegisterAudioAsset(take.blob, {
+        name: `${modality} performance`,
+        originType: 'RECORDED',
+      });
+      const clip = makeClip(asset, active.trackId, bpmRef.current || 110, { startTick: 0 });
+
+      // Both writes are one write, and they join the take's own history group.
+      // The notes and the audio came out of a single performance, so a single
+      // undo has to take back the whole of it -- not the audio first and the
+      // notes on a second press.
+      pendingLabelRef.current = 'Record take';
+      updateTracksWithHistory(
+        (prev) =>
+          prev.map((t) =>
+            t.id === active.trackId
+              ? { ...t, sourceTakeAudioUrl: asset.url, audioClips: [...(t.audioClips || []), clip] }
+              : t
+          ),
+        { group: 'capture', continueOpenGroup: true }
+      );
+
+      return { trackId: active.trackId, seconds: take.durationSeconds };
+    } catch {
+      // A microphone that fails on stop is reported by returning nothing; it
+      // never leaves a track claiming audio it does not have.
+      return null;
+    }
+  }, [updateTracksWithHistory, handleRegisterAudioAsset]);
+
+  const startSeedRecording = useCallback(async (trackId: string) => {
+    if (seedRecordingRef.current) await stopSeedRecording();
+    try {
+      seedRecordingRef.current = { trackId, recording: await startTakeRecording() };
+      return true;
+    } catch {
+      seedRecordingRef.current = null;
+      return false;
+    }
+  }, [stopSeedRecording]);
+
+  /**
+   * Stopping capture, from wherever it is stopped.
+   *
+   * Two controls stop the microphone -- the header's mic toggle and the
+   * calibration drawer's own button -- and each did its own version of it.
+   * When keeping the take was added to one of them, the other silently threw
+   * the performance away and left the recorder running into the next arm. The
+   * order matters as much as the steps: the classifier stops first so no
+   * further note is attributed to a performance that has ended, and the take
+   * is closed before the microphone is released.
+   */
+  const handleStopCapture = useCallback(async () => {
+    detectionEngine.stop();
+    detectionEngine.setCaptureModality(null);
+    setDetectionSettings((prev) => ({ ...prev, enabled: false, micConnected: false }));
+    return stopSeedRecording();
+  }, [stopSeedRecording]);
+
+  const handleCreateSourceTrack = useCallback((modality: SourceModality): string => {
     const timestamp = Date.now();
     const sourceTrackId = `t-source-${modality.toLowerCase()}-${timestamp}`;
     
@@ -2409,6 +2521,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
 
     updateTracksWithHistory((prev) => [newSourceTrack, ...prev]);
     setSelectionContext((prev) => ({ ...prev, selectedTrackId: sourceTrackId }));
+    return sourceTrackId;
   }, [tracks, updateTracksWithHistory]);
 
   /**
@@ -4280,6 +4393,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       handleDeleteProject,
       handleNewProject,
       handleCreateSourceTrack,
+      startSeedRecording,
+      stopSeedRecording,
+      handleStopCapture,
       isMidiCaptureArmed,
       handleToggleMidiCapture,
       handleAnalyzeAudioFile,
@@ -4452,6 +4568,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       handleDeleteProject,
       handleNewProject,
       handleCreateSourceTrack,
+      startSeedRecording,
+      stopSeedRecording,
+      handleStopCapture,
       isMidiCaptureArmed,
       handleToggleMidiCapture,
       handleAnalyzeAudioFile,

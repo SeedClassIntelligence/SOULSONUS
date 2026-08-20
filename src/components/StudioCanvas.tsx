@@ -212,6 +212,7 @@ export const StudioCanvas: React.FC = () => {
     setCalibratingTrackId,
     setIsCalibrationOpen,
     handleCreateSourceTrack,
+    startSeedRecording,
     handleAddTrackLayer,
     handleToggleTrackViewMode,
     handleTransposeNotes,
@@ -377,12 +378,17 @@ export const StudioCanvas: React.FC = () => {
       setIsAudioImportModalOpen(true);
       return;
     }
-    handleCreateSourceTrack(modality);
+    const seedTrackId = handleCreateSourceTrack(modality);
     if (modality === 'MOUTH' || modality === 'BODY' || modality === 'KEYS') {
       // Arm the classifier for this kind of performance so captured sounds are
       // scored only against the classes this modality can actually produce.
       detectionEngine.setCaptureModality(modality);
       if (!detectionSettings.enabled) {
+        // Keep the performance itself, not just what was classified out of it.
+        // The seed track is meant to be the record of what was played; without
+        // this it held nothing at all, and the take that produced the whole
+        // session could never be extracted again.
+        if (modality !== 'KEYS') void startSeedRecording(seedTrackId);
         await detectionEngine.start();
         setDetectionSettings((prev) => ({
           ...prev,
@@ -874,6 +880,7 @@ export const StudioCanvas: React.FC = () => {
                 {/* 1. BEATBOX BUTTON */}
                 <button
                   type="button"
+                  data-testid="capture-mouth"
                   onClick={() => handleQuickPerformanceCapture('MOUTH')}
                   className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 font-black text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-md shadow-amber-500/10"
                   title="Create Beatbox Track & Arm Mic (Kick & Snare Transient Capture)"
