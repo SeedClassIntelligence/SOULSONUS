@@ -73,6 +73,7 @@ import { audioEngine } from '../audio/audioEngine';
 import { productionHistory } from '../lib/productionOperations';
 import { detectionEngine, CaptureEvent } from '../audio/detectionEngine';
 import { BandRole, GrantLevel, playerFor } from '../lib/sessionBand';
+import { CatalogEntry, INSTRUMENT_CATALOG, factoryAdmission } from '../lib/soundSourcing';
 import { CallOutcome, SessionRoom, callSessionPlayer, installDefaultBand } from '../lib/sessionPlayer';
 import { resolveCaptureTarget } from '../audio/captureRouting';
 import { midiNoteToCaptureEvent } from '../audio/midiCapture';
@@ -601,6 +602,8 @@ export interface StudioSessionState {
   stopSeedRecording: () => Promise<{ trackId: string; seconds: number } | null>;
   /** Ends capture: classifier off, modality cleared, take kept, microphone released. */
   handleStopCapture: () => Promise<{ trackId: string; seconds: number } | null>;
+  /** Loads an instrument that has been admitted to the factory. */
+  handleLoadFactoryInstrument: (catalogId: string) => Promise<{ ok: boolean; message: string }>;
   /** Calls a session player. The take lands on its own channel, beside yours. */
   handleCallSessionPlayer: (
     role: BandRole,
@@ -984,6 +987,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const [loadedSoundBank, setLoadedSoundBank] = useState<LoadedSoundBank | null>(null);
+  /** The catalogue entry behind the loaded bank, when it came from the factory. */
+  const loadedFactoryEntryRef = useRef<CatalogEntry | null>(null);
 
   /**
    * Loads a sound bank for the INSTRUMENT route.
@@ -997,9 +1002,51 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const handleLoadSoundBank = useCallback(async (file: File): Promise<LoadedSoundBank> => {
     const buffer = await file.arrayBuffer();
     const loaded = soundFontEngine.load(buffer, file.name);
+    // A creator's own bank carries no key map; its notes are played as written.
+    loadedFactoryEntryRef.current = null;
     setLoadedSoundBank(loaded);
     return loaded;
   }, []);
+
+  /**
+   * Loads the one instrument that has come through the curated catalogue.
+   *
+   * It is fetched rather than bundled into the JavaScript, so the studio
+   * starts at the same weight it did and a creator who never reaches for the
+   * kit never downloads it. The checksum in the admission record is of these
+   * exact bytes, which is what makes "this is the instrument we cleared"
+   * checkable rather than asserted.
+   */
+  const handleLoadFactoryInstrument = useCallback(
+    async (catalogId: string): Promise<{ ok: boolean; message: string }> => {
+      const entry = INSTRUMENT_CATALOG.find((e) => e.id === catalogId);
+      if (!entry) return { ok: false, message: 'That instrument is not in the catalogue.' };
+      const admission = factoryAdmission(entry);
+      if (!admission.admitted) {
+        return { ok: false, message: admission.detail || 'That instrument is not admitted to the factory.' };
+      }
+      if (entry.runtime !== 'SF2') {
+        return { ok: false, message: `${entry.name} is an ${entry.runtime} instrument and there is no ${entry.runtime} player yet.` };
+      }
+      try {
+        const res = await fetch(`/soundfonts/${entry.id}.sf2`);
+        if (!res.ok) return { ok: false, message: `${entry.name} could not be fetched (${res.status}).` };
+        const buffer = await res.arrayBuffer();
+        const loaded = soundFontEngine.load(buffer, entry.name);
+        loadedFactoryEntryRef.current = entry;
+        setLoadedSoundBank(loaded);
+        return {
+          ok: true,
+          message:
+            `${entry.name} loaded — ${loaded.presets.length} preset(s), ` +
+            `${Math.round(loaded.byteLength / 1024)} KB, ${entry.admission?.license}.`,
+        };
+      } catch (err) {
+        return { ok: false, message: err instanceof Error ? err.message : 'The instrument failed to load.' };
+      }
+    },
+    []
+  );
 
   /**
    * Renders a track's notes through the bank and puts the audio on its lane.
@@ -1021,11 +1068,19 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const bpm = bpmRef.current || 110;
       const secondsPerTick = 60 / bpm / 480;
+
+      // A kit maps this studio's channels onto the keys it was built for. The
+      // studio's own numbering is not General MIDI -- its kick channel sits at
+      // 24 and its snare at 36 -- so playing note numbers straight through a
+      // kit renders a snare part as kicks.
+      const keyMap = loadedFactoryEntryRef.current?.keyMap;
+      const mappedKey = keyMap ? keyMap[track.instrument] : undefined;
+
       try {
         const rendered = await soundFontEngine.renderSequence({
           program,
           notes: notes.map((n) => ({
-            midiNote: n.midiNote,
+            midiNote: typeof mappedKey === 'number' ? mappedKey : n.midiNote,
             startSeconds: n.startTick * secondsPerTick,
             durationSeconds: Math.max(0.02, n.durationTicks * secondsPerTick),
             velocity: n.velocity,
@@ -1047,7 +1102,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           ok: true,
           message:
             `Rendered ${rendered.notesRendered} notes through ${presetName} — ` +
-            `${durationSeconds.toFixed(1)}s of audio on ${track.name}.`,
+            `${durationSeconds.toFixed(1)}s of audio on ${track.name}` +
+            (typeof mappedKey === 'number' ? `, played on key ${mappedKey}.` : '.'),
           notesRendered: rendered.notesRendered,
           durationSeconds,
         };
@@ -4522,6 +4578,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       stopSeedRecording,
       handleStopCapture,
       handleCallSessionPlayer,
+      handleLoadFactoryInstrument,
       isMidiCaptureArmed,
       handleToggleMidiCapture,
       handleAnalyzeAudioFile,
@@ -4698,6 +4755,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       stopSeedRecording,
       handleStopCapture,
       handleCallSessionPlayer,
+      handleLoadFactoryInstrument,
       isMidiCaptureArmed,
       handleToggleMidiCapture,
       handleAnalyzeAudioFile,

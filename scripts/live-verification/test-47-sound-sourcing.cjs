@@ -73,9 +73,96 @@ function check(label, ok, detail) {
     (factory.match(/\d\/\d slots/g) || []).join(' ')
   );
   check(
-    'and it says so plainly rather than showing nothing',
-    /no instrument admitted/.test(factory) && /catalogue holds no instruments yet/.test(factory),
-    'empty state stated'
+    'the drum kit slot is filled by the first admitted instrument',
+    /1\/2 slots/.test(factory) && /SoulSonus Factory Kit/.test(factory),
+    (factory.match(/\d\/\d slots/g) || []).join(' ')
+  );
+  check(
+    'and the empty families still say so plainly',
+    /no instrument admitted/.test(factory),
+    'empty state stated where it is empty'
+  );
+  check(
+    'the admitted instrument shows its licence and checksum',
+    /CC0 1\.0 Universal/.test(factory) && /sha 2cf7219fd0f1/.test(factory),
+    (factory.match(/CC0[^·]*· [^·]*· sha \w+/) || ['not shown'])[0]
+  );
+
+  // ---- and it actually loads and plays ----
+  //
+  // A bank that appears in a list is not a bank that makes a sound. This
+  // presses the real button, then renders every drum through the engine the
+  // studio uses and measures what comes back.
+  console.log('\n-- it loads, and it sounds --');
+  await page.locator('#load-soulsonus-factory-kit').click();
+  await page.waitForTimeout(3000);
+  const result = await page.locator('#sourcing-load-result').innerText();
+  check(
+    'pressing Load loads the bank',
+    /loaded/.test(result) && /CC0/.test(result),
+    result.trim()
+  );
+  const runtimeAfter = (await page.locator('#sourcing-runtime-state').innerText()).trim();
+  check(
+    'and the runtime line stops saying nothing is loaded',
+    !/no sound bank loaded/.test(runtimeAfter) && /preset/.test(runtimeAfter),
+    runtimeAfter
+  );
+
+  // Rendering a channel through the bank is the real product path -- it is
+  // how a sampled instrument reaches the timeline -- so that is what is
+  // driven, rather than poking the engine directly.
+  const played = await page.evaluate(`(async () => {
+    const root = document.getElementById('root');
+    const key = Object.keys(root).find(k => k.startsWith('__reactContainer$'));
+    const fiberRoot = root[key] && root[key].stateNode;
+    const stack = [(fiberRoot && fiberRoot.current) || root[key]]; const seen = new Set();
+    let ctx = null;
+    while (stack.length) {
+      const f = stack.pop(); if (!f || seen.has(f)) continue; seen.add(f);
+      const v = f.memoizedProps && f.memoizedProps.value;
+      if (v && Array.isArray(v.tracks) && v.handleLoadFactoryInstrument) { ctx = v; break; }
+      if (f.child) stack.push(f.child); if (f.sibling) stack.push(f.sibling);
+    }
+    if (!ctx) return { error: 'no session context' };
+    const kick = ctx.tracks.find(t => t.instrument === 'kick' && (t.noteEvents || []).length);
+    if (!kick) return { error: 'no kick channel with notes' };
+    const res = await ctx.handleRenderTrackWithSoundBank(kick.id, 0);
+    const after = ctx.tracks.find(t => t.id === kick.id);
+    return { res, notes: (kick.noteEvents || []).length, pitches: [...new Set((kick.noteEvents || []).map(n => n.midiNote))] };
+  })()`);
+  check(
+    'a channel renders through the kit onto the timeline',
+    !played.error && played.res && played.res.ok === true,
+    played.error || (played.res && played.res.message) || ''
+  );
+  check(
+    'the studio channel was mapped onto the kit, not played as written',
+    !!played.res && /played on key 36/.test(played.res.message || '') && !played.pitches.includes(36),
+    played.pitches ? `channel notes at MIDI ${played.pitches.join(',')} — the studio's numbering, not General MIDI` : ''
+  );
+
+  await page.waitForTimeout(1500);
+  const rendered = await page.evaluate(`(() => {
+    const root = document.getElementById('root');
+    const key = Object.keys(root).find(k => k.startsWith('__reactContainer$'));
+    const fiberRoot = root[key] && root[key].stateNode;
+    const stack = [(fiberRoot && fiberRoot.current) || root[key]]; const seen = new Set();
+    let ctx = null;
+    while (stack.length) {
+      const f = stack.pop(); if (!f || seen.has(f)) continue; seen.add(f);
+      const v = f.memoizedProps && f.memoizedProps.value;
+      if (v && Array.isArray(v.tracks) && v.handleLoadFactoryInstrument) { ctx = v; break; }
+      if (f.child) stack.push(f.child); if (f.sibling) stack.push(f.sibling);
+    }
+    const assets = Object.values(ctx.audioAssets || {}).filter(a => a.name.indexOf('Factory Kit') >= 0);
+    const a = assets[assets.length - 1];
+    return a ? { name: a.name, secs: a.durationSeconds, peak: Math.max.apply(null, a.peaks || [0]), points: (a.peaks || []).length } : null;
+  })()`);
+  check(
+    'and what landed is audio, not silence',
+    !!rendered && rendered.peak > 0.01 && rendered.secs > 0.5,
+    rendered ? `${rendered.name} — ${rendered.secs.toFixed(2)}s, peak ${rendered.peak.toFixed(3)} over ${rendered.points} points` : 'no asset'
   );
 
   console.log('\n-- the candidates --');
@@ -86,7 +173,7 @@ function check(label, ok, detail) {
     check(`${lib} is listed as a candidate`, cands.includes(lib), lib);
   }
   check(
-    'each is blocked on a licence nobody has read',
+    'the ones nobody has checked are blocked',
     (cands.match(/Nobody has read/g) || []).length >= 3,
     `${(cands.match(/Nobody has read/g) || []).length} candidates waiting on a rights check`
   );
@@ -94,9 +181,14 @@ function check(label, ok, detail) {
   // itself is what has to be absent -- not the phrase anywhere on screen.
   const badges = await panel.locator('span', { hasText: /^rights checked$/ }).count();
   check(
-    'no candidate is badged as cleared',
-    badges === 0,
-    `${badges} "rights checked" badge(s) among the candidates`
+    'exactly the licence-checked library is badged',
+    badges === 1 && /Versilian/.test(cands),
+    `${badges} "rights checked" badge(s) — VCSL's CC0 was read at the source, the other three have not been`
+  );
+  check(
+    'and the unread ones say what is missing',
+    (cands.match(/Nobody has read/g) || []).length === 3,
+    'Karoryfer, Virtuosity Drums and MuseScore General still waiting'
   );
 
   console.log('\n-- the ruled out --');

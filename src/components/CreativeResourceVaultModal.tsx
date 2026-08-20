@@ -31,6 +31,7 @@ import {
   factoryState,
 } from '../lib/soundSourcing';
 import { soundFontEngine } from '../audio/soundFont';
+import { useStudioSession } from '../app/StudioSessionContext';
 
 interface CreativeResourceVaultModalProps {
   isOpen: boolean;
@@ -61,8 +62,20 @@ export const CreativeResourceVaultModal: React.FC<CreativeResourceVaultModalProp
   isOpen,
   onClose,
 }) => {
+  const { handleLoadFactoryInstrument } = useStudioSession();
   const [lens, setLens] = useState<Lens>('STACK');
   const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState<string | null>(null);
+  const [loadResult, setLoadResult] = useState<string | null>(null);
+  const [bankTick, setBankTick] = useState(0);
+
+  const loadInstrument = async (id: string) => {
+    setLoading(id);
+    const result = await handleLoadFactoryInstrument(id);
+    setLoadResult(result.message);
+    setLoading(null);
+    setBankTick((n) => n + 1);
+  };
 
   const matches = (s: SourceDecision) => {
     const q = query.trim().toLowerCase();
@@ -85,7 +98,9 @@ export const CreativeResourceVaultModal: React.FC<CreativeResourceVaultModalProp
   }, [lens, query]);
 
   const families = useMemo(() => factoryState(), []);
-  const bank = soundFontEngine.current;
+  // Re-read after a load rather than caching: the engine is the truth about
+  // what is loaded, and this panel's whole job is not to drift from it.
+  const bank = useMemo(() => soundFontEngine.current, [bankTick]);
 
   if (!isOpen) return null;
 
@@ -180,17 +195,52 @@ export const CreativeResourceVaultModal: React.FC<CreativeResourceVaultModalProp
                         : 'empty — no instrument admitted'}
                     </div>
                   </div>
-                  <div
-                    className={`px-3 py-1 rounded-lg text-[11px] font-mono border ${
-                      f.admitted.length
-                        ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                        : 'bg-slate-900 text-slate-400 border-slate-800'
-                    }`}
-                  >
-                    {f.admitted.length}/{f.capacity} slots
+                  <div className="flex items-center gap-2">
+                    {f.admitted.map((e) => (
+                      <button
+                        key={e.id}
+                        id={`load-${e.id}`}
+                        onClick={() => void loadInstrument(e.id)}
+                        disabled={loading === e.id}
+                        className="px-3 py-1.5 rounded-lg text-[11px] font-mono border bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25 transition disabled:opacity-50 cursor-pointer"
+                      >
+                        {loading === e.id ? 'loading…' : 'Load'}
+                      </button>
+                    ))}
+                    <div
+                      className={`px-3 py-1 rounded-lg text-[11px] font-mono border ${
+                        f.admitted.length
+                          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                          : 'bg-slate-900 text-slate-400 border-slate-800'
+                      }`}
+                    >
+                      {f.admitted.length}/{f.capacity} slots
+                    </div>
                   </div>
                 </div>
               ))}
+              {families.some((f) => f.admitted.length > 0) && (
+                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/90 space-y-2">
+                  {families
+                    .flatMap((f) => f.admitted)
+                    .map((e) => (
+                      <div key={e.id} className="space-y-1">
+                        <div className="text-xs font-bold text-slate-100">{e.name}</div>
+                        <p className="text-[11px] text-slate-400 leading-relaxed">{e.character}</p>
+                        <p className="text-[11px] text-emerald-300/80 font-mono">
+                          {e.admission?.license} · {e.admission?.creator} · sha{' '}
+                          {e.admission?.sha256Checksum.slice(0, 12)}
+                        </p>
+                        <p className="text-[11px] text-slate-500 leading-relaxed">{e.admission?.admissionNotes}</p>
+                      </div>
+                    ))}
+                </div>
+              )}
+              {loadResult && (
+                <div id="sourcing-load-result" className="p-3 rounded-xl bg-slate-950 border border-amber-500/30 text-[11px] font-mono text-amber-200">
+                  {loadResult}
+                </div>
+              )}
               {INSTRUMENT_CATALOG.length === 0 && (
                 <div className="p-4 rounded-2xl border border-dashed border-slate-800 text-[11px] text-slate-500 font-mono flex items-center gap-2">
                   <CircleSlash className="w-3.5 h-3.5" />

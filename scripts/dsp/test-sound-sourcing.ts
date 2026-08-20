@@ -100,30 +100,28 @@ const cases: [string, CatalogEntry, string][] = [
     entry({ sourceId: 'musescore-general', family: 'KEYS' }),
     'FALLBACK_OUTSIDE_GM',
   ],
-  ['a candidate nobody has licence-checked', entry({ sourceId: 'vcsl' }), 'RIGHTS_UNVERIFIED'],
+  ['a candidate nobody has licence-checked', entry({ sourceId: 'karoryfer' }), 'RIGHTS_UNVERIFIED'],
 ];
 for (const [label, e, expected] of cases) {
   const got = factoryAdmission(e);
   check(`refused: ${label}`, !got.admitted && got.refusal === expected, `${got.refusal} — ${got.detail}`);
 }
 
-// ---- what happens once the rights ARE read ----
+// ---- what the rules past the rights gate do ----
 //
-// The shipped policy is not touched. A lookup that returns a licence-read
-// copy of one library stands in for the day someone records a real reading,
-// which is the only way to reach the rules that sit past the rights gate.
-console.log('\n-- once a licence has actually been read --');
-const readVcsl = { ...sourceById('vcsl')!, rightsVerified: true, rightsNote: 'read at the source' };
-const asIfRead = (id: string) => (id === 'vcsl' ? readVcsl : sourceById(id));
+// VCSL is genuinely licence-checked now, so these run against the shipped
+// policy rather than a stand-in. The stand-in is kept for one check: that
+// clearing one library in a lookup does not leak into the others.
+console.log('\n-- past the rights gate --');
 
-const absent = factoryAdmission(entry({ present: false }), 0, asIfRead);
+const absent = factoryAdmission(entry({ present: false }));
 check(
   'refused: a candidate whose files are not here',
   !absent.admitted && absent.refusal === 'FILES_ABSENT',
   absent.detail || ''
 );
 
-const noRecord = factoryAdmission(entry({ admission: undefined }), 0, asIfRead);
+const noRecord = factoryAdmission(entry({ admission: undefined }));
 check(
   'refused: a cleared library does not clear one file inside it',
   !noRecord.admitted && noRecord.refusal === 'NO_ADMISSION_RECORD',
@@ -131,9 +129,7 @@ check(
 );
 
 const nonCommercial = factoryAdmission(
-  entry({ admission: record({ license: 'CC BY-NC 4.0', commercialAllowed: false }) }),
-  0,
-  asIfRead
+  entry({ admission: record({ license: 'CC BY-NC 4.0', commercialAllowed: false }) })
 );
 check(
   'refused: a licence that does not permit shipping it',
@@ -141,14 +137,9 @@ check(
   nonCommercial.detail || ''
 );
 
-const first = factoryAdmission(entry(), 0, asIfRead);
-check(
-  'admitted: cleared, present, and a slot free',
-  first.admitted === true,
-  `strings 0/${FACTORY_SLOTS.STRINGS} before, admitted`
-);
+check('admitted: cleared, present, and a slot free', factoryAdmission(entry()).admitted === true, `strings 0/${FACTORY_SLOTS.STRINGS} before`);
 
-const full = factoryAdmission(entry(), FACTORY_SLOTS.STRINGS, asIfRead);
+const full = factoryAdmission(entry(), FACTORY_SLOTS.STRINGS);
 check(
   'refused: the family is already full',
   !full.admitted && full.refusal === 'NO_SLOT_LEFT',
@@ -159,24 +150,33 @@ check(
   Object.values(FACTORY_SLOTS).reduce((a, b) => a + b, 0) <= 16,
   Object.entries(FACTORY_SLOTS).map(([f, n]) => `${f}:${n}`).join(' ')
 );
+
+const asIfRead = (id: string) =>
+  id === 'karoryfer' ? { ...sourceById('karoryfer')!, rightsVerified: true } : sourceById(id);
 check(
-  'and reading one licence did not clear the rest',
-  factoryAdmission(entry({ sourceId: 'karoryfer' })).refusal === 'RIGHTS_UNVERIFIED',
+  'clearing one library in a lookup does not clear the others',
+  factoryAdmission(entry({ sourceId: 'karoryfer' }), 0, asIfRead).refusal !== 'RIGHTS_UNVERIFIED' &&
+    factoryAdmission(entry({ sourceId: 'karoryfer' })).refusal === 'RIGHTS_UNVERIFIED',
   'the shipped policy is untouched by the stand-in'
 );
 
-// ---- the honest empty state ----
+// ---- what the factory actually holds ----
 console.log('\n-- what the factory holds today --');
+const kit = INSTRUMENT_CATALOG.find((e) => e.id === 'soulsonus-factory-kit');
+check('the first instrument came through the funnel', !!kit, kit ? `${kit.name} from ${kit.sourceId}` : 'nothing admitted');
 check(
-  'the catalogue ships nothing it has not got',
-  INSTRUMENT_CATALOG.length === 0,
-  'no instrument claims to be bundled'
+  'and it passes the same gate everything else must',
+  !!kit && factoryAdmission(kit).admitted === true,
+  kit ? `${kit.admission?.license} · sha ${kit.admission?.sha256Checksum.slice(0, 12)}` : ''
 );
+
 const state = factoryState();
+const drums = state.find((f) => f.family === 'DRUM_KIT')!;
+check('it occupies a drum kit slot', drums.admitted.length === 1, `DRUM_KIT ${drums.admitted.length}/${drums.capacity}`);
 check(
-  'every family reports its capacity and its emptiness',
-  state.length === Object.keys(FACTORY_SLOTS).length && state.every((f) => f.admitted.length === 0),
-  state.map((f) => `${f.family} 0/${f.capacity}`).join(', ')
+  'and no other family claims anything it has not got',
+  state.filter((f) => f.family !== 'DRUM_KIT').every((f) => f.admitted.length === 0),
+  state.map((f) => `${f.family} ${f.admitted.length}/${f.capacity}`).join(', ')
 );
 
 console.log(`\n${failures === 0 ? 'ALL PASS' : failures + ' FAILURE(S)'}`);

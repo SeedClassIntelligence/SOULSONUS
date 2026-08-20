@@ -149,9 +149,15 @@ export const SOURCE_POLICY: readonly SourceDecision[] = [
     role: 'INSTRUMENT_LIBRARY',
     standing: 'FACTORY_CANDIDATE',
     reason:
-      'One strong library inside the curated catalogue, no longer the sourcing strategy by itself.',
-    rightsVerified: false,
-    rightsNote: 'Licence terms not yet read at the source and recorded here.',
+      'One strong library inside the curated catalogue, no longer the sourcing strategy by itself. ' +
+      'The first factory instrument came through it.',
+    rightsVerified: true,
+    rightsNote:
+      'LICENSE at the repository root is the verbatim text of CC0 1.0 Universal, read at the source. ' +
+      'The README states it directly: "you can do whatever you want with these sounds (even make commercial ' +
+      'software), no royalties, no credit, no special terms", and describes the set as "a convenient starting ' +
+      'place for factory libraries". Commercial use, redistribution and modification are all permitted, and ' +
+      'no attribution is required — it is credited anyway, because saying where a sound came from costs nothing.',
   },
   {
     id: 'karoryfer',
@@ -315,6 +321,18 @@ export interface CatalogEntry {
    */
   present: boolean;
   /**
+   * Where each of this studio's channel types sits on the keyboard, for an
+   * instrument that is a kit rather than one voice.
+   *
+   * Without this the studio plays its own note numbers straight into the
+   * bank, and its numbering is not General MIDI: the kick channel sits at 24
+   * and the snare channel at 36 -- which in General MIDI *is* the kick. So a
+   * snare pattern rendered through a GM kit came back as kicks, and the kick
+   * pattern came back as silence. Silence is obvious; a snare part playing
+   * kicks is not, which is the worse of the two.
+   */
+  keyMap?: Record<string, number>;
+  /**
    * What this particular asset's licence permits, with a checksum tying the
    * record to the bytes it was read against.
    *
@@ -335,7 +353,42 @@ export interface CatalogEntry {
  * same fiction as the vault this replaces. Candidates are added here as they
  * are evaluated, and `factoryAdmission` decides whether any of them may ship.
  */
-export const INSTRUMENT_CATALOG: CatalogEntry[] = [];
+export const INSTRUMENT_CATALOG: CatalogEntry[] = [
+  {
+    id: 'soulsonus-factory-kit',
+    name: 'SoulSonus Factory Kit',
+    sourceId: 'vcsl',
+    family: 'DRUM_KIT',
+    runtime: 'SF2',
+    character:
+      'An acoustic kit: kick, snare, side stick, closed, pedal and open hi-hat, with the recorded ' +
+      'dynamics mapped across the velocity range so a soft hit is a soft recording rather than a hard one turned down.',
+    present: true,
+    keyMap: { kick: 36, snare: 38, hihat: 42, percussion: 37 },
+    admission: {
+      admissionRecordId: 'adm_vcsl_factory_kit_v1',
+      resourceId: 'soulsonus-factory-kit',
+      sourceUrl: 'https://github.com/sgossner/VCSL',
+      creator: 'Versilian Studios LLC and VCSL contributors',
+      license: 'CC0 1.0 Universal',
+      commercialAllowed: true,
+      redistributionAllowed: true,
+      attributionRequired: false,
+      trainingPermission: true,
+      marketplacePermission: true,
+      // Of the bank this project builds and ships, not of the source WAVs:
+      // the shipped bytes are what a creator receives, so they are what the
+      // record is tied to. `scripts/build-factory-kit.mjs` reproduces it.
+      sha256Checksum: '2cf7219fd0f1b40add34a1e088954893ea0e31dfc3d1fce7dcc59355ec96e127',
+      admissionStatus: 'APPROVED',
+      admissionNotes:
+        'CC0 1.0 read at the source. Built from 16 samples across 6 drums: summed to mono, tails trimmed ' +
+        'at -60 dBFS, peak-normalised so the SoundFont velocity curve is applied once rather than twice. ' +
+        'The second recorded take of each dynamic is deliberately left out — rotating takes is round-robin, ' +
+        'which SoundFont cannot express, and two zones over one range layer rather than alternate.',
+    },
+  },
+];
 
 export type AdmissionRefusal =
   | 'UNKNOWN_SOURCE'
