@@ -106,6 +106,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
     setSelectionContext,
     setTracks,
     dawState,
+    handleSetNoteLyric,
   } = useStudioSession();
 
   const isDrum =
@@ -118,6 +119,8 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
   const [isExpanded, setIsExpanded] = useState<boolean>(!isDrum);
   const [trackHeight, setTrackHeight] = useState<number>(isDrum ? 60 : 200);
   const [activeDrag, setActiveDrag] = useState<DragState | null>(null);
+  const [editingLyricNoteId, setEditingLyricNoteId] = useState<string | null>(null);
+  const [lyricDraft, setLyricDraft] = useState('');
 
   const laneContainerRef = useRef<HTMLDivElement>(null);
   const lastPlayedMidiRef = useRef<number | null>(null);
@@ -748,7 +751,21 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                 return (
                   <div
                     key={note.id}
-                    onMouseDown={(e) => handleNoteMouseDown(e, note, 'MOVE')}
+                    data-testid={`note-${note.id}`}
+                    onMouseDown={(e) => {
+                      // Alt-click anywhere on the note, not on the small chip:
+                      // on a short note the stretch handle covers the chip
+                      // entirely, so a hit target that narrow is one a creator
+                      // cannot reliably reach.
+                      if (e.altKey) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setEditingLyricNoteId(note.id);
+                        setLyricDraft(note.lyric || '');
+                        return;
+                      }
+                      handleNoteMouseDown(e, note, 'MOVE');
+                    }}
                     onDoubleClick={(e) => {
                       e.stopPropagation();
                       handleDeleteNotes(track.id, [note.id]);
@@ -770,11 +787,23 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                         ? 'ring-2 ring-white shadow-[0_0_12px_rgba(255,255,255,0.8)] z-20 brightness-110'
                         : 'hover:brightness-105 z-10'
                     }`}
-                    title={`${noteName} | Drag to Move/Transpose | Drag Right Edge to Stretch | Double-Click to Delete`}
+                    title={`${noteName} | Drag to Move/Transpose | Drag Right Edge to Stretch | Alt-Click for Lyric | Double-Click to Delete`}
                   >
                     {/* Left Nudge Resize Handle */}
                     <div
-                      onMouseDown={(e) => handleNoteMouseDown(e, note, 'RESIZE_LEFT')}
+                      onMouseDown={(e) => {
+                        // The handles sit on top of the note and would swallow
+                        // an alt-click aimed at it -- and on a short note they
+                        // cover most of it.
+                        if (e.altKey) {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setEditingLyricNoteId(note.id);
+                          setLyricDraft(note.lyric || '');
+                          return;
+                        }
+                        handleNoteMouseDown(e, note, 'RESIZE_LEFT');
+                      }}
                       className="absolute left-0 top-0 bottom-0 w-2 hover:bg-white/40 cursor-ew-resize"
                       title="Drag left to nudge start"
                     />
@@ -783,16 +812,66 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                     <div className="truncate flex items-center space-x-1 pl-1">
                       <span className="text-[7.5px] opacity-70">⠿</span>
                       <span>{noteName}</span>
+                      {/*
+                        * The lane has always drawn a note's lyric and had no
+                        * way to write one: the only editor for it lived in a
+                        * piano roll that no file rendered. Alt-click opens it
+                        * here, since a plain click drags and a double-click
+                        * deletes.
+                        */}
                       {note.lyric && (
-                        <span className="px-1 py-0.2 rounded bg-black/40 text-white text-[8px] font-normal truncate">
-                          "{note.lyric}"
+                        <span
+                          data-testid={`note-lyric-${note.id}`}
+                          className="px-1 py-0.2 rounded bg-black/40 text-white text-[8px] font-normal truncate"
+                        >
+                          &quot;{note.lyric}&quot;
                         </span>
                       )}
                     </div>
 
+                    {editingLyricNoteId === note.id && (
+                      <div
+                        className="absolute -top-9 left-0 z-40 flex items-center gap-1 bg-slate-950 border border-amber-500/50 rounded-lg px-1.5 py-1 shadow-xl"
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          data-testid="lyric-input"
+                          autoFocus
+                          value={lyricDraft}
+                          onChange={(e) => setLyricDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === 'Enter') {
+                              handleSetNoteLyric(track.id, note.id, lyricDraft);
+                              setEditingLyricNoteId(null);
+                            }
+                            if (e.key === 'Escape') setEditingLyricNoteId(null);
+                          }}
+                          onBlur={() => {
+                            handleSetNoteLyric(track.id, note.id, lyricDraft);
+                            setEditingLyricNoteId(null);
+                          }}
+                          placeholder="syllable"
+                          className="w-24 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-[10px] text-white font-mono focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    )}
+
                     {/* Right Duration Stretch Handle */}
                     <div
-                      onMouseDown={(e) => handleNoteMouseDown(e, note, 'RESIZE_RIGHT')}
+                      onMouseDown={(e) => {
+                        // The handles sit on top of the note and would swallow
+                        // an alt-click aimed at it -- and on a short note they
+                        // cover most of it.
+                        if (e.altKey) {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setEditingLyricNoteId(note.id);
+                          setLyricDraft(note.lyric || '');
+                          return;
+                        }
+                        handleNoteMouseDown(e, note, 'RESIZE_RIGHT');
+                      }}
                       title="Drag to Stretch Duration"
                       className="absolute right-0 top-0 bottom-0 w-3 hover:bg-white/60 cursor-ew-resize flex items-center justify-center group/stretch"
                     >
