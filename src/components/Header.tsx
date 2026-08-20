@@ -228,6 +228,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
+            id="btn-train-signature"
             onClick={onOpenTraining}
             className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold transition cursor-pointer shadow-sm shadow-amber-500/10"
             title="Open Creator Training & My Sounds Studio (E13 Signature + R09 Root Sound Vault + Voice Cloning)"

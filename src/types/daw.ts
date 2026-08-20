@@ -511,6 +511,8 @@ export interface SeedSignatureRecord {
 }
 
 
+import type { StyleProfile } from '../lib/styleProfile';
+
 export interface CreatorMusicSignature {
   id: string;
   creatorId: string;
@@ -523,11 +525,19 @@ export interface CreatorMusicSignature {
     hihatTssSound: string;
     vocalPitchRange: string;
   };
+  /**
+   * What the creator tuned the detector to. Null where they have not tuned it
+   * -- these were `0.45` and `0.55` for every creator who ever signed, which
+   * is a claim about a person nobody measured.
+   */
   thresholds: {
-    kickSensitivity: number;
-    snareSensitivity: number;
+    kickSensitivity: number | null;
+    snareSensitivity: number | null;
   };
+  /** Sounds this creator actually reached for. Empty until they reach for one. */
   soundPreferences: string[];
+  /** Everything measured about how they play, and what could not be measured. */
+  style?: StyleProfile;
   signatureHash: string;
 }
 

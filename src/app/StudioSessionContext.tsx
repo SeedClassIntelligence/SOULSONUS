@@ -74,6 +74,7 @@ import { productionHistory } from '../lib/productionOperations';
 import { detectionEngine, CaptureEvent } from '../audio/detectionEngine';
 import { BandRole, GrantLevel, playerFor } from '../lib/sessionBand';
 import { CatalogEntry, INSTRUMENT_CATALOG, factoryAdmission } from '../lib/soundSourcing';
+import { DETECTION_DEFAULTS } from '../lib/styleProfile';
 import { CallOutcome, SessionRoom, callSessionPlayer, installDefaultBand } from '../lib/sessionPlayer';
 import { resolveCaptureTarget } from '../audio/captureRouting';
 import { midiNoteToCaptureEvent } from '../audio/midiCapture';
@@ -1471,11 +1472,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Detection Settings
   const [detectionSettings, setDetectionSettings] = useState<DetectionSettings>({
+    ...DETECTION_DEFAULTS,
     enabled: false,
     micConnected: false,
-    kickThreshold: 0.35,
-    snareThreshold: 0.3,
-    gain: 1.5,
     currentLowLevel: 0,
     currentHighLevel: 0,
     lastKickTriggerTime: 0,
@@ -1513,6 +1512,18 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   /**
+   * Where the current take started, so an onset can be placed in musical time.
+   *
+   * Two numbers because a take can begin anywhere. `captureOriginMsRef` is the
+   * wall clock at the first moment of the take, which is what onset timestamps
+   * are measured against; `captureOriginSecondsRef` is the musical position the
+   * take began at, so recording into bar 5 with the transport running puts the
+   * notes in bar 5 rather than at the top of the song.
+   */
+  const captureOriginMsRef = useRef<number | null>(null);
+  const captureOriginSecondsRef = useRef(0);
+
+  /**
    * Commits classified capture events onto their channels.
    *
    * Every input source — live mic, uploaded file, MIDI hardware — funnels
@@ -1525,6 +1536,20 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!events.length) return;
 
     const playheadStep = currentStepRef.current;
+
+    // The take's origin is its first onset, set here rather than when the mic
+    // is armed: capture can be armed from the capture row, the header's REC
+    // button or the calibration drawer, and a creator who arms and then thinks
+    // for four seconds should not have four seconds of silence recorded. Where
+    // the take begins in the song comes from the transport when it is running
+    // and from the playhead when it is not, so recording into bar 5 puts the
+    // notes in bar 5.
+    if (captureOriginMsRef.current === null && events.length) {
+      captureOriginMsRef.current = events[0].atMs;
+      captureOriginSecondsRef.current = dawStateRef.current.isPlaying
+        ? Tone.getTransport().seconds
+        : playheadStep * (60 / (bpmRef.current || 110) / 4);
+    }
     const bpm = bpmRef.current || 110;
     const ticksPerSecond = (bpm / 60) * 480;
 
@@ -1538,12 +1563,33 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         const decision = resolveCaptureTarget(next, event);
         if (decision.kind === 'drop') continue;
 
-        // A file carries its own timeline; live mic and MIDI are positioned by
-        // the playhead at the moment they arrive.
-        const startTick =
+        // Where the onset actually happened, in musical time.
+        //
+        // This used to be the playhead's current step, which discarded the
+        // performance twice over. With the transport stopped -- which is the
+        // ordinary way this studio is used, arm the mic and perform -- the
+        // playhead does not move, so a whole six-second groove was written to
+        // one tick: 28 onsets, one distinct position, all of them on beat one.
+        // With the transport running the rhythm survived but every onset was
+        // hard-snapped to a 16th, so the creator's own placement against the
+        // beat -- the thing that makes a performance theirs -- was gone before
+        // it was ever stored.
+        //
+        // A file carries its own timeline in `atSeconds`. Everything else is
+        // positioned from the clock: the transport's own position while it
+        // runs, and elapsed time since the take began when it does not.
+        // Quantising afterwards is a choice the creator already has a control
+        // for; un-quantising is not, because the information is gone.
+        const seconds =
           typeof event.atSeconds === 'number'
-            ? Math.max(0, Math.min(songTicksRef.current - 120, Math.round(event.atSeconds * ticksPerSecond)))
-            : playheadStep * 120;
+            ? event.atSeconds
+            : captureOriginMsRef.current !== null
+              ? Math.max(0, (event.atMs - captureOriginMsRef.current) / 1000) + captureOriginSecondsRef.current
+              : playheadStep * 0.125;
+        const startTick = Math.max(
+          0,
+          Math.min(songTicksRef.current - 120, Math.round(seconds * ticksPerSecond))
+        );
         const step = Math.max(0, Math.min(songStepsRef.current - 1, Math.floor(startTick / 120)));
 
         const origin: NoteProvenance['origin'] =
@@ -2487,6 +2533,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    */
   const seedRecordingRef = useRef<{ trackId: string; recording: TakeRecording } | null>(null);
 
+
   const stopSeedRecording = useCallback(async (): Promise<{ trackId: string; seconds: number } | null> => {
     const active = seedRecordingRef.current;
     if (!active) return null;
@@ -2559,6 +2606,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const handleStopCapture = useCallback(async () => {
     detectionEngine.stop();
     detectionEngine.setCaptureModality(null);
+    // The next take gets its own clock.
+    captureOriginMsRef.current = null;
     setDetectionSettings((prev) => ({ ...prev, enabled: false, micConnected: false }));
     return stopSeedRecording();
   }, [stopSeedRecording]);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CreatorMusicSignature } from '../types/daw';
 import {
   X,
@@ -27,6 +27,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { signatureService } from '../lib/seedSignature';
+import { computeStyleProfile, describeStyleProfile } from '../lib/styleProfile';
 import { useStudioSession } from '../app/StudioSessionContext';
 
 interface PersonalTrainingModalProps {
@@ -71,7 +72,13 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const { tracks, handleAddVocalTake } = useStudioSession();
+  const { tracks, handleAddVocalTake, dawState, detectionSettings, decisionRecords } = useStudioSession();
+
+  /** What is known right now, so the creator reads it before sealing it. */
+  const livingProfile = useMemo(
+    () => computeStyleProfile({ creatorName, tracks, bpm: dawState.bpm || 110, detectionSettings, decisionRecords }),
+    [creatorName, tracks, dawState.bpm, detectionSettings, decisionRecords]
+  );
   const vocalTrack = tracks.find((t) => t.instrument === 'vocal_synth' || t.id === 't-vocal') || tracks[0];
 
   // Top-Level Studio Navigation Tabs
@@ -301,6 +308,18 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
   };
 
   const handleSaveSignature = async () => {
+    // Recomputed at the moment of signing rather than reused from the render,
+    // so what is sealed is the session as it stands now -- and computed the
+    // same way as the preview above, from one function, so the two cannot
+    // disagree about the person.
+    const style = computeStyleProfile({
+      creatorName,
+      tracks,
+      bpm: dawState.bpm || 110,
+      detectionSettings,
+      decisionRecords,
+    });
+
     const rawSig: CreatorMusicSignature = {
       id: `sig_creator_${Date.now()}`,
       creatorId: `user_${creatorName.toLowerCase().replace(/\s+/g, '_')}`,
@@ -313,11 +332,15 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
         hihatTssSound: percussionCategories[2].gesture,
         vocalPitchRange: `${vocalRegister}: ${lowestNote} to ${highestNote}`,
       },
+      // Measured, not asserted. What stood here was `0.45` / `0.55` and three
+      // sound names, identical for every creator who ever pressed this button
+      // -- signed and stored as though it described them.
       thresholds: {
-        kickSensitivity: 0.45,
-        snareSensitivity: 0.55,
+        kickSensitivity: style.calibration.kickThreshold,
+        snareSensitivity: style.calibration.snareThreshold,
       },
-      soundPreferences: ['Fat 808 Sub', 'Crisp Acoustic Snare', 'Custom Root Seeds'],
+      soundPreferences: style.choices.sounds,
+      style,
       signatureHash: 'pending',
     };
 
@@ -408,6 +431,7 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
 
             {/* Close Button */}
             <button
+              id="btn-close-training"
               onClick={onClose}
               className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
             >
@@ -722,9 +746,38 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                       Seed Lock & E14 Cryptographic Signature Seal
                     </h3>
                     <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
-                      Binds all 7 training pillars and your raw root seed audio into an immutable SHA-256 profile owned 100% by you.
+                      Binds what has actually been measured about how you play into a profile owned 100% by you.
                     </p>
                   </div>
+
+                  {/* What is about to be signed, before it is signed. A profile
+                      is a claim about a person; they should be able to read it
+                      first, including the parts that are empty. */}
+                  <div id="style-profile-preview" className="text-left bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-3">
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-amber-400">
+                      What this studio knows about you
+                    </div>
+                    <p className="text-xs text-slate-200 leading-relaxed">{describeStyleProfile(livingProfile)}</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-mono text-slate-400">
+                      <span>performed onsets</span><span className="text-slate-200">{livingProfile.performance.performedNotes}</span>
+                      <span>kick threshold</span><span className="text-slate-200">{livingProfile.calibration.kickThreshold ?? 'not tuned'}</span>
+                      <span>snare threshold</span><span className="text-slate-200">{livingProfile.calibration.snareThreshold ?? 'not tuned'}</span>
+                      <span>calibrated channels</span><span className="text-slate-200">{livingProfile.calibration.fingerprints.length}</span>
+                      <span>sounds chosen</span><span className="text-slate-200">{livingProfile.choices.sounds.length || 'none yet'}</span>
+                      <span>accepted / rejected</span><span className="text-slate-200">{livingProfile.decisions.accepted} / {livingProfile.decisions.rejected}</span>
+                    </div>
+                    {livingProfile.gaps.length > 0 && (
+                      <div className="space-y-1 pt-2 border-t border-slate-800">
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+                          Not known yet
+                        </div>
+                        {livingProfile.gaps.map((gap) => (
+                          <p key={gap} className="text-[11px] text-slate-500 leading-relaxed">{gap}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <button
                     onClick={handleSaveSignature}
                     className="px-8 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs font-mono transition cursor-pointer shadow-xl shadow-purple-600/30"
