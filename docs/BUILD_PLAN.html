@@ -1,0 +1,502 @@
+<title>Studio, Lab, Exchange</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Karla:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  :root {
+    --ground: #f6f3ee;
+    --surface: #fffdfa;
+    --sunk: #ede7de;
+    --ink: #1c1714;
+    --muted: #6b6058;
+    --faint: #968b80;
+    --rule: #e2dbd1;
+    --rule-strong: #c8bdb0;
+    --accent: #9a5b18;
+    --accent-soft: #f6e8d7;
+
+    --built: #3d6f3d;
+    --built-bg: #e6efe4;
+    --part: #a1670c;
+    --part-bg: #f8ecd8;
+    --none: #6f655c;
+    --none-bg: #eae4dc;
+    --block: #8f3a2c;
+    --block-bg: #f6e3df;
+
+    --display: "Fraunces", Georgia, "Times New Roman", serif;
+    --body: "Karla", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #16120f;
+      --surface: #201b17;
+      --sunk: #120e0c;
+      --ink: #efe9e1;
+      --muted: #a89c90;
+      --faint: #7d7268;
+      --rule: #2f2822;
+      --rule-strong: #473c33;
+      --accent: #dc9a4c;
+      --accent-soft: #2b2015;
+
+      --built: #7fc17f;
+      --built-bg: #16240f;
+      --part: #e0a63f;
+      --part-bg: #2a1f0b;
+      --none: #9a8e83;
+      --none-bg: #241e19;
+      --block: #e08573;
+      --block-bg: #2c1613;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #16120f;
+    --surface: #201b17;
+    --sunk: #120e0c;
+    --ink: #efe9e1;
+    --muted: #a89c90;
+    --faint: #7d7268;
+    --rule: #2f2822;
+    --rule-strong: #473c33;
+    --accent: #dc9a4c;
+    --accent-soft: #2b2015;
+
+    --built: #7fc17f;
+    --built-bg: #16240f;
+    --part: #e0a63f;
+    --part-bg: #2a1f0b;
+    --none: #9a8e83;
+    --none-bg: #241e19;
+    --block: #e08573;
+    --block-bg: #2c1613;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 4.5rem) clamp(1rem, 4vw, 2.5rem) 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.5rem, 5vw, 3.75rem);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead { display: flex; flex-direction: column; gap: 0.9rem; }
+  .masthead h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(2.4rem, 6.5vw, 4rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .standfirst { max-width: 64ch; font-size: 1.08rem; color: var(--muted); margin: 0; }
+  .stamp {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--faint);
+    border-top: 1px solid var(--rule);
+    padding-top: 0.8rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.6rem;
+  }
+
+  section { display: flex; flex-direction: column; gap: 1.05rem; }
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(1.6rem, 3.4vw, 2.1rem);
+    letter-spacing: -0.014em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h3 { font-family: var(--body); font-weight: 700; font-size: 1rem; margin: 0; letter-spacing: 0.005em; }
+  p { margin: 0; max-width: 68ch; }
+  .lede { color: var(--muted); }
+  code { font-family: var(--mono); font-size: 0.85em; background: var(--sunk); padding: 0.1em 0.36em; border-radius: 3px; }
+
+  /* ---------- the three layers ---------- */
+  .layers { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1px; background: var(--rule-strong); border: 1px solid var(--rule-strong); }
+  .layer { background: var(--surface); padding: 1.3rem 1.35rem 1.45rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .layer .n { font-family: var(--mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; color: var(--accent); }
+  .layer h3 { font-family: var(--display); font-weight: 600; font-size: 1.22rem; letter-spacing: -0.01em; }
+  .layer p { font-size: 0.92rem; color: var(--muted); }
+
+  /* ---------- ledger ---------- */
+  .ledger { display: flex; flex-direction: column; }
+  .lgroup { border-top: 2px solid var(--ink); padding-top: 0.9rem; margin-top: 1.6rem; }
+  .lgroup:first-child { margin-top: 0; }
+  .lgroup > h3 { font-family: var(--display); font-weight: 600; font-size: 1.3rem; margin-bottom: 0.15rem; }
+  .lgroup > .sub { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.5rem; }
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) 116px minmax(0, 1.55fr);
+    gap: 0.4rem 1.2rem;
+    padding: 0.72rem 0;
+    border-top: 1px solid var(--rule);
+    align-items: start;
+  }
+  .what { font-weight: 600; font-size: 0.95rem; }
+  .ev { font-family: var(--mono); font-size: 0.755rem; color: var(--muted); line-height: 1.55; overflow-wrap: anywhere; }
+  .pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 0.24rem 0.48rem;
+    white-space: nowrap;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+  }
+  .p-built { color: var(--built); background: var(--built-bg); }
+  .p-part { color: var(--part); background: var(--part-bg); }
+  .p-none { color: var(--none); background: var(--none-bg); }
+  .p-block { color: var(--block); background: var(--block-bg); }
+
+  @media (max-width: 720px) {
+    .row { grid-template-columns: 1fr; gap: 0.3rem; }
+    .row .pill { justify-self: start; }
+  }
+
+  /* ---------- rules callout ---------- */
+  .rules { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--rule-strong); background: var(--surface); }
+  .rule-item { display: grid; grid-template-columns: 2.2rem 1fr; gap: 1rem; padding: 1.1rem 1.35rem; border-top: 1px solid var(--rule); }
+  .rule-item:first-child { border-top: none; }
+  .rule-item .mark { font-family: var(--mono); font-size: 0.78rem; font-weight: 700; color: var(--accent); padding-top: 0.15rem; }
+  .rule-item p { font-size: 0.94rem; }
+  .rule-item strong { font-weight: 700; }
+
+  /* ---------- architecture diagram ---------- */
+  .arch { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--rule-strong); background: var(--surface); overflow: hidden; }
+  .band { padding: 0.95rem 1.3rem; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 0.55rem; }
+  .band:first-child { border-top: none; }
+  .band .cap { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--faint); }
+  .band .big { font-family: var(--display); font-weight: 600; font-size: 1.15rem; }
+  .band.spine { background: var(--accent-soft); }
+  .band.spine .big { color: var(--accent); }
+  .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 0.6rem; }
+  .choice { border: 1px solid var(--rule-strong); background: var(--ground); padding: 0.7rem 0.8rem; display: flex; flex-direction: column; gap: 0.22rem; }
+  .choice .nm { font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; }
+  .choice .ds { font-size: 0.8rem; color: var(--muted); line-height: 1.45; }
+  .flowmark { font-family: var(--mono); font-size: 0.8rem; color: var(--faint); text-align: center; padding: 0.3rem 0; }
+
+  /* ---------- ordered plan ---------- */
+  ol.plan { margin: 0; padding: 0; list-style: none; counter-reset: step; display: flex; flex-direction: column; }
+  ol.plan > li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 3rem 1fr;
+    gap: 0.4rem 1.1rem;
+    border-top: 1px solid var(--rule);
+    padding: 1.15rem 0;
+  }
+  ol.plan > li:first-child { border-top: 2px solid var(--ink); }
+  ol.plan > li::before {
+    content: counter(step, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--accent);
+    padding-top: 0.16rem;
+    font-variant-numeric: tabular-nums;
+  }
+  ol.plan h3 { font-family: var(--display); font-weight: 600; font-size: 1.22rem; letter-spacing: -0.008em; }
+  ol.plan p { font-size: 0.94rem; color: var(--muted); margin-top: 0.3rem; }
+  .meta { display: flex; flex-wrap: wrap; gap: 0.35rem 0.7rem; margin-top: 0.6rem; font-family: var(--mono); font-size: 0.68rem; }
+  .tag { border: 1px solid var(--rule-strong); padding: 0.2rem 0.45rem; color: var(--muted); border-radius: 2px; }
+  .tag.hot { border-color: var(--accent); color: var(--accent); }
+
+  .qs { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--rule-strong); background: var(--surface); }
+  .q { padding: 1.05rem 1.35rem; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 0.3rem; }
+  .q:first-child { border-top: none; }
+  .q .head { font-weight: 700; font-size: 0.95rem; }
+  .q p { font-size: 0.9rem; color: var(--muted); }
+
+  .scroller { overflow-x: auto; }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Build plan · written against the code, not the intent</div>
+    <h1>Studio, Lab, Exchange</h1>
+    <p class="standfirst">Where SoulSonus actually stands today, the three layers it is becoming, and the order the remaining work has to happen in so that nothing gets plugged in sideways later.</p>
+    <div class="stamp">
+      <span>Every status below was read from <code>main</code>, not recalled</span>
+      <span>Verification detail lives in the Signal Map; this is the plan</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>What is being built</h2>
+    <p class="lede">Not a DAW with AI features bolted on. Three connected layers, where the output of each becomes an input to the next — and where the person, not the model, is the source.</p>
+    <div class="layers">
+      <div class="layer">
+        <span class="n">LAYER ONE</span>
+        <h3>Create music</h3>
+        <p>Every legitimate path in. Perform with mouth or body, play MIDI, record audio, import stems, draw notes, use samples, synths, session players, a generative engine. The mouth/body workflow is the signature entry point, never a requirement.</p>
+      </div>
+      <div class="layer">
+        <span class="n">LAYER TWO</span>
+        <h3>Create sounds</h3>
+        <p>The Sound Lab. Capture a source, shape it, make variations, build it into a kit or a multi-sampled instrument or a patch. Sometimes a model is trained; usually it is sound design. The plan says which is which.</p>
+      </div>
+      <div class="layer">
+        <span class="n">LAYER THREE</span>
+        <h3>Publish sounds</h3>
+        <p>A governed asset exchange, not a sample store. A creator's kit, a musician's performance intelligence, a vocalist's licensed identity — each carrying its own rights, lineage and permitted uses.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Four rules that decide how the code is written</h2>
+    <p class="lede">Each of these is cheap to honour now and expensive to retrofit. They are here because getting any one of them wrong produces a working product with the wrong shape.</p>
+    <div class="rules">
+      <div class="rule-item">
+        <span class="mark">R1</span>
+        <p><strong>A generative engine is never the product abstraction.</strong> ACE is wired behind a <code>SessionPlayer</code>, not to the UI. The creator addresses a bass player; the bass player decides the task, the instruction and the freedom, and calls whatever renderer is behind it. Wire ACE to the interface and you get "Generate Bass" — a different product, and one that cannot swap renderers later.</p>
+      </div>
+      <div class="rule-item">
+        <span class="mark">R2</span>
+        <p><strong>A marketplace asset is the same object as a studio asset.</strong> A kick bought from another creator is the same <code>SoundAsset</code> the DAW already understands — not a store item that has to be converted. Private asset to published asset is one flag, not a second technology stack.</p>
+      </div>
+      <div class="rule-item">
+        <span class="mark">R3</span>
+        <p><strong>Do not call it training unless a model is being trained.</strong> Designing a sound, building a multi-sample instrument, generating variations and adapting a model are four different operations. One surface can present them together; the code must not pretend they are the same thing, and the creator must not be told a model learned something when a file was written.</p>
+      </div>
+      <div class="rule-item">
+        <span class="mark">R4</span>
+        <p><strong>Signing belongs to SeedSignature.</strong> It is a separate product that signs across the ecosystem, so SoulSonus stubs it behind a seam and states plainly that it is not integrated. What SoulSonus owns is the creator's <em>style profile</em> — calibration, provenance, decisions. Those are two layers, and today's code tangles them.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where it actually stands</h2>
+    <p class="lede">Read from the current branch. <span class="pill p-built">Built</span> means a live test drove the real app and observed real data changing. <span class="pill p-part">Partial</span> means it works in some paths and not others. <span class="pill p-block">Blocked</span> means the code is ready and something outside it is not.</p>
+
+    <div class="ledger">
+
+      <div class="lgroup">
+        <h3>The studio</h3>
+        <p class="sub">Layer one. Largely real, and the gaps are specific.</p>
+
+        <div class="row"><div class="what">Capture, separated by sound type</div><div><span class="pill p-part">Partial</span></div><div class="ev">One take separates into kick / snare / hat / sub / lead channels, verified live. But it is one onset at a time: a 70&nbsp;ms debounce, one label per onset, and sustained material written as a single 16th. A full composition performed in one pass loses its simultaneity</div></div>
+        <div class="row"><div class="what">The MOUTH / BODY seed track</div><div><span class="pill p-none">Broken</span></div><div class="ev">Created with instrument <code>custom</code> / <code>percussion</code>, and the router only prefers a seed track whose instrument appears in the class list — neither does. Your notes land on the project channels while the track you made by pressing the button stays empty. Calibrating it is the one path that works</div></div>
+        <div class="row"><div class="what">A hum becomes notes</div><div><span class="pill p-built">Built</span></div><div class="ev">Real Basic Pitch, polyphonic, with correct durations. A4&nbsp;C5&nbsp;E5&nbsp;C5 read back exactly from a hum; silence and noise return nothing</div></div>
+        <div class="row"><div class="what">Timeline, clips, song length</div><div><span class="pill p-built">Built</span></div><div class="ev">Audio and notes coexist on a track; clips draw their own waveform, drag and trim; songs run 1&ndash;256 bars</div></div>
+        <div class="row"><div class="what">Channel strip, instrument voice, master chain</div><div><span class="pill p-built">Built</span></div><div class="ev">EQ, dynamics, drive, sends and every instrument parameter reach both live playback and the bounce. Real gated loudness and true-peak measurement; WAV and FLAC export</div></div>
+        <div class="row"><div class="what">Play it the normal way</div><div><span class="pill p-built">Built</span></div><div class="ev">MIDI hardware, virtual keyboard, note editing, piano roll, samples, synths. None of it goes through the band, and none of it should</div></div>
+      </div>
+
+      <div class="lgroup">
+        <h3>The band</h3>
+        <p class="sub">The frame is real and tested. Nobody is standing in it.</p>
+
+        <div class="row"><div class="what">Roster, grants, checks</div><div><span class="pill p-built">Built</span></div><div class="ev">Seven players; five hand back notes, two can only hand back audio. Three freedom levels with arithmetic behind them &mdash; every rule shown refusing something, tolerances in milliseconds so they mean the same thing at 70 and 170&nbsp;BPM</div></div>
+        <div class="row"><div class="what">Addressing a player</div><div><span class="pill p-built">Built</span></div><div class="ev">&ldquo;Bass player, play what you feel in the hook&rdquo; is answered as a brief. &ldquo;Make the kick fatter&rdquo; is not turned into a musician</div></div>
+        <div class="row"><div class="what">The brief carries the song</div><div><span class="pill p-none">Missing</span></div><div class="ev">It carries tempo, key and the phrase the grant is defined against &mdash; not the other parts. A player who cannot hear the drums is a metronome with opinions</div></div>
+        <div class="row"><div class="what"><code>SessionPlayer</code> &mdash; role, context, locks, generateTake</div><div><span class="pill p-none">Missing</span></div><div class="ev">The layer R1 is about. The vocabulary exists and the renderer seam exists; nothing connects them. This is the next thing to build</div></div>
+        <div class="row"><div class="what">A player that returns a take</div><div><span class="pill p-none">Not built</span></div><div class="ev">Needs a sound to play through and judgement about what to play. Two separate problems &mdash; see the order below</div></div>
+      </div>
+
+      <div class="lgroup">
+        <h3>The sounds</h3>
+        <p class="sub">Layer two. Almost nothing yet, and the sound quality ceiling is here.</p>
+
+        <div class="row"><div class="what">What a player would sound like today</div><div><span class="pill p-part">Partial</span></div><div class="ev">A bass is one sawtooth oscillator, one lowpass, an envelope and a glide. That is a synth approximating a bass, not a bass &mdash; no fingered or slapped, no ghost notes, no string noise, no harmonics</div></div>
+        <div class="row"><div class="what">Sampled instruments</div><div><span class="pill p-none">Not built</span></div><div class="ev"><code>spessasynth_core</code> is installed and no sound bank ships. The engine that claimed SpessaSynth was two oscillators and has been deleted. This is the single largest jump in believability available, and it needs no GPU</div></div>
+        <div class="row"><div class="what">Sound Lab &mdash; capture, shape, variate, build</div><div><span class="pill p-none">Not built</span></div><div class="ev">The whole of layer two. Individual pieces exist scattered &mdash; recording, DSP, transient analysis, asset hashing &mdash; but there is no surface where a creator makes a sound and keeps it</div></div>
+        <div class="row"><div class="what">The creator's style profile</div><div><span class="pill p-none">Broken</span></div><div class="ev">Real ingredients are already recorded: the calibration fingerprint of your own kick and snare, provenance on every note, and every accept and reject on a candidate. Nothing keeps them. What is stored instead is <code>['Fat 808 Sub', 'Crisp Acoustic Snare', 'Custom Root Seeds']</code> &mdash; identical for every creator</div></div>
+      </div>
+
+      <div class="lgroup">
+        <h3>The exchange</h3>
+        <p class="sub">Layer three. The vocabulary is better than expected; there is nothing behind it.</p>
+
+        <div class="row"><div class="what">The rights model</div><div><span class="pill p-part">Types only</span></div><div class="ev"><code>ResourceAdmissionRecord</code> already carries creator, license, commercial use, redistribution, attribution, <em>training permission</em>, marketplace permission and a SHA-256. Close to the governed exchange as described, and no record has ever been created</div></div>
+        <div class="row"><div class="what">The resource registry</div><div><span class="pill p-part">Mock</span></div><div class="ev"><code>CreativeResourceType</code> already names SAMPLE, INSTRUMENT_SF2, SYNTH_PRESET, GROOVE_PROFILE, CREATOR_ASSET, MARKETPLACE_ASSET. The vault modal is reachable and lists a hardcoded array; auditioning a &ldquo;TR-808 Sub Kick&rdquo; plays a PolySynth chord</div></div>
+        <div class="row"><div class="what">Publish, discover, license</div><div><span class="pill p-none">Not built</span></div><div class="ev">No publish path, no exchange, no royalty or attribution terms in the record yet</div></div>
+      </div>
+
+      <div class="lgroup">
+        <h3>Outside SoulSonus</h3>
+        <p class="sub">Real dependencies on things this codebase does not own.</p>
+
+        <div class="row"><div class="what">SeedSignature</div><div><span class="pill p-block">Stub it</span></div><div class="ev">A separate product that signs across the ecosystem. Today <code>lib/seedSignature.ts</code> hashes locally with <code>crypto.subtle</code> while presenting itself as the product, and the footer reports VERIFIED against that local hash. Needs a seam, an honest NOT INTEGRATED state, and the real contract when it exists</div></div>
+        <div class="row"><div class="what">ACE realization</div><div><span class="pill p-block">Needs a host</span></div><div class="ev">Contract, service route and provider seam are built and tested without a network &mdash; six task types, duration locking, the integer status contract the old client got wrong. What is missing is a machine with the pinned checkpoint and &ge;24&nbsp;GB VRAM</div></div>
+        <div class="row"><div class="what">Demucs stem separation</div><div><span class="pill p-block">Needs a host</span></div><div class="ev">Client exists. Full-mix import depends on it</div></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>The architecture, once</h2>
+    <p class="lede">The studio is the permanent thing. Everything else is something the creator reaches for from inside it, and everything lands in the same three object types.</p>
+
+    <div class="arch">
+      <div class="band">
+        <span class="cap">Origin</span>
+        <span class="big">Creator</span>
+      </div>
+      <div class="flowmark">↓</div>
+      <div class="band spine">
+        <span class="cap">Permanent, never bypassed</span>
+        <span class="big">The studio</span>
+        <p class="lede" style="font-size:0.88rem">Perform · play · record · import · draw · arrange · mix · master · export</p>
+      </div>
+      <div class="flowmark">↓ &nbsp;reach for one or more</div>
+      <div class="band">
+        <div class="choices">
+          <div class="choice"><span class="nm">SESSION PLAYER</span><span class="ds">Performance intelligence. Role, context, freedom, locks — hands back a take</span></div>
+          <div class="choice"><span class="nm">SOUND ASSET</span><span class="ds">Kit, instrument, patch, sample. Yours, or another creator's, under its own rights</span></div>
+          <div class="choice"><span class="nm">GENERATIVE ENGINE</span><span class="ds">ACE today, another renderer tomorrow. Called <em>by</em> a player, not by the UI</span></div>
+          <div class="choice"><span class="nm">DSP</span><span class="ds">Sonic shaping. Strip, master chain, vocal chain</span></div>
+        </div>
+      </div>
+      <div class="flowmark">↓</div>
+      <div class="band spine">
+        <span class="cap">Everything becomes one of three</span>
+        <span class="big"><code>Track</code> · <code>AudioClip</code> · <code>NoteEvent</code></span>
+      </div>
+      <div class="flowmark">↓</div>
+      <div class="band">
+        <span class="cap">Owned, versioned, signed</span>
+        <span class="big">Project</span>
+      </div>
+    </div>
+
+    <p class="lede" style="margin-top:0.4rem">Running alongside, not underneath: <strong>Sound Lab</strong> takes a captured or designed source through shaping, variation and packaging into a <code>SoundAsset</code>, attaches its rights, and publishes it — private, to a project, or to the exchange. Because the asset is the same object the studio already plays, publishing is a permission change rather than a conversion.</p>
+  </section>
+
+  <section>
+    <h2>The order, and why it is this order</h2>
+    <p class="lede">Sequenced by dependency and by what each one unblocks — not by size. The first four need no GPU and no external service.</p>
+
+    <ol class="plan">
+      <li>
+        <div>
+          <h3>The seed track receives its own notes</h3>
+          <p>Where your creativity starts, and it is a routing bug rather than a feature: the seed track's instrument is never in the class list the router checks. Small, contained, and it stops the studio contradicting itself the moment you press record.</p>
+          <div class="meta"><span class="tag hot">Blocks nothing · fixes the first thing you touch</span><span class="tag">No host</span></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>The <code>SessionPlayer</code> layer</h3>
+          <p>Role, musical context, freedom level, creator locks, <code>generateTake()</code>. Decided before ACE is finalised, because it determines how a Lego request is framed, what metadata travels, which track owns the output, and whether a result arrives as an "AI generation" or as a session player's take. The context has to carry the other parts — hearing the song is the job.</p>
+          <div class="meta"><span class="tag hot">R1 · blocks all ACE work</span><span class="tag">No host</span></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Sampled instruments</h3>
+          <p>The largest believability gain available, and every existing track benefits whether or not the band is ever called. It is also what makes a session player's take worth listening to — a bass line is only as good as the bass. Needs a sound bank and a licence decision, not a GPU.</p>
+          <div class="meta"><span class="tag">Unblocks: a player that sounds real</span><span class="tag">Needs a sound bank</span></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>The style profile, from real data</h3>
+          <p>Calibration fingerprint, note provenance, and every accept and reject — kept and connected, replacing the identical literal array every creator currently gets. This is the substrate the band eventually learns you from, and the data is already being generated and discarded. Separate from signing.</p>
+          <div class="meta"><span class="tag">Unblocks: a band that plays like you</span><span class="tag">No host</span></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>The SeedSignature seam</h3>
+          <p>One provider interface, the local hashing demoted to an openly-labelled placeholder, and a third status so the footer stops claiming VERIFIED on SoulSonus's own arithmetic. Small, and it stops anything else being built on top of a stand-in.</p>
+          <div class="meta"><span class="tag">R4</span><span class="tag">Waits on: the real contract</span></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Full-composition beatbox extraction</h3>
+          <p>Per-band onset detection so a kick and a hat 20&nbsp;ms apart become two events instead of one, plus Basic Pitch over the same take for the sustained and pitched layer. Turns one performance into its proper tracks. Best tuned against a real take of yours rather than a synthetic one.</p>
+          <div class="meta"><span class="tag">No host</span><span class="tag">Wants: a real beatbox take</span></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Sound Lab</h3>
+          <p>Capture, shape, variate, build, and publish — with R3 honoured throughout, so a creator is told which of those four operations actually happened. Depends on the asset model being settled first, which it now is.</p>
+          <div class="meta"><span class="tag">Layer two</span><span class="tag">No host</span></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>ACE, in its own order</h3>
+          <p><code>extract</code> first — its output is the thing the timeline can already hold. Then <code>cover</code> and <code>repaint</code>. Then <code>lego</code>, arriving <em>behind</em> a session player rather than as a button. Then <code>complete</code>. All of it waits on a host, and none of it changes the shape once step 02 exists.</p>
+          <div class="meta"><span class="tag hot">Needs a GPU host</span><span class="tag">After: 02</span></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>The exchange</h3>
+          <p>Publish path, discovery, and the terms the record does not carry yet — royalty, attribution, derivative use. Built on the same <code>SoundAsset</code> the studio plays, per R2, so a published asset is a permission change and not a second stack.</p>
+          <div class="meta"><span class="tag">Layer three</span><span class="tag">After: 07</span></div>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Decisions I need from you</h2>
+    <p class="lede">Each of these changes what gets built rather than how well. I would rather ask than guess and refactor.</p>
+    <div class="qs">
+      <div class="q">
+        <span class="head">The take vocabulary</span>
+        <p>Pocket, melodic and adventurous are dispositions. You said there are more — fills, solos, and others. A real call is often for a <em>job</em>: fill into the chorus, take a solo over the turnaround, walk it, lay out for eight, double the vocal, hold a pad under it. Some of those are bar-ranged by nature. I would rather take that vocabulary from you than invent it, because you have made those calls in a room.</p>
+      </div>
+      <div class="q">
+        <span class="head">The sound bank</span>
+        <p>Sampled instruments need a bank, and that is a licensing decision as much as a technical one. A permissively licensed general bank to start? Something you own or commission? This affects step 03 and everything the band sounds like.</p>
+      </div>
+      <div class="q">
+        <span class="head">A real beatbox take</span>
+        <p>For step 06 I can synthesise a test signal with known contents, but a synthetic beatbox is not a beatbox. A take of you performing a full composition would let the extractor be tuned against what you actually do.</p>
+      </div>
+      <div class="q">
+        <span class="head">Human players in the same lane</span>
+        <p>You said the bass player could come from around the country. The brief, the grant and the check do not care whether the player is an agent or a person — the same session context could be sent to a human, and the same check applied to what comes back. Is that a lane you want designed for now, or noted and left?</p>
+      </div>
+      <div class="q">
+        <span class="head">SeedSignature's contract</span>
+        <p>When it is ready: endpoints, auth model, what a signed record looks like coming back, and how a lineage chain crosses products. Until then the seam holds the shape and claims nothing.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
