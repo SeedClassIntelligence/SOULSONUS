@@ -1,6 +1,14 @@
 /**
  * 0.1 / 0.2 / 0.3 together: is the Master room measuring a real bounce, do the
  * mastering stages change that measurement, and does export produce real audio?
+ *
+ * This suite printed PASS and FAIL and then exited 0 either way, so a
+ * regression here would have been visible only to whoever read the output --
+ * and invisible to anything that runs it automatically. It counts failures
+ * now and exits on the count, and the export section asserts rather than
+ * reporting: an export is checked for its container's magic bytes and a
+ * plausible size, because `ok=true` over a zero-byte file is exactly the kind
+ * of pass this project keeps finding.
  */
 const playwright = require('playwright');
 const { launch, enterStudio, session } = require('./lib.cjs');
@@ -18,6 +26,12 @@ const STUDIO = `window.__studio = () => {
   }
   throw new Error('ctx not found');
 }`;
+
+let failures = 0;
+function check(label, ok, detail) {
+  if (!ok) failures++;
+  console.log(`  ${label.padEnd(42)} ${detail}   ${ok ? 'PASS' : 'FAIL'}`);
+}
 
 const analyze = (page) => page.evaluate('window.__studio().handleAnalyzeMaster()');
 const setSlot = (page, type, params) => page.evaluate(`(() => {
@@ -38,8 +52,8 @@ const setSlot = (page, type, params) => page.evaluate(`(() => {
   console.log(`  integrated ${base.integratedLufs} LUFS   samplePeak ${base.samplePeakDbfs} dBFS   truePeak ${base.truePeakDbtp} dBTP`);
   console.log(`  shortTerm ${base.shortTermLufs}   momentary ${base.momentaryLufs}   crest ${base.crestFactorDb} dB   phase ${base.phaseCorrelation}`);
   const literals = base.integratedLufs === -14.1 && base.truePeakDbtp === -1.0;
-  console.log(`  differs from the old hardcoded -14.1 / -1.0 : ${literals ? 'FAIL (still the literals)' : 'PASS'}`);
-  console.log(`  is a finite measurement                     : ${Number.isFinite(base.integratedLufs) ? 'PASS' : 'FAIL'}`);
+  check('differs from the old hardcoded -14.1 / -1.0', !literals, literals ? 'still the literals' : 'measured');
+  check('is a finite measurement', Number.isFinite(base.integratedLufs), `${base.integratedLufs} LUFS`);
 
   // 0.3 — do the stages change the measured result?
   console.log('\n-- 0.3 do the seven stages change the audio? --');
@@ -56,11 +70,16 @@ const setSlot = (page, type, params) => page.evaluate(`(() => {
     await page.waitForTimeout(400);
     const after = await analyze(page);
     const changed = Math.abs(after[field] - before[field]) > 0.05;
-    console.log(`  ${label.padEnd(42)} ${field} ${before[field]} -> ${after[field]}   ${changed ? 'PASS' : 'FAIL — no effect'}`);
+    check(label, changed, `${field} ${before[field]} -> ${after[field]}`);
   }
 
   // 0.2 — does export produce real encoded audio?
   console.log('\n-- 0.2 real encoded export --');
+  // The container's own magic bytes, so a file that says .flac and holds a
+  // WAV is caught. The size floor is a second of 16-bit stereo at 44.1 kHz --
+  // far below any real bounce of this project, and far above an empty file.
+  const MAGIC = { WAV_24: 'RIFF', WAV_16: 'RIFF', FLAC: 'fLaC' };
+  const MIN_BYTES = 176400;
   for (const fmt of ['WAV_24', 'WAV_16', 'FLAC']) {
     const r = await page.evaluate(`window.__studio().handleBounceMaster(${JSON.stringify(fmt)})`);
     const head = r.url ? await page.evaluate(`(async () => {
@@ -68,9 +87,15 @@ const setSlot = (page, type, params) => page.evaluate(`(() => {
       const u = new Uint8Array(b.slice(0, 4));
       return { magic: String.fromCharCode(...u), bytes: b.byteLength };
     })()`) : null;
-    console.log(`  ${fmt.padEnd(7)} ok=${r.ok} file=${r.fileName || '-'} size=${r.sizeBytes || 0} magic=${head ? JSON.stringify(head.magic) : '-'}`);
+    check(
+      `${fmt} exports a real ${MAGIC[fmt]} file`,
+      r.ok === true && !!head && head.magic === MAGIC[fmt] && head.bytes >= MIN_BYTES,
+      `${r.fileName || 'no file'} · ${head ? head.bytes : 0} bytes · magic ${head ? JSON.stringify(head.magic) : '-'}`
+    );
     console.log(`          ${r.message}`);
   }
 
+  console.log(`\n${failures === 0 ? 'ALL CHECKS PASSED' : failures + ' CHECK(S) FAILED'}`);
   await browser.close();
+  process.exit(failures === 0 ? 0 : 1);
 })();
