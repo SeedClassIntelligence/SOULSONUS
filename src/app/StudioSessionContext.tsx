@@ -603,6 +603,8 @@ export interface StudioSessionState {
   startSeedRecording: (trackId: string) => Promise<boolean>;
   /** Attaches the kept performance to its seed track. Null if nothing usable was recorded. */
   stopSeedRecording: () => Promise<{ trackId: string; seconds: number } | null>;
+  /** Turns the click on or off, and starts it if nothing else is running the clock. */
+  handleToggleMetronome: () => Promise<boolean>;
   /** Ends capture: classifier off, modality cleared, take kept, microphone released. */
   handleStopCapture: () => Promise<{ trackId: string; seconds: number } | null>;
   /** Loads an instrument that has been admitted to the factory. */
@@ -2603,6 +2605,28 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    * further note is attributed to a performance that has ended, and the take
    * is closed before the microphone is released.
    */
+  /**
+   * The click, on or off.
+   *
+   * It also starts its own clock when the transport is not running, because
+   * the ordinary way this studio is used is to arm the mic and perform without
+   * pressing play -- and a metronome that only works while the sequencer is
+   * playing back other material is not much use to someone laying down the
+   * first thing in a session.
+   */
+  const handleToggleMetronome = useCallback(async (): Promise<boolean> => {
+    const next = !dawStateRef.current.metronomeOn;
+    await audioEngine.init();
+    audioEngine.setMetronome(next);
+    if (next && !dawStateRef.current.isPlaying) {
+      audioEngine.startStandaloneMetronome(bpmRef.current || 110);
+    } else if (!next) {
+      audioEngine.stopStandaloneMetronome();
+    }
+    setDawState((prev) => ({ ...prev, metronomeOn: next }));
+    return next;
+  }, []);
+
   const handleStopCapture = useCallback(async () => {
     detectionEngine.stop();
     detectionEngine.setCaptureModality(null);
@@ -4657,6 +4681,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       startSeedRecording,
       stopSeedRecording,
       handleStopCapture,
+      handleToggleMetronome,
       handleCallSessionPlayer,
       handleLoadFactoryInstrument,
       isMidiCaptureArmed,
@@ -4834,6 +4859,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       startSeedRecording,
       stopSeedRecording,
       handleStopCapture,
+      handleToggleMetronome,
       handleCallSessionPlayer,
       handleLoadFactoryInstrument,
       isMidiCaptureArmed,

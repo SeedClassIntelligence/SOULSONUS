@@ -65,9 +65,12 @@ export const Header: React.FC<HeaderProps> = ({
   onBackToLanding,
   isMicActive,
 }) => {
-  const { setIsVaultModalOpen, handleTransposeAllTracks } = useStudioSession();
+  const { setIsVaultModalOpen, handleTransposeAllTracks, handleToggleMetronome } = useStudioSession();
   const [isLooping, setIsLooping] = useState(true);
-  const [metronomeOn, setMetronomeOn] = useState(true);
+  // Read from the project rather than from this component. It used to be a
+  // `useState(true)` here that nothing else could see -- so the button looked
+  // lit on arrival, and switching it changed a boolean nobody read.
+  const metronomeOn = dawState.metronomeOn;
   const [quantizeSetting, setQuantizeSetting] = useState<'1/16' | '1/8' | 'OFF'>('1/16');
 
   // Compute Bar:Beat.Tick time counter (e.g. 1:01.00)
@@ -171,6 +174,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Blank Canvas Creator Button */}
           <button
             type="button"
+            id="btn-blank-canvas"
             onClick={() => {
               const emptyPreset = PRESETS.find((p) => p.id === 'empty');
               if (emptyPreset) onSelectPreset(emptyPreset);
@@ -320,7 +324,13 @@ export const Header: React.FC<HeaderProps> = ({
             <Square className="w-3.5 h-3.5" />
           </button>
 
-          {/* Global Record Arm */}
+          {/* The mic, and what pressing this will do to it.
+              It read "● REC" whether the microphone was live or not, and it is
+              the same control the capture row's BEATBOX button uses. So the
+              obvious order -- pick BEATBOX, then press record -- armed the mic
+              and then switched it off, and the button looked identical either
+              way. Reproduced: BEATBOX, REC, six seconds of performing, zero
+              onsets captured. The label now says what the next press does. */}
           <button
             id="btn-mic-arm"
             onClick={onToggleMic}
@@ -329,10 +339,10 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'bg-rose-600 text-white border-rose-500 shadow-sm shadow-rose-600/40 animate-pulse'
                 : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-rose-400'
             }`}
-            title="Toggle Mic Recording Engine"
+            title={isMicActive ? 'The microphone is live and capturing. Click to stop and keep the take.' : 'Arm the microphone and start capturing'}
           >
             <div className={`w-2 h-2 rounded-full ${isMicActive ? 'bg-white' : 'bg-rose-500'}`} />
-            <span>● REC</span>
+            <span>{isMicActive ? '■ STOP' : '● REC'}</span>
           </button>
 
           {/* Loop Mode */}
@@ -377,7 +387,8 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Metronome */}
           <button
-            onClick={() => setMetronomeOn(!metronomeOn)}
+            id="btn-metronome"
+            onClick={() => void handleToggleMetronome()}
             className={`px-2.5 h-8 rounded-lg font-bold border transition ${
               metronomeOn
                 ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'

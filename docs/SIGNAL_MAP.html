@@ -325,7 +325,7 @@
   <section>
     <div class="bridge">
       <div class="cell work">
-        <span class="fig">137</span>
+        <span class="fig">139</span>
         <span class="lab">Working</span>
         <span class="note">Processes real data end to end. Demonstrated, not assumed. 74 of these were broken and fixed during the audit.</span>
       </div>
@@ -350,7 +350,7 @@
       <span><span class="pill p-dark">Unplugged</span></span>
       <span><span class="pill p-deco">Decorative</span></span>
       <span><span class="pill p-none">Not built</span></span>
-      <span>Evidence column cites the file and line, or the live test that produced the result. 151 rows in total.</span>
+      <span>Evidence column cites the file and line, or the live test that produced the result. 153 rows in total.</span>
     </div>
   </section>
 
@@ -379,6 +379,8 @@
       <span class="roomrole">Performance capture — the origin of everything downstream</span>
     </div>
     <div class="rows">
+      <div class="row"><div class="what">Pressing record stopped the recording</div><div><span class="pill p-work">Fixed</span></div><div class="ev">Found by someone sitting down and trying it. The button read <code>● REC</code> whether the microphone was live or not, and it is the same control the capture row&rsquo;s BEATBOX button uses &mdash; so the obvious order, pick BEATBOX then press record, armed the mic and switched it straight off. Reproduced end to end: BEATBOX, REC, six seconds of performing, <code>0</code> onsets. It reads <code>■ STOP</code> while the mic is live now, and the same flow captures 29</div></div>
+      <div class="row"><div class="what">The metronome was a button</div><div><span class="pill p-work">Fixed</span></div><div class="ev">Its tooltip promised an &ldquo;Audible Metronome Click Guide (on quarter beats 1, 2, 3, 4)&rdquo;. Its state was a <code>useState(true)</code> inside the header that nothing else could see, so it looked lit on arrival and switching it changed a boolean nobody read; no click was ever produced. There is a real one now, on the quarter beats with the downbeat a fifth higher, straight to the output rather than through the mix so it is never in the bounce. It runs without the transport too, because arming the mic and performing without pressing play is the ordinary way this studio is used. Measured: <code>0</code> sounds in 2 s while off, <code>8</code> clicks in 4 s at 110 BPM while on</div></div>
       <div class="row"><div class="what">Per-sound-type channel separation<small>One take, one channel per sound type performed</small></div><div><span class="pill p-dark">Partly</span></div><div class="ev">One take separates into kick / snare / hat channels, verified live &mdash; but only for sounds played on their own. There is one full-band envelope and one label per onset, so anything played underneath something else is not mislabelled, it is <em>gone</em>. Measured with a low burst and a high burst that cannot be confused: <code>22 sounds played, 16 heard</code>. Two struck together give one event; two 30&nbsp;ms apart give one. The 70&nbsp;ms debounce is not the binding constraint &mdash; a sound 80&nbsp;ms later is still missed when the first is still ringing, because total energy is falling so nothing &ldquo;rises&rdquo;. Reproduce with <code>scripts/dsp/measure-onset-separation.ts</code></div></div>
       <div class="row"><div class="what">Onset classifier<small>Band-ratio + centroid scoring, noise-floor subtracted</small></div><div><span class="pill p-dark">Unverified</span></div><div class="ev">Real band-ratio and centroid scoring against fixed prototypes, and the prototypes are for <em>mouth-made</em> kick, snare and hat. Its 14/28/14 result is against synthesised test tones, which are not beatboxing &mdash; and neither is an acoustic drum recording, where a real bass drum reads as two snares. So the accuracy of this on the thing it exists for is not known in either direction. Settling it needs a real beatbox take with known content; no synthetic signal can stand in for one</div></div>
       <div class="row"><div class="what">Mic onset detection &amp; pitch tracking</div><div><span class="pill p-work">Working</span></div><div class="ev">audio/detectionEngine.ts · 440 Hz in → MIDI 69 out; sub-bass tracked to 45 Hz</div></div>

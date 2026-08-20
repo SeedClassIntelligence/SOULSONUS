@@ -28,6 +28,19 @@ export class AudioEngine {
   private hihatSynth: Tone.MetalSynth | null = null;
   private melodySynth: Tone.FMSynth | null = null;
   private bassSynth: Tone.MonoSynth | null = null;
+  /**
+   * The metronome.
+   *
+   * The button for this has existed since the beginning, with a tooltip
+   * promising an "Audible Metronome Click Guide (on quarter beats 1, 2, 3,
+   * 4)". Nothing read its state and no click was ever produced -- the toggle
+   * lived in the header's own `useState`, defaulting to on, so it looked lit
+   * and did nothing. It goes straight to the output rather than through the
+   * mastering chain, because a click is a guide for the player and has no
+   * business in the record.
+   */
+  private clickSynth: Tone.MembraneSynth | null = null;
+  private metronomeOn = false;
 
   // Master Bus Phase 11 DSP Chain
   private masterLimiter: Tone.Limiter | null = null;
@@ -42,6 +55,7 @@ export class AudioEngine {
   private trackNodeMap = new Map<string, TrackChannelNodes>();
 
   private loopEventId: number | null = null;
+  private standaloneClickId: number | null = null;
   /** Players for timeline clips, rebuilt whenever the clips change. */
   private clipPlayers: Tone.Player[] = [];
   private stepCallback: ((step: number) => void) | null = null;
@@ -65,6 +79,15 @@ export class AudioEngine {
     // mastering chain's own limiter sits ahead of it and is what the Master
     // room's ceiling control drives.
     this.masterLimiter = new Tone.Limiter(-0.5).toDestination();
+
+    // Deliberately not on the mix bus: a count-in is not part of the music,
+    // so it is never in the bounce and never under the compressor.
+    this.clickSynth = new Tone.MembraneSynth({
+      pitchDecay: 0.008,
+      octaves: 2,
+      envelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.02 },
+    }).toDestination();
+    this.clickSynth.volume.value = -12;
     this.masterVolume = new Tone.Volume(0);
     this.masterVolume.connect(this.masterLimiter);
     this.masterCompressor = new Tone.Compressor({ threshold: -12, ratio: 4, attack: 0.003, release: 0.25 }).connect(
@@ -646,6 +669,40 @@ export class AudioEngine {
     this.clipPlayers = [];
   }
 
+  /** Turns the click on or off. Audible from the next beat. */
+  public setMetronome(on: boolean) {
+    this.metronomeOn = on;
+  }
+
+  public get isMetronomeOn(): boolean {
+    return this.metronomeOn;
+  }
+
+  /**
+   * Plays the click on its own, for a creator performing without the
+   * transport -- which is the ordinary way this studio is used.
+   */
+  public startStandaloneMetronome(bpm: number) {
+    if (!this.initialized || !this.clickSynth) return;
+    this.stopStandaloneMetronome();
+    const interval = 60 / Math.max(20, bpm);
+    let beat = 0;
+    this.standaloneClickId = Tone.getTransport().scheduleRepeat((time) => {
+      if (!this.metronomeOn || !this.clickSynth) return;
+      const isDownbeat = beat % 4 === 0;
+      this.clickSynth.triggerAttackRelease(isDownbeat ? 'C6' : 'G5', 0.03, time, isDownbeat ? 0.9 : 0.55);
+      beat++;
+    }, interval);
+    if (Tone.getTransport().state !== 'started') Tone.getTransport().start();
+  }
+
+  public stopStandaloneMetronome() {
+    if (this.standaloneClickId !== null) {
+      Tone.getTransport().clear(this.standaloneClickId);
+      this.standaloneClickId = null;
+    }
+  }
+
   public startSequencer(
     tracksRef: () => Track[],
     onStepChange: (step: number) => void,
@@ -664,6 +721,14 @@ export class AudioEngine {
       const step = currentStep % totalSteps;
       const tracks = tracksRef();
       const bpm = Tone.getTransport().bpm.value || 110;
+
+      // On the quarter beats, which is what the button has always claimed.
+      // The downbeat of the bar is a fifth higher so a player can hear where
+      // "one" is rather than counting.
+      if (this.metronomeOn && this.clickSynth && step % 4 === 0) {
+        const isDownbeat = step % 16 === 0;
+        this.clickSynth.triggerAttackRelease(isDownbeat ? 'C6' : 'G5', 0.03, time, isDownbeat ? 0.9 : 0.55);
+      }
 
       const hasSolo = tracks.some((t) => t.solo);
 
