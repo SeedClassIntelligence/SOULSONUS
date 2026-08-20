@@ -43,14 +43,26 @@ import {
 interface VaultSoundItem {
   id: string;
   name: string;
-  vault: 'R01' | 'R02' | 'R03' | 'R04';
-  vaultLabel: string;
+  /**
+   * What this entry actually is.
+   *
+   * Every one of these used to carry `vault: 'R02'`, `vaultLabel: 'R02
+   * SoundFont'`, `sampleRate: '44.1kHz / 24-bit'` and `license: '100%
+   * Royalty-Free'`. None of that was true: there is no SoundFont behind
+   * "Rhodes Mark I Electric Piano", no sample to have a rate or a bit depth,
+   * and no third-party audio to be royalty-free of. What there is -- and it
+   * is worth having -- is a shaping of a native voice that genuinely lands
+   * where that instrument lands, which test-41 measures in the render. The
+   * undo entry said "(R02)" out loud, so a creator was told the false part.
+   *
+   * Real sampled instruments arrive through the curated catalogue in
+   * `soundSourcing.ts`, which will not admit one without an admission record.
+   */
+  kind: 'Percussion voice' | 'Synth patch' | 'Instrument voicing' | 'Vocal chain';
   category: string;
   subGenre: string;
   freqRange: string;
   character: string;
-  sampleRate: string;
-  license: string;
   /**
    * What choosing this sound actually does.
    *
@@ -69,32 +81,32 @@ interface VaultSoundItem {
 
 const EXTENDED_VAULT_CATALOG: { [instrument: string]: VaultSoundItem[] } = {
   kick: [
-    { id: 'snd_k1', name: 'TR-808 Sub Kick (54Hz)', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Sub Kick', subGenre: 'Modern Trap / Hip-Hop', freqRange: '35Hz – 90Hz', character: 'Deep Sub, Clean Sine Tail', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C1', dsp: { lowCutHz: 24, lowGain: 6, midFreqHz: 700, midGain: -6, highGain: -8, filterFreq: 2200, filterType: 'lowpass', compressorThreshold: -20, compressorRatio: 3, reverbSend: 0.02 } } },
-    { id: 'snd_k2', name: 'Punchy Acoustic Studio Kick', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Acoustic', subGenre: 'Live / Neo-Soul', freqRange: '60Hz – 120Hz', character: 'Fast Transient, Punchy Mid-Thump', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'D1', dsp: { lowCutHz: 40, lowGain: 2, midFreqHz: 1600, midGain: 4, highGain: 1, filterFreq: 9000, filterType: 'lowpass', compressorThreshold: -14, compressorRatio: 5, reverbSend: 0.10 } } },
-    { id: 'snd_k3', name: '90s BoomBap Gritty Kick', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Vintage', subGenre: 'East Coast BoomBap', freqRange: '50Hz – 110Hz', character: 'Analog Tape Saturated, Warm Dirt', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C1', dsp: { lowCutHz: 45, lowGain: 4, midFreqHz: 900, midGain: 3, highGain: -5, filterFreq: 4200, filterType: 'lowpass', compressorThreshold: -22, compressorRatio: 8, reverbSend: 0.14 } } },
-    { id: 'snd_k4', name: 'Analog 909 Tight Dance Kick', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Electronic', subGenre: 'House / Techno / Pop', freqRange: '70Hz – 140Hz', character: 'Snappy Click, Dense Low-Mid', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'E1', dsp: { lowCutHz: 55, lowGain: 1, midFreqHz: 2600, midGain: 5, highGain: 4, filterFreq: 14000, filterType: 'lowpass', compressorThreshold: -12, compressorRatio: 6, reverbSend: 0.03 } } },
+    { id: 'snd_k1', name: 'TR-808 Sub Kick (54Hz)', kind: 'Percussion voice', category: 'Sub Kick', subGenre: 'Modern Trap / Hip-Hop', freqRange: '35Hz – 90Hz', character: 'Deep Sub, Clean Sine Tail' , sound: { pitch: 'C1', dsp: { lowCutHz: 24, lowGain: 6, midFreqHz: 700, midGain: -6, highGain: -8, filterFreq: 2200, filterType: 'lowpass', compressorThreshold: -20, compressorRatio: 3, reverbSend: 0.02 } } },
+    { id: 'snd_k2', name: 'Punchy Acoustic Studio Kick', kind: 'Percussion voice', category: 'Acoustic', subGenre: 'Live / Neo-Soul', freqRange: '60Hz – 120Hz', character: 'Fast Transient, Punchy Mid-Thump' , sound: { pitch: 'D1', dsp: { lowCutHz: 40, lowGain: 2, midFreqHz: 1600, midGain: 4, highGain: 1, filterFreq: 9000, filterType: 'lowpass', compressorThreshold: -14, compressorRatio: 5, reverbSend: 0.10 } } },
+    { id: 'snd_k3', name: '90s BoomBap Gritty Kick', kind: 'Percussion voice', category: 'Vintage', subGenre: 'East Coast BoomBap', freqRange: '50Hz – 110Hz', character: 'Analog Tape Saturated, Warm Dirt' , sound: { pitch: 'C1', dsp: { lowCutHz: 45, lowGain: 4, midFreqHz: 900, midGain: 3, highGain: -5, filterFreq: 4200, filterType: 'lowpass', compressorThreshold: -22, compressorRatio: 8, reverbSend: 0.14 } } },
+    { id: 'snd_k4', name: 'Analog 909 Tight Dance Kick', kind: 'Percussion voice', category: 'Electronic', subGenre: 'House / Techno / Pop', freqRange: '70Hz – 140Hz', character: 'Snappy Click, Dense Low-Mid' , sound: { pitch: 'E1', dsp: { lowCutHz: 55, lowGain: 1, midFreqHz: 2600, midGain: 5, highGain: 4, filterFreq: 14000, filterType: 'lowpass', compressorThreshold: -12, compressorRatio: 6, reverbSend: 0.03 } } },
   ],
   snare: [
-    { id: 'snd_s1', name: 'Crispy Vintage Snare', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Vintage', subGenre: 'Soul / Funk / Hip-Hop', freqRange: '180Hz – 4.5kHz', character: 'Crisp Wire Resonance, Organic Wood', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'D2', dsp: { lowCutHz: 140, lowGain: -2, midFreqHz: 900, midGain: 3, highGain: 4, filterFreq: 12000, filterType: 'lowpass', compressorThreshold: -16, compressorRatio: 4, reverbSend: 0.22 } } },
-    { id: 'snd_s2', name: 'Analog 909 Layered Handclap', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Clap', subGenre: 'Pop / Electronic / Trap', freqRange: '300Hz – 8kHz', character: 'Multi-Tap Stereo Spread', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'E2', dsp: { lowCutHz: 260, lowGain: -6, midFreqHz: 1800, midGain: 1, highGain: 7, filterFreq: 16000, filterType: 'lowpass', compressorThreshold: -10, compressorRatio: 3, reverbSend: 0.34 } } },
+    { id: 'snd_s1', name: 'Crispy Vintage Snare', kind: 'Percussion voice', category: 'Vintage', subGenre: 'Soul / Funk / Hip-Hop', freqRange: '180Hz – 4.5kHz', character: 'Crisp Wire Resonance, Organic Wood' , sound: { pitch: 'D2', dsp: { lowCutHz: 140, lowGain: -2, midFreqHz: 900, midGain: 3, highGain: 4, filterFreq: 12000, filterType: 'lowpass', compressorThreshold: -16, compressorRatio: 4, reverbSend: 0.22 } } },
+    { id: 'snd_s2', name: 'Analog 909 Layered Handclap', kind: 'Percussion voice', category: 'Clap', subGenre: 'Pop / Electronic / Trap', freqRange: '300Hz – 8kHz', character: 'Multi-Tap Stereo Spread' , sound: { pitch: 'E2', dsp: { lowCutHz: 260, lowGain: -6, midFreqHz: 1800, midGain: 1, highGain: 7, filterFreq: 16000, filterType: 'lowpass', compressorThreshold: -10, compressorRatio: 3, reverbSend: 0.34 } } },
   ],
   hihat: [
-    { id: 'snd_h1', name: 'Tight Closed Studio Hat', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Closed Hat', subGenre: 'Studio Hip-Hop / Pop', freqRange: '4kHz – 16kHz', character: 'Crisp Top End, Short Natural Decay', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'F#3', dsp: { lowCutHz: 300, lowGain: -8, midFreqHz: 3000, midGain: -2, highGain: 3, filterFreq: 13000, filterType: 'lowpass', compressorThreshold: -18, compressorRatio: 2.5, reverbSend: 0.08 } } },
-    { id: 'snd_h2', name: '808 Metallic Trap Hat', vault: 'R01', vaultLabel: 'R01 One-Shot', category: 'Electronic', subGenre: 'Modern Trap / Drill', freqRange: '6kHz – 18kHz', character: 'Bright Sizzle, Rolls-Friendly', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'A#3', dsp: { lowCutHz: 400, lowGain: -10, midFreqHz: 5000, midGain: 2, highGain: 9, filterFreq: 18000, filterType: 'lowpass', compressorThreshold: -14, compressorRatio: 2, reverbSend: 0.05 } } },
+    { id: 'snd_h1', name: 'Tight Closed Studio Hat', kind: 'Percussion voice', category: 'Closed Hat', subGenre: 'Studio Hip-Hop / Pop', freqRange: '4kHz – 16kHz', character: 'Crisp Top End, Short Natural Decay' , sound: { pitch: 'F#3', dsp: { lowCutHz: 300, lowGain: -8, midFreqHz: 3000, midGain: -2, highGain: 3, filterFreq: 13000, filterType: 'lowpass', compressorThreshold: -18, compressorRatio: 2.5, reverbSend: 0.08 } } },
+    { id: 'snd_h2', name: '808 Metallic Trap Hat', kind: 'Percussion voice', category: 'Electronic', subGenre: 'Modern Trap / Drill', freqRange: '6kHz – 18kHz', character: 'Bright Sizzle, Rolls-Friendly' , sound: { pitch: 'A#3', dsp: { lowCutHz: 400, lowGain: -10, midFreqHz: 5000, midGain: 2, highGain: 9, filterFreq: 18000, filterType: 'lowpass', compressorThreshold: -14, compressorRatio: 2, reverbSend: 0.05 } } },
   ],
   bass: [
-    { id: 'snd_b1', name: '808 Sub Glide (Sustained)', vault: 'R03', vaultLabel: 'R03 Synth Patch', category: '808 Sub', subGenre: 'Trap / R&B / Pop', freqRange: '30Hz – 120Hz', character: 'Monophonic Portamento, Clean Saturation', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C1', dsp: { lowCutHz: 22, lowGain: 5, midFreqHz: 600, midGain: -4, highGain: -7, filterFreq: 1800, filterType: 'lowpass', compressorThreshold: -18, compressorRatio: 4, reverbSend: 0.02 } } },
-    { id: 'snd_b2', name: 'Moog Minitaur Analog Sub', vault: 'R03', vaultLabel: 'R03 Synth Patch', category: 'Analog Synth', subGenre: 'Funk / Electronic', freqRange: '35Hz – 250Hz', character: 'Dual Oscillator Warmth, Ladder Filter', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C1', dsp: { lowCutHz: 30, lowGain: 3, midFreqHz: 1100, midGain: 2, highGain: -2, filterFreq: 3600, filterType: 'lowpass', compressorThreshold: -16, compressorRatio: 3, reverbSend: 0.06 } } },
-    { id: 'snd_b3', name: 'Upright Acoustic Double Bass', vault: 'R02', vaultLabel: 'R02 SoundFont', category: 'Acoustic Instrument', subGenre: 'Jazz / Neo-Soul / BoomBap', freqRange: '40Hz – 350Hz', character: 'Wood Body Resonance, Finger Pluck', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'E1', dsp: { lowCutHz: 38, lowGain: 1, midFreqHz: 800, midGain: 4, highGain: 2, filterFreq: 6500, filterType: 'lowpass', compressorThreshold: -20, compressorRatio: 2.5, reverbSend: 0.18 } } },
+    { id: 'snd_b1', name: '808 Sub Glide (Sustained)', kind: 'Synth patch', category: '808 Sub', subGenre: 'Trap / R&B / Pop', freqRange: '30Hz – 120Hz', character: 'Monophonic Portamento, Clean Saturation' , sound: { pitch: 'C1', dsp: { lowCutHz: 22, lowGain: 5, midFreqHz: 600, midGain: -4, highGain: -7, filterFreq: 1800, filterType: 'lowpass', compressorThreshold: -18, compressorRatio: 4, reverbSend: 0.02 } } },
+    { id: 'snd_b2', name: 'Moog Minitaur Analog Sub', kind: 'Synth patch', category: 'Analog Synth', subGenre: 'Funk / Electronic', freqRange: '35Hz – 250Hz', character: 'Dual Oscillator Warmth, Ladder Filter' , sound: { pitch: 'C1', dsp: { lowCutHz: 30, lowGain: 3, midFreqHz: 1100, midGain: 2, highGain: -2, filterFreq: 3600, filterType: 'lowpass', compressorThreshold: -16, compressorRatio: 3, reverbSend: 0.06 } } },
+    { id: 'snd_b3', name: 'Upright Acoustic Double Bass', kind: 'Instrument voicing', category: 'Acoustic Instrument', subGenre: 'Jazz / Neo-Soul / BoomBap', freqRange: '40Hz – 350Hz', character: 'Wood Body Resonance, Finger Pluck' , sound: { pitch: 'E1', dsp: { lowCutHz: 38, lowGain: 1, midFreqHz: 800, midGain: 4, highGain: 2, filterFreq: 6500, filterType: 'lowpass', compressorThreshold: -20, compressorRatio: 2.5, reverbSend: 0.18 } } },
   ],
   melody: [
-    { id: 'snd_m1', name: 'Rhodes Mark I Electric Piano', vault: 'R02', vaultLabel: 'R02 SoundFont', category: 'Keys', subGenre: 'Soul / R&B / Jazz', freqRange: '80Hz – 6kHz', character: 'Tine Warmth, Bell-Like Dynamic Velocity', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C3', dsp: { lowCutHz: 70, lowGain: 2, midFreqHz: 1400, midGain: 1, highGain: -1, filterFreq: 7000, filterType: 'lowpass', compressorThreshold: -18, compressorRatio: 3, reverbSend: 0.20 } } },
-    { id: 'snd_m2', name: 'Cinematic Chamber Strings', vault: 'R02', vaultLabel: 'R02 SoundFont', category: 'Orchestral', subGenre: 'Cinematic / Scoring / Hip-Hop', freqRange: '65Hz – 10kHz', character: 'Lush Legato, Warm Bowed Celli & Violins', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'G3', dsp: { lowCutHz: 60, lowGain: 0, midFreqHz: 900, midGain: 3, highGain: 2, filterFreq: 11000, filterType: 'lowpass', compressorThreshold: -22, compressorRatio: 2, reverbSend: 0.42 } } },
-    { id: 'snd_m3', name: 'DX7 Classic FM Electric Piano', vault: 'R03', vaultLabel: 'R03 Synth Patch', category: 'FM Synth', subGenre: '80s / Retro R&B', freqRange: '100Hz – 8kHz', character: 'Glassy Attack, Crystalline FM Timbres', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C4', dsp: { lowCutHz: 90, lowGain: -2, midFreqHz: 3200, midGain: 2, highGain: 8, filterFreq: 16000, filterType: 'lowpass', compressorThreshold: -14, compressorRatio: 4, reverbSend: 0.16 } } },
+    { id: 'snd_m1', name: 'Rhodes Mark I Electric Piano', kind: 'Instrument voicing', category: 'Keys', subGenre: 'Soul / R&B / Jazz', freqRange: '80Hz – 6kHz', character: 'Tine Warmth, Bell-Like Dynamic Velocity' , sound: { pitch: 'C3', dsp: { lowCutHz: 70, lowGain: 2, midFreqHz: 1400, midGain: 1, highGain: -1, filterFreq: 7000, filterType: 'lowpass', compressorThreshold: -18, compressorRatio: 3, reverbSend: 0.20 } } },
+    { id: 'snd_m2', name: 'Cinematic Chamber Strings', kind: 'Instrument voicing', category: 'Orchestral', subGenre: 'Cinematic / Scoring / Hip-Hop', freqRange: '65Hz – 10kHz', character: 'Lush Legato, Warm Bowed Celli & Violins' , sound: { pitch: 'G3', dsp: { lowCutHz: 60, lowGain: 0, midFreqHz: 900, midGain: 3, highGain: 2, filterFreq: 11000, filterType: 'lowpass', compressorThreshold: -22, compressorRatio: 2, reverbSend: 0.42 } } },
+    { id: 'snd_m3', name: 'DX7 Classic FM Electric Piano', kind: 'Synth patch', category: 'FM Synth', subGenre: '80s / Retro R&B', freqRange: '100Hz – 8kHz', character: 'Glassy Attack, Crystalline FM Timbres' , sound: { pitch: 'C4', dsp: { lowCutHz: 90, lowGain: -2, midFreqHz: 3200, midGain: 2, highGain: 8, filterFreq: 16000, filterType: 'lowpass', compressorThreshold: -14, compressorRatio: 4, reverbSend: 0.16 } } },
   ],
   vocal_synth: [
-    { id: 'snd_v1', name: 'Warm Tube Lead Vocal Chain', vault: 'R04', vaultLabel: 'R04 DSP Chain', category: 'Vocal DSP', subGenre: 'Modern R&B / Pop', freqRange: '100Hz – 16kHz', character: 'Tube Saturation, Optical 3:1 Compression', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C3', dsp: { lowCutHz: 95, lowGain: 1, midFreqHz: 2400, midGain: 3, highGain: 5, filterFreq: 16000, filterType: 'lowpass', compressorThreshold: -20, compressorRatio: 3, reverbSend: 0.18 } } },
-    { id: 'snd_v2', name: 'Stereo Harmony Doubler Chain', vault: 'R04', vaultLabel: 'R04 DSP Chain', category: 'Vocal DSP', subGenre: 'Pop / Soul Harmonies', freqRange: '120Hz – 15kHz', character: 'Stereo Widening, Pitch Micro-Shift', sampleRate: '44.1kHz / 24-bit', license: '100% Royalty-Free' , sound: { pitch: 'C3', dsp: { lowCutHz: 120, lowGain: -3, midFreqHz: 1800, midGain: -1, highGain: 6, filterFreq: 15000, filterType: 'lowpass', compressorThreshold: -16, compressorRatio: 2.5, reverbSend: 0.30, delaySend: 0.22 } } },
+    { id: 'snd_v1', name: 'Warm Tube Lead Vocal Chain', kind: 'Vocal chain', category: 'Vocal DSP', subGenre: 'Modern R&B / Pop', freqRange: '100Hz – 16kHz', character: 'Tube Saturation, Optical 3:1 Compression' , sound: { pitch: 'C3', dsp: { lowCutHz: 95, lowGain: 1, midFreqHz: 2400, midGain: 3, highGain: 5, filterFreq: 16000, filterType: 'lowpass', compressorThreshold: -20, compressorRatio: 3, reverbSend: 0.18 } } },
+    { id: 'snd_v2', name: 'Stereo Harmony Doubler Chain', kind: 'Vocal chain', category: 'Vocal DSP', subGenre: 'Pop / Soul Harmonies', freqRange: '120Hz – 15kHz', character: 'Stereo Widening, Pitch Micro-Shift' , sound: { pitch: 'C3', dsp: { lowCutHz: 120, lowGain: -3, midFreqHz: 1800, midGain: -1, highGain: 6, filterFreq: 15000, filterType: 'lowpass', compressorThreshold: -16, compressorRatio: 2.5, reverbSend: 0.30, delaySend: 0.22 } } },
   ],
 };
 
@@ -251,7 +263,7 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
     ? rankByTerms(semanticQuery, inCategory, (v) => ({
         category: v.category,
         name: v.name,
-        tags: [v.subGenre, v.character, v.freqRange, v.vaultLabel],
+        tags: [v.subGenre, v.character, v.freqRange, v.kind],
       }))
     : inCategory.map((item) => ({ item, matchedTerms: [] as { term: string; on: 'category' | 'name' | 'tag' }[], matchWeight: 0 }));
   const filteredSounds = ranked.map((r) => r.item);
@@ -310,7 +322,7 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
       id: `op_snd_${Date.now()}`,
       type: 'ASSIGN_SOUND',
       trackId: track.id,
-      description: `Assigned ${soundItem.name} (${soundItem.vault}) to ${track.name}`,
+      description: `Assigned ${soundItem.name} (${soundItem.kind.toLowerCase()}) to ${track.name}`,
       source: 'MANUAL_UI',
       timestamp: Date.now(),
       undo: (tracks) =>
