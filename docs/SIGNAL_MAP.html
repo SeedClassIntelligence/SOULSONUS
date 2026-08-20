@@ -325,12 +325,12 @@
   <section>
     <div class="bridge">
       <div class="cell work">
-        <span class="fig">139</span>
+        <span class="fig">137</span>
         <span class="lab">Working</span>
         <span class="note">Processes real data end to end. Demonstrated, not assumed. 74 of these were broken and fixed during the audit.</span>
       </div>
       <div class="cell dark">
-        <span class="fig">4</span>
+        <span class="fig">6</span>
         <span class="lab">Partly / unplugged</span>
         <span class="note">A real implementation that nothing reaches, or one that works in some paths and not others. Two came off this list when the seed track started keeping its take and a recorded take became undoable.</span>
       </div>
@@ -379,8 +379,8 @@
       <span class="roomrole">Performance capture — the origin of everything downstream</span>
     </div>
     <div class="rows">
-      <div class="row"><div class="what">Per-sound-type channel separation<small>One take, one channel per sound type performed</small></div><div><span class="pill p-work">Working</span></div><div class="ev">Live: kick/snare/hat clip → 11 / 11 / 18 on three channels, nothing elsewhere. Same take minus hat → zero notes on hat.</div></div>
-      <div class="row"><div class="what">Onset classifier<small>Band-ratio + centroid scoring, noise-floor subtracted</small></div><div><span class="pill p-work">Working</span></div><div class="ev">audio/performanceClassifier.ts · offline: 14/28/14 against a known 1:1:2 pattern</div></div>
+      <div class="row"><div class="what">Per-sound-type channel separation<small>One take, one channel per sound type performed</small></div><div><span class="pill p-dark">Partly</span></div><div class="ev">One take separates into kick / snare / hat channels, verified live &mdash; but only for sounds played on their own. There is one full-band envelope and one label per onset, so anything played underneath something else is not mislabelled, it is <em>gone</em>. Measured with a low burst and a high burst that cannot be confused: <code>22 sounds played, 16 heard</code>. Two struck together give one event; two 30&nbsp;ms apart give one. The 70&nbsp;ms debounce is not the binding constraint &mdash; a sound 80&nbsp;ms later is still missed when the first is still ringing, because total energy is falling so nothing &ldquo;rises&rdquo;. Reproduce with <code>scripts/dsp/measure-onset-separation.ts</code></div></div>
+      <div class="row"><div class="what">Onset classifier<small>Band-ratio + centroid scoring, noise-floor subtracted</small></div><div><span class="pill p-dark">Unverified</span></div><div class="ev">Real band-ratio and centroid scoring against fixed prototypes, and the prototypes are for <em>mouth-made</em> kick, snare and hat. Its 14/28/14 result is against synthesised test tones, which are not beatboxing &mdash; and neither is an acoustic drum recording, where a real bass drum reads as two snares. So the accuracy of this on the thing it exists for is not known in either direction. Settling it needs a real beatbox take with known content; no synthetic signal can stand in for one</div></div>
       <div class="row"><div class="what">Mic onset detection &amp; pitch tracking</div><div><span class="pill p-work">Working</span></div><div class="ev">audio/detectionEngine.ts · 440 Hz in → MIDI 69 out; sub-bass tracked to 45 Hz</div></div>
       <div class="row"><div class="what">Velocity from performance dynamics</div><div><span class="pill p-work">Working</span></div><div class="ev">Measured onset RMS vs. decaying peak. Live range 39–127 across a take.</div></div>
       <div class="row"><div class="what">Note timing from playhead</div><div><span class="pill p-work">Working</span></div><div class="ev">Fixed earlier: <code>App.tsx</code> bypassed <code>handleStepChange</code>, stamping every note <code>startTick: 0</code></div></div>
