@@ -425,6 +425,50 @@
   </section>
 
   <section>
+    <h2>The session department</h2>
+    <p class="lede">The roster has two kinds of player and one interface. An agent answers in seconds; a person answers in days. Structurally that is the only difference &mdash; the brief, the grant, the check and the candidate flow were never about who is holding the instrument.</p>
+
+    <div class="layers">
+      <div class="layer">
+        <span class="n">CALLABLE NOW</span>
+        <h3>Agent players</h3>
+        <p>Instant, always available, learning the creator's taste over time. Sound comes from a bank or a renderer; judgement comes from a reasoning model given the real session.</p>
+      </div>
+      <div class="layer">
+        <span class="n">CALLABLE SOON</span>
+        <h3>Live musicians</h3>
+        <p>A real player takes the same brief, records, and their take arrives as a candidate to audition and accept. A <code>SessionPlayer</code> whose <code>generateTake()</code> resolves in three days instead of nine seconds.</p>
+      </div>
+      <div class="layer">
+        <span class="n">THE LOOP</span>
+        <h3>Why both</h3>
+        <p>Every human take a creator picks over another is a labelled preference pair on a real session context, produced by a professional. Human players are how the agent band learns &mdash; credited and paid, permanently, rather than scraped.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:0.6rem">What gets recorded when a person plays</h3>
+    <p class="lede">Not a payment system and not a rights model &mdash; a record honest enough that whatever arrangement the two parties reach is provable later. Work for hire is the norm and stays the easy default; the record exists so the exception is possible.</p>
+    <div class="rules">
+      <div class="rule-item">
+        <span class="mark">·</span>
+        <p><strong>Who played, under which brief, under which grant.</strong> The grant is the part that matters most and it is already stored: <code>PLAY EXACTLY</code> is pure performance and work for hire is clean; <code>PLAY WHAT YOU FEEL</code> means the player may have composed something, and composition is where a publishing claim lives. The system knows which was given, so it can raise the terms conversation at the moment both parties are still happy rather than two years later.</p>
+      </div>
+      <div class="rule-item">
+        <span class="mark">·</span>
+        <p><strong>The hash of the take that was actually delivered.</strong> Terms attach to a specific performance, and the bytes behind the hash are the bytes that were played.</p>
+      </div>
+      <div class="rule-item">
+        <span class="mark">·</span>
+        <p><strong>What was agreed, in the parties' own words.</strong> Free text before it is ever a dropdown. A field two people agreed and signed beats a schema that forces a wrong answer, and the structure can be derived later from real agreements rather than guessed now.</p>
+      </div>
+      <div class="rule-item">
+        <span class="mark">·</span>
+        <p><strong>Training consent, asked separately.</strong> <code>ResourceAdmissionRecord.trainingPermission</code> already exists beside <code>commercialAllowed</code>, and the separation is the point: <em>use my take on your record, do not train on it</em> is a coherent answer, and so is <em>train on it, here is the rate</em>. Musicians are currently trained on without being asked. Asking is a reason for good players to be here.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
     <h2>The order, and why it is this order</h2>
     <p class="lede">Sequenced by dependency and by what each one unblocks — not by size. The first four need no GPU and no external service.</p>
 
@@ -455,6 +499,13 @@
           <h3>The style profile, from real data</h3>
           <p>Calibration fingerprint, note provenance, and every accept and reject — kept and connected, replacing the identical literal array every creator currently gets. This is the substrate the band eventually learns you from, and the data is already being generated and discarded. Separate from signing.</p>
           <div class="meta"><span class="tag">Unblocks: a band that plays like you</span><span class="tag">No host</span></div>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>The private lane &mdash; call a musician you know</h3>
+          <p>Brief a player you already have a number for, they record, the take arrives as a candidate. No discovery, no booking, no escrow, no reputation &mdash; and therefore no obligations to anyone you have not met. Small, usable immediately, and it sits on the same seam the marketplace will later grow behind. The delivery record is built here: who, which grant, the hash, the agreed terms in their own words, training consent as its own answer.</p>
+          <div class="meta"><span class="tag hot">Ships the capability without the marketplace</span><span class="tag">After: 02</span></div>
         </div>
       </li>
       <li>
