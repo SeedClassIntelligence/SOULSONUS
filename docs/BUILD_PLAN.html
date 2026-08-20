@@ -165,6 +165,7 @@
     align-items: start;
   }
   .what { font-weight: 600; font-size: 0.95rem; }
+  .what small { display:block; font-weight:400; font-size:0.78rem; color:var(--muted); font-family:var(--mono); letter-spacing:0.02em; margin-top:0.15rem; }
   .ev { font-family: var(--mono); font-size: 0.755rem; color: var(--muted); line-height: 1.55; overflow-wrap: anywhere; }
   .pill {
     display: inline-block;
@@ -235,6 +236,8 @@
   .meta { display: flex; flex-wrap: wrap; gap: 0.35rem 0.7rem; margin-top: 0.6rem; font-family: var(--mono); font-size: 0.68rem; }
   .tag { border: 1px solid var(--rule-strong); padding: 0.2rem 0.45rem; color: var(--muted); border-radius: 2px; }
   .tag.hot { border-color: var(--accent); color: var(--accent); }
+  .tag.done { border-color: rgba(120,190,140,.55); color: #6fae83; }
+  .tag.part { border-color: rgba(214,168,86,.55); color: #c69a4e; }
 
   .qs { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--rule-strong); background: var(--surface); }
   .q { padding: 1.05rem 1.35rem; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 0.3rem; }
@@ -313,7 +316,7 @@
         <p class="sub">Layer one. Largely real, and the gaps are specific.</p>
 
         <div class="row"><div class="what">Capture, separated by sound type</div><div><span class="pill p-part">Partial</span></div><div class="ev">One take separates into kick / snare / hat / sub / lead channels, verified live. But it is one onset at a time: a 70&nbsp;ms debounce, one label per onset, and sustained material written as a single 16th. A full composition performed in one pass loses its simultaneity</div></div>
-        <div class="row"><div class="what">The MOUTH / BODY seed track</div><div><span class="pill p-none">Broken</span></div><div class="ev">Created with instrument <code>custom</code> / <code>percussion</code>, and the router only prefers a seed track whose instrument appears in the class list — neither does. Your notes land on the project channels while the track you made by pressing the button stays empty. Calibrating it is the one path that works</div></div>
+        <div class="row"><div class="what">The MOUTH / BODY seed track</div><div><span class="pill p-built">Built</span></div><div class="ev">The seed keeps the performance itself. Arming starts a real recorder; stopping attaches the take as an ordinary asset and clip, so it is drawn on the grid, hashed with its lineage, survives a reload and reaches the bounce. Extraction now reads that audio &mdash; <em>3 stems from 29 onsets detected in the seed audio</em> &mdash; instead of regrouping notes the classifier had already separated. It is kept whichever control ends the take, and one undo takes back the notes and the audio together</div></div>
         <div class="row"><div class="what">A hum becomes notes</div><div><span class="pill p-built">Built</span></div><div class="ev">Real Basic Pitch, polyphonic, with correct durations. A4&nbsp;C5&nbsp;E5&nbsp;C5 read back exactly from a hum; silence and noise return nothing</div></div>
         <div class="row"><div class="what">Timeline, clips, song length</div><div><span class="pill p-built">Built</span></div><div class="ev">Audio and notes coexist on a track; clips draw their own waveform, drag and trim; songs run 1&ndash;256 bars</div></div>
         <div class="row"><div class="what">Channel strip, instrument voice, master chain</div><div><span class="pill p-built">Built</span></div><div class="ev">EQ, dynamics, drive, sends and every instrument parameter reach both live playback and the bounce. Real gated loudness and true-peak measurement; WAV and FLAC export</div></div>
@@ -326,17 +329,17 @@
 
         <div class="row"><div class="what">Roster, grants, checks</div><div><span class="pill p-built">Built</span></div><div class="ev">Seven players; five hand back notes, two can only hand back audio. Three freedom levels with arithmetic behind them &mdash; every rule shown refusing something, tolerances in milliseconds so they mean the same thing at 70 and 170&nbsp;BPM</div></div>
         <div class="row"><div class="what">Addressing a player</div><div><span class="pill p-built">Built</span></div><div class="ev">&ldquo;Bass player, play what you feel in the hook&rdquo; is answered as a brief. &ldquo;Make the kick fatter&rdquo; is not turned into a musician</div></div>
-        <div class="row"><div class="what">The brief carries the song</div><div><span class="pill p-none">Missing</span></div><div class="ev">It carries tempo, key and the phrase the grant is defined against &mdash; not the other parts. A player who cannot hear the drums is a metronome with opinions</div></div>
-        <div class="row"><div class="what"><code>SessionPlayer</code> &mdash; role, context, locks, generateTake</div><div><span class="pill p-none">Missing</span></div><div class="ev">The layer R1 is about. The vocabulary exists and the renderer seam exists; nothing connects them. This is the next thing to build</div></div>
-        <div class="row"><div class="what">A player that returns a take</div><div><span class="pill p-none">Not built</span></div><div class="ev">Needs a sound to play through and judgement about what to play. Two separate problems &mdash; see the order below</div></div>
+        <div class="row"><div class="what">The brief carries the song</div><div><span class="pill p-built">Built</span></div><div class="ev">A <code>SessionRoom</code> carries every other part&rsquo;s notes alongside the tempo and the song length, kept apart from the brief because one changes per call and the other per session. Key and scale are deliberately absent: nothing in the studio establishes a key yet, and a confident &ldquo;C minor&rdquo; would be a guess wearing the shape of a fact</div></div>
+        <div class="row"><div class="what"><code>SessionPlayer</code> &mdash; role, context, locks, generateTake</div><div><span class="pill p-built">Built</span></div><div class="ev">R1, satisfied. One way in: <code>callSessionPlayer</code> resolves the role through a registry, runs the grant check on whatever comes back, and refuses a take that broke its lane. Three players written to break exactly one rule each &mdash; a note added, a pitch changed, an onset dragged past the window &mdash; are all refused. ACE plugs into the registry later without the dock or the timeline learning a new word</div></div>
+        <div class="row"><div class="what">A player that returns a take</div><div><span class="pill p-part">Partial</span></div><div class="ev"><code>soulsonus-feel</code> plays the phrase you played &mdash; accent where the bar wants it, the instrument&rsquo;s own place against the click, nothing added, removed or repitched. In the live app: <em>8 notes against 8 you played, worst onset moved 9.1&nbsp;ms of the 30&nbsp;ms allowed</em>. It accepts PLAY EXACTLY and nothing else; playing around a phrase or inventing one still needs a model, and it names which is missing rather than improvising an answer. The take lands on its own channel beside yours</div></div>
       </div>
 
       <div class="lgroup">
         <h3>The sounds</h3>
         <p class="sub">Layer two. Almost nothing yet, and the sound quality ceiling is here.</p>
 
-        <div class="row"><div class="what">What a player would sound like today</div><div><span class="pill p-part">Partial</span></div><div class="ev">A bass is one sawtooth oscillator, one lowpass, an envelope and a glide. That is a synth approximating a bass, not a bass &mdash; no fingered or slapped, no ghost notes, no string noise, no harmonics</div></div>
-        <div class="row"><div class="what">Sampled instruments</div><div><span class="pill p-none">Not built</span></div><div class="ev"><code>spessasynth_core</code> is installed and no sound bank ships. The engine that claimed SpessaSynth was two oscillators and has been deleted. This is the single largest jump in believability available, and it needs no GPU</div></div>
+        <div class="row"><div class="what">What a player would sound like today</div><div><span class="pill p-part">Partial</span></div><div class="ev">The drums are recorded instruments now. The bass is still one sawtooth oscillator, one lowpass, an envelope and a glide &mdash; a synth approximating a bass, with no fingered or slapped, no ghost notes, no string noise. The library that cleared its licence has no bass in it, so that slot waits on another library or another format</div></div>
+        <div class="row"><div class="what">Sampled instruments</div><div><span class="pill p-part">One kit</span></div><div class="ev">The SoulSonus Factory Kit: six drums, sixteen samples, 1.21&nbsp;MB, built from CC0 sources with the SoundFont writer already inside the shipped runtime. It plays live rather than only rendering &mdash; 202 oscillator starts became 6 over the same transport window &mdash; and it survives the bounce, where an earlier version would have quietly reverted the drums to synths. One of eight families is filled</div></div>
         <div class="row"><div class="what">Sound Lab &mdash; capture, shape, variate, build</div><div><span class="pill p-none">Not built</span></div><div class="ev">The whole of layer two. Individual pieces exist scattered &mdash; recording, DSP, transient analysis, asset hashing &mdash; but there is no surface where a creator makes a sound and keeps it</div></div>
         <div class="row"><div class="what">The creator's style profile</div><div><span class="pill p-none">Broken</span></div><div class="ev">Real ingredients are already recorded: the calibration fingerprint of your own kick and snare, provenance on every note, and every accept and reject on a candidate. Nothing keeps them. What is stored instead is <code>['Fat 808 Sub', 'Crisp Acoustic Snare', 'Custom Root Seeds']</code> &mdash; identical for every creator</div></div>
       </div>
@@ -345,8 +348,8 @@
         <h3>The exchange</h3>
         <p class="sub">Layer three. The vocabulary is better than expected; there is nothing behind it.</p>
 
-        <div class="row"><div class="what">The rights model</div><div><span class="pill p-part">Types only</span></div><div class="ev"><code>ResourceAdmissionRecord</code> already carries creator, license, commercial use, redistribution, attribution, <em>training permission</em>, marketplace permission and a SHA-256. Close to the governed exchange as described, and no record has ever been created</div></div>
-        <div class="row"><div class="what">The resource registry</div><div><span class="pill p-part">Mock</span></div><div class="ev"><code>CreativeResourceType</code> already names SAMPLE, INSTRUMENT_SF2, SYNTH_PRESET, GROOVE_PROFILE, CREATOR_ASSET, MARKETPLACE_ASSET. The vault modal is reachable and lists a hardcoded array; auditioning a &ldquo;TR-808 Sub Kick&rdquo; plays a PolySynth chord</div></div>
+        <div class="row"><div class="what">The rights model</div><div><span class="pill p-part">One record</span></div><div class="ev"><code>ResourceAdmissionRecord</code> carries creator, license, commercial use, redistribution, attribution, <em>training permission</em>, marketplace permission and a SHA-256 &mdash; and one now exists and is enforced: CC0 1.0 read at the source, checksummed against the bytes that ship. <code>factoryAdmission</code> refuses on nine separate rules, each shown refusing something</div></div>
+        <div class="row"><div class="what">The resource registry</div><div><span class="pill p-built">Rebuilt</span></div><div class="ev">The screen is read from the same file the admission guard enforces, so it cannot drift from the rule it displays. What it replaced listed seven instruments that did not exist, each badged COMMERCIAL APPROVED against admission records nobody had written, under a footer claiming an audit engine; auditioning the &ldquo;Rhodes SoundFont&rdquo; played a PolySynth triad</div></div>
         <div class="row"><div class="what">Publish, discover, license</div><div><span class="pill p-none">Not built</span></div><div class="ev">No publish path, no exchange, no royalty or attribution terms in the record yet</div></div>
       </div>
 
@@ -476,22 +479,22 @@
       <li>
         <div>
           <h3>The seed track receives its own notes</h3>
-          <p>Where your creativity starts, and it is a routing bug rather than a feature: the seed track's instrument is never in the class list the router checks. Small, contained, and it stops the studio contradicting itself the moment you press record.</p>
-          <div class="meta"><span class="tag hot">Blocks nothing · fixes the first thing you touch</span><span class="tag">No host</span></div>
+          <p>Bigger than the routing fix it was scoped as: nothing recorded the audio at all, so the seed track held neither notes (correctly &mdash; the classifier separates them onto instrument channels) nor the performance. It keeps the take now, as an ordinary asset and clip, which is what lets a performance be extracted again later by better analysis without being performed again.</p>
+          <div class="meta"><span class="tag done">Done &middot; 893ebfa</span><span class="tag">No host</span></div>
         </div>
       </li>
       <li>
         <div>
           <h3>The <code>SessionPlayer</code> layer</h3>
-          <p>Role, musical context, freedom level, creator locks, <code>generateTake()</code>. Decided before ACE is finalised, because it determines how a Lego request is framed, what metadata travels, which track owns the output, and whether a result arrives as an "AI generation" or as a session player's take. The context has to carry the other parts — hearing the song is the job.</p>
-          <div class="meta"><span class="tag hot">R1 · blocks all ACE work</span><span class="tag">No host</span></div>
+          <p>Built as an interface rather than a feature, so the engine behind a role stays swappable. <code>callSessionPlayer</code> is the only way in; the grant check runs inside it and a take that broke its lane never reaches the session. One player stands behind it today &mdash; <code>soulsonus-feel</code>, which performs your phrase and refuses the grants it cannot honour.</p>
+          <div class="meta"><span class="tag done">Done &middot; ef4ae69</span><span class="tag">R1 satisfied</span></div>
         </div>
       </li>
       <li>
         <div>
           <h3>Sampled instruments</h3>
-          <p>The largest believability gain available, and every existing track benefits whether or not the band is ever called. It is also what makes a session player's take worth listening to — a bass line is only as good as the bass. Needs a sound bank and a licence decision, not a GPU.</p>
-          <div class="meta"><span class="tag">Unblocks: a player that sounds real</span><span class="tag">Needs a sound bank</span></div>
+          <p>One kit through the funnel: six drums from a CC0 library whose licence was read at the source, built into a 1.21&nbsp;MB SoundFont with the writer already inside the runtime, playing live and surviving the bounce. Seven families remain empty, and the bass &mdash; the one this workflow needs most &mdash; is not in that library. The next question is the format: SFZ is what a creator can author and the exchange can package, and there is no SFZ player yet.</p>
+          <div class="meta"><span class="tag part">Part done &middot; 9bab141, f611b28</span><span class="tag">1 of 8 families</span></div>
         </div>
       </li>
       <li>
@@ -547,6 +550,29 @@
   </section>
 
   <section>
+
+    <h2>What has actually been done</h2>
+    <p class="lede">Newest first. Each line is a commit on <code>main</code> and the evidence that let it be called done &mdash; a live test that drove the real app, or a measurement, not an intention.</p>
+
+    <div class="ledger">
+      <div class="lgroup">
+        <h3>20 August 2026</h3>
+        <p class="sub">Steps 01 and 02 finished; step 03 opened with one instrument.</p>
+
+        <div class="row"><div class="what">The factory kit plays, instead of only rendering<small>f611b28</small></div><div><span class="pill p-built">Done</span></div><div class="ev">Every zone pre-rendered into a buffer at load, played through the same channel strip as any other voice. 202 oscillator starts became 6 over one transport window. Two silent failures found and fixed on the way: a native gain node connected to a Tone strip threw inside a <code>try</code> and reported itself as &ldquo;the kit does not cover this key&rdquo;; and the offline renderer knew nothing about the kit, so a bounce would have quietly reverted the drums to synths</div></div>
+
+        <div class="row"><div class="what">The first instrument comes through the funnel<small>9bab141</small></div><div><span class="pill p-built">Done</span></div><div class="ev">VCSL&rsquo;s CC0 1.0 read at the source; the kit built by <code>scripts/build-factory-kit.mjs</code>; the admission record checksummed against the shipped bytes. Three things the build had to get right, each found by measuring: the dynamics were being applied twice, round-robin cannot be expressed in SoundFont, and the studio&rsquo;s drum channels are not General MIDI &mdash; its snare sits where GM puts the kick</div></div>
+
+        <div class="row"><div class="what">The channel presets stop claiming to be SoundFonts<small>81feb67</small></div><div><span class="pill p-built">Done</span></div><div class="ev">Sixteen presets labelled &ldquo;R02 SoundFont&rdquo;, &ldquo;44.1kHz / 24-bit&rdquo; and &ldquo;100% Royalty-Free&rdquo; are synth voices with DSP shaping &mdash; real, audible, and none of those three things</div></div>
+
+        <div class="row"><div class="what">The sourcing decision, as a funnel the code enforces<small>befc6ac</small></div><div><span class="pill p-built">Done</span></div><div class="ev">Twenty sources with a standing and a reason; nine refusal rules, each exercised by an entry built to break exactly it. The sourcing screen rebuilt on the same file the guard reads. Six samples stamped <code>R01_ADMITTED</code> turned out to be generated tones, four of them byte-identical to files under other names</div></div>
+
+        <div class="row"><div class="what">A session player seam, and the first player behind it<small>ef4ae69</small></div><div><span class="pill p-built">Done</span></div><div class="ev">24 checks in the node suite, and test-39 now drives a real call through the real dock: the take channel appears, the creator&rsquo;s own channel is untouched, every note names what rendered it</div></div>
+
+        <div class="row"><div class="what">The seed track keeps the performance<small>893ebfa</small></div><div><span class="pill p-built">Done</span></div><div class="ev">16 checks including that the take is kept from either control that ends it. Extraction reads the audio: <em>3 stems from 29 onsets detected in the seed audio</em></div></div>
+      </div>
+    </div>
+
     <h2>Decisions I need from you</h2>
     <p class="lede">Each of these changes what gets built rather than how well. I would rather ask than guess and refactor.</p>
     <div class="qs">
