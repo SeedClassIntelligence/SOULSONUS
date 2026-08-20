@@ -310,7 +310,7 @@
     <h1>SoulSonus Signal Map</h1>
     <p class="standfirst">Every component in the six rooms, sorted by whether it actually processes anything. Consolidated from all prior verification passes and re-checked against the current branch, so there is one map to plan from instead of several.</p>
     <div class="stamp">
-      <span>Describes the code at <code>main</code> @ <code>bde847c</code> — the branch Netlify deploys (this map is the commit after it)</span>
+      <span>Describes the code at <code>main</code> @ <code>23cc043</code> — the branch Netlify deploys (this map is the commit after it)</span>
       <span>Updated 20 Aug 2026 · Layers 0 and 1 complete · Layer 2 in progress — AUDITION sweep, real export, a working true-peak limiter, per-track EQ, undoable takes, a single undo stack, playable take audio, a working arrangement room, a type gate that checks component props, audio on the timeline, a song that is no longer four bars long, an E05 seam with no invented scores behind it, a Session Band whose grants are actually checked, a hum that becomes real notes, a sound vault that changes the sound, an instrument panel that reaches the audio, a sampled-instrument route that plays a real sound bank, an orphan sweep that took 6,623 lines out and left nothing unreachable, a seed track that keeps the performance that made the session, a session-player seam that refuses a take which broke its grant, a sourcing funnel the code enforces rather than a list, and a real sampled drum kit that plays live and survives the bounce have landed</span>
       <span>Method: live headless browser + synthetic mic + source read</span>
     </div>
@@ -325,14 +325,14 @@
   <section>
     <div class="bridge">
       <div class="cell work">
-        <span class="fig">129</span>
+        <span class="fig">139</span>
         <span class="lab">Working</span>
-        <span class="note">Processes real data end to end. Demonstrated, not assumed. 72 of these were broken and fixed during the audit.</span>
+        <span class="note">Processes real data end to end. Demonstrated, not assumed. 74 of these were broken and fixed during the audit.</span>
       </div>
       <div class="cell dark">
-        <span class="fig">6</span>
+        <span class="fig">4</span>
         <span class="lab">Partly / unplugged</span>
-        <span class="note">A real implementation that nothing reaches, or one that works in some paths and not others.</span>
+        <span class="note">A real implementation that nothing reaches, or one that works in some paths and not others. Two came off this list when the seed track started keeping its take and a recorded take became undoable.</span>
       </div>
       <div class="cell deco">
         <span class="fig">3</span>
@@ -413,7 +413,7 @@
       <div class="row"><div class="what">DRIVE had no distortion to move</div><div><span class="pill p-work">Fixed</span></div><div class="ev">The control has existed since the beginning and there was no distortion node anywhere in the graph. The channel strip has one now, fully dry at zero so an untouched control cannot colour anything, in both the live strip and the bounce: <code>0&nbsp;→&nbsp;95</code> moves the render <code>&minus;13.7&nbsp;→&nbsp;&minus;12.1</code>&nbsp;LUFS with crest <code>12.6&nbsp;→&nbsp;9.8</code>&nbsp;dB</div></div>
       <div class="row"><div class="what">A cutoff the next note overwrote</div><div><span class="pill p-work">Fixed</span></div><div class="ev">Found by the test rather than by reading, in code written the same afternoon. On a MonoSynth the filter envelope drives the filter on every note, so a cutoff written straight to <code>filter.frequency</code> was gone by the next attack &mdash; moving the control from 12.4&nbsp;kHz to 200&nbsp;Hz changed the render by less than a hundredth of a decibel. It drives the envelope's base frequency now</div></div>
       <div class="row"><div class="what">A control that reaches nothing says so</div><div><span class="pill p-work">Working</span></div><div class="ev">Where a parameter has no defensible target on a voice it is left alone rather than mapped to something adjacent &mdash; a slider that moves a value nobody asked it to move is worse than one that does nothing, because it is harder to notice. The panel disables those and names the reason: <em>&ldquo;this voice has no filter of its own; use the channel filter&rdquo;</em></div></div>
-      <div class="row"><div class="what">MOUTH / BODY seed track<small>Created on capture as a lineage marker</small></div><div><span class="pill p-dark">Unplugged</span></div><div class="ev">Created with instrument <code>custom</code>, so separated notes route past it and it stays visibly empty. Lineage survives on note provenance.</div></div>
+      <div class="row"><div class="what">MOUTH / BODY seed track<small>Created on capture as a lineage marker</small></div><div><span class="pill p-work">Fixed</span></div><div class="ev">It was created as a lineage marker and stayed visibly empty: separated notes route past it, correctly, because a whole beatboxed composition must not pile onto one channel. What it was missing was the performance. Arming starts a real recorder and stopping attaches the take as an ordinary asset and clip &mdash; drawn on the grid, hashed, surviving a reload, reaching the bounce. Live: <code>6.96s</code>, 256 peak points, and extraction reading <em>3 stems from 29 onsets detected in the seed audio</em></div></div>
       <div class="row"><div class="what">Project persistence<small>Save, autosave, reopen</small></div><div><span class="pill p-work">Working</span></div><div class="ev">IndexedDB, chosen because a session holds vocal takes as Blobs. Verified across a real reload: notes, tracks, bpm, fader moves, mastering chain, room and a recorded vocal take all survive. The demo pattern was never a bug in the pattern — there was simply nothing else to load</div></div>
     </div>
   </section>
@@ -432,7 +432,7 @@
       <div class="row"><div class="what">Per-track channel strip<small>Filter, compressor, pan, reverb send</small></div><div><span class="pill p-work">Working</span></div><div class="ev">audioEngine.ts:126 — real Tone.js nodes per track</div></div>
       <div class="row"><div class="what">Virtual piano keyboard</div><div><span class="pill p-work">Working</span></div><div class="ev">Was crashing the entire studio on load via a missing import; fixed</div></div>
       <div class="row"><div class="what">External MIDI hardware</div><div><span class="pill p-work">Working</span></div><div class="ev">audio/midiEngine.ts via Web MIDI. Not exercised live — no device available in this environment.</div></div>
-      <div class="row"><div class="what">Undo / redo history</div><div><span class="pill p-dark">Unplugged</span></div><div class="ev">Real stack, but captured notes bypass it entirely, so a take cannot be undone</div></div>
+      <div class="row"><div class="what">Undo / redo history</div><div><span class="pill p-work">Fixed</span></div><div class="ev">Captured notes were written straight to state, so a take could not be undone at all. They go through the history writer now, grouped so one press removes the take rather than one note &mdash; and the audio the take produced joins that same entry, because the notes and the recording came out of one performance. Live: two takes recorded through the synthetic mic, one press removing each, redo restoring, and the stack unwinding to where it started</div></div>
       <div class="row"><div class="what">Arrangement sections<small>Intro / verse / chorus regions</small></div><div><span class="pill p-work">Fixed</span></div><div class="ev">This row was wrong: it said no add, rename or delete handler existed. They existed — the room did not. Add takes 4 sections to 5, rename writes through, delete removes, and the arrangement survives a room switch and a reload. Measured with unforced clicks, so "reachable" is part of the claim</div></div>
       <div class="row"><div class="what">Build rendered the Create canvas<small>Why the arrangement looked missing</small></div><div><span class="pill p-work">Fixed</span></div><div class="ev">Build fell through the render chain to <code>StudioCanvas</code>, so <code>BuildWorkspace</code> — the section builder, the section-scoped lanes and the undo/redo cluster — was in the tree of no room at all. Two of six rooms were the same screen</div></div>
       <div class="row"><div class="what">The auto-opened drawer swallowed the room's own controls</div><div><span class="pill p-work">Fixed</span></div><div class="ev">Arriving in Build opened the track workstation over the right of the arrangement builder; a hit test at ADD SEGMENT returned the drawer, not the button. Build has its own content now, so it no longer opens a drawer on top of it</div></div>
