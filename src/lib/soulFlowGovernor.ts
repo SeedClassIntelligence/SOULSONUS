@@ -40,14 +40,14 @@ export const SOULFLOW_STAGES: SoulFlowStageInfo[] = [
     label: '3. TRANSLATED',
     shortLabel: 'TRANSLATE',
     description: 'Audio-to-MIDI Grid Mapping',
-    requirements: ['At least 1 active step populated on the 64-step sequencer grid'],
+    requirements: ['At least 1 active step populated on the sequencer grid'],
   },
   {
     state: 'SOUND_SELECTED',
     index: 3,
     label: '4. SOUND_SELECTED',
     shortLabel: 'SOUND',
-    description: 'CLAP Semantic Sample & Synth Matching',
+    description: 'Sound vault matching and synth selection',
     requirements: ['Instrument sound profiles assigned to active tracks'],
   },
   {

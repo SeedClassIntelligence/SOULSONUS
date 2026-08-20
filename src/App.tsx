@@ -40,6 +40,8 @@ import { StudioUtilityBar } from './components/StudioUtilityBar';
 import { audioEngine } from './audio/audioEngine';
 import { detectionEngine } from './audio/detectionEngine';
 import { VoiceCommandResult } from './audio/voiceCommands';
+import { VoiceCommandBar } from './components/VoiceCommandBar';
+import { SoulFlowOrchestratorBar } from './components/SoulFlowOrchestratorBar';
 import { Preset } from './types/daw';
 import { LandingPage } from './components/LandingPage';
 
@@ -84,6 +86,10 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     handleRedo,
     handleUpdateTrack,
     audioAssets,
+    handleCloneBarToAll,
+    handleNudgeTrackPattern,
+    handleInvertPattern,
+    handleClearTrack,
   } = useStudioSession();
 
   // Undo was reachable only from the Build room's control cluster, while takes
@@ -123,6 +129,8 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isAiControlRoomOpen, setIsAiControlRoomOpen] = useState(false);
   const [isPianoOpen, setIsPianoOpen] = useState(false);
+  const [isVoiceBarOpen, setIsVoiceBarOpen] = useState(false);
+  const [isSoulFlowOpen, setIsSoulFlowOpen] = useState(false);
 
   // Drawers
   const [isStudioIntelligenceOpen, setIsStudioIntelligenceOpen] = useState(false);
@@ -249,6 +257,8 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       if (detail === 'export') setIsExportOpen(true);
       if (detail === 'projects' || detail === 'save') setIsProjectMenuOpen(true);
       if (detail === 'piano' || detail === 'keyboard') setIsPianoOpen((prev) => !prev);
+      if (detail === 'voice_command' || detail === 'command') setIsVoiceBarOpen((prev) => !prev);
+      if (detail === 'soulflow' || detail === 'pipeline') setIsSoulFlowOpen((prev) => !prev);
 
       if (detail === 'proposal' || detail === 'realization' || (typeof detail === 'object' && detail?.type === 'realization')) {
         const trId = typeof detail === 'object' ? detail?.trackId : undefined;
@@ -341,6 +351,101 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       }
     }
   }, [detectionSettings.enabled, setDetectionSettings]);
+
+  /**
+   * Runs a voice command and reports what it actually did.
+   *
+   * The parser used to hand back a completed-sounding sentence -- "Nudged
+   * pattern 1/16th step left." -- which the bar showed the moment the words
+   * were parsed, before anything ran and regardless of whether anything
+   * could. The parser now only says what it heard; this decides what
+   * happened, and an action with no target says so.
+   */
+  const handleVoiceCommand = useCallback(
+    (result: VoiceCommandResult): { ok: boolean; message: string } => {
+      const target =
+        tracks.find((t) => t.id === selectionContext.selectedTrackId) || tracks[0] || null;
+      const needsTrack = () =>
+        target ? null : { ok: false, message: 'No channel is selected, so there is nothing to change.' };
+
+      switch (result.action) {
+        case 'CLONE_BAR_1':
+          handleCloneBarToAll(0);
+          return { ok: true, message: `Cloned bar 1 across ${tracks.length} channels.` };
+
+        case 'NUDGE_LEFT':
+        case 'NUDGE_RIGHT': {
+          const missing = needsTrack();
+          if (missing) return missing;
+          const dir = result.action === 'NUDGE_LEFT' ? 'left' : 'right';
+          handleNudgeTrackPattern(target!.id, dir);
+          return { ok: true, message: `Nudged ${target!.name} one 16th ${dir}.` };
+        }
+
+        case 'INVERT_PATTERN': {
+          const before = tracks.reduce((n, t) => n + (t.steps || []).filter(Boolean).length, 0);
+          handleInvertPattern();
+          return { ok: true, message: `Inverted the grid — ${before} active steps become their opposite.` };
+        }
+
+        case 'CLEAR_ALL': {
+          const missing = needsTrack();
+          if (missing) return missing;
+          const had = (target!.steps || []).filter(Boolean).length;
+          handleClearTrack(target!.id);
+          return { ok: true, message: `Cleared ${had} steps from ${target!.name}.` };
+        }
+
+        case 'TOGGLE_PLAY': {
+          const wasPlaying = dawState.isPlaying;
+          void handleTogglePlay();
+          return { ok: true, message: wasPlaying ? 'Stopped the transport.' : 'Started the transport.' };
+        }
+
+        case 'TOGGLE_REC': {
+          const wasOn = detectionSettings.enabled;
+          void handleToggleMic();
+          return { ok: true, message: wasOn ? 'Microphone off.' : 'Microphone on.' };
+        }
+
+        case 'CHANGE_BPM': {
+          const delta = result.payload?.bpmDelta ?? 0;
+          const from = dawState.bpm || 110;
+          const to = Math.max(40, Math.min(240, result.payload?.targetBpm ?? from + delta));
+          setDawState((prev) => ({ ...prev, bpm: to }));
+          void audioEngine.setBPM(to);
+          return { ok: true, message: `Tempo ${from} → ${to} BPM.` };
+        }
+
+        case 'REPLACE_SOUND_QUERY':
+          // Honest about the seam: the command is understood and there is no
+          // sound-swap action behind it yet, so it says so rather than
+          // reporting a search it did not run.
+          return {
+            ok: false,
+            message: `Heard a request for a ${result.payload?.targetInstrument || 'sound'}. Choosing sounds is in the channel workstation — this command cannot do it yet.`,
+          };
+
+        default:
+          return { ok: false, message: result.feedbackText };
+      }
+    },
+    [
+      tracks,
+      selectionContext.selectedTrackId,
+      dawState.isPlaying,
+      dawState.bpm,
+      detectionSettings.enabled,
+      handleCloneBarToAll,
+      handleNudgeTrackPattern,
+      handleInvertPattern,
+      handleClearTrack,
+      handleTogglePlay,
+      handleToggleMic,
+      setDawState,
+    ]
+  );
+
 
   const handleSelectPreset = useCallback(
     (preset: Preset) => {
@@ -586,6 +691,63 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         isOpen={isPianoOpen}
         onClose={() => setIsPianoOpen(false)}
       />
+
+      {/*
+        * The pipeline gate. `soulFlowState` has been on the project state all
+        * along and nothing ever validated a move between stages, so it
+        * advanced or did not with no requirement checked. The governor that
+        * does the checking existed, with a passing test, and no file rendered
+        * the bar that calls it.
+        */}
+      {isSoulFlowOpen && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-40 w-[min(1100px,94vw)]">
+          <SoulFlowOrchestratorBar
+            currentState={dawState.soulFlowState || 'CAPTURED'}
+            onSelectState={(next) => setDawState((prev) => ({ ...prev, soulFlowState: next }))}
+            onOpenSeedSignature={() => setIsSeedSignatureOpen(true)}
+            onAddSeedRecord={handleAddSeedRecord}
+            validationContext={{
+              tracks,
+              detectionSettings,
+              seedRecords,
+              project: {
+                id: dawState.projectVersion || 'proj_root',
+                name: dawState.projectName || 'Untitled',
+                bpm: dawState.bpm || 110,
+                soulFlowState: dawState.soulFlowState || 'CAPTURED',
+                tracks,
+              },
+              creatorName,
+            }}
+          />
+          <button
+            onClick={() => setIsSoulFlowOpen(false)}
+            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold cursor-pointer"
+            title="Close the pipeline"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/*
+        * The command bar. It had a real speech recogniser and a real parser
+        * and no file rendered it, so neither had ever run. It opens from the
+        * utility bar rather than sitting on screen, because a studio does not
+        * need a text prompt in front of the grid at all times.
+        */}
+      {isVoiceBarOpen && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[min(900px,92vw)]">
+          <VoiceCommandBar onExecuteCommand={handleVoiceCommand} />
+          <button
+            onClick={() => setIsVoiceBarOpen(false)}
+            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold cursor-pointer"
+            title="Close the command bar"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 };

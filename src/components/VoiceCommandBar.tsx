@@ -3,21 +3,30 @@ import { Mic, Send, Volume2, Sparkles, Terminal } from 'lucide-react';
 import { parseVoiceCommand, VoiceCommandResult } from '../audio/voiceCommands';
 
 interface VoiceCommandBarProps {
-  onExecuteCommand: (result: VoiceCommandResult) => void;
+  /**
+   * Runs the command and says what it did.
+   *
+   * The bar used to show `result.feedbackText` the instant the words were
+   * parsed -- a sentence in the past tense, printed before anything ran and
+   * regardless of whether anything could. It shows this instead.
+   */
+  onExecuteCommand: (result: VoiceCommandResult) => { ok: boolean; message: string };
 }
 
 export const VoiceCommandBar: React.FC<VoiceCommandBarProps> = ({ onExecuteCommand }) => {
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [lastFeedback, setLastFeedback] = useState<string | null>(null);
+  const [lastOk, setLastOk] = useState(true);
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim()) return;
 
     const result = parseVoiceCommand(inputText);
-    setLastFeedback(result.feedbackText);
-    onExecuteCommand(result);
+    const outcome = onExecuteCommand(result);
+    setLastFeedback(outcome.message);
+    setLastOk(outcome.ok);
     setInputText('');
   };
 
@@ -27,7 +36,8 @@ export const VoiceCommandBar: React.FC<VoiceCommandBarProps> = ({ onExecuteComma
       (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any }).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      setLastFeedback('Web Speech API is not supported in this browser. Please type commands below.');
+      setLastFeedback('This browser has no speech recognition. Type the command instead.');
+      setLastOk(false);
       return;
     }
 
@@ -47,13 +57,15 @@ export const VoiceCommandBar: React.FC<VoiceCommandBarProps> = ({ onExecuteComma
         setIsListening(false);
         setInputText(transcript);
         const result = parseVoiceCommand(transcript);
-        setLastFeedback(`Recognized: "${transcript}" → ${result.feedbackText}`);
-        onExecuteCommand(result);
+        const outcome = onExecuteCommand(result);
+        setLastFeedback(`Heard "${transcript}" — ${outcome.message}`);
+        setLastOk(outcome.ok);
       };
 
       recognition.onerror = () => {
         setIsListening(false);
-        setLastFeedback('Voice recognition error. Try typing your command.');
+        setLastFeedback('Speech recognition failed. Type the command instead.');
+        setLastOk(false);
       };
 
       recognition.onend = () => {
@@ -63,7 +75,8 @@ export const VoiceCommandBar: React.FC<VoiceCommandBarProps> = ({ onExecuteComma
       recognition.start();
     } catch {
       setIsListening(false);
-      setLastFeedback('Could not access speech recognition.');
+      setLastFeedback('Could not start speech recognition.');
+      setLastOk(false);
     }
   };
 
@@ -82,7 +95,7 @@ export const VoiceCommandBar: React.FC<VoiceCommandBarProps> = ({ onExecuteComma
                   CO-PRODUCER AI COMMAND BAR
                 </span>
                 <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded border border-purple-500/30 font-bold">
-                  CLAP & STT
+                  SPEECH
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
@@ -97,6 +110,7 @@ export const VoiceCommandBar: React.FC<VoiceCommandBarProps> = ({ onExecuteComma
           <div className="relative flex-1">
             <input
               type="text"
+              data-testid="voice-input"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder='Try "Clone bar 1", "Nudge right", "Fat meaty kick"...'
@@ -121,6 +135,7 @@ export const VoiceCommandBar: React.FC<VoiceCommandBarProps> = ({ onExecuteComma
 
           <button
             type="submit"
+            data-testid="voice-execute"
             className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition active:scale-95 shadow-md shadow-amber-500/20 flex items-center gap-1"
           >
             <Send className="w-3.5 h-3.5" />
@@ -131,9 +146,14 @@ export const VoiceCommandBar: React.FC<VoiceCommandBarProps> = ({ onExecuteComma
 
       {/* Feedback Banner */}
       {lastFeedback && (
-        <div className="mt-2 text-[11px] font-mono px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-amber-300 flex items-center gap-2">
-          <Volume2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-          <span className="truncate">{lastFeedback}</span>
+        <div
+          data-testid="voice-feedback"
+          className={`mt-2 text-[11px] font-mono px-3 py-1.5 rounded-lg bg-slate-950 border flex items-center gap-2 ${
+            lastOk ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-300'
+          }`}
+        >
+          <Volume2 className={`w-3.5 h-3.5 shrink-0 ${lastOk ? 'text-emerald-400' : 'text-amber-400'}`} />
+          <span>{lastFeedback}</span>
         </div>
       )}
     </div>

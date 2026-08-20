@@ -98,6 +98,7 @@ export const SoulFlowOrchestratorBar: React.FC<SoulFlowOrchestratorBarProps> = (
           return (
             <button
               key={s.state}
+              data-testid={`stage-${s.state}`}
               onClick={() => handleStageClick(s.state)}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap border ${
                 isActive
@@ -136,7 +137,10 @@ export const SoulFlowOrchestratorBar: React.FC<SoulFlowOrchestratorBarProps> = (
 
       {/* TRANSITION VALIDATION MODAL */}
       {blockedResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+        <div
+          data-testid="soulflow-gate"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in"
+        >
           <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-5 overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
               <div className="flex items-center gap-2 text-amber-400 font-black">
