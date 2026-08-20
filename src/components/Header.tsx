@@ -236,13 +236,17 @@ export const Header: React.FC<HeaderProps> = ({
             <span>TRAIN SIGNATURE</span>
           </button>
 
+          {/* The tooltip here promised "25,000+ Open-Source Instruments, 808s,
+              SoundFonts & Synths". None are bundled. What the panel actually
+              shows is where sounds come from and what may become one. */}
           <button
+            id="btn-sound-sourcing"
             onClick={() => setIsVaultModalOpen(true)}
             className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-mono font-bold transition cursor-pointer"
-            title="Open Creative Resource Vault (25,000+ Open-Source Instruments, 808s, SoundFonts & Synths)"
+            title="Sound sourcing — the runtime, the factory slots, the candidates, and what has been ruled out"
           >
             <Database className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden sm:inline">SOUND VAULT</span>
+            <span className="hidden sm:inline">SOUND SOURCING</span>
           </button>
 
           <button

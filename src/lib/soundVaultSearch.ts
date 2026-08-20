@@ -24,12 +24,31 @@ export interface SoundVaultMatchResult {
   category: string;
   tags: string[];
   sampleUrl: string;
-  licenseStatus: 'R01_ADMITTED' | 'R02_ADMITTED' | 'R03_ADMITTED';
+  origin: SampleOrigin;
   /** The query terms this entry actually matched, and where each one landed. */
   matchedTerms: { term: string; on: 'category' | 'name' | 'tag' }[];
   /** Sum of the weights of those matches. A ranking key, not a percentage. */
   matchWeight: number;
 }
+
+/**
+ * Where a sample came from, said plainly.
+ *
+ * These six entries used to be stamped `R01_ADMITTED` / `R02_ADMITTED` /
+ * `R03_ADMITTED` -- admission statuses from a governed-vault model whose
+ * admission records were never written. The files behind them are 1-2 second
+ * single-pitch tones this project generated (46.9 Hz for the "tube saturated
+ * 808", 257.8 Hz for the "warm vintage Rhodes"), and four of the six are
+ * byte-identical to files sitting in `public/audio/stems/` under entirely
+ * different names -- the same bytes cannot be both a curated Rhodes and a
+ * separated `other.wav`.
+ *
+ * Nothing is wrong with shipping generated tones to exercise a search. What
+ * was wrong was dressing them as licensed library content. A real instrument
+ * arrives through the curated catalogue in `soundSourcing.ts`, which requires
+ * an admission record before anything can ship.
+ */
+export type SampleOrigin = 'GENERATED_PLACEHOLDER' | 'ADMITTED_LIBRARY';
 
 export interface VaultAcousticEntry {
   id: string;
@@ -37,10 +56,11 @@ export interface VaultAcousticEntry {
   category: 'drums' | 'bass' | 'synths' | 'keys' | 'vocals';
   tags: string[];
   sampleUrl: string;
-  license: 'R01_ADMITTED' | 'R02_ADMITTED' | 'R03_ADMITTED';
+  origin: SampleOrigin;
 }
 
-// Pre-indexed R01–R03 Sound Vault entries
+// The six generated tones that ship with the project, so the search has
+// something real to rank. Not a library, and no longer described as one.
 const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
   {
     id: 'vault_kick_punch_01',
@@ -48,7 +68,7 @@ const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
     category: 'drums',
     tags: ['punchy', 'fat', 'heavy', 'analog', 'sub', 'low-end', 'thump', 'kick'],
     sampleUrl: '/samples/drums/kick_heavy_punch.wav',
-    license: 'R01_ADMITTED',
+    origin: 'GENERATED_PLACEHOLDER',
   },
   {
     id: 'vault_808_saturated_01',
@@ -56,7 +76,7 @@ const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
     category: 'bass',
     tags: ['808', 'sub', 'distorted', 'warm', 'glide', 'analog', 'saturated', 'bass'],
     sampleUrl: '/samples/bass/808_tube_saturated.wav',
-    license: 'R01_ADMITTED',
+    origin: 'GENERATED_PLACEHOLDER',
   },
   {
     id: 'vault_snare_crisp_01',
@@ -64,7 +84,7 @@ const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
     category: 'drums',
     tags: ['crisp', 'tight', 'acoustic', 'bright', 'crack', 'transient', 'snare', 'clap'],
     sampleUrl: '/samples/drums/snare_tight_studio.wav',
-    license: 'R01_ADMITTED',
+    origin: 'GENERATED_PLACEHOLDER',
   },
   {
     id: 'vault_keys_rhodes_01',
@@ -72,7 +92,7 @@ const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
     category: 'keys',
     tags: ['warm', 'rhodes', 'electric', 'piano', 'vintage', 'dark', 'soul', 'keys'],
     sampleUrl: '/samples/keys/rhodes_warm_vintage.wav',
-    license: 'R02_ADMITTED',
+    origin: 'GENERATED_PLACEHOLDER',
   },
   {
     id: 'vault_synth_saw_lead_01',
@@ -80,7 +100,7 @@ const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
     category: 'synths',
     tags: ['bright', 'saw', 'lead', 'polyphonic', 'edm', 'future-bass', 'detuned', 'synths'],
     sampleUrl: '/samples/synths/saw_lead_hyper.wav',
-    license: 'R03_ADMITTED',
+    origin: 'GENERATED_PLACEHOLDER',
   },
   {
     id: 'vault_vocal_airy_01',
@@ -88,7 +108,7 @@ const VAULT_ACOUSTIC_INDEX: VaultAcousticEntry[] = [
     category: 'vocals',
     tags: ['airy', 'soul', 'breath', 'vocal', 'lush', 'reverb', 'r&b', 'vocals'],
     sampleUrl: '/samples/vocals/vocal_chop_airy.wav',
-    license: 'R01_ADMITTED',
+    origin: 'GENERATED_PLACEHOLDER',
   },
 ];
 
@@ -174,7 +194,7 @@ export class SoundVaultSemanticMatcher {
         category: entry.category,
         tags: entry.tags,
         sampleUrl: entry.sampleUrl,
-        licenseStatus: entry.license,
+        origin: entry.origin,
         matchedTerms: matched,
         matchWeight: weight,
       };

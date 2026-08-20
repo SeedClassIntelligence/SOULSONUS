@@ -1059,36 +1059,14 @@ export interface RealizationResult {
   passedIntentContract: boolean | null;
 }
 
-// --- Level 4 Creative Resource Registry Models ---
-
-export type ResourceVaultType =
-  | 'R01'
-  | 'R02'
-  | 'R03'
-  | 'R04'
-  | 'R05'
-  | 'R06'
-  | 'R07'
-  | 'R08'
-  | 'R09'
-  | 'R10';
-
-export type CreativeResourceType =
-  | 'SAMPLE'
-  | 'AUDIO_STEM'
-  | 'INSTRUMENT_SF2'
-  | 'INSTRUMENT_SFZ'
-  | 'SYNTH_PRESET'
-  | 'DSP_PRESET'
-  | 'IMPULSE_RESPONSE'
-  | 'MIDI_PATTERN'
-  | 'DRUM_PATTERN'
-  | 'GROOVE_PROFILE'
-  | 'CHORD_PROGRESSION'
-  | 'CHORD_VOICING'
-  | 'ARRANGEMENT_TEMPLATE'
-  | 'CREATOR_ASSET'
-  | 'MARKETPLACE_ASSET';
+// --- Rights, recorded ---
+//
+// The R01-R10 "governed vaults" this replaced were a browsing fiction: ten
+// vault names, a `CreativeResource` shape, and rows badged COMMERCIAL
+// APPROVED against admission records that were never written. The vault names
+// are gone with the screen that showed them. This record stayed, because it
+// is the one thing in that model that was worth having -- what a licence
+// actually permits, per asset, with a checksum tying it to bytes.
 
 export type ResourceAdmissionStatus =
   | 'APPROVED'
@@ -1111,26 +1089,6 @@ export interface ResourceAdmissionRecord {
   sha256Checksum: string;
   admissionStatus: ResourceAdmissionStatus;
   admissionNotes: string;
-}
-
-export interface CreativeResource {
-  resourceId: string;
-  resourceType: CreativeResourceType;
-  name: string;
-  vault: ResourceVaultType;
-  category: string;
-  subcategory?: string;
-  tags: string[];
-  format?: string;
-  durationMs?: number;
-  sampleRate?: number;
-  bitDepth?: number;
-  bpm?: number;
-  key?: string;
-  semanticDescriptors?: string[];
-  embeddingId?: string;
-  admissionRecordId: string;
-  createdAt: number;
 }
 
 // --- Capability Admission & Decoupling Models ---
