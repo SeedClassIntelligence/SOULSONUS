@@ -327,8 +327,13 @@ export interface BandBrief {
   /** The creator's own words, unedited. */
   direction: string;
   bpm: number;
-  key: string;
-  scale: string;
+  /**
+   * The key and scale, when the session has established one. Nothing in the
+   * DAW asks a creator for a key yet, so this is genuinely often unknown --
+   * and a player that needs one has to say so rather than assume C minor.
+   */
+  key?: string;
+  scale?: string;
   /**
    * The phrase this grant is defined against, when there is one. Absent for a
    * PLAY_WHAT_YOU_FEEL brief on an empty track.

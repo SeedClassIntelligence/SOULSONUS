@@ -14,7 +14,7 @@
  * that nothing generated.
  */
 const playwright = require('playwright');
-const { launch, enterStudio } = require('./lib.cjs');
+const { launch, enterStudio, session } = require('./lib.cjs');
 
 let failures = 0;
 function check(label, ok, detail) {
@@ -56,10 +56,13 @@ async function ask(page, text) {
     /performance, as notes/.test(bass),
     'engine can be swapped afterwards'
   );
+  // PLAY WHAT YOU FEEL asks the player to invent, and nothing that can invent
+  // is wired. The reply has to say that in those terms rather than hand back
+  // something plausible.
   check(
-    'it says no player is behind it yet',
-    /No player is behind this yet/.test(bass),
-    'no take fabricated'
+    'it refuses the grant it cannot honour, and says why',
+    /needs a model that is not wired yet/.test(bass),
+    'no take fabricated for an invention grant'
   );
   check(
     'nothing in the reply claims a percentage',
@@ -90,6 +93,72 @@ async function ask(page, text) {
     'and they say the engine cannot be swapped later',
     /cannot be swapped/.test(bgv),
     'audio take, no note form'
+  );
+
+  // ---- 3b. the grant it CAN honour produces a real take ----
+  //
+  // The band stopped being a description at this point. Asking for the phrase
+  // you played back has a player behind it, so a channel has to appear, hold
+  // notes, and carry the renderer's name -- and the reply has to show the
+  // grant check that let it through rather than asserting it went well.
+  console.log('\n-- a grant with a player behind it --');
+  const COUNTS = `s => JSON.stringify({
+    tracks: s.tracks.length,
+    band: s.tracks.filter(t => t.name.indexOf('session take') >= 0).map(t => ({
+      name: t.name,
+      notes: (t.noteEvents || []).length,
+      renderers: [...new Set((t.noteEvents || []).map(e => (e.provenance || {}).renderer))],
+      origins: [...new Set((t.noteEvents || []).map(e => (e.provenance || {}).origin))],
+    })),
+    bassNotes: (s.tracks.filter(t => t.instrument === 'bass' && t.name.indexOf('session take') < 0)[0] || {}).noteEvents || [],
+  })`;
+  const before39 = JSON.parse(await session(page, COUNTS));
+  console.log(`  bass channel holds ${before39.bassNotes.length} notes before the call`);
+
+  const played = await ask(page, 'Bass player, play exactly what I played');
+  await page.waitForTimeout(1200);
+  const after39 = JSON.parse(await session(page, COUNTS));
+
+  // The drummer was called earlier in this session and left a take of their
+  // own, so what is checked is the one that just arrived.
+  const bassTake = after39.band.find((t) => t.name.indexOf('Bass') === 0);
+  check(
+    'a take channel appeared beside the creator\'s own',
+    !!bassTake && after39.tracks === before39.tracks + 1,
+    bassTake ? `${bassTake.name} (${after39.band.length} band channel(s) in the session)` : 'no take channel'
+  );
+  check(
+    'the creator\'s own channel was not touched',
+    after39.bassNotes.length === before39.bassNotes.length,
+    `${before39.bassNotes.length} -> ${after39.bassNotes.length} notes on the bass the creator played`
+  );
+  check(
+    'the take holds the same number of notes',
+    !!bassTake && bassTake.notes === before39.bassNotes.length,
+    bassTake ? `${bassTake.notes} notes against ${before39.bassNotes.length} played` : ''
+  );
+  check(
+    'every note names what rendered it',
+    !!bassTake &&
+      bassTake.renderers.length === 1 &&
+      bassTake.renderers[0] === 'soulsonus-feel' &&
+      bassTake.origins.join() === 'SESSION_PLAYER',
+    bassTake ? `${bassTake.origins.join()} via ${bassTake.renderers.join()}` : ''
+  );
+  check(
+    'the drummer\'s earlier call landed too',
+    after39.band.some((t) => t.name.indexOf('Drummer') === 0),
+    after39.band.map((t) => t.name).join(' | ')
+  );
+  check(
+    'the reply shows the grant check that let it through',
+    /worst onset moved [\d.]+ ms of the 30 ms allowed/.test(played),
+    (played.match(/worst onset moved [^.]*\./) || ['not shown'])[0]
+  );
+  check(
+    'and says the take sits beside, not over',
+    /not over it/.test(played),
+    'live musicians on top of your music'
   );
 
   // ---- 4. a verb about a track is still a verb ----

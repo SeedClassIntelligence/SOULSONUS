@@ -147,11 +147,17 @@ export interface NoteProvenance {
     | 'MIDI_KEYS'
     | 'IMPORTED_MIDI'
     | 'MANUAL'
-    | 'AI_INTERPRETATION';
+    | 'AI_INTERPRETATION'
+    /** A take from the session band. `playerRole` and `renderer` say who and what. */
+    | 'SESSION_PLAYER';
   sourceAssetId?: string;
   interpretationId?: string;
   detectionConfidence?: number;
   creatorEdited: boolean;
+  /** Which player produced this note, when a session player did. */
+  playerRole?: string;
+  /** What actually rendered it, named so a take is never mistaken for the creator's own hand. */
+  renderer?: string;
 }
 
 export interface NoteExpression {

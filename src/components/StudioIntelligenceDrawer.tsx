@@ -35,6 +35,7 @@ import {
   Gauge,
 } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
+import { readAddress } from '../lib/sessionBand';
 import { productionHistory, ProductionOperation } from '../lib/productionOperations';
 import type { Track, TrackDspSettings } from '../types/daw';
 
@@ -113,6 +114,7 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
     selectionContext,
     sections,
     creatorName,
+    handleCallSessionPlayer,
   } = useStudioSession();
 
   const [config, setConfig] = useState<StudioIntelligenceConfig>(loadAiConfig());
@@ -300,9 +302,25 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
           ]
         : undefined;
 
+      // A request addressed to a player is placed as well as answered. The
+      // reasoning half writes the brief; this half calls the musician and
+      // reports what actually came back -- a take, or the reason there is not
+      // one. The two are appended as one reply so the brief and its outcome
+      // are never separated.
+      let text = answer.content;
+      const address = readAddress(userText);
+      if (address.role) {
+        const called = await handleCallSessionPlayer(
+          address.role,
+          address.grant || 'PLAY_WHAT_YOU_FEEL',
+          userText
+        );
+        text = `${text}\n\n${called.message}`;
+      }
+
       setMessages((prev) => [
         ...prev,
-        { sender: 'intelligence', text: answer.content, options, timestamp: Date.now() },
+        { sender: 'intelligence', text, options, timestamp: Date.now() },
       ]);
     } catch (err) {
       // Say what went wrong. A reasoning failure that renders as a confident

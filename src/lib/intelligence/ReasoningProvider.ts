@@ -112,9 +112,10 @@ export class NativeStudioBrainProvider implements ReasoningProvider {
     // Every other branch below reads a verb -- make this fatter, redo those
     // bars. "Bass player, play what you feel" names a musician, and there was
     // nowhere for that to land, so it fell through to whichever operation
-    // happened to share a keyword. This answers the address itself, states the
-    // grant in the creator's terms, and says plainly that no player is behind
-    // it yet rather than producing a take that nothing generated.
+    // happened to share a keyword. This answers the address itself and states
+    // the grant in the creator's terms; the take itself is placed by the
+    // session, which calls the player and appends what actually came back --
+    // including, for a role with nothing behind it, the fact that nothing did.
     const address = readAddress(prompt);
     if (address.role) {
       const player = playerFor(address.role);
@@ -139,8 +140,7 @@ export class NativeStudioBrainProvider implements ReasoningProvider {
         }\n` +
         `• **Listening for**: ${player.attends.join(', ')}.\n` +
         `• **Call order**: ${position} of ${CALL_ORDER.length}${ahead ? `, after ${ahead}` : ', first up'} — whoever plays earlier is who this player gets to react to.\n\n` +
-        `**No player is behind this yet.** The brief, the grant and the check that enforces it are built; the intelligence that returns a take is not. ` +
-        `You will get a take when there is something to give you one, and not a moment before.`;
+        `Calling the ${player.label.toLowerCase()}…`;
     }
     // 0A. E05 Music Realization & ACE Performance Transfer (Under-the-DAW Orchestration)
     else if (

@@ -72,6 +72,8 @@ import { PRESETS } from '../data/presets';
 import { audioEngine } from '../audio/audioEngine';
 import { productionHistory } from '../lib/productionOperations';
 import { detectionEngine, CaptureEvent } from '../audio/detectionEngine';
+import { BandRole, GrantLevel, playerFor } from '../lib/sessionBand';
+import { CallOutcome, SessionRoom, callSessionPlayer, installDefaultBand } from '../lib/sessionPlayer';
 import { resolveCaptureTarget } from '../audio/captureRouting';
 import { midiNoteToCaptureEvent } from '../audio/midiCapture';
 import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
@@ -599,6 +601,12 @@ export interface StudioSessionState {
   stopSeedRecording: () => Promise<{ trackId: string; seconds: number } | null>;
   /** Ends capture: classifier off, modality cleared, take kept, microphone released. */
   handleStopCapture: () => Promise<{ trackId: string; seconds: number } | null>;
+  /** Calls a session player. The take lands on its own channel, beside yours. */
+  handleCallSessionPlayer: (
+    role: BandRole,
+    level: GrantLevel,
+    direction: string
+  ) => Promise<{ ok: boolean; message: string }>;
 
   // Capture inputs that share one router: mic, uploaded file, MIDI hardware
   isMidiCaptureArmed: boolean;
@@ -1410,6 +1418,12 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     bpmRef.current = dawState.bpm;
     dawStateRef.current = dawState;
   }, [dawState]);
+
+  // Who is behind each role is a deployment decision, so it is made in one
+  // place at startup rather than at each call site.
+  useEffect(() => {
+    installDefaultBand();
+  }, []);
 
   /**
    * Commits classified capture events onto their channels.
@@ -2509,20 +2523,131 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       sourceModality: modality,
       seedType: 'CONTRIBUTION_SEED',
       rootSeedId: 'root_seed_master',
-      waveformTakes: [
-        {
-          id: `take_${timestamp}`,
-          name: `${name} (Take 1)`,
-          duration: 8.7,
-          waveformData: [12, 28, 45, 78, 92, 64, 40, 85, 95, 70, 48, 88, 62, 35, 75, 90, 55, 30, 68, 85, 40, 15, 50, 75, 92, 60, 35, 80, 65, 40, 20, 10],
-        }
-      ],
+      // No take yet. A seed track used to be born holding a waveform of 32
+      // literal numbers and a duration of 8.7 seconds -- a picture of a
+      // performance that had not happened. The take arrives when it is
+      // performed, as a real asset with a real waveform, and until then the
+      // track honestly holds nothing.
     };
 
     updateTracksWithHistory((prev) => [newSourceTrack, ...prev]);
     setSelectionContext((prev) => ({ ...prev, selectedTrackId: sourceTrackId }));
     return sourceTrackId;
   }, [tracks, updateTracksWithHistory]);
+
+  /**
+   * Calling a player, and putting what they hand back on its own track.
+   *
+   * The session band was describable before it was callable: the dock could
+   * state the brief, the grant and the call order, and then had to admit
+   * nothing was behind it. This is what puts something behind it, and it goes
+   * through `callSessionPlayer` rather than a renderer, so the day a
+   * generative model arrives for a role, nothing here changes.
+   *
+   * The take lands on a new channel beside the creator's own, never over it.
+   * That is the whole premise of a session player: live musicians on top of
+   * your music, not a remix of it. Yours stays exactly as you played it, and
+   * you can mute either one.
+   */
+  const handleCallSessionPlayer = useCallback(
+    async (
+      role: BandRole,
+      level: GrantLevel,
+      direction: string
+    ): Promise<{ ok: boolean; message: string }> => {
+      const spec = playerFor(role);
+      const current = tracksRef.current;
+      const lane =
+        current.find((t) => spec.instruments.includes(t.instrument) && !t.isSourceTrack) ||
+        current.find((t) => spec.instruments.includes(t.instrument));
+      if (!lane) {
+        return {
+          ok: false,
+          message: `There is no ${spec.label.toLowerCase()} channel in this session yet. The take needs somewhere to land — make one, or perform the part and let capture make it.`,
+        };
+      }
+
+      const room: SessionRoom = {
+        bpm: bpmRef.current || 110,
+        // Deliberately absent: nothing in the studio asks for a key yet, and a
+        // confident "C minor" would be a guess wearing the shape of a fact.
+        songTicks: songTicksRef.current,
+        parts: current.map((t) => ({
+          trackId: t.id,
+          name: t.name,
+          instrument: t.instrument,
+          notes: t.noteEvents || [],
+        })),
+      };
+
+      const outcome = await callSessionPlayer(
+        {
+          role,
+          grant: { level, trackId: lane.id },
+          direction,
+          bpm: room.bpm,
+          key: room.key,
+          scale: room.scale,
+          source: lane.noteEvents || [],
+        },
+        room,
+        { seed: Date.now() % 100000 }
+      );
+
+      if (!outcome.ok) {
+        // Every refusal already carries a reason a creator can act on. It is
+        // repeated verbatim rather than softened, because a vague "couldn't do
+        // that" is how a missing feature becomes invisible.
+        const refused = outcome as Extract<CallOutcome, { ok: false }>;
+        return { ok: false, message: refused.refusal.detail };
+      }
+      if (outcome.take.kind !== 'performance') {
+        return { ok: false, message: 'That player hands back audio, and there is nowhere to put it yet.' };
+      }
+
+      const notes = outcome.take.notes;
+      const steps = new Array(songStepsRef.current).fill(false);
+      for (const n of notes) {
+        const step = Math.floor(n.startTick / 120);
+        if (step >= 0 && step < steps.length) steps[step] = true;
+      }
+
+      const takeTrack: Track = {
+        id: `t-band-${role.toLowerCase()}-${Date.now()}`,
+        name: `${spec.label} — session take`,
+        instrument: lane.instrument,
+        steps,
+        noteEvents: notes,
+        mute: false,
+        solo: false,
+        volume: 0,
+        pitch: lane.pitch,
+        color: lane.color,
+      };
+
+      pendingLabelRef.current = `${spec.label} take`;
+      updateTracksWithHistory((prev) => {
+        const at = prev.findIndex((t) => t.id === lane.id);
+        const next = [...prev];
+        next.splice(at < 0 ? next.length : at + 1, 0, takeTrack);
+        return next;
+      });
+      setSelectionContext((prev) => ({ ...prev, selectedTrackId: takeTrack.id }));
+
+      const drift = outcome.check?.measured.worstOnsetDriftMs;
+      return {
+        ok: true,
+        message:
+          `**${spec.label}** — take on \`${takeTrack.name}\`, beside \`${lane.name}\` and not over it.\n\n` +
+          `${outcome.take.description}\n\n` +
+          (outcome.check
+            ? `Checked against the grant: ${outcome.check.measured.takeNotes} notes against ${outcome.check.measured.sourceNotes} you played, ` +
+              `worst onset moved ${drift} ms of the ${outcome.check.measured.toleranceMs} ms allowed. Played by \`${outcome.renderer}\`.`
+            : `Played by \`${outcome.renderer}\`.`),
+      };
+    },
+    [updateTracksWithHistory]
+  );
 
   /**
    * Turns a seed take into per-sound-type stem tracks.
@@ -4396,6 +4521,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       startSeedRecording,
       stopSeedRecording,
       handleStopCapture,
+      handleCallSessionPlayer,
       isMidiCaptureArmed,
       handleToggleMidiCapture,
       handleAnalyzeAudioFile,
@@ -4571,6 +4697,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       startSeedRecording,
       stopSeedRecording,
       handleStopCapture,
+      handleCallSessionPlayer,
       isMidiCaptureArmed,
       handleToggleMidiCapture,
       handleAnalyzeAudioFile,
