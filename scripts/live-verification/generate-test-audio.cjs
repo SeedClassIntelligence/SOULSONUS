@@ -176,3 +176,17 @@ writeWav(`${dir}/beatbox_A.wav`, pattern(12, 500, [kick, hat]));
 writeWav(`${dir}/beatbox_B.wav`, pattern(12, 500, [() => kick(95), snare]));
 
 console.log('wrote test clips to', dir);
+
+function writeFileRaw(path, buf) {
+  require('fs').writeFileSync(path, buf);
+}
+
+// A real sound bank file, for the R02 INSTRUMENT route. The library ships one
+// for its own tests -- 890 bytes, a single saw-wave preset -- which is enough
+// to prove the path reads presets out of a file rather than a list we wrote.
+try {
+  const { BasicSoundBank } = require('spessasynth_core');
+  writeFileRaw(`${dir}/sample_bank.sf2`, Buffer.from(BasicSoundBank.getSampleSoundBankFile()));
+} catch (err) {
+  console.warn('[generate-test-audio] no sound bank written:', err.message);
+}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Track, AutomationLane, AutomationPoint, InstrumentParameters, TrackDspSettings } from '../types/daw';
 import { audioEngine } from '../audio/audioEngine';
 import { rankByTerms } from '../lib/soundVaultSearch';
@@ -117,6 +117,9 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
     handleUpdateTrackLayer,
     handleExplodeLayersToTracks,
     activeProductionScope,
+    loadedSoundBank,
+    handleLoadSoundBank,
+    handleRenderTrackWithSoundBank,
   } = useStudioSession();
 
   const [activeTab, setActiveTab] = useState<'SOURCE' | 'EDIT' | 'SOUND' | 'SYNTH_DSP' | 'LAYERS' | 'AUTOMATION' | 'FX'>('EDIT');
@@ -125,6 +128,11 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
   // SOUND tab: Audition candidate vs. committed sound
   const [auditionSoundItem, setAuditionSoundItem] = useState<VaultSoundItem | null>(null);
   const [semanticQuery, setSemanticQuery] = useState('');
+  const soundBankInputRef = useRef<HTMLInputElement>(null);
+  const [soundBankProgram, setSoundBankProgram] = useState(0);
+  const [soundBankError, setSoundBankError] = useState<string | null>(null);
+  const [soundBankNotice, setSoundBankNotice] = useState<string | null>(null);
+  const [isRenderingBank, setIsRenderingBank] = useState(false);
   const [selectedSubGenreFilter, setSelectedSubGenreFilter] = useState('ALL');
 
   // Selected Automation Parameter in AUTOMATION tab
@@ -936,6 +944,102 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
                   </span>
                 )}
               </div>
+            </div>
+
+            {/*
+              * R02 INSTRUMENT: a real sampled instrument, from a real file.
+              * The engine this replaced logged "Initializing SpessaSynth Core"
+              * without importing it, named six presets for a .sf2 that is not
+              * in this repository, and played two oscillators.
+              */}
+            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-bold text-slate-300">SAMPLED INSTRUMENT (R02)</span>
+                <span className="text-slate-500 font-mono text-[9px]">
+                  {loadedSoundBank
+                    ? `${loadedSoundBank.name} · ${loadedSoundBank.presets.length} presets`
+                    : 'no sound bank loaded'}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  ref={soundBankInputRef}
+                  type="file"
+                  accept=".sf2,.sf3,.dls"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setSoundBankError(null);
+                    try {
+                      await handleLoadSoundBank(file);
+                    } catch (err) {
+                      setSoundBankError(
+                        err instanceof Error ? err.message : 'That file could not be read as a sound bank.'
+                      );
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  data-testid="load-sound-bank"
+                  onClick={() => soundBankInputRef.current?.click()}
+                  className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 text-[10px] font-bold transition cursor-pointer"
+                >
+                  LOAD .SF2
+                </button>
+
+                <select
+                  data-testid="sound-bank-preset"
+                  value={soundBankProgram}
+                  onChange={(e) => setSoundBankProgram(Number(e.target.value))}
+                  disabled={!loadedSoundBank}
+                  className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[10px] text-slate-200 font-mono disabled:opacity-40"
+                >
+                  {(loadedSoundBank?.presets || []).map((p) => (
+                    <option key={`${p.bank}:${p.program}`} value={p.program}>
+                      {p.name} ({p.program})
+                    </option>
+                  ))}
+                  {!loadedSoundBank && <option value={0}>&mdash;</option>}
+                </select>
+
+                <button
+                  type="button"
+                  data-testid="render-with-sound-bank"
+                  disabled={isRenderingBank}
+                  onClick={async () => {
+                    setSoundBankError(null);
+                    setIsRenderingBank(true);
+                    try {
+                      const res = await handleRenderTrackWithSoundBank(track.id, soundBankProgram);
+                      setSoundBankNotice(res.ok ? res.message : null);
+                      setSoundBankError(res.ok ? null : res.message);
+                    } finally {
+                      setIsRenderingBank(false);
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25 disabled:opacity-40 text-[10px] font-bold transition cursor-pointer"
+                >
+                  {isRenderingBank ? 'RENDERING\u2026' : 'RENDER THIS TRACK'}
+                </button>
+              </div>
+
+              {soundBankError ? (
+                <p data-testid="sound-bank-error" className="text-[10px] text-rose-300 font-sans leading-snug">
+                  {soundBankError}
+                </p>
+              ) : soundBankNotice ? (
+                <p data-testid="sound-bank-notice" className="text-[10px] text-emerald-300 font-sans leading-snug">
+                  {soundBankNotice}
+                </p>
+              ) : (
+                <p className="text-[10px] text-slate-500 font-sans leading-snug">
+                  A sampled instrument renders its own audio, so the result lands on this track&apos;s
+                  timeline as a clip &mdash; undoable, and in the bounce.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">

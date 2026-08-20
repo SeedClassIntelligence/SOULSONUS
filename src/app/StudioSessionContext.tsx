@@ -78,6 +78,7 @@ import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerfo
 import { toMono } from '../audio/fft';
 import { renderMasterBounce } from '../audio/masterRender';
 import { transcribe } from '../audio/basicPitch';
+import { LoadedSoundBank, SoundFontUnavailableError, soundFontEngine } from '../audio/soundFont';
 import { defaultTrackDsp } from '../audio/trackStrip';
 import { registerAudioAsset, makeClip, PlaceClipOptions } from '../audio/audioClips';
 import { buildDeliveryPackage, disposeDelivery, DeliveryPackage } from '../audio/deliveryPackage';
@@ -497,6 +498,17 @@ export interface StudioSessionState {
     options: { name: string; originType: AudioAssetOrigin; parentAssetIds?: string[] }
   ) => Promise<AudioAsset>;
   handlePlaceAudioClip: (trackId: string, assetId: string, options?: PlaceClipOptions) => AudioClip | null;
+  /** Loads a .sf2 / .sf3 / .dls file for the INSTRUMENT route. */
+  handleLoadSoundBank: (file: File) => Promise<LoadedSoundBank>;
+  loadedSoundBank: LoadedSoundBank | null;
+  /**
+   * Renders a track's notes through the loaded sound bank and places the
+   * result on its timeline as an audio clip.
+   */
+  handleRenderTrackWithSoundBank: (
+    trackId: string,
+    program?: number
+  ) => Promise<{ ok: boolean; message: string; notesRendered?: number; durationSeconds?: number }>;
   handleMoveAudioClip: (clipId: string, deltaTicks: number) => void;
   /** One undoable write for a whole drag or trim gesture. */
   handleUpdateAudioClip: (clipId: string, patch: Partial<AudioClip>, label?: string) => void;
@@ -944,12 +956,94 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
+  const [loadedSoundBank, setLoadedSoundBank] = useState<LoadedSoundBank | null>(null);
+
+  /**
+   * Loads a sound bank for the INSTRUMENT route.
+   *
+   * No bank ships with the app: a General MIDI set is tens of megabytes and
+   * carries its own licence. The engine this replaced listed six presets --
+   * "Concert Grand Piano", "Vintage Rhodes Electric Piano" -- for a
+   * `/soundfonts/general_midi.sf2` that is not in this repository, and played
+   * two oscillators instead.
+   */
+  const handleLoadSoundBank = useCallback(async (file: File): Promise<LoadedSoundBank> => {
+    const buffer = await file.arrayBuffer();
+    const loaded = soundFontEngine.load(buffer, file.name);
+    setLoadedSoundBank(loaded);
+    return loaded;
+  }, []);
+
+  /**
+   * Renders a track's notes through the bank and puts the audio on its lane.
+   *
+   * A sampled instrument cannot be a Tone voice in this engine -- it renders
+   * its own audio -- so the honest result is exactly what a sampler produces:
+   * audio, on the timeline, as a clip. It rides the same asset and clip types
+   * as a recording, so it is undoable, it survives a reload and it reaches the
+   * bounce, with none of that needing to be built again.
+   */
+  const handleRenderTrackWithSoundBank = useCallback(
+    async (trackId: string, program = 0) => {
+      const track = tracksRef.current.find((t) => t.id === trackId);
+      if (!track) return { ok: false, message: 'That channel is not in the project.' };
+      const notes = track.noteEvents || [];
+      if (!notes.length) {
+        return { ok: false, message: `${track.name} has no notes to render.` };
+      }
+
+      const bpm = bpmRef.current || 110;
+      const secondsPerTick = 60 / bpm / 480;
+      try {
+        const rendered = await soundFontEngine.renderSequence({
+          program,
+          notes: notes.map((n) => ({
+            midiNote: n.midiNote,
+            startSeconds: n.startTick * secondsPerTick,
+            durationSeconds: Math.max(0.02, n.durationTicks * secondsPerTick),
+            velocity: n.velocity,
+          })),
+        });
+
+        const encoded = audioEncoders.encode24BitWav(rendered.left, rendered.right, rendered.sampleRate);
+        const presetName =
+          soundFontEngine.current?.presets.find((p) => p.program === program)?.name || `program ${program}`;
+        const asset = await handleRegisterAudioAsset(encoded.dataBlob, {
+          name: `${track.name} — ${presetName}`,
+          originType: 'GENERATED',
+        });
+        pendingLabelRef.current = `Render ${track.name} with ${presetName}`;
+        handlePlaceAudioClip(trackId, asset.id, { startTick: 0 });
+
+        const durationSeconds = rendered.left.length / rendered.sampleRate;
+        return {
+          ok: true,
+          message:
+            `Rendered ${rendered.notesRendered} notes through ${presetName} — ` +
+            `${durationSeconds.toFixed(1)}s of audio on ${track.name}.`,
+          notesRendered: rendered.notesRendered,
+          durationSeconds,
+        };
+      } catch (err) {
+        // "No bank loaded" is a state, not a crash, and it says what to do.
+        if (err instanceof SoundFontUnavailableError) {
+          return { ok: false, message: err.message };
+        }
+        return { ok: false, message: err instanceof Error ? err.message : 'The render failed.' };
+      }
+    },
+    []
+  );
+
   const handlePlaceAudioClip = useCallback(
     (trackId: string, assetId: string, options: PlaceClipOptions = {}): AudioClip | null => {
       const asset = audioAssetsRef.current[assetId];
       if (!asset) return null;
       const clip = makeClip(asset, trackId, bpmRef.current || 110, options);
-      pendingLabelRef.current = `Place ${asset.name}`;
+      // A caller that already named the action keeps its name: "Render Lead
+      // Synth with Saw Wave" is what happened, and "Place ..." would describe
+      // only the last step of it.
+      if (!pendingLabelRef.current) pendingLabelRef.current = `Place ${asset.name}`;
       updateTracksWithHistory((prev) =>
         prev.map((t) => (t.id === trackId ? { ...t, audioClips: [...(t.audioClips || []), clip] } : t))
       );
@@ -4123,6 +4217,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       audioAssets,
       handleRegisterAudioAsset,
       handlePlaceAudioClip,
+      handleLoadSoundBank,
+      loadedSoundBank,
+      handleRenderTrackWithSoundBank,
       handleMoveAudioClip,
       handleUpdateAudioClip,
       selectedClipId,
@@ -4283,6 +4380,14 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       handleToggleTrackViewMode,
     }),
     [
+      // These three were missing, and `loadedSoundBank` showed why it matters:
+      // it changes on its own, with no track edit alongside it, so the memo
+      // never re-ran and the panel kept reading `null` while the engine had
+      // the bank. `audioAssets` and `selectedClipId` had been getting away
+      // with it because a track change always happened at the same moment.
+      loadedSoundBank,
+      audioAssets,
+      selectedClipId,
       activeWorkspace,
       selectionContext,
       activeProductionScope,
