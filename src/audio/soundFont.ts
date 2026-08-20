@@ -101,6 +101,39 @@ export class SoundFontEngine {
     return this.loaded;
   }
 
+  /**
+   * The zones the loaded bank actually contains: which key, which velocities,
+   * which sample.
+   *
+   * Read off the bank rather than inferred by probing it. Anything that wants
+   * to pre-render a bank -- the live sampled voice does -- needs to know what
+   * the zones are, and the bank already knows.
+   */
+  zones(): { key: number; velMin: number; velMax: number; sample: string }[] {
+    if (!this.bank) return [];
+    const out: { key: number; velMin: number; velMax: number; sample: string }[] = [];
+    for (const preset of this.bank.presets) {
+      for (const presetZone of preset.zones) {
+        const instrument = (presetZone as { instrument?: { zones?: unknown[] } }).instrument;
+        for (const zone of (instrument?.zones || []) as {
+          keyRange?: { min: number; max: number };
+          velRange?: { min: number; max: number };
+          sample?: { name?: string };
+        }[]) {
+          const keyRange = zone.keyRange;
+          if (!keyRange || keyRange.min !== keyRange.max) continue;
+          out.push({
+            key: keyRange.min,
+            velMin: zone.velRange?.min ?? 0,
+            velMax: zone.velRange?.max ?? 127,
+            sample: zone.sample?.name || 'unnamed',
+          });
+        }
+      }
+    }
+    return out;
+  }
+
   unload(): void {
     this.bank = null;
     this.loaded = null;

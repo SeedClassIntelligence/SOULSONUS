@@ -83,6 +83,8 @@ import { renderMasterBounce } from '../audio/masterRender';
 import { transcribe } from '../audio/basicPitch';
 import { startTakeRecording, TakeRecording } from '../audio/takeRecorder';
 import { LoadedSoundBank, SoundFontUnavailableError, soundFontEngine } from '../audio/soundFont';
+import { prepareSampledInstrument } from '../audio/sampledInstrument';
+import * as Tone from 'tone';
 import { defaultTrackDsp } from '../audio/trackStrip';
 import { registerAudioAsset, makeClip, PlaceClipOptions } from '../audio/audioClips';
 import { buildDeliveryPackage, disposeDelivery, DeliveryPackage } from '../audio/deliveryPackage';
@@ -1002,8 +1004,11 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const handleLoadSoundBank = useCallback(async (file: File): Promise<LoadedSoundBank> => {
     const buffer = await file.arrayBuffer();
     const loaded = soundFontEngine.load(buffer, file.name);
-    // A creator's own bank carries no key map; its notes are played as written.
+    // A creator's own bank carries no key map, so the studio does not know
+    // where its channels land on it. It renders as written, and the live
+    // drum voices stay synthesised rather than guessing.
     loadedFactoryEntryRef.current = null;
+    audioEngine.setSampledKit(null);
     setLoadedSoundBank(loaded);
     return loaded;
   }, []);
@@ -1035,11 +1040,37 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         const loaded = soundFontEngine.load(buffer, entry.name);
         loadedFactoryEntryRef.current = entry;
         setLoadedSoundBank(loaded);
+
+        // Rendering it onto the timeline was never the point on its own. Every
+        // zone is pre-rendered here so the kit plays under the fingers, which
+        // is the difference between a sound you commit to and one you play.
+        let live = '';
+        if (entry.keyMap) {
+          try {
+            await audioEngine.init();
+            const zones = soundFontEngine.zones();
+            const kit = await prepareSampledInstrument(
+              entry.name,
+              zones.map((z) => ({ key: z.key, velMin: z.velMin, velMax: z.velMax, name: z.sample })),
+              (key, velocity) => soundFontEngine.renderNote({ midiNote: key, velocity, holdSeconds: 0.25, tailSeconds: 3.5 }),
+              Tone.getContext().rawContext as unknown as BaseAudioContext
+            );
+            audioEngine.setSampledKit(kit, entry.keyMap);
+            live = ` Playing live on ${kit.zoneCount} zones (${kit.seconds().toFixed(1)}s of audio held).`;
+          } catch (err) {
+            // A kit that will not pre-render still renders to the timeline, so
+            // this says what was lost rather than failing the whole load.
+            live = ` It renders to the timeline, but could not be prepared for live play: ${
+              err instanceof Error ? err.message : 'unknown reason'
+            }.`;
+          }
+        }
+
         return {
           ok: true,
           message:
             `${entry.name} loaded — ${loaded.presets.length} preset(s), ` +
-            `${Math.round(loaded.byteLength / 1024)} KB, ${entry.admission?.license}.`,
+            `${Math.round(loaded.byteLength / 1024)} KB, ${entry.admission?.license}.${live}`,
         };
       } catch (err) {
         return { ok: false, message: err instanceof Error ? err.message : 'The instrument failed to load.' };

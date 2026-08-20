@@ -1,6 +1,7 @@
 import * as Tone from 'tone';
 import { Track, InstrumentType, TrackDspSettings } from '../types/daw';
 import { vocalRecorder } from './vocalRecorder';
+import { SampledInstrument, getCurrentSampledKit, setCurrentSampledKit } from './sampledInstrument';
 import { vocalDspProcessor } from './vocalDspProcessor';
 import { tickToStep, midiToNoteName } from '../utils/musicMath';
 import { applyInstrumentParams, createInstrumentVoices, expressiveVelocity, HIHAT_FREQUENCY, InstrumentVoices } from './instrumentVoices';
@@ -233,6 +234,70 @@ export class AudioEngine {
   }
 
   /**
+   * Puts a sampled instrument in front of the synthesised drum voices.
+   *
+   * A drum channel plays the kit instead of its own voice, per key: a kit
+   * covering kick and snare but not the hi-hat leaves the hi-hat synthesised
+   * rather than going silent or substituting something near it.
+   *
+   * Passing null returns the studio to its own synths, which is what happens
+   * when a creator loads a bank of their own: their bank has no map from
+   * these channels onto its keys, so playing it live would be a guess.
+   */
+  public setSampledKit(kit: SampledInstrument | null, keyMap?: Record<string, number>) {
+    setCurrentSampledKit(kit && keyMap ? { instrument: kit, keyMap } : null);
+  }
+
+  public get sampledKitName(): string | null {
+    return getCurrentSampledKit()?.instrument.name || null;
+  }
+
+  /**
+   * Plays a sampled hit if the kit covers this key.
+   *
+   * Returns false when it does not, so every caller falls through to its
+   * synthesised voice rather than dropping the note.
+   */
+  private triggerSampled(
+    instrument: string,
+    midiVelocity: number,
+    gain: number,
+    targetTrack?: Track,
+    time?: number
+  ): boolean {
+    const loaded = getCurrentSampledKit();
+    const key = loaded?.keyMap[instrument];
+    if (!loaded || typeof key !== 'number' || !this.initialized) return false;
+    const picked = loaded.instrument.select(key, midiVelocity);
+    if (!picked) return false;
+    // Tone nodes throughout, not native ones. The channel strip is built from
+    // Tone nodes, and a native GainNode cannot connect to one -- an earlier
+    // version of this did exactly that, threw inside the try, and reported
+    // itself as "the kit does not cover this key" while the synths carried on.
+    const nodes = targetTrack ? this.getOrCreateTrackNodes(targetTrack) : null;
+    const destination = nodes ? nodes.strip.input : this.masterCompressor;
+    if (!destination) return false;
+    try {
+      // The zone's own velocity scaling, then the gain the caller asked for --
+      // track volume and expression already live in that second number.
+      const amp = new Tone.Gain(picked.gain * Math.max(0, Math.min(1, gain))).connect(destination);
+      const source = new Tone.ToneBufferSource(picked.zone.buffer).connect(amp);
+      source.onended = () => {
+        try {
+          source.dispose();
+          amp.dispose();
+        } catch {
+          /* already torn down */
+        }
+      };
+      source.start(time ?? Tone.now());
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Dispatches a live-monitoring hit for a track's instrument.
    * `midiVelocity` is 1..127; the synths take a 0..1 gain.
    */
@@ -245,11 +310,11 @@ export class AudioEngine {
     const gain = Math.max(0.05, Math.min(1, midiVelocity / 127));
     switch (instrument) {
       case 'kick':
-        return this.triggerKick(pitchName, undefined, gain, targetTrack, 0.3);
+        return this.triggerKick(pitchName, undefined, gain, targetTrack, 0.3, midiVelocity);
       case 'snare':
-        return this.triggerSnare(undefined, gain, targetTrack, 0.3);
+        return this.triggerSnare(undefined, gain, targetTrack, 0.3, midiVelocity);
       case 'hihat':
-        return this.triggerHiHat(undefined, gain, targetTrack, 0.2);
+        return this.triggerHiHat(undefined, gain, targetTrack, 0.2, midiVelocity);
       case 'bass':
         return this.triggerBass(pitchName, undefined, gain, targetTrack, 0.4);
       default:
@@ -257,7 +322,17 @@ export class AudioEngine {
     }
   }
 
-  public triggerKick(note = 'C1', time?: number, velocity = 1, targetTrack?: Track, duration: string | number = '8n') {
+  public triggerKick(
+    note = 'C1',
+    time?: number,
+    velocity = 1,
+    targetTrack?: Track,
+    duration: string | number = '8n',
+    midiVelocity?: number
+  ) {
+    // The kit is asked first. `midiVelocity` picks the recording; `velocity`
+    // is the gain the caller wants, and already carries track volume.
+    if (this.triggerSampled('kick', midiVelocity ?? Math.round(velocity * 127), velocity, targetTrack, time)) return;
     if (!this.initialized || !this.kickSynth) return;
     try {
       const nodes = targetTrack ? this.getOrCreateTrackNodes(targetTrack) : null;
@@ -280,7 +355,14 @@ export class AudioEngine {
     }
   }
 
-  public triggerSnare(time?: number, velocity = 1, targetTrack?: Track, duration: string | number = '16n') {
+  public triggerSnare(
+    time?: number,
+    velocity = 1,
+    targetTrack?: Track,
+    duration: string | number = '16n',
+    midiVelocity?: number
+  ) {
+    if (this.triggerSampled('snare', midiVelocity ?? Math.round(velocity * 127), velocity, targetTrack, time)) return;
     if (!this.initialized || !this.snareSynth) return;
     try {
       const nodes = targetTrack ? this.getOrCreateTrackNodes(targetTrack) : null;
@@ -302,7 +384,14 @@ export class AudioEngine {
     }
   }
 
-  public triggerHiHat(time?: number, velocity = 0.8, targetTrack?: Track, duration: string | number = '32n') {
+  public triggerHiHat(
+    time?: number,
+    velocity = 0.8,
+    targetTrack?: Track,
+    duration: string | number = '32n',
+    midiVelocity?: number
+  ) {
+    if (this.triggerSampled('hihat', midiVelocity ?? Math.round(velocity * 127), velocity, targetTrack, time)) return;
     if (!this.initialized || !this.hihatSynth) return;
     try {
       const nodes = targetTrack ? this.getOrCreateTrackNodes(targetTrack) : null;
@@ -590,11 +679,11 @@ export class AudioEngine {
             const notePitch = midiToNoteName(ev.midiNote);
 
             if (track.instrument === 'kick') {
-              this.triggerKick(notePitch, time, noteVel, track, durSec);
+              this.triggerKick(notePitch, time, noteVel, track, durSec, ev.velocity);
             } else if (track.instrument === 'snare') {
-              this.triggerSnare(time, noteVel, track, durSec);
+              this.triggerSnare(time, noteVel, track, durSec, ev.velocity);
             } else if (track.instrument === 'hihat') {
-              this.triggerHiHat(time, noteVel, track, durSec);
+              this.triggerHiHat(time, noteVel, track, durSec, ev.velocity);
             } else if (track.instrument === 'bass') {
               this.triggerBass(notePitch, time, noteVel, track, durSec);
             } else {

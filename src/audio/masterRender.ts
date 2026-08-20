@@ -28,6 +28,7 @@ import { AudioAsset } from '../types/daw';
 import { resolveClips, ticksToSeconds, clipsEndTick } from './audioClips';
 import { midiToNoteName, tickToStep } from '../utils/musicMath';
 import { limitTruePeak, TruePeakLimitResult } from './truePeakLimiter';
+import { LoadedKit, getCurrentSampledKit } from './sampledInstrument';
 
 export interface RenderOptions {
   tracks: Track[];
@@ -42,6 +43,14 @@ export interface RenderOptions {
   onlyTrackIds?: string[];
   /** Assets backing any timeline clips. Without these, clips bounce silent. */
   audioAssets?: Record<string, AudioAsset>;
+  /**
+   * The sampled kit, when one is loaded and playing live.
+   *
+   * Without this the bounce builds its own synthesised voices and the kit
+   * vanishes from the export -- the same failure the clip handling above
+   * exists to prevent. What a creator heard has to be what they get.
+   */
+  sampledKit?: LoadedKit | null;
 }
 
 export interface RenderResult {
@@ -190,7 +199,38 @@ export async function renderMasterBounce(options: RenderOptions): Promise<Render
       pools.set(track.id, { voices, next: 0 });
     }
 
-    const triggerAt = (track: Track, pitch: string, when: number, velocity: number, durSec: number) => {
+    /**
+     * Plays the kit for this track, if the kit covers it.
+     *
+     * A one-shot buffer per hit, exactly as the live engine does it, through
+     * the same strip as the synthesised voice would have used.
+     */
+    const triggerSampled = (track: Track, when: number, midiVelocity: number, gain: number): boolean => {
+      // Defaults to whatever the studio is playing, so a bounce started from
+      // anywhere -- the master room, a stem export, the masking analysis --
+      // hears the same kit the creator does.
+      const kit = options.sampledKit === undefined ? getCurrentSampledKit() : options.sampledKit;
+      const strip = strips.get(track.id);
+      const key = kit?.keyMap[track.instrument];
+      if (!kit || !strip || typeof key !== 'number') return false;
+      const picked = kit.instrument.select(key, midiVelocity);
+      if (!picked) return false;
+      const amp = new Tone.Gain(picked.gain * gain).connect(strip.input);
+      const source = new Tone.ToneBufferSource(picked.zone.buffer).connect(amp);
+      source.start(when);
+      eventsRendered++;
+      return true;
+    };
+
+    const triggerAt = (
+      track: Track,
+      pitch: string,
+      when: number,
+      velocity: number,
+      durSec: number,
+      midiVelocity?: number
+    ) => {
+      if (triggerSampled(track, when, midiVelocity ?? Math.round(velocity * 127), velocity)) return;
       const pool = pools.get(track.id);
       if (!pool) return;
       const voice = pool.voices[pool.next % pool.voices.length];
@@ -236,7 +276,7 @@ export async function renderMasterBounce(options: RenderOptions): Promise<Render
           const gap = next ? (next.startTick - ev.startTick) / 480 * secondsPerBeat : Infinity;
           const durSec = Math.max(0.02, Math.min(requested, gap - 0.005));
           const velocity = Math.max(0.05, Math.min(1, ev.velocity / 127));
-          triggerAt(track, midiToNoteName(ev.midiNote), when, velocity, durSec);
+          triggerAt(track, midiToNoteName(ev.midiNote), when, velocity, durSec, ev.velocity);
         }
       } else {
         const activeSteps: number[] = [];
