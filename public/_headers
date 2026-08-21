@@ -1,0 +1,30 @@
+/*
+  X-Frame-Options: DENY
+  X-XSS-Protection: 1; mode=block
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# The ONNX wasm runtime must be served with its real type or the browser
+# refuses to stream-compile it. Named explicitly rather than by a *.wasm
+# glob: scripts/copy-ort.cjs copies exactly these two files, and Cloudflare's
+# _headers matcher does not reliably support a mid-path extension wildcard
+# the way Netlify's redirect engine does.
+/ort/ort-wasm-simd-threaded.wasm
+  Content-Type: application/wasm
+  Cache-Control: public, max-age=31536000, immutable
+
+/ort/ort-wasm-simd-threaded.mjs
+  Content-Type: text/javascript
+  Cache-Control: public, max-age=31536000, immutable
+
+/models/*
+  Content-Type: application/octet-stream
+  Cache-Control: public, max-age=31536000, immutable
+
+/samples/*
+  Content-Type: audio/wav
+  Cache-Control: public, max-age=31536000, immutable
+
+/audio/*
+  Content-Type: audio/wav
+  Cache-Control: public, max-age=31536000, immutable

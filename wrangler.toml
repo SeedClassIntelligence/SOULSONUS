@@ -1,0 +1,14 @@
+# Cloudflare Pages config. Build output and routing mirror netlify.toml:
+# static site from `dist/`, one API function at /api/e05 (see functions/api/e05.ts).
+#
+# ACE_STEP_ENDPOINT and ACE_STEP_API_KEY are not set here — configure them as
+# encrypted Pages secrets (dashboard: Settings > Environment variables, or
+# `wrangler pages secret put ACE_STEP_API_KEY`), the same way they are set as
+# environment variables in the Netlify UI today. Nothing server-side should be
+# committed to this file.
+name = "soulsonus"
+compatibility_date = "2026-08-21"
+pages_build_output_dir = "dist"
+
+[build]
+command = "npm run build"
