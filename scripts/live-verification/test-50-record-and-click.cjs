@@ -85,6 +85,37 @@ const STATE = `s => JSON.stringify({
   check('and offers to record again', (await recLabel()).includes('REC'), await recLabel());
   check('the take is still there afterwards', stopped.captured >= during.captured, `${stopped.captured} onsets kept`);
 
+  // ---- and the studio shows what the microphone is doing ----
+  //
+  // The case that produced forty seconds of performing and an empty session
+  // was a microphone that never opened while the studio said it was
+  // recording. Both halves of that are checked: what it says when the mic is
+  // live, and what it says when the mic refuses.
+  console.log('\n-- what the capture row says --');
+  const statusText = async () => (await page.locator('#capture-status').first().innerText()).replace(/\s+/g, ' ').trim();
+  check(
+    'with the mic closed it says nothing is recorded yet',
+    /Nothing is recorded until it does/.test(await statusText()),
+    await statusText()
+  );
+
+  await page.locator('[data-testid="capture-mouth"]').first().click();
+  await page.waitForTimeout(1200);
+  check('with the mic open it says it is listening', /LISTENING/.test(await statusText()), await statusText());
+
+  const readings = [];
+  for (let i = 0; i < 6; i++) {
+    await page.waitForTimeout(500);
+    readings.push(await statusText());
+  }
+  check(
+    'and the level meter moves while a performance is happening',
+    new Set(readings).size >= 3,
+    `${new Set(readings).size} distinct readings in 3s — ${readings[1]}`
+  );
+  await page.locator('#btn-mic-arm').first().click();
+  await page.waitForTimeout(2000);
+
   // ---- the metronome makes a sound ----
   console.log('\n-- the metronome --');
   check('it is off until asked for', stopped.metro === false, `metronomeOn=${stopped.metro}`);

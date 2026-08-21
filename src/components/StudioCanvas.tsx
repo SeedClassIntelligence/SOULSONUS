@@ -219,6 +219,8 @@ export const StudioCanvas: React.FC = () => {
     handleQuantizeTrackNotes,
     detectionSettings,
     setDetectionSettings,
+    captureError,
+    setCaptureError,
     setIsAudioImportModalOpen,
     editorPrefs,
     updateEditorPrefs,
@@ -378,27 +380,56 @@ export const StudioCanvas: React.FC = () => {
       setIsAudioImportModalOpen(true);
       return;
     }
+    if (modality !== 'MOUTH' && modality !== 'BODY' && modality !== 'KEYS') return;
+
+    // The microphone first, and only then the track.
+    //
+    // This used to create the seed track, arm the classifier and mark the
+    // studio as recording without ever looking at whether the microphone
+    // opened. `detectionEngine.start()` returns false and logs to the console
+    // when getUserMedia is refused -- in a sandboxed frame, on a denied
+    // permission, with no input device -- and the result was discarded. What a
+    // creator saw was a pulsing record button, an armed capture row, and after
+    // forty seconds of performing: no notes, no waveform, no audio, nothing to
+    // play back. Identical to a studio that simply does not work.
+    setCaptureError(null);
+    if (detectionSettings.enabled) return;
+
+    detectionEngine.setCaptureModality(modality);
+    const opened = await detectionEngine.start();
+    if (!opened) {
+      detectionEngine.setCaptureModality(null);
+      setCaptureError(
+        'The microphone did not open, so nothing is being recorded. The browser refused access — ' +
+          'check that this page is allowed to use the microphone, that a device is connected, and that ' +
+          'the page is not running inside a frame that blocks it.'
+      );
+      return;
+    }
+
     const seedTrackId = handleCreateSourceTrack(modality);
-    if (modality === 'MOUTH' || modality === 'BODY' || modality === 'KEYS') {
-      // Arm the classifier for this kind of performance so captured sounds are
-      // scored only against the classes this modality can actually produce.
-      detectionEngine.setCaptureModality(modality);
-      if (!detectionSettings.enabled) {
-        // Keep the performance itself, not just what was classified out of it.
-        // The seed track is meant to be the record of what was played; without
-        // this it held nothing at all, and the take that produced the whole
-        // session could never be extracted again.
-        if (modality !== 'KEYS') void startSeedRecording(seedTrackId);
-        await detectionEngine.start();
-        setDetectionSettings((prev) => ({
-          ...prev,
-          enabled: true,
-          micConnected: true,
-          kickThreshold: modality === 'MOUTH' ? 0.45 : 0.6,
-          snareThreshold: modality === 'MOUTH' ? 0.45 : 0.35,
-        }));
+
+    // Keep the performance itself, not just what was classified out of it.
+    // This opens the microphone a second time, for the recorder, and it can
+    // fail on its own -- so it is reported on its own rather than folded into
+    // the classifier's success.
+    if (modality !== 'KEYS') {
+      const kept = await startSeedRecording(seedTrackId);
+      if (!kept) {
+        setCaptureError(
+          'Listening, and classifying what you play — but the recorder could not open the microphone, ' +
+            'so the take itself is not being kept this time.'
+        );
       }
     }
+
+    setDetectionSettings((prev) => ({
+      ...prev,
+      enabled: true,
+      micConnected: true,
+      kickThreshold: modality === 'MOUTH' ? 0.45 : 0.6,
+      snareThreshold: modality === 'MOUTH' ? 0.45 : 0.35,
+    }));
   };
 
   const getTrackTheme = (track: Track) => {
@@ -870,9 +901,47 @@ export const StudioCanvas: React.FC = () => {
                   <div className="text-[11px] font-black text-amber-300 tracking-wider">
                     CREATOR PERFORMANCE CAPTURE:
                   </div>
-                  <div className="text-[9px] text-slate-400">
-                    Instantly create track & arm microphone transient detection
-                  </div>
+                  {/* What the microphone is doing, rather than what was asked
+                      of it. A creator who performs for forty seconds and finds
+                      an empty session needs to have been told, at the moment
+                      it happened, that nothing was being heard. */}
+                  {captureError ? (
+                    <div id="capture-status" className="text-[9px] text-rose-300 max-w-md leading-relaxed">
+                      {captureError}
+                    </div>
+                  ) : detectionSettings.enabled ? (
+                    <div id="capture-status" className="flex items-center gap-2">
+                      <span className="text-[9px] text-emerald-300 font-mono">LISTENING</span>
+                      {/* Live input, so silence looks like silence and a hit
+                          looks like a hit. These meters existed in the
+                          calibration drawer and never moved, because nothing
+                          was reading what the engine measures. */}
+                      <div className="flex items-center gap-1" title="Live input level: low band and high band">
+                        <div className="w-16 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                          <div
+                            id="meter-low"
+                            className="h-full bg-amber-400 transition-[width] duration-75"
+                            style={{ width: `${Math.min(100, (detectionSettings.currentLowLevel || 0) * 100)}%` }}
+                          />
+                        </div>
+                        <div className="w-16 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                          <div
+                            id="meter-high"
+                            className="h-full bg-cyan-400 transition-[width] duration-75"
+                            style={{ width: `${Math.min(100, (detectionSettings.currentHighLevel || 0) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span className="text-[9px] text-slate-500 font-mono">
+                        {Math.round((detectionSettings.currentLowLevel || 0) * 100)}% /{' '}
+                        {Math.round((detectionSettings.currentHighLevel || 0) * 100)}%
+                      </span>
+                    </div>
+                  ) : (
+                    <div id="capture-status" className="text-[9px] text-slate-400">
+                      Creates a track and opens the microphone. Nothing is recorded until it does.
+                    </div>
+                  )}
                 </div>
               </div>
 

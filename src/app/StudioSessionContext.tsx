@@ -603,6 +603,18 @@ export interface StudioSessionState {
   startSeedRecording: (trackId: string) => Promise<boolean>;
   /** Attaches the kept performance to its seed track. Null if nothing usable was recorded. */
   stopSeedRecording: () => Promise<{ trackId: string; seconds: number } | null>;
+  /**
+   * Why capture is not running, when it is not.
+   *
+   * Arming used to mark the studio as recording without ever looking at
+   * whether the microphone opened: `detectionEngine.start()` returns false and
+   * logs to the console when `getUserMedia` is refused, and the caller
+   * discarded it. So a blocked or missing microphone produced a pulsing record
+   * button, an armed capture row, and nothing at all in the session -- which
+   * is indistinguishable from a studio that does not work.
+   */
+  captureError: string | null;
+  setCaptureError: React.Dispatch<React.SetStateAction<string | null>>;
   /** Turns the click on or off, and starts it if nothing else is running the clock. */
   handleToggleMetronome: () => Promise<boolean>;
   /** Ends capture: classifier off, modality cleared, take kept, microphone released. */
@@ -1523,6 +1535,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    * notes in bar 5 rather than at the top of the song.
    */
   const captureOriginMsRef = useRef<number | null>(null);
+  /** Throttles the meter, which the engine offers on every animation frame. */
+  const lastMeterAtRef = useRef(0);
   const captureOriginSecondsRef = useRef(0);
 
   /**
@@ -1958,6 +1972,20 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       onCaptureEvent: (event) => {
         monitorCaptureEvent(event);
         commitCaptureEvents([event]);
+      },
+      // The engine has always measured this and nothing ever asked for it, so
+      // `currentLowLevel` and `currentHighLevel` sat at 0 and the calibration
+      // meters drawn from them never moved. A creator had no way to see
+      // whether the microphone was hearing anything at all.
+      onMeterUpdate: (lowLevel, highLevel) => {
+        const now = Date.now();
+        if (now - lastMeterAtRef.current < 80) return; // ~12 times a second is enough to watch
+        lastMeterAtRef.current = now;
+        setDetectionSettings((prev) =>
+          prev.currentLowLevel === lowLevel && prev.currentHighLevel === highLevel
+            ? prev
+            : { ...prev, currentLowLevel: lowLevel, currentHighLevel: highLevel }
+        );
       },
     });
   }, [tracks, monitorCaptureEvent, commitCaptureEvents]);
@@ -2614,6 +2642,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    * playing back other material is not much use to someone laying down the
    * first thing in a session.
    */
+  const [captureError, setCaptureError] = useState<string | null>(null);
+
   const handleToggleMetronome = useCallback(async (): Promise<boolean> => {
     const next = !dawStateRef.current.metronomeOn;
     await audioEngine.init();
@@ -4681,6 +4711,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       startSeedRecording,
       stopSeedRecording,
       handleStopCapture,
+      captureError,
+      setCaptureError,
       handleToggleMetronome,
       handleCallSessionPlayer,
       handleLoadFactoryInstrument,
@@ -4859,6 +4891,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       startSeedRecording,
       stopSeedRecording,
       handleStopCapture,
+      captureError,
+      setCaptureError,
       handleToggleMetronome,
       handleCallSessionPlayer,
       handleLoadFactoryInstrument,
