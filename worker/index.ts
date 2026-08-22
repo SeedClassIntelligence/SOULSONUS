@@ -1,21 +1,16 @@
 /**
- * The SoulSonus service route for E05 realization — Cloudflare Pages Functions port.
+ * The Cloudflare Worker entry point for SoulSonus.
  *
- * Same contract as netlify/functions/e05.ts, same reasons for existing:
- *
- *  - ACE's own CORS policy (acestep/api/route_setup.py) admits only localhost
- *    and 127.0.0.1 origins, so a browser on the deployed site is refused
- *    before the model is consulted.
- *  - The API key lives in ACE_STEP_API_KEY, set as a Pages secret. Anything
- *    the client bundle can read, anyone can read.
- *
- * This route translates and governs. It does not orchestrate inference.
- *
- * Pages Functions route by file path — this file answers /api/e05 with no
- * redirect rule needed, unlike the Netlify redirect in netlify.toml. Env vars
- * come through `context.env` rather than `process.env`, which is the one
- * structural difference from the Netlify version; the request/response
- * handling below is otherwise a straight port.
+ * This is a Workers project (Workers Builds, `npx wrangler deploy`), not a
+ * Pages project -- those are different Cloudflare products with different
+ * config shapes. A `pages_build_output_dir` in wrangler.toml or a Pages
+ * Function under functions/ means nothing to `wrangler deploy`; it needs a
+ * `main` entry point that exports a fetch handler, which is what this file
+ * is. The static site is served through the ASSETS binding declared in
+ * wrangler.toml's [assets] block, which points at dist/ -- the one thing
+ * this Worker does beyond that is answer /api/e05, ported straight from
+ * netlify/functions/e05.ts (same contract, same reasons for existing: ACE's
+ * CORS policy admits only localhost, and the API key must stay server-side).
  */
 
 import {
@@ -25,16 +20,16 @@ import {
   e05StateFromAceStatus,
   toAceTaskBody,
   validateE05Request,
-} from '../../src/lib/inference/e05Contract';
+} from '../src/lib/inference/e05Contract';
 
-interface Env {
-  ACE_STEP_ENDPOINT?: string;
-  ACE_STEP_API_KEY?: string;
+interface Fetcher {
+  fetch(request: Request): Promise<Response>;
 }
 
-interface PagesContext {
-  request: Request;
-  env: Env;
+interface Env {
+  ASSETS: Fetcher;
+  ACE_STEP_ENDPOINT?: string;
+  ACE_STEP_API_KEY?: string;
 }
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
@@ -188,9 +183,8 @@ async function fetchAudio(path: string, env: Env): Promise<Response> {
   });
 }
 
-export const onRequest = async (context: PagesContext): Promise<Response> => {
-  const { request, env } = context;
-  const url = new URL(request.url);
+async function handleE05(req: Request, env: Env): Promise<Response> {
+  const url = new URL(req.url);
   const action = url.searchParams.get('action') || 'status';
 
   try {
@@ -198,8 +192,8 @@ export const onRequest = async (context: PagesContext): Promise<Response> => {
       case 'status':
         return json(await status(env));
       case 'submit':
-        if (request.method !== 'POST') return json({ error: 'submit is POST.' }, 405);
-        return await submit(request, env);
+        if (req.method !== 'POST') return json({ error: 'submit is POST.' }, 405);
+        return await submit(req, env);
       case 'poll': {
         const jobId = url.searchParams.get('jobId');
         if (!jobId) return json({ error: 'poll needs a jobId.' }, 400);
@@ -218,4 +212,16 @@ export const onRequest = async (context: PagesContext): Promise<Response> => {
     console.error('[e05]', err);
     return json({ error: 'The realization service failed to handle the request.' }, 500);
   }
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname === '/api/e05') {
+      return handleE05(request, env);
+    }
+    // Everything else is the static SPA build, served from the [assets]
+    // binding -- dist/, which already carries _headers and _redirects.
+    return env.ASSETS.fetch(request);
+  },
 };

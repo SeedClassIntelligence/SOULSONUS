@@ -1,14 +1,21 @@
-# Cloudflare Pages config. Build output and routing mirror netlify.toml:
-# static site from `dist/`, one API function at /api/e05 (see functions/api/e05.ts).
+# Cloudflare Workers config for SoulSonus.
 #
-# ACE_STEP_ENDPOINT and ACE_STEP_API_KEY are not set here — configure them as
-# encrypted Pages secrets (dashboard: Settings > Environment variables, or
-# `wrangler pages secret put ACE_STEP_API_KEY`), the same way they are set as
-# environment variables in the Netlify UI today. Nothing server-side should be
-# committed to this file.
+# This is a Workers project (Workers Builds, `npx wrangler deploy`) -- not
+# Pages. main is the Worker entry point; [assets] tells the Worker runtime
+# to serve dist/ as static files for anything worker/index.ts doesn't
+# handle itself. See worker/index.ts for the one route it does handle.
+#
+# ACE_STEP_ENDPOINT and ACE_STEP_API_KEY are not set here -- configure them
+# as encrypted secrets instead: dashboard Settings > Variables and Secrets,
+# or `npx wrangler secret put ACE_STEP_API_KEY`. Nothing server-side should
+# be committed to this file.
 name = "soulsonus"
+main = "worker/index.ts"
 compatibility_date = "2026-08-21"
-pages_build_output_dir = "dist"
+
+[assets]
+directory = "dist"
+binding = "ASSETS"
 
 [build]
-command = "npm run build"
+command = "bun run build"
