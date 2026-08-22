@@ -16,7 +16,16 @@
  * frame head lit 153 -- not by assuming an export order.
  */
 
-import * as ort from 'onnxruntime-web';
+// The wasm-only subpath, not the package root: the root resolves to
+// onnxruntime-web's full bundle, which references the WebGPU/JSEP backend
+// and its 26.8 MB wasm file. Vite's build-time asset scanner copies that
+// file into dist/assets regardless of whether it is ever fetched -- and it
+// never is here, since wasmPaths below is pinned to the plain build and
+// executionProviders never asks for anything but 'wasm'. Cloudflare Pages
+// enforces a 25 MiB per-file limit on deployed assets, which is what
+// actually surfaced this; Netlify's limit is high enough that the dead
+// 26.8 MB file went unnoticed.
+import * as ort from 'onnxruntime-web/wasm';
 
 /** Basic Pitch's own constants. Everything else here is derived from them. */
 export const BP_SAMPLE_RATE = 22050;
