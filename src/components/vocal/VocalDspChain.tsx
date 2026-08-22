@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Track, TrackDspSettings } from '../../types/daw';
+import { Track } from '../../types/daw';
 import { useStudioSession } from '../../app/StudioSessionContext';
 import { Sliders } from 'lucide-react';
 
@@ -14,7 +14,11 @@ export const VocalDspChain: React.FC<VocalDspChainProps> = ({ track }) => {
 
   if (!currentTrack) return <div className="p-6 text-center text-neutral-500">Select a vocal track to configure DSP chain</div>;
 
-  const defaultDsp: TrackDspSettings = {
+  // No type annotation: every field here is a concrete number, and leaving
+  // the type inferred (rather than widening to TrackDspSettings, where every
+  // field is optional) is what lets the merge below resolve to non-optional
+  // values instead of re-losing that guarantee.
+  const defaultDsp = {
     lowCutHz: 80,
     lowGain: -1.5,
     midFreqHz: 3200,
@@ -29,11 +33,14 @@ export const VocalDspChain: React.FC<VocalDspChainProps> = ({ track }) => {
     volume: 0,
   };
 
-  const [localDsp, setLocalDsp] = useState<TrackDspSettings>(currentTrack.dspSettings || defaultDsp);
+  // A merge, not `||`: dspSettings is deliberately partial, so an `||`
+  // fallback never applies once any field has been set, leaving the rest
+  // silently undefined.
+  const [localDsp, setLocalDsp] = useState({ ...defaultDsp, ...currentTrack.dspSettings });
 
   useEffect(() => {
     if (currentTrack?.dspSettings) {
-      setLocalDsp(currentTrack.dspSettings);
+      setLocalDsp({ ...defaultDsp, ...currentTrack.dspSettings });
     }
   }, [currentTrack?.id, currentTrack?.dspSettings]);
 

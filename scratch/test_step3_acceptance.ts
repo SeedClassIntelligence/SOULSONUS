@@ -173,7 +173,7 @@ const lineageEvaluation = evaluateRealizationContract(
 );
 console.log(`  Root Performance: "ast_vox_src_01"`);
 console.log(`  Transformation: "SoulSonusNativeRealizer" -> Derived Vocal Double`);
-console.log(`  Contract Evaluated: Passed=${lineageEvaluation.passedIntentContract}, Rhythm Score=${lineageEvaluation.candidate.preservationScores.rhythm}`);
+console.log(`  Contract Evaluated: Passed=${lineageEvaluation.passedIntentContract}, Rhythm Score=${lineageEvaluation.candidate.preservationScores?.rhythm ?? 'n/a'}`);
 console.log('  ✓ PASS: TEST 9 (Human root performance remains recoverable and explicit)');
 
 // 10. TEST 10 — MIX HANDOFF

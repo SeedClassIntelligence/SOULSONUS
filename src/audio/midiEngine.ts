@@ -20,9 +20,9 @@ type MidiListener = (event: {
 }) => void;
 
 class MidiEngine {
-  private midiAccess: any = null;
-  private inputDevices: Map<string, any> = new Map();
-  private outputDevices: Map<string, any> = new Map();
+  private midiAccess: MIDIAccess | null = null;
+  private inputDevices: Map<string, MIDIInput> = new Map();
+  private outputDevices: Map<string, MIDIOutput> = new Map();
   private listeners: Set<MidiListener> = new Set();
   private hardwareRoutes: Map<string, HardwareRouteConfig> = new Map();
   private clockInterval: NodeJS.Timeout | null = null;
@@ -45,7 +45,7 @@ class MidiEngine {
       this.midiAccess = await navigator.requestMIDIAccess({ sysex: false });
       this.scanDevices();
 
-      this.midiAccess.onstatechange = (e) => {
+      this.midiAccess.onstatechange = (e: MIDIConnectionEvent) => {
         this.scanDevices();
       };
 
@@ -62,12 +62,12 @@ class MidiEngine {
     this.inputDevices.clear();
     this.outputDevices.clear();
 
-    this.midiAccess.inputs.forEach((input) => {
+    this.midiAccess.inputs.forEach((input: MIDIInput) => {
       this.inputDevices.set(input.id, input);
-      input.onmidimessage = (msg) => this.handleIncomingMidi(input.id, input.name || 'MIDI Input', msg);
+      input.onmidimessage = (msg: MIDIMessageEvent) => this.handleIncomingMidi(input.id, input.name || 'MIDI Input', msg);
     });
 
-    this.midiAccess.outputs.forEach((output) => {
+    this.midiAccess.outputs.forEach((output: MIDIOutput) => {
       this.outputDevices.set(output.id, output);
     });
   }
@@ -110,7 +110,7 @@ class MidiEngine {
     return `${notes[noteIndex]}${octave}`;
   }
 
-  private handleIncomingMidi(deviceId: string, deviceName: string, message: any) {
+  private handleIncomingMidi(deviceId: string, deviceName: string, message: MIDIMessageEvent) {
     if (!message.data || message.data.length < 1) return;
 
     const [status, data1, data2] = message.data;

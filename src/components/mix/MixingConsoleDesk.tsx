@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useStudioSession } from '../../app/StudioSessionContext';
 import { Track, MixBusChannel, TrackDspSettings } from '../../types/daw';
+import { defaultTrackDsp } from '../../audio/trackStrip';
 
 export const MixingConsoleDesk: React.FC = () => {
   const {
@@ -101,17 +102,9 @@ export const MixingConsoleDesk: React.FC = () => {
           const isFocused = focusedTrackId === track.id;
           const isSoloed = monitoringMode.soloTrackIds.includes(track.id) || track.solo;
           const isMuted = monitoringMode.muteTrackIds.includes(track.id) || track.mute;
-          const dsp = track.dspSettings || {
-            lowGain: 0,
-            midGain: 0,
-            highGain: 0,
-            compressorThreshold: -18,
-            compressorRatio: 3,
-            reverbSend: 0.15,
-            delaySend: 0.1,
-            pan: 0,
-            volume: track.volume || 0,
-          };
+          // A merge, not `||`: dspSettings is deliberately partial, so an
+          // `||` fallback never applies once any field has been set.
+          const dsp = { ...defaultTrackDsp(track), ...track.dspSettings };
 
           return (
             <div

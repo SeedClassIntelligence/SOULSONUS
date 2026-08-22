@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useStudioSession } from '../../app/StudioSessionContext';
 import { Track, TrackDspSettings, ClipOperationType, InsertPluginCategory } from '../../types/daw';
+import { defaultTrackDsp } from '../../audio/trackStrip';
 
 export const SelectedChannelWorkstation: React.FC = () => {
   const {
@@ -43,17 +44,10 @@ export const SelectedChannelWorkstation: React.FC = () => {
     );
   }
 
-  const dsp: TrackDspSettings = focusedTrack.dspSettings || {
-    lowGain: 0,
-    midGain: 0,
-    highGain: 0,
-    compressorThreshold: -18,
-    compressorRatio: 3,
-    reverbSend: 0.15,
-    delaySend: 0.1,
-    pan: 0,
-    volume: focusedTrack.volume || 0,
-  };
+  // A merge, not `||`: dspSettings is deliberately partial (several panels
+  // write only the fields they own), so an `||` fallback never applies once
+  // any field has been set and leaves the rest silently undefined.
+  const dsp = { ...defaultTrackDsp(focusedTrack), ...focusedTrack.dspSettings };
 
   const handleDspChange = (updates: Partial<TrackDspSettings>) => {
     handleUpdateChannelStrip(focusedTrack.id, updates);

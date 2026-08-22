@@ -38,8 +38,10 @@ const driveAmount = (percent: number) => clamp01(num(percent, 0) / 100) * 0.9;
 /** Fully dry at zero, so an untouched control cannot colour the sound. */
 const driveWet = (percent: number) => clamp01(num(percent, 0) / 100);
 
-/** What a track sounds like before anyone touches a control. */
-export function defaultTrackDsp(track: Track): TrackDspSettings {
+/** What a track sounds like before anyone touches a control. Every field is
+ * assigned below, so callers merging this with a partial override get back
+ * a fully-resolved settings object rather than one still typed optional. */
+export function defaultTrackDsp(track: Track): Required<TrackDspSettings> {
   return {
     filterFreq: defaultFilterFreqFor(track.instrument),
     filterType: 'lowpass',

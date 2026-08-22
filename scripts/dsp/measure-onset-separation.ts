@@ -69,7 +69,7 @@ const measure = (label: string, seconds: number, paint: (o: Float32Array) => voi
   const mark = events.length === sounds ? ' ' : events.length < sounds ? '-' : '+';
   console.log(
     `  ${mark} ${label.padEnd(40)} played ${String(sounds).padStart(2)}   heard ${String(events.length).padStart(2)}   ` +
-      events.map((e) => `${e.klass}@${e.atSeconds.toFixed(3)}`).join(' ')
+      events.map((e) => `${e.klass}@${(e.atSeconds ?? 0).toFixed(3)}`).join(' ')
   );
 };
 

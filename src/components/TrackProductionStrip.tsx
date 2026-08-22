@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Track, AutomationLane, AutomationPoint, InstrumentParameters, TrackDspSettings } from '../types/daw';
+import { defaultTrackDsp } from '../audio/trackStrip';
 import { audioEngine } from '../audio/audioEngine';
 import { rankByTerms } from '../lib/soundVaultSearch';
 import { INACTIVE_REASON, paramIsActive } from '../audio/instrumentVoices';
@@ -219,20 +220,10 @@ export const TrackProductionStrip: React.FC<TrackProductionStripProps> = ({
     expression: 100,
   };
 
-  // Initialize or read canonical track DSP settings
-  const dspSettings: TrackDspSettings = track.dspSettings || {
-    filterFreq: 12400,
-    filterType: 'lowpass',
-    lowGain: 2.0,
-    midGain: -1.0,
-    highGain: 1.5,
-    compressorThreshold: -18,
-    compressorRatio: 4,
-    reverbSend: 0.15,
-    delaySend: 0.10,
-    pan: 0,
-    volume: track.volume || 0,
-  };
+  // Initialize or read canonical track DSP settings. A merge, not `||`:
+  // dspSettings is deliberately partial, so an `||` fallback never applies
+  // once any field has been set.
+  const dspSettings = { ...defaultTrackDsp(track), ...track.dspSettings };
 
   // Canonical automation points
   const activeAutomationLane = track.automationLanes?.find((l) => l.parameter === selectedAutomationParam) || {

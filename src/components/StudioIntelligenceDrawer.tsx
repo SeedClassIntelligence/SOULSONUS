@@ -212,7 +212,7 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
         ...prev,
         {
           sender: 'intelligence',
-          text: `I couldn't find a ${option.apply.targetInstrument || 'target'} track to apply "${option.title}" to.`,
+          text: `I couldn't find a ${option.apply!.targetInstrument || 'target'} track to apply "${option.title}" to.`,
           timestamp: Date.now(),
         },
       ]);

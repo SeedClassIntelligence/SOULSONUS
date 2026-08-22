@@ -159,7 +159,7 @@ export const SoundLibraryModal: React.FC<SoundLibraryModalProps> = ({
                   </span>
                   <button
                     onClick={() => {
-                      onReplaceTrackSound(asset.category as InstrumentType, asset);
+                      onReplaceTrackSound?.(asset.category as InstrumentType, asset);
                       onClose();
                     }}
                     className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition active:scale-95 flex items-center gap-1.5 shadow-md shadow-amber-500/10"
