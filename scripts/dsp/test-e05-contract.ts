@@ -69,17 +69,19 @@ check(
 );
 
 console.log('\n-- the wire body --');
+console.log('   Field names verified against a live ACE-Step-1.5 server, 23 Aug 2026 --');
+console.log('   they differ from SoulSonus\'s own request shape (task_type not task, etc).');
 const extractBody = toAceTaskBody({ task: 'extract', instruction: 'extract the drums' }, '/srv/take.wav');
-check('extract carries task and instruction', extractBody.task === 'extract' && !!extractBody.instruction, JSON.stringify(extractBody));
-check('source path is passed as src_audio', extractBody.src_audio === '/srv/take.wav', String(extractBody.src_audio));
+check('extract carries task_type and instruction', extractBody.task_type === 'extract' && !!extractBody.instruction, JSON.stringify(extractBody));
+check('source path is passed as src_audio_path', extractBody.src_audio_path === '/srv/take.wav', String(extractBody.src_audio_path));
 check(
   'a duration is not smuggled into a duration-locked task',
-  toAceTaskBody({ task: 'extract', instruction: 'x', durationSeconds: 30 }).duration === undefined,
+  toAceTaskBody({ task: 'extract', instruction: 'x', durationSeconds: 30 }).audio_duration === undefined,
   'extract takes its length from the source'
 );
 check(
   'text2music does carry its duration',
-  toAceTaskBody({ task: 'text2music', instruction: 'x', durationSeconds: 30 }).duration === 30,
+  toAceTaskBody({ task: 'text2music', instruction: 'x', durationSeconds: 30 }).audio_duration === 30,
   'the one task that needs one'
 );
 const repaintBody = toAceTaskBody({
@@ -88,7 +90,11 @@ const repaintBody = toAceTaskBody({
   repaintStartSeconds: 4,
   repaintEndSeconds: 8,
 });
-check('repaint carries its region', repaintBody.repaint_start === 4 && repaintBody.repaint_end === 8, JSON.stringify(repaintBody));
+check(
+  'repaint carries its region',
+  repaintBody.repainting_start === 4 && repaintBody.repainting_end === 8,
+  JSON.stringify(repaintBody)
+);
 
 console.log(`\n${failures === 0 ? 'ALL PASS' : failures + ' FAILURE(S)'}`);
 process.exit(failures === 0 ? 0 : 1);

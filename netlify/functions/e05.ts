@@ -74,8 +74,13 @@ async function status(): Promise<E05ServiceStatus> {
     if (!res.ok) {
       return { available: false, reason: 'UNREACHABLE', detail: `The realization host answered ${res.status}.` };
     }
-    const body = (await res.json()) as { models?: unknown };
-    const models = Array.isArray(body.models) ? body.models.map(String) : undefined;
+    // Verified against a live server: wrapped under "data", and each model
+    // is an object ({name, is_default, is_loaded, supported_task_types}),
+    // not a bare string (acestep/api/http/model_service_routes.py).
+    const body = (await res.json()) as { data?: { models?: Array<{ name?: string }> } };
+    const models = Array.isArray(body.data?.models)
+      ? body.data.models.map((m) => String(m?.name)).filter(Boolean)
+      : undefined;
     return { available: true, models };
   } catch {
     return { available: false, reason: 'UNREACHABLE', detail: 'The realization host did not answer.' };
@@ -131,9 +136,14 @@ async function submit(req: NetlifyRequestLike): Promise<Response> {
   if (!res.ok) {
     return json({ error: `The realization host refused the job (${res.status}).` }, 502);
   }
-  const body = (await res.json()) as { task_id?: string; queue_position?: number };
-  if (!body.task_id) return json({ error: 'The realization host returned no task id.' }, 502);
-  return json({ jobId: body.task_id, state: 'QUEUED', queuePosition: body.queue_position });
+  // Verified against a live server: the real payload is nested under "data",
+  // not top-level -- {"data": {"task_id": ..., "queue_position": ...},
+  // "code": 200, "error": null, ...}. A generic client-response wrapper ACE
+  // uses on every route, not specific to this one.
+  const body = (await res.json()) as { data?: { task_id?: string; queue_position?: number }; error?: string };
+  const taskId = body.data?.task_id;
+  if (!taskId) return json({ error: body.error || 'The realization host returned no task id.' }, 502);
+  return json({ jobId: taskId, state: 'QUEUED', queuePosition: body.data?.queue_position });
 }
 
 /** One status check. The caller polls; this does not block a function invocation on a GPU. */
@@ -143,27 +153,44 @@ async function poll(jobId: string): Promise<Response> {
 
   const res = await fetch(`${cfg.endpoint}/query_result`, {
     method: 'POST',
+    // Verified against a live server: the field is task_id_list, not
+    // task_ids (acestep/api/http/query_result_route.py reads
+    // body["task_id_list"]).
     headers: { 'Content-Type': 'application/json', ...aceHeaders(cfg.apiKey) },
-    body: JSON.stringify({ task_ids: [jobId] }),
+    body: JSON.stringify({ task_id_list: [jobId] }),
   });
   if (!res.ok) return json({ error: `The realization host answered ${res.status}.` }, 502);
 
-  const body = (await res.json()) as Record<string, any>;
-  // The endpoint is a batch poll, so a single job comes back inside a list.
-  const entry = Array.isArray(body.results) ? body.results[0] : Array.isArray(body) ? body[0] : body;
+  // Verified against a live server, both submit and poll wrap the real
+  // payload under "data". Here "data" is an array (query_result is a batch
+  // endpoint even for one task), and each entry's own "result" field is
+  // itself a JSON-encoded string -- not an object -- holding one item per
+  // sample in the batch (batch_size can be > 1, so more than one audio file
+  // can come back from a single task).
+  const body = (await res.json()) as {
+    data?: Array<{ task_id: string; result?: string; status: number }>;
+    error?: string;
+  };
+  const entry = body.data?.[0];
+
+  let items: Array<Record<string, any>> = [];
+  if (entry?.result) {
+    try {
+      const parsed = JSON.parse(entry.result);
+      items = Array.isArray(parsed) ? parsed : [parsed];
+    } catch {
+      items = [];
+    }
+  }
+  const audioPaths = items.map((it) => it?.file).filter((f): f is string => typeof f === 'string' && f.length > 0);
+  const firstError = items.find((it) => it?.error)?.error;
 
   const result: E05Result = {
     jobId,
     state: e05StateFromAceStatus(entry?.status),
-    audioPaths: Array.isArray(entry?.audio_paths)
-      ? entry.audio_paths.map(String)
-      : Array.isArray(entry?.download_urls)
-        ? entry.download_urls.map(String)
-        : undefined,
-    resolvedSeed: typeof entry?.seed === 'number' ? entry.seed : undefined,
-    resolvedModel: entry?.model ? String(entry.model) : undefined,
-    resolvedDurationSeconds: typeof entry?.duration === 'number' ? entry.duration : undefined,
-    error: entry?.error ? String(entry.error) : undefined,
+    audioPaths: audioPaths.length ? audioPaths : undefined,
+    resolvedDurationSeconds: typeof items[0]?.metas?.duration === 'number' ? items[0].metas.duration : undefined,
+    error: firstError ? String(firstError) : body.error ? String(body.error) : undefined,
   };
   return json(result);
 }

@@ -144,23 +144,32 @@ export interface E05ServiceStatus {
  *
  * Kept here rather than in the service route so the shape is testable without
  * a network, and so a change to ACE's wire format is one edit in one file.
+ *
+ * Field names verified against a live ACE-Step-1.5 server
+ * (`acestep/api/http/release_task_models.py`'s `GenerateMusicRequest`), not
+ * recalled: the wire names differ from ours in several places —
+ * `task_type` not `task`, `audio_duration` not `duration`,
+ * `src_audio_path` not `src_audio`, `repainting_start`/`repainting_end` not
+ * `repaint_start`/`repaint_end`. `task_type` accepts our exact six values
+ * (confirmed in `acestep/core/generation/handler/task_utils.py`), so no
+ * value translation is needed, only the key names.
  */
 export function toAceTaskBody(req: E05Request, srcAudioPath?: string): Record<string, unknown> {
   const body: Record<string, unknown> = {
-    task: req.task,
+    task_type: req.task,
     instruction: req.instruction,
   };
   if (req.prompt) body.prompt = req.prompt;
   if (req.lyrics) body.lyrics = req.lyrics;
   if (typeof req.seed === 'number') body.seed = req.seed;
-  if (srcAudioPath) body.src_audio = srcAudioPath;
+  if (srcAudioPath) body.src_audio_path = srcAudioPath;
   // Only the one task whose length is not taken from the source.
   if (req.task === 'text2music' && typeof req.durationSeconds === 'number') {
-    body.duration = req.durationSeconds;
+    body.audio_duration = req.durationSeconds;
   }
   if (req.task === 'repaint') {
-    if (typeof req.repaintStartSeconds === 'number') body.repaint_start = req.repaintStartSeconds;
-    if (typeof req.repaintEndSeconds === 'number') body.repaint_end = req.repaintEndSeconds;
+    if (typeof req.repaintStartSeconds === 'number') body.repainting_start = req.repaintStartSeconds;
+    if (typeof req.repaintEndSeconds === 'number') body.repainting_end = req.repaintEndSeconds;
   }
   return body;
 }
