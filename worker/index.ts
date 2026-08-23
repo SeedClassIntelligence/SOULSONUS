@@ -18,6 +18,7 @@ import {
   E05Result,
   E05ServiceStatus,
   e05StateFromAceStatus,
+  extractAudioPath,
   toAceTaskBody,
   validateE05Request,
 } from '../src/lib/inference/e05Contract';
@@ -167,7 +168,10 @@ async function poll(jobId: string, env: Env): Promise<Response> {
       items = [];
     }
   }
-  const audioPaths = items.map((it) => it?.file).filter((f): f is string => typeof f === 'string' && f.length > 0);
+  const audioPaths = items
+    .map((it) => it?.file)
+    .filter((f): f is string => typeof f === 'string' && f.length > 0)
+    .map(extractAudioPath);
   const firstError = items.find((it) => it?.error)?.error;
 
   const result: E05Result = {

@@ -10,6 +10,7 @@
 import {
   E05_TASKS,
   e05StateFromAceStatus,
+  extractAudioPath,
   isDurationLocked,
   requiresSourceAudio,
   toAceTaskBody,
@@ -94,6 +95,22 @@ check(
   'repaint carries its region',
   repaintBody.repainting_start === 4 && repaintBody.repainting_end === 8,
   JSON.stringify(repaintBody)
+);
+
+console.log('\n-- a finished result\'s file field, both real shapes --');
+console.log('   The two literal values below were what a live server actually returned:');
+console.log('   a raw path from one code branch, a ready /v1/audio URL from another.');
+check(
+  'a raw filesystem path passes through unchanged',
+  extractAudioPath('/ACE-Step-1.5/.cache/acestep/tmp/api_audio/e9702085.mp3') ===
+    '/ACE-Step-1.5/.cache/acestep/tmp/api_audio/e9702085.mp3',
+  extractAudioPath('/ACE-Step-1.5/.cache/acestep/tmp/api_audio/e9702085.mp3')
+);
+check(
+  'an already-built /v1/audio URL is unwrapped to the raw path',
+  extractAudioPath('/v1/audio?path=%2FACE-Step-1.5%2F.cache%2Facestep%2Ftmp%2Fapi_audio%2F6ed0d7bc.mp3') ===
+    '/ACE-Step-1.5/.cache/acestep/tmp/api_audio/6ed0d7bc.mp3',
+  extractAudioPath('/v1/audio?path=%2FACE-Step-1.5%2F.cache%2Facestep%2Ftmp%2Fapi_audio%2F6ed0d7bc.mp3')
 );
 
 console.log(`\n${failures === 0 ? 'ALL PASS' : failures + ' FAILURE(S)'}`);

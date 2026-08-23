@@ -109,6 +109,21 @@ export interface E05Job {
   queuePosition?: number;
 }
 
+/**
+ * A finished result's `file` comes back in two different shapes depending on
+ * which internal ACE code path produced it -- confirmed against a live
+ * server, not assumed: a text2music/cover result gave a raw filesystem path,
+ * an extract result gave the already-built relative URL
+ * `/v1/audio?path=<encoded path>`. Everything downstream (fetchAudio, and
+ * the browser's own `?action=audio&path=`) expects a raw path, so this
+ * always returns one regardless of which shape ACE handed back -- passing
+ * the URL-shaped form straight through would wrap it a second time and 404.
+ */
+export function extractAudioPath(file: string): string {
+  const match = file.match(/^\/v1\/audio\?path=(.+)$/);
+  return match ? decodeURIComponent(match[1]) : file;
+}
+
 export interface E05Result extends E05Job {
   /**
    * Paths as ACE reported them. They are server-side paths, not URLs the
