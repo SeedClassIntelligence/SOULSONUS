@@ -11,9 +11,14 @@
  * - SAMPLE: R01 Sample Library acoustic sound replacement.
  * - INSTRUMENT: R02 SoundFont / SFZ multi-sampled instrument rendering.
  * - SYNTH: R03 Synthesizer preset rendering (MonoSynth, FM, Sub).
- * - ACE_PERFORMANCE_TRANSFER: Performance-preserving timbral transfer (E05 / ACE-Step 1.5).
- * - ACE_REPAINT: Selective region repainting.
- * - ACE_GENERATIVE_EXTENSION: Style continuation.
+ * - ACE_PERFORMANCE_TRANSFER: Performance-preserving timbral transfer (E05 / ACE-Step 1.5, task=cover).
+ * - ACE_STEM_EXTRACTION: Isolate one described element of a performance (task=extract). The Studio
+ *   Manager's route -- "have the session work on just the bass" without inventing a new part from
+ *   nothing.
+ * - ACE_REPAINT: Selective region repainting (task=repaint). Declared, not yet implemented --
+ *   RealizationRequest has no region field yet.
+ * - ACE_GENERATIVE_EXTENSION: Style continuation (task=complete). Declared, not yet implemented --
+ *   RealizationRequest has no target-duration field yet.
  */
 
 import {
@@ -121,6 +126,59 @@ export class RealizationRouter {
         governanceOverride = 'UNREALIZED';
         break;
       }
+
+      case 'ACE_STEM_EXTRACTION': {
+        // Studio Manager's route: extract locks its output length to the
+        // source, same as cover, but the model's job is different -- pull one
+        // described element out of the performance rather than re-render the
+        // whole thing. This is the real answer to "have the session work on
+        // just the bass": ask ACE to extract it, not fabricate a synth part.
+        const sourceAudioUrl = req.sourceTrack.sourceTakeAudioUrl;
+        if (sourceAudioUrl) {
+          backend = 'ACERealizer';
+          modelVersion = 'ace-step-1.5';
+          mutableProperties = ['timbre', 'room_acoustics', 'body_resonance', 'saturation'];
+
+          const sourceAudio = await fetch(sourceAudioUrl).then((r) => r.blob());
+          const realization = await getE05Provider().realize(
+            {
+              task: 'extract',
+              instruction: req.prompt || `Extract the ${req.targetRole.replace(/_/g, ' ')}`,
+            },
+            { sourceAudio, sourceFileName: `${req.sourceTrack.id}.wav` }
+          );
+          audioArtifactUrl = URL.createObjectURL(realization.audio);
+          modelVersion = realization.resolvedModel || modelVersion;
+          resolvedSeed = realization.resolvedSeed ?? null;
+
+          measuredScores = await computePreservationScores(sourceAudioUrl, audioArtifactUrl);
+          scoreBasis = 'MEASURED';
+          break;
+        }
+
+        // No take to extract from, same reasoning as ACE_PERFORMANCE_TRANSFER
+        // with no source: an unrealized route, not a fabricated one.
+        backend = 'SoulSonusPerformanceTransfer';
+        modelVersion = 'v1.0.0-R02-SoundFont';
+        mutableProperties = ['timbre', 'expression_curve', 'room_acoustics'];
+        governanceOverride = 'UNREALIZED';
+        break;
+      }
+
+      // Declared in the route vocabulary, not yet implemented: repaint needs
+      // a region (start/end seconds) and generative extension needs a target
+      // duration, and RealizationRequest carries neither field yet. Marked
+      // unrealized rather than left to fall through to ORIGINAL's default,
+      // which would have silently handed back the untouched source and
+      // called it a repaint or an extension -- exactly the kind of quiet
+      // fabrication this file exists to refuse.
+      case 'ACE_REPAINT':
+      case 'ACE_GENERATIVE_EXTENSION':
+        backend = 'SoulSonusPerformanceTransfer';
+        modelVersion = 'v1.0.0-R02-SoundFont';
+        mutableProperties = [];
+        governanceOverride = 'UNREALIZED';
+        break;
 
       // The remaining routes are not model outputs. What they preserve is
       // entailed by how they work rather than observed, so their scores are
@@ -281,17 +339,29 @@ export class RealizationRouter {
       return 'ACE_PERFORMANCE_TRANSFER';
     }
 
-    // 2. Sample swap -> SAMPLE
+    // 2. Isolating one element of an existing performance -> stem extraction
+    if (
+      q.includes('extract') ||
+      q.includes('isolate') ||
+      q.includes('just the bass') ||
+      q.includes('just the drums') ||
+      q.includes('pull out the') ||
+      q.includes('stem')
+    ) {
+      return 'ACE_STEM_EXTRACTION';
+    }
+
+    // 3. Sample swap -> SAMPLE
     if (q.includes('sample') || q.includes('one-shot') || q.includes('wav drop') || q.includes('vinyl kick')) {
       return 'SAMPLE';
     }
 
-    // 3. Multi-sample acoustic SoundFont -> INSTRUMENT
+    // 4. Multi-sample acoustic SoundFont -> INSTRUMENT
     if (q.includes('soundfont') || q.includes('sf2') || q.includes('rhodes') || q.includes('grand piano') || q.includes('acoustic')) {
       return 'INSTRUMENT';
     }
 
-    // 4. Synth -> SYNTH
+    // 5. Synth -> SYNTH
     if (q.includes('synth') || q.includes('fm') || q.includes('saw') || q.includes('square') || q.includes('lead')) {
       return 'SYNTH';
     }

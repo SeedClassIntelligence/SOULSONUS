@@ -961,6 +961,7 @@ export type RealizationRoute =
   | 'INSTRUMENT'
   | 'SYNTH'
   | 'ACE_PERFORMANCE_TRANSFER'
+  | 'ACE_STEM_EXTRACTION'
   | 'ACE_REPAINT'
   | 'ACE_GENERATIVE_EXTENSION';
 
