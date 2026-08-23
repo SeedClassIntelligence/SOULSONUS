@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Upload, Disc, Layers, Music, Activity, Mic, Sparkles, CheckCircle2, Play, FileAudio } from 'lucide-react';
+import { X, Upload, Disc, Layers, Music, Activity, Mic, Sparkles, CheckCircle2, Play, FileAudio, Server, RefreshCw, AlertCircle } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 import type { AudioImportResult } from '../app/StudioSessionContext';
 import type { ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
+import { getInferenceSettings, setInferenceSettings } from '../lib/inference/inferenceSettings';
+import { DemucsClient } from '../lib/inference/demucsClient';
 
 interface AudioStemImportModalProps {
   isOpen: boolean;
@@ -21,6 +23,34 @@ export const AudioStemImportModal: React.FC<AudioStemImportModalProps> = ({ isOp
   const [content, setContent] = useState<ContentAnalysis | null>(null);
   const [result, setResult] = useState<AudioImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // The stem-separation host has no code-configurable secret to protect (it's
+  // a self-hosted, no-auth service by design -- see inference-server/demucs-
+  // service), so unlike ACE-Step it is called straight from the browser, which
+  // means it needs a place a creator can actually point at their own host.
+  // getInferenceSettings() already persisted this to localStorage; nothing
+  // in the UI ever surfaced a way to change it.
+  const [demucsEndpointInput, setDemucsEndpointInput] = useState(() => getInferenceSettings().demucsEndpoint);
+  const [demucsTestStatus, setDemucsTestStatus] = useState<'IDLE' | 'TESTING' | 'SUCCESS' | 'ERROR'>('IDLE');
+  const [demucsTestMessage, setDemucsTestMessage] = useState('');
+
+  const handleSaveDemucsEndpoint = () => {
+    setInferenceSettings({ demucsEndpoint: demucsEndpointInput.trim() });
+  };
+
+  const handleTestDemucsConnection = async () => {
+    handleSaveDemucsEndpoint();
+    setDemucsTestStatus('TESTING');
+    setDemucsTestMessage('Reaching the separation host...');
+    const health = await new DemucsClient(demucsEndpointInput.trim()).health();
+    if (health.ok) {
+      setDemucsTestStatus('SUCCESS');
+      setDemucsTestMessage(`Connected. Model ${health.model || 'unknown'} on ${health.device || 'unknown device'}.`);
+    } else {
+      setDemucsTestStatus('ERROR');
+      setDemucsTestMessage('Could not reach a separation host at this address.');
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -180,6 +210,59 @@ export const AudioStemImportModal: React.FC<AudioStemImportModalProps> = ({ isOp
                   <span>Hum → Notes</span>
                 </button>
               </div>
+
+              {/* Where the real separation happens. STEMS_4WAY is the only mode
+                  that calls out to Demucs, so this only needs to appear here --
+                  SINGLE_TRACK and MELODY run entirely on-device. */}
+              {activeTab === 'STEMS_4WAY' && (
+                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
+                    <Server className="w-3 h-3 text-cyan-400" />
+                    <span>Separation host</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={demucsEndpointInput}
+                      onChange={(e) => setDemucsEndpointInput(e.target.value)}
+                      onBlur={handleSaveDemucsEndpoint}
+                      placeholder="http://localhost:8010"
+                      className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleTestDemucsConnection}
+                      disabled={demucsTestStatus === 'TESTING'}
+                      className="px-2.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[10px] font-bold text-cyan-300 transition cursor-pointer disabled:opacity-50 flex items-center gap-1 shrink-0"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${demucsTestStatus === 'TESTING' ? 'animate-spin' : ''}`} />
+                      <span>TEST</span>
+                    </button>
+                  </div>
+                  {demucsTestStatus !== 'IDLE' && (
+                    <div
+                      className={`flex items-center gap-1.5 text-[10px] ${
+                        demucsTestStatus === 'SUCCESS'
+                          ? 'text-emerald-300'
+                          : demucsTestStatus === 'ERROR'
+                            ? 'text-rose-300'
+                            : 'text-slate-400'
+                      }`}
+                    >
+                      {demucsTestStatus === 'SUCCESS' ? (
+                        <CheckCircle2 className="w-3 h-3 shrink-0" />
+                      ) : demucsTestStatus === 'ERROR' ? (
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                      ) : null}
+                      <span>{demucsTestMessage}</span>
+                    </div>
+                  )}
+                  <p className="text-[9px] text-slate-500 font-sans leading-snug">
+                    Demucs runs self-hosted, with no key to protect, so the browser calls it directly --
+                    point this at wherever you're running inference-server/demucs-service.
+                  </p>
+                </div>
+              )}
 
               {/* Drag & Drop Upload Zone */}
               <div
