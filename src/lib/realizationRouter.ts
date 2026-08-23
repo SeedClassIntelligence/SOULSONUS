@@ -42,6 +42,14 @@ export interface RealizationRequest {
   prompt?: string;
   projectVersion?: string;
   thresholdPolicy?: IntentThresholdPolicy;
+  /**
+   * ACE_REPAINT's region, in seconds from the start of the source. Omit both
+   * to repaint the whole track -- createCandidate measures the actual
+   * decoded audio for its real length rather than trust a metadata field
+   * that could be stale, since a wrong bound here is a wrong request to ACE.
+   */
+  repaintStartSeconds?: number;
+  repaintEndSeconds?: number;
 }
 
 export class RealizationRouter {
@@ -165,14 +173,64 @@ export class RealizationRouter {
         break;
       }
 
-      // Declared in the route vocabulary, not yet implemented: repaint needs
-      // a region (start/end seconds) and generative extension needs a target
-      // duration, and RealizationRequest carries neither field yet. Marked
-      // unrealized rather than left to fall through to ORIGINAL's default,
-      // which would have silently handed back the untouched source and
-      // called it a repaint or an extension -- exactly the kind of quiet
-      // fabrication this file exists to refuse.
-      case 'ACE_REPAINT':
+      case 'ACE_REPAINT': {
+        // Studio Manager's "touch this up" route: regenerate a region while
+        // the rest of the take stays untouched. The SONUS button's real
+        // job -- unlike ACE_PERFORMANCE_TRANSFER/cover, this doesn't
+        // re-render the whole performance, it fixes the part that needs it.
+        const sourceAudioUrl = req.sourceTrack.sourceTakeAudioUrl;
+        if (sourceAudioUrl) {
+          backend = 'ACERealizer';
+          modelVersion = 'ace-step-1.5';
+          mutableProperties = ['timbre', 'room_acoustics', 'body_resonance', 'saturation'];
+
+          const sourceAudio = await fetch(sourceAudioUrl).then((r) => r.blob());
+
+          // No explicit region means "the whole track" -- measured from the
+          // actual decoded audio, not a metadata field that could be stale.
+          let start = req.repaintStartSeconds;
+          let end = req.repaintEndSeconds;
+          if (typeof start !== 'number' || typeof end !== 'number') {
+            const ctx = new AudioContext();
+            try {
+              const decoded = await ctx.decodeAudioData(await sourceAudio.slice(0).arrayBuffer());
+              start = 0;
+              end = decoded.duration;
+            } finally {
+              await ctx.close();
+            }
+          }
+
+          const realization = await getE05Provider().realize(
+            {
+              task: 'repaint',
+              instruction: req.prompt || `Repaint ${req.targetRole.replace(/_/g, ' ')}`,
+              repaintStartSeconds: start,
+              repaintEndSeconds: end,
+            },
+            { sourceAudio, sourceFileName: `${req.sourceTrack.id}.wav` }
+          );
+          audioArtifactUrl = URL.createObjectURL(realization.audio);
+          modelVersion = realization.resolvedModel || modelVersion;
+          resolvedSeed = realization.resolvedSeed ?? null;
+
+          measuredScores = await computePreservationScores(sourceAudioUrl, audioArtifactUrl);
+          scoreBasis = 'MEASURED';
+          break;
+        }
+
+        backend = 'SoulSonusPerformanceTransfer';
+        modelVersion = 'v1.0.0-R02-SoundFont';
+        mutableProperties = ['timbre', 'expression_curve', 'room_acoustics'];
+        governanceOverride = 'UNREALIZED';
+        break;
+      }
+
+      // Declared in the route vocabulary, not yet implemented: generative
+      // extension needs a target duration, which RealizationRequest doesn't
+      // carry yet. Marked unrealized rather than left to fall through to
+      // ORIGINAL's default, which would have silently handed back the
+      // untouched source and called it an extension.
       case 'ACE_GENERATIVE_EXTENSION':
         backend = 'SoulSonusPerformanceTransfer';
         modelVersion = 'v1.0.0-R02-SoundFont';

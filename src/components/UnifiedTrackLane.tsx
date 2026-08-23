@@ -506,8 +506,14 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                 type="button"
                 onClick={() => {
                   setSelectionContext((prev) => ({ ...prev, selectedTrackId: track.id }));
+                  // SONUS is the repaint trigger: touch up the take that's
+                  // already there, not re-render the whole performance in a
+                  // new timbre (that's ACE_PERFORMANCE_TRANSFER, reached from
+                  // the Co-Producer conversation instead, since "reinterpret
+                  // this as a cello" is a considered creative choice, not a
+                  // single-click action).
                   const targetRoute = track.sourceTakeAudioUrl
-                    ? 'ACE_PERFORMANCE_TRANSFER'
+                    ? 'ACE_REPAINT'
                     : isDrum
                     ? 'SAMPLE'
                     : 'INSTRUMENT';
