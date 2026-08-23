@@ -1910,7 +1910,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         const url = client.resolveStemUrl(stem);
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Stem "${role}" could not be downloaded (${res.status}).`);
-        const stemBuffer = await decodeAudioFile(new File([await res.blob()], `${role}.wav`));
+        const stemBlob = await res.blob();
+        const stemBuffer = await decodeAudioFile(new File([stemBlob], `${role}.wav`));
 
         // Real peaks from the real returned audio, so a stem that came back
         // empty is visibly empty rather than decorated with a stock waveform.
@@ -1927,8 +1928,25 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           waveformData.push(peak);
         }
 
+        // A stem that only carries sourceTakeAudioUrl and a waveform preview
+        // is audio the creator cannot actually hear or move -- nothing reads
+        // either field for playback or rendering. Registering a real
+        // AudioAsset and placing a clip from it is what makes this stem the
+        // same kind of thing as a recorded take: playable, draggable, mixed
+        // into the bounce, all through the one clip/asset path everything
+        // else already goes through.
+        const trackId = `stem_${role}_${timestamp}`;
+        const asset = await handleRegisterAudioAsset(stemBlob, {
+          name: `${baseName} (${spec.label})`,
+          originType: 'SEPARATED',
+        });
+        const clip = makeClip(asset, trackId, bpmRef.current || 110, {
+          startTick: 0,
+          sourceDescription: `Demucs ${spec.label.toLowerCase()} stem of ${file.name}`,
+        });
+
         created.push({
-          id: `stem_${role}_${timestamp}`,
+          id: trackId,
           name: `${baseName} (${spec.label})`,
           instrument: spec.instrument,
           steps: new Array(songStepsRef.current).fill(false),
@@ -1939,6 +1957,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           color: spec.color,
           sourceModality: 'AUDIO',
           sourceTakeAudioUrl: url,
+          audioClips: [clip],
           waveformTakes: [
             { id: `stemtake_${role}_${timestamp}`, name: `${spec.label} stem`, duration: stemBuffer.duration, waveformData },
           ],
@@ -1962,7 +1981,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         stems: stemSummaries,
       };
     },
-    [decodeAudioFile, commitCaptureEvents, updateTracksWithHistory]
+    [decodeAudioFile, commitCaptureEvents, updateTracksWithHistory, handleRegisterAudioAsset]
   );
 
   useEffect(() => {
