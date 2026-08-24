@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Sliders,
   Volume2,
@@ -14,10 +14,12 @@ import {
   Shield,
   Eye,
   Disc,
+  PenTool,
 } from 'lucide-react';
 import { useStudioSession } from '../../app/StudioSessionContext';
 import { Track, MixBusChannel, TrackDspSettings } from '../../types/daw';
 import { defaultTrackDsp } from '../../audio/trackStrip';
+import { startTakeRecording, TakeRecording } from '../../audio/takeRecorder';
 
 export const MixingConsoleDesk: React.FC = () => {
   const {
@@ -37,7 +39,40 @@ export const MixingConsoleDesk: React.FC = () => {
     handleToggleInsertBypass,
     handleReorderTrackInserts,
     setSelectionContext,
+    handleAddVocalTake,
   } = useStudioSession();
+
+  // The fast path: hit ARM, it records, right there, no drawer. The full
+  // Songwriting Suite (lyrics, comp, pitch, harmony) stays reachable from the
+  // pencil icon for the deeper pass -- ARM is no longer a detour to it.
+  const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const activeRecordingRef = useRef<TakeRecording | null>(null);
+
+  const handleArmRecord = async (track: Track) => {
+    if (recordingTrackId === track.id && activeRecordingRef.current) {
+      const recording = activeRecordingRef.current;
+      activeRecordingRef.current = null;
+      setRecordingTrackId(null);
+      const audio = await recording.stop();
+      handleAddVocalTake(track.id, {
+        takeNumber: (track.vocalTakes?.length || 0) + 1,
+        name: `Overdub Take ${String((track.vocalTakes?.length || 0) + 1).padStart(2, '0')}`,
+        duration: Math.round(audio.durationSeconds * 100) / 100,
+        waveformData: audio.waveform,
+        audioBlob: audio.blob,
+      });
+      return;
+    }
+    if (recordingTrackId) return; // one recording at a time
+    setRecordError(null);
+    try {
+      activeRecordingRef.current = await startTakeRecording();
+      setRecordingTrackId(track.id);
+    } catch (err) {
+      setRecordError(err instanceof Error ? err.message : 'Microphone unavailable.');
+    }
+  };
 
   const [activeBusView, setActiveBusView] = useState<'ALL' | 'TRACKS' | 'BUSES'>('ALL');
 
@@ -236,8 +271,8 @@ export const MixingConsoleDesk: React.FC = () => {
                 </div>
               </div>
 
-              {/* Solo, Mute, Record Arm Buttons */}
-              <div className="grid grid-cols-3 gap-1 py-1.5">
+              {/* Solo, Mute, Record Arm, Open Full Suite */}
+              <div className="grid grid-cols-4 gap-1 py-1.5">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -266,24 +301,38 @@ export const MixingConsoleDesk: React.FC = () => {
                 >
                   M
                 </button>
-                {/* Had no real effect -- e.stopPropagation() and nothing
-                    else. A real per-channel recorder (OverdubRecorder)
-                    already exists, reachable from the Songwriting Suite
-                    drawer, so this opens that for this specific track
-                    rather than building a second recording UI into a
-                    crowded channel strip. */}
+                {/* Fast path: records this track directly, no drawer. The
+                    deep pass (lyrics, comp, pitch, harmony) is the pencil
+                    button beside it, not a detour ARM forces on everyone. */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handleArmRecord(track);
+                  }}
+                  className={`py-1 rounded text-[9px] font-black transition cursor-pointer border ${
+                    recordingTrackId === track.id
+                      ? 'bg-rose-500 text-white border-rose-400 animate-pulse'
+                      : 'bg-slate-900 text-slate-400 hover:text-rose-400 border-slate-800'
+                  }`}
+                  title={recordingTrackId === track.id ? 'Stop & keep this take' : 'Record onto this track now'}
+                >
+                  {recordingTrackId === track.id ? '● REC' : 'ARM'}
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectionContext((prev) => ({ ...prev, selectedTrackId: track.id }));
                     window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'songwriting' }));
                   }}
-                  className="py-1 rounded bg-slate-900 text-slate-400 hover:text-rose-400 border border-slate-800 text-[9px] font-black transition cursor-pointer"
-                  title="Open the recorder for this track"
+                  className="py-1 rounded bg-slate-900 text-slate-400 hover:text-cyan-400 border border-slate-800 flex items-center justify-center transition cursor-pointer"
+                  title="Open the full Songwriting Suite for this track (lyrics, comp, pitch, harmony)"
                 >
-                  ARM
+                  <PenTool className="w-3 h-3" />
                 </button>
               </div>
+              {recordError && recordingTrackId === null && (
+                <div className="text-[8px] text-rose-300 leading-tight pb-1">{recordError}</div>
+              )}
 
               {/* Fader & LED Meter Ladder */}
               <div className="flex items-center space-x-2 pt-1">
