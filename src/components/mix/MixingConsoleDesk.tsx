@@ -157,15 +157,22 @@ export const MixingConsoleDesk: React.FC = () => {
                 <div className="space-y-1">
                   <div className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[8px] flex items-center justify-between text-slate-300">
                     <span>1. 4-Band EQ</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        dsp.lowGain !== 0 || dsp.midGain !== 0 || dsp.highGain !== 0
+                          ? 'bg-emerald-400'
+                          : 'bg-slate-700'
+                      }`}
+                      title={dsp.lowGain !== 0 || dsp.midGain !== 0 || dsp.highGain !== 0 ? 'Shaping the signal' : 'Flat, no gain applied'}
+                    />
                   </div>
                   <div className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[8px] flex items-center justify-between text-slate-300">
                     <span>2. Comp ({Math.round(dsp.compressorRatio)}:1)</span>
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   </div>
                   <div className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[8px] flex items-center justify-between text-slate-300">
-                    <span>3. {track.instrument === 'vocal_synth' ? 'De-Esser' : 'Sat Warmth'}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                    <span>3. Character Filter</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" title="Fixed lowpass shaping the top end" />
                   </div>
                 </div>
               </div>

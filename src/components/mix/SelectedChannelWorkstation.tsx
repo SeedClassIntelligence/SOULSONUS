@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useStudioSession } from '../../app/StudioSessionContext';
 import { Track, TrackDspSettings, ClipOperationType, InsertPluginCategory } from '../../types/daw';
-import { defaultTrackDsp } from '../../audio/trackStrip';
+import { defaultTrackDsp, DEFAULT_LOW_CUT_HZ } from '../../audio/trackStrip';
 
 export const SelectedChannelWorkstation: React.FC = () => {
   const {
@@ -30,6 +30,7 @@ export const SelectedChannelWorkstation: React.FC = () => {
     focusedTrackId,
     handleUpdateChannelStrip,
     handleExecuteClipOperation,
+    audioAssets,
   } = useStudioSession();
 
   const focusedTrack = tracks.find((t) => t.id === focusedTrackId) || tracks[0];
@@ -52,6 +53,10 @@ export const SelectedChannelWorkstation: React.FC = () => {
   const handleDspChange = (updates: Partial<TrackDspSettings>) => {
     handleUpdateChannelStrip(focusedTrack.id, updates);
   };
+
+  const editorClip = focusedTrack.audioClips?.[0];
+  const editorAsset = editorClip ? audioAssets[editorClip.assetId] : undefined;
+  const editorPeaks = editorAsset?.peaks || [];
 
   return (
     <div className="h-full bg-slate-950 flex flex-col font-mono text-xs border-r border-slate-800/80 overflow-hidden">
@@ -292,15 +297,26 @@ export const SelectedChannelWorkstation: React.FC = () => {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-200 uppercase">Modular Insert Chain</span>
-              <span className="text-[10px] text-slate-500">Reorderable DSP Nodes</span>
+              <span className="text-[10px] text-slate-500">Fixed Processing Order</span>
             </div>
 
             <div className="space-y-1.5">
               {[
-                { name: '1. Preamp HPF & Input Trim', cat: 'utility', status: 'ACTIVE' },
-                { name: '2. 4-Band Parametric EQ', cat: 'eq', status: 'ACTIVE' },
-                { name: '3. VCA Glue Dynamics', cat: 'dynamics', status: 'ACTIVE' },
-                { name: '4. Harmonic Tube Saturation', cat: 'saturation', status: 'ACTIVE' },
+                {
+                  name: '1. Preamp HPF & Input Trim',
+                  engaged: dsp.lowCutHz > DEFAULT_LOW_CUT_HZ,
+                  bypass: () => handleDspChange({ lowCutHz: DEFAULT_LOW_CUT_HZ }),
+                },
+                {
+                  name: '2. 4-Band Parametric EQ',
+                  engaged: dsp.lowGain !== 0 || dsp.midGain !== 0 || dsp.highGain !== 0,
+                  bypass: () => handleDspChange({ lowGain: 0, midGain: 0, highGain: 0 }),
+                },
+                {
+                  name: '3. VCA Glue Dynamics',
+                  engaged: dsp.compressorRatio > 1,
+                  bypass: () => handleDspChange({ compressorRatio: 1 }),
+                },
               ].map((ins, i) => (
                 <div
                   key={i}
@@ -308,15 +324,34 @@ export const SelectedChannelWorkstation: React.FC = () => {
                 >
                   <span className="font-bold text-slate-200 text-[11px]">{ins.name}</span>
                   <div className="flex items-center space-x-2">
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[8px] font-black">
-                      {ins.status}
+                    <span
+                      className={`px-1.5 py-0.5 rounded border text-[8px] font-black ${
+                        ins.engaged
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                          : 'bg-slate-800 text-slate-500 border-slate-700'
+                      }`}
+                    >
+                      {ins.engaged ? 'ACTIVE' : 'FLAT'}
                     </span>
-                    <button className="text-slate-500 hover:text-white text-[10px] cursor-pointer">
+                    <button
+                      onClick={ins.bypass}
+                      className="text-slate-500 hover:text-white text-[10px] cursor-pointer"
+                      title="Reset this stage to its neutral value"
+                    >
                       Bypass
                     </button>
                   </div>
                 </div>
               ))}
+              <div className="p-2.5 rounded-xl bg-slate-900/50 border border-slate-800 flex items-center justify-between opacity-60">
+                <span className="font-bold text-slate-400 text-[11px]">4. Harmonic Tube Saturation</span>
+                <span
+                  className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 border border-slate-700 text-[8px] font-black"
+                  title="No control in the UI writes a drive amount yet, so this stage never processes signal"
+                >
+                  NOT WIRED
+                </span>
+              </div>
             </div>
           </div>
         )}
@@ -326,24 +361,34 @@ export const SelectedChannelWorkstation: React.FC = () => {
           <div className="space-y-3">
             <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-2">
               <div className="flex items-center justify-between text-[10px]">
-                <span className="text-slate-400 font-bold uppercase">Waveform Zoom & Gain Handle</span>
-                <span className="text-cyan-400 font-bold">16-Bar Audio Transient Pool</span>
+                <span className="text-slate-400 font-bold uppercase">Waveform</span>
+                <span className="text-cyan-400 font-bold">
+                  {editorClip ? (editorAsset?.name || 'Audio clip') : 'No audio clip on this track'}
+                </span>
               </div>
               <div className="h-20 bg-slate-950 rounded-lg border border-slate-800 flex items-center justify-center relative overflow-hidden">
-                <svg className="w-full h-full opacity-75" viewBox="0 0 300 80" preserveAspectRatio="none">
-                  <path
-                    d="M 0,40 Q 20,10 40,40 T 80,40 T 120,40 T 160,40 T 200,40 T 240,40 T 280,40 T 300,40"
-                    fill="none"
-                    stroke="#06b6d4"
-                    strokeWidth="2"
-                  />
-                  <path
-                    d="M 0,40 Q 20,70 40,40 T 80,40 T 120,40 T 160,40 T 200,40 T 240,40 T 280,40 T 300,40"
-                    fill="none"
-                    stroke="#06b6d4"
-                    strokeWidth="2"
-                  />
-                </svg>
+                {editorPeaks.length > 0 ? (
+                  <svg className="w-full h-full opacity-90" viewBox={`0 0 ${editorPeaks.length} 80`} preserveAspectRatio="none">
+                    <polyline
+                      points={editorPeaks.map((p, i) => `${i},${40 - p * 38}`).join(' ')}
+                      fill="none"
+                      stroke="#06b6d4"
+                      strokeWidth="1"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    <polyline
+                      points={editorPeaks.map((p, i) => `${i},${40 + p * 38}`).join(' ')}
+                      fill="none"
+                      stroke="#06b6d4"
+                      strokeWidth="1"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
+                ) : (
+                  <span className="text-[10px] text-slate-600 font-mono px-4 text-center">
+                    This track has no recorded, imported or generated audio clip to show a waveform for.
+                  </span>
+                )}
               </div>
             </div>
 
