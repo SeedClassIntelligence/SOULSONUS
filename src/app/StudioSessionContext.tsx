@@ -75,7 +75,8 @@ import { detectionEngine, CaptureEvent } from '../audio/detectionEngine';
 import { BandRole, GrantLevel, playerFor } from '../lib/sessionBand';
 import { CatalogEntry, INSTRUMENT_CATALOG, factoryAdmission } from '../lib/soundSourcing';
 import { DETECTION_DEFAULTS } from '../lib/styleProfile';
-import { CallOutcome, SessionRoom, callSessionPlayer, installDefaultBand } from '../lib/sessionPlayer';
+import { CallOutcome, SessionRoom, callSessionPlayer, installDefaultBand, registerSessionPlayer } from '../lib/sessionPlayer';
+import { installAcePlayers } from '../lib/acePlayer';
 import { resolveCaptureTarget } from '../audio/captureRouting';
 import { midiNoteToCaptureEvent } from '../audio/midiCapture';
 import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
@@ -1520,9 +1521,14 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [dawState]);
 
   // Who is behind each role is a deployment decision, so it is made in one
-  // place at startup rather than at each call site.
+  // place at startup rather than at each call site. installAcePlayers fills
+  // the two audio-handing seats (backing vocals, texture/FX) that
+  // installDefaultBand() deliberately leaves empty -- the only two roles a
+  // generative renderer can actually stand behind, since the other five
+  // hand back notes.
   useEffect(() => {
     installDefaultBand();
+    installAcePlayers(registerSessionPlayer);
   }, []);
 
   /**
@@ -2810,8 +2816,50 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         const refused = outcome as Extract<CallOutcome, { ok: false }>;
         return { ok: false, message: refused.refusal.detail };
       }
-      if (outcome.take.kind !== 'performance') {
-        return { ok: false, message: 'That player hands back audio, and there is nowhere to put it yet.' };
+      if (outcome.take.kind === 'audio') {
+        // The same real path a stem's audio takes: a registered AudioAsset
+        // and an AudioClip placed on the timeline, not a Blob left to sit in
+        // a variable nothing reads. This used to be refused outright --
+        // "there is nowhere to put it yet" -- which was true only because
+        // this branch had never been written, not because it can't be done.
+        const asset = await handleRegisterAudioAsset(outcome.take.audio, {
+          name: `${spec.label} — session take`,
+          originType: 'GENERATED',
+        });
+        const clip = makeClip(asset, `t-band-${role.toLowerCase()}-${Date.now()}`, bpmRef.current || 110, {
+          startTick: 0,
+          sourceDescription: `${spec.label} take, ${outcome.renderer}: ${direction}`,
+        });
+        const takeTrack: Track = {
+          id: clip.trackId,
+          name: `${spec.label} — session take`,
+          instrument: lane.instrument,
+          steps: new Array(songStepsRef.current).fill(false),
+          mute: false,
+          solo: false,
+          volume: 0,
+          pitch: lane.pitch,
+          color: lane.color,
+          sourceModality: 'AUDIO',
+          sourceTakeAudioUrl: asset.url,
+          audioClips: [clip],
+        };
+
+        pendingLabelRef.current = `${spec.label} take`;
+        updateTracksWithHistory((prev) => {
+          const at = prev.findIndex((t) => t.id === lane.id);
+          const next = [...prev];
+          next.splice(at < 0 ? next.length : at + 1, 0, takeTrack);
+          return next;
+        });
+        setSelectionContext((prev) => ({ ...prev, selectedTrackId: takeTrack.id }));
+
+        return {
+          ok: true,
+          message:
+            `**${spec.label}** — take on \`${takeTrack.name}\`, beside \`${lane.name}\` and not over it.\n\n` +
+            `${outcome.take.description}`,
+        };
       }
 
       const notes = outcome.take.notes;
@@ -2855,7 +2903,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
             : `Played by \`${outcome.renderer}\`.`),
       };
     },
-    [updateTracksWithHistory]
+    [updateTracksWithHistory, handleRegisterAudioAsset]
   );
 
   /**
