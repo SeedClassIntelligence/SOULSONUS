@@ -13,6 +13,16 @@ import {
   Upload,
 } from 'lucide-react';
 import { useStudioSession } from '../../app/StudioSessionContext';
+import { BandName } from '../../audio/performanceClassifier';
+
+const SPECTRUM_BANDS: { key: BandName; label: string }[] = [
+  { key: 'sub', label: '20-120' },
+  { key: 'low', label: '120-260' },
+  { key: 'lowMid', label: '260-800' },
+  { key: 'mid', label: '800-2.6k' },
+  { key: 'high', label: '2.6-6k' },
+  { key: 'air', label: '6-14k' },
+];
 
 export const MasteringTelemetrySuite: React.FC = () => {
   const {
@@ -191,62 +201,53 @@ export const MasteringTelemetrySuite: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 2: SPECTRUM 20Hz-20kHz RTA */}
+        {/* TAB 2: SPECTRUM 20Hz-14kHz REAL BAND ENERGY */}
         {activeTelemetryTab === 'spectrum' && (
           <div className="space-y-3">
-            <div className="h-36 bg-slate-900 rounded-xl border border-slate-800 p-2 relative overflow-hidden flex flex-col justify-between">
-              {/* Frequency Scale Grid */}
-              <div className="absolute inset-0 grid grid-cols-5 gap-px opacity-20 pointer-events-none">
-                <div className="border-r border-slate-500 text-[8px] pl-1 pt-1 text-slate-400">40 Hz</div>
-                <div className="border-r border-slate-500 text-[8px] pl-1 pt-1 text-slate-400">250 Hz</div>
-                <div className="border-r border-slate-500 text-[8px] pl-1 pt-1 text-slate-400">1 kHz</div>
-                <div className="border-r border-slate-500 text-[8px] pl-1 pt-1 text-slate-400">5 kHz</div>
-                <div className="text-[8px] pl-1 pt-1 text-slate-400">20 kHz</div>
-              </div>
+            {currentMixSpectralProfile ? (
+              <>
+                <div className="h-36 bg-slate-900 rounded-xl border border-slate-800 p-3 flex items-end justify-between gap-2">
+                  {SPECTRUM_BANDS.map(({ key, label }) => {
+                    const db = currentMixSpectralProfile.bandDb[key];
+                    // -50dB..0dB mapped to 4%..100% bar height, so a real but
+                    // quiet band still shows a sliver rather than vanishing.
+                    const heightPct = Math.max(4, Math.min(100, ((db + 50) / 50) * 100));
+                    return (
+                      <div key={key} className="flex-1 h-full flex flex-col items-center justify-end gap-1">
+                        <span className="text-[8px] text-cyan-300 font-bold">{db.toFixed(1)}</span>
+                        <div
+                          className="w-full rounded-t bg-gradient-to-t from-cyan-500/90 to-cyan-400/40"
+                          style={{ height: `${heightPct}%` }}
+                        />
+                        <span className="text-[8px] text-slate-500 whitespace-nowrap">{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
 
-              {/* RTA Spectral Energy Curve */}
-              <svg className="w-full h-full" viewBox="0 0 400 100" preserveAspectRatio="none">
-                <path
-                  d="M 0,90 Q 40,30 80,45 T 160,50 T 240,40 T 320,60 T 400,85 L 400,100 L 0,100 Z"
-                  fill="url(#spectrumGradient)"
-                  opacity="0.4"
-                />
-                <path
-                  d="M 0,90 Q 40,30 80,45 T 160,50 T 240,40 T 320,60 T 400,85"
-                  fill="none"
-                  stroke="#06b6d4"
-                  strokeWidth="2.5"
-                />
-                <defs>
-                  <linearGradient id="spectrumGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.9" />
-                    <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-              </svg>
-
-              <div className="flex items-center justify-between text-[8px] text-slate-500 pt-1 border-t border-slate-800">
-                <span>Sub-Bass (20-60Hz): Clean</span>
-                <span>Mid-Range (500Hz-2kHz): Balanced</span>
-                <span>Air (10k-20kHz): Smooth</span>
+                {/* Frequency Band Breakdown */}
+                <div className="grid grid-cols-3 gap-2 text-center text-[9px]">
+                  <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
+                    <span className="text-slate-500 block">LOW-END (20-260Hz)</span>
+                    <span className="font-bold text-cyan-400">{currentMixSpectralProfile.lowEndEnergyDb.toFixed(1)} dB</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
+                    <span className="text-slate-500 block">MID (800Hz-2.6kHz)</span>
+                    <span className="font-bold text-emerald-400">{currentMixSpectralProfile.bandDb.mid.toFixed(1)} dB</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
+                    <span className="text-slate-500 block">AIR (6-14kHz)</span>
+                    <span className="font-bold text-amber-400">{currentMixSpectralProfile.bandDb.air.toFixed(1)} dB</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="h-36 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-center text-center px-6">
+                <span className="text-[10px] text-slate-500 font-mono">
+                  Not measured yet — click MEASURE THIS MASTER above to run a real FFT band analysis on a bounce of this project.
+                </span>
               </div>
-            </div>
-
-            {/* Frequency Band Breakdown */}
-            <div className="grid grid-cols-3 gap-2 text-center text-[9px]">
-              <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
-                <span className="text-slate-500 block">LOW-END (40-100Hz)</span>
-                <span className="font-bold text-cyan-400">-18.2 dBFS</span>
-              </div>
-              <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
-                <span className="text-slate-500 block">MID CLUTTER (250Hz)</span>
-                <span className="font-bold text-emerald-400">Low / Clear</span>
-              </div>
-              <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
-                <span className="text-slate-500 block">HIGH AIR (12kHz+)</span>
-                <span className="font-bold text-amber-400">+1.5 dB Sparkle</span>
-              </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -256,13 +257,24 @@ export const MasteringTelemetrySuite: React.FC = () => {
             <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
               <div className="flex items-center justify-between text-[10px]">
                 <span className="text-slate-400 font-bold uppercase">Stereo Phase Correlation</span>
-                <span className="text-emerald-400 font-black">+{activeCand.phaseCorrelation} (Mono-Compatible)</span>
+                <span className={masterMeasurement ? 'text-emerald-400 font-black' : 'text-slate-500 font-black'}>
+                  {masterMeasurement
+                    ? `${masterMeasurement.phaseCorrelation >= 0 ? '+' : ''}${masterMeasurement.phaseCorrelation.toFixed(2)} (${masterMeasurement.phaseCorrelation >= 0.5 ? 'Mono Compatible' : 'Mono Risk'})`
+                    : 'NOT MEASURED'}
+                </span>
               </div>
 
               {/* Correlation Ladder Bar */}
               <div className="space-y-1">
                 <div className="h-3 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-800">
-                  <div className="w-[91%] bg-gradient-to-r from-cyan-500 to-emerald-400 h-full rounded-full" />
+                  <div
+                    className="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full rounded-full"
+                    style={{
+                      width: masterMeasurement
+                        ? `${Math.max(0, Math.min(100, ((masterMeasurement.phaseCorrelation + 1) / 2) * 100))}%`
+                        : '0%',
+                    }}
+                  />
                 </div>
                 <div className="flex justify-between text-[8px] text-slate-500 font-mono">
                   <span>-1.0 (Out of Phase)</span>
@@ -275,11 +287,15 @@ export const MasteringTelemetrySuite: React.FC = () => {
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
                 <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 text-center">
                   <span className="text-[8px] text-slate-500 block">MID CHANNEL ENERGY</span>
-                  <span className="text-xs font-black text-cyan-300">73% (Punch & Focus)</span>
+                  <span className="text-xs font-black text-cyan-300">
+                    {currentMixSpectralProfile ? `${100 - currentMixSpectralProfile.stereoWidthScore}%` : 'NOT MEASURED'}
+                  </span>
                 </div>
                 <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 text-center">
                   <span className="text-[8px] text-slate-500 block">SIDE CHANNEL ENERGY</span>
-                  <span className="text-xs font-black text-purple-300">27% (Stereo Width)</span>
+                  <span className="text-xs font-black text-purple-300">
+                    {currentMixSpectralProfile ? `${currentMixSpectralProfile.stereoWidthScore}%` : 'NOT MEASURED'}
+                  </span>
                 </div>
               </div>
             </div>

@@ -25,6 +25,8 @@ export interface MixSpectralProfile {
   lowEndEnergyDb: number;
   /** Energy in the 2.6-6kHz presence band relative to the whole spectrum, in dB. */
   vocalPresenceDb: number;
+  /** Every band's share of the whole spectrum, in dB, for drawing a real RTA curve. */
+  bandDb: Record<BandName, number>;
 }
 
 function bandEnergyShares(mono: Float32Array, sampleRate: number): Record<BandName, number> {
@@ -89,9 +91,12 @@ export function analyzeMixSpectralProfile(
   const mono = new Float32Array(left.length);
   for (let i = 0; i < left.length; i++) mono[i] = (left[i] + (right[i] ?? left[i])) / 2;
   const shares = bandEnergyShares(mono, sampleRate);
+  const bandDb = {} as Record<BandName, number>;
+  for (const name of BAND_NAMES) bandDb[name] = Math.round(dbFromShare(shares[name]) * 10) / 10;
   return {
     stereoWidthScore: stereoWidthScore(left, right),
     lowEndEnergyDb: Math.round(dbFromShare(shares.sub + shares.low) * 10) / 10,
     vocalPresenceDb: Math.round(dbFromShare(shares.high) * 10) / 10,
+    bandDb,
   };
 }
