@@ -4108,20 +4108,80 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     activeMasterCandidateIdRef.current = activeMasterCandidateId;
   }, [activeMasterCandidateId]);
 
-  const [finalizationGate, setFinalizationGate] = useState<FinalizationGateStatus>({
-    audioChecksPassed: true,
-    noClippingViolation: true,
-    lineageChecksPassed: true,
-    rootSeedPresent: true,
-    resourcesAdmissionPassed: true,
-    rightsAndSplitsPassed: true,
-    provenanceHashVerified: true,
-    isReadyToSign: true,
-    blockingReasons: [],
-  });
-
   const [isBouncing, setIsBouncing] = useState(false);
   const [masterMeasurement, setMasterMeasurement] = useState<LoudnessTelemetryReport | null>(null);
+
+  /**
+   * The release gate, computed from what is actually in the project rather
+   * than a literal that was five `true`s and an empty array regardless of
+   * what had been done. Two of the five checks below have no real data to
+   * verify against yet -- resource admission is tracked on catalogue
+   * entries, never on the assets a project actually places, and there is no
+   * rights/consent system anywhere in this codebase. Both are treated as
+   * blocking rather than quietly passed, on the same principle as every
+   * other honest-failure in this build: "cannot verify" is not "verified."
+   */
+  const finalizationGate = useMemo<FinalizationGateStatus>(() => {
+    const blockingReasons: string[] = [];
+
+    const noClippingViolation = masterMeasurement ? masterMeasurement.truePeakDbtp <= -1.0 : false;
+    const audioChecksPassed = masterMeasurement !== null && noClippingViolation;
+    if (!masterMeasurement) {
+      blockingReasons.push('The master has not been measured yet -- run Measure This Master first.');
+    } else if (!noClippingViolation) {
+      blockingReasons.push(
+        `True peak sits at ${masterMeasurement.truePeakDbtp.toFixed(1)} dBTP, above the -1.0 dBTP ceiling.`
+      );
+    }
+
+    // A root seed is real, creator-sourced material on the timeline -- a
+    // track with an actual audio take, or notes with real performance
+    // provenance -- not an empty project or one built entirely from
+    // synthesized placeholders with no recorded origin.
+    const rootSeedPresent = tracks.some(
+      (t) =>
+        (t.sourceModality === 'AUDIO' && ((t.audioClips?.length ?? 0) > 0 || !!t.sourceTakeAudioUrl)) ||
+        (t.noteEvents || []).some((n) => !!n.provenance?.origin)
+    );
+    const lineageChecksPassed = rootSeedPresent;
+    if (!rootSeedPresent) {
+      blockingReasons.push('No track carries a real recorded take or performed notes yet -- there is no seed to trace lineage from.');
+    }
+
+    // Real infrastructure (registerAudioAsset always computes a genuine
+    // SHA-256 over the actual bytes), so this checks that it actually ran
+    // for every asset in the project rather than assuming it did.
+    const registeredAssets = Object.values(audioAssets);
+    const provenanceHashVerified =
+      registeredAssets.length === 0 || registeredAssets.every((a) => /^[0-9a-f]{64}$/.test(a.sha256 || ''));
+    if (!provenanceHashVerified) {
+      blockingReasons.push('Not every audio asset in this project carries a verified hash.');
+    }
+
+    // No real system tracks either of these against what a project actually
+    // places -- see the comment above the memo.
+    const resourcesAdmissionPassed = false;
+    const rightsAndSplitsPassed = false;
+    blockingReasons.push('Resource admission cannot be verified -- nothing tracks admission status on the assets a project actually places yet.');
+    blockingReasons.push('Rights and splits cannot be verified -- no rights or consent system is wired into this deployment yet.');
+
+    return {
+      audioChecksPassed,
+      noClippingViolation,
+      lineageChecksPassed,
+      rootSeedPresent,
+      resourcesAdmissionPassed,
+      rightsAndSplitsPassed,
+      provenanceHashVerified,
+      isReadyToSign:
+        audioChecksPassed &&
+        lineageChecksPassed &&
+        resourcesAdmissionPassed &&
+        rightsAndSplitsPassed &&
+        provenanceHashVerified,
+      blockingReasons,
+    };
+  }, [masterMeasurement, tracks, audioAssets]);
 
   // --- Session-level editor state ---------------------------------------
   // These live here rather than in a workspace component because a room switch

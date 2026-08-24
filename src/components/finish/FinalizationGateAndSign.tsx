@@ -268,44 +268,109 @@ export const FinalizationGateAndSign: React.FC = () => {
               <span className="font-bold text-slate-200 uppercase text-xs">
                 Release Invariant Runtime Contract
               </span>
-              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-black">
-                ALL INVARIANTS SATISFIED
+              <span
+                className={`px-2 py-0.5 rounded border text-[9px] font-black ${
+                  finalizationGate.isReadyToSign
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                }`}
+              >
+                {finalizationGate.isReadyToSign ? 'ALL INVARIANTS SATISFIED' : 'NOT READY TO SIGN'}
               </span>
             </div>
 
-            {/* Checklist Items */}
+            {/* Checklist Items -- each measured against what is actually in
+                the project, not asserted. RESOURCES and RIGHTS have no real
+                system to check yet and are shown as such, not as a pass. */}
             <div className="space-y-1.5">
               {[
-                { title: 'AUDIO: Valid Master Print & No Intersample Clipping', status: true, detail: '-1.0 dBTP ceiling strictly respected' },
-                { title: 'LINEAGE: Root Seed & Transformation Chain Locked', status: true, detail: 'Human performance seed linked to master print' },
-                { title: 'RESOURCES: R01–R10 Admission Cleared', status: true, detail: 'No RESEARCH_ONLY or unadmitted assets in session' },
-                { title: 'RIGHTS: 100% Creator Ownership & Splits Verified', status: true, detail: 'Sole creator registered / splits agreed' },
-                { title: 'PROVENANCE: Deterministic SHA-256 Hash Tree', status: true, detail: 'Multi-track stem manifest verified' },
+                {
+                  title: 'AUDIO: Valid Master Print & No Intersample Clipping',
+                  status: finalizationGate.audioChecksPassed,
+                  detail: 'Measured against the -1.0 dBTP ceiling. Requires Measure This Master to have run.',
+                },
+                {
+                  title: 'LINEAGE: Root Seed Present',
+                  status: finalizationGate.lineageChecksPassed,
+                  detail: 'At least one track carries a real recorded take or performed notes.',
+                },
+                {
+                  title: 'RESOURCES: Admission Cleared',
+                  status: finalizationGate.resourcesAdmissionPassed,
+                  detail: 'Not verifiable yet -- nothing tracks admission status on assets a project actually places.',
+                  unverifiable: true,
+                },
+                {
+                  title: 'RIGHTS: Ownership & Splits Verified',
+                  status: finalizationGate.rightsAndSplitsPassed,
+                  detail: 'Not verifiable yet -- no rights or consent system is wired into this deployment.',
+                  unverifiable: true,
+                },
+                {
+                  title: 'PROVENANCE: SHA-256 Verified Per Asset',
+                  status: finalizationGate.provenanceHashVerified,
+                  detail: 'Every registered audio asset carries a real, correctly-shaped hash.',
+                },
               ].map((item, i) => (
                 <div key={i} className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
                   <div className="space-y-0.5">
                     <p className="font-bold text-[11px] text-slate-200 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      {item.status ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      ) : (
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                      )}
                       {item.title}
                     </p>
                     <p className="text-[9px] text-slate-500 pl-5">{item.detail}</p>
                   </div>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[9px] font-bold">
-                    PASSED
+                  <span
+                    className={`px-2 py-0.5 rounded text-[9px] font-bold shrink-0 ml-2 ${
+                      item.status
+                        ? 'bg-emerald-500/10 text-emerald-400'
+                        : item.unverifiable
+                          ? 'bg-slate-800 text-slate-400'
+                          : 'bg-rose-500/10 text-rose-400'
+                    }`}
+                  >
+                    {item.status ? 'PASSED' : item.unverifiable ? 'NOT VERIFIABLE' : 'BLOCKED'}
                   </span>
                 </div>
               ))}
             </div>
 
-            {/* Sign Master Button */}
+            {!finalizationGate.isReadyToSign && finalizationGate.blockingReasons.length > 0 && (
+              <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-500/40 space-y-1">
+                <span className="text-[10px] font-bold text-rose-300 uppercase">Why signing is blocked</span>
+                <ul className="text-[10px] text-rose-200/90 font-sans space-y-0.5 list-disc list-inside">
+                  {finalizationGate.blockingReasons.map((reason, i) => (
+                    <li key={i}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Sign Master Button -- disabled for real when the gate isn't
+                actually satisfied, not just while a signature is in flight. */}
             <div className="pt-2">
               <button
                 onClick={handleSign}
-                disabled={isSigning}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs transition cursor-pointer flex items-center justify-center space-x-2 shadow-lg shadow-amber-500/20"
+                disabled={isSigning || !finalizationGate.isReadyToSign}
+                title={!finalizationGate.isReadyToSign ? finalizationGate.blockingReasons.join(' ') : undefined}
+                className={`w-full py-2.5 rounded-xl font-black text-xs transition flex items-center justify-center space-x-2 shadow-lg ${
+                  isSigning || !finalizationGate.isReadyToSign
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
+                    : 'bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 cursor-pointer shadow-amber-500/20'
+                }`}
               >
                 <Lock className="w-3.5 h-3.5" />
-                <span>{isSigning ? 'CRYPTOGRAPHICALLY SIGNING...' : 'LOCK & SIGN E14 SEEDSIGNATURE'}</span>
+                <span>
+                  {isSigning
+                    ? 'CRYPTOGRAPHICALLY SIGNING...'
+                    : finalizationGate.isReadyToSign
+                      ? 'LOCK & SIGN E14 SEEDSIGNATURE'
+                      : 'GATE NOT SATISFIED'}
+                </span>
               </button>
             </div>
           </div>
