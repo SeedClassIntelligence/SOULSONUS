@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useStudioSession } from '../../app/StudioSessionContext';
-import { Mic, Music, Sparkles, Layers, Volume2, Wand2, Disc, PenTool, ShieldCheck, Plus, Trash2, Play } from 'lucide-react';
+import { Mic, Music, Sparkles, Layers, Volume2, Wand2, Disc, PenTool, ShieldCheck, Plus, Trash2, Play, AlertCircle } from 'lucide-react';
 import { audioEngine } from '../../audio/audioEngine';
 import { VocalLayer } from '../VocalLayer';
 import type { WriteRoomTake } from '../../app/StudioSessionContext';
+import { loadAiConfig, queryStudioIntelligence } from '../../lib/studioIntelligenceService';
 
 export const WriteRecordWorkspace: React.FC = () => {
   const {
@@ -17,6 +18,9 @@ export const WriteRecordWorkspace: React.FC = () => {
     writeRoomDraft,
     updateWriteRoomDraft,
   } = useStudioSession();
+
+  const [isWritingAssist, setIsWritingAssist] = useState<'hook' | 'cadence' | null>(null);
+  const [writingAssistError, setWritingAssistError] = useState<string | null>(null);
 
   const selectedSection = sections.find((s) => s.id === selectionContext.selectedSectionId) || sections[0];
 
@@ -50,6 +54,51 @@ export const WriteRecordWorkspace: React.FC = () => {
   const handleStopVocalRecording = async () => {
     await audioEngine.stopVocalRecord();
     setVocalState((prev) => ({ ...prev, isRecording: false }));
+  };
+
+  /**
+   * "+ Hook Idea" and "+ Verse Cadence" used to append one of two hardcoded
+   * sentences, always exactly the same text regardless of the song, labeled
+   * "AI Writing Assist" over a plain string literal. The Native Studio Brain
+   * (the built-in reasoning engine, zero-config) has no branch for creative
+   * writing prompts -- it would answer a lyric request with a generic status
+   * line, which is honest but useless for this button's actual job. So this
+   * only calls the real reasoning pipeline when a real generative provider
+   * (Ollama, Gemini, OpenAI) is configured in Native Brain settings, and
+   * says exactly that when none is, rather than silently producing a
+   * non-answer dressed up as a suggestion.
+   */
+  const handleWritingAssist = async (kind: 'hook' | 'cadence') => {
+    const config = loadAiConfig();
+    if (config.provider === 'LOCAL_BRAIN') {
+      setWritingAssistError(
+        'The built-in Native Brain reasons about DAW actions, not open-ended lyric writing. Configure a real ' +
+          'provider (Ollama, Gemini, or OpenAI) in Native Brain settings to enable this.'
+      );
+      return;
+    }
+    setWritingAssistError(null);
+    setIsWritingAssist(kind);
+    try {
+      const instruction =
+        kind === 'hook'
+          ? `Write one alternative hook line for this song, in the voice already established below. Return only the line itself, no preamble.\n\nExisting lyrics:\n${lyrics || '(nothing written yet)'}`
+          : `Suggest a short verse line built around the song's cadence at ${dawState.bpm} BPM. Return only the line itself, no preamble.\n\nExisting lyrics:\n${lyrics || '(nothing written yet)'}`;
+      const response = await queryStudioIntelligence(
+        instruction,
+        config,
+        dawState,
+        tracks,
+        'WRITE_RECORD',
+        tracks.find((t) => t.id === selectionContext.selectedTrackId) || null
+      );
+      const label = kind === 'hook' ? 'Hook Alternative' : 'Verse Cadence';
+      setLyrics((prev) => `${prev}\n\n[${label}]\n${response.content.trim()}`);
+    } catch (err) {
+      setWritingAssistError(err instanceof Error ? err.message : 'The reasoning provider did not answer.');
+    } finally {
+      setIsWritingAssist(null);
+    }
   };
 
   const handleAddTake = (type: 'lead' | 'harmony' | 'adlib') => {
@@ -131,25 +180,34 @@ export const WriteRecordWorkspace: React.FC = () => {
               />
             </div>
 
-            {/* AI Rhyme & Cadence Assist Buttons */}
+            {/* AI Rhyme & Cadence Assist Buttons -- real reasoning-provider
+                calls now, not two fixed sentences. */}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="text-xs text-slate-400 font-bold flex items-center space-x-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span>AI Writing Assist:</span>
               </span>
               <button
-                onClick={() => setLyrics((prev) => prev + '\n\n[Hook Alternative]\nVoice is the instrument, rhythm is live...')}
-                className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+                onClick={() => handleWritingAssist('hook')}
+                disabled={isWritingAssist !== null}
+                className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 text-xs font-semibold"
               >
-                + Hook Idea
+                {isWritingAssist === 'hook' ? 'Thinking…' : '+ Hook Idea'}
               </button>
               <button
-                onClick={() => setLyrics((prev) => prev + '\n\n[Verse Cadence]\nTap on the table, watch the playhead move...')}
-                className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+                onClick={() => handleWritingAssist('cadence')}
+                disabled={isWritingAssist !== null}
+                className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 text-xs font-semibold"
               >
-                + Verse Cadence
+                {isWritingAssist === 'cadence' ? 'Thinking…' : '+ Verse Cadence'}
               </button>
             </div>
+            {writingAssistError && (
+              <div className="mt-2 p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/40 text-[10px] text-amber-200 font-sans leading-snug flex items-start gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <span>{writingAssistError}</span>
+              </div>
+            )}
           </div>
 
           <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
