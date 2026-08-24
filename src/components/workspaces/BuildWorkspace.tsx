@@ -62,7 +62,23 @@ export const BuildWorkspace: React.FC = () => {
             <span>+ Add Instrument</span>
           </button>
 
-          <button className="px-3 py-1.5 rounded-lg bg-cyan-500 text-slate-950 hover:bg-cyan-400 text-xs font-bold flex items-center space-x-1 transition-all cursor-pointer shadow-lg shadow-cyan-500/20">
+          {/* Had no onClick at all -- opened nothing, called nothing. Routes
+              through the same real event every other realization trigger in
+              the app uses (the SONUS button included), rather than a second,
+              parallel mechanism just for this room. */}
+          <button
+            onClick={() => {
+              const targetTrackId = selectionContext.selectedTrackId || tracks[0]?.id;
+              if (!targetTrackId) return;
+              window.dispatchEvent(
+                new CustomEvent('soulsonus:openDrawer', {
+                  detail: { type: 'realization', trackId: targetTrackId },
+                })
+              );
+            }}
+            disabled={!tracks.length}
+            className="px-3 py-1.5 rounded-lg bg-cyan-500 text-slate-950 hover:bg-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold flex items-center space-x-1 transition-all cursor-pointer shadow-lg shadow-cyan-500/20"
+          >
             <Wand2 className="w-4 h-4" />
             <span>AI Realization</span>
           </button>
