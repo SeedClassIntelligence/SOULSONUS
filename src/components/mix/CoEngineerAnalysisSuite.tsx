@@ -33,6 +33,10 @@ export const CoEngineerAnalysisSuite: React.FC = () => {
     handleAnalyzeMasking,
     maskingReport,
     isAnalyzingMasking,
+    masterMeasurement,
+    masteringChain,
+    handleAnalyzeMaster,
+    isBouncing,
   } = useStudioSession();
 
   const [activeTab, setActiveTab] = useState<'co_engineer' | 'meter_bridge' | 'reference_track' | 'snapshots'>('co_engineer');
@@ -188,39 +192,70 @@ export const CoEngineerAnalysisSuite: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 2: PRECISION METER BRIDGE */}
+        {/* TAB 2: PRECISION METER BRIDGE -- shares the real measurement built
+            for the Master room (same bounce, same masteringTelemetryEngine)
+            rather than a second, decorative copy of the same four numbers. */}
         {activeTab === 'meter_bridge' && (
           <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-slate-400 font-sans">
+                {masterMeasurement
+                  ? 'Measured from a bounce of this project through the mastering chain.'
+                  : 'Not measured yet -- these are the target, not a reading.'}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleAnalyzeMaster()}
+                disabled={isBouncing}
+                className="px-2.5 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-black text-[10px] transition cursor-pointer shrink-0"
+              >
+                {isBouncing ? 'MEASURING…' : 'MEASURE'}
+              </button>
+            </div>
+
             <div className="grid grid-cols-2 gap-2.5">
               {/* Loudness LUFS Box */}
               <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
                 <span className="text-[9px] text-slate-500 font-bold uppercase">LOUDNESS TARGET</span>
-                <p className="text-lg font-black text-cyan-400">-14.2 LUFS</p>
+                <p className="text-lg font-black text-cyan-400">{masteringChain.targetLufs.toFixed(1)} LUFS</p>
                 <div className="flex items-center justify-between text-[9px] text-slate-400">
-                  <span>Integrated: -14.2</span>
-                  <span>Short-Term: -13.8</span>
+                  <span>Integrated: {masterMeasurement ? masterMeasurement.integratedLufs.toFixed(1) : '—'}</span>
+                  <span>Short-Term: {masterMeasurement ? masterMeasurement.shortTermLufs.toFixed(1) : '—'}</span>
                 </div>
               </div>
 
               {/* True Peak & Headroom */}
               <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
                 <span className="text-[9px] text-slate-500 font-bold uppercase">TRUE PEAK CEILING</span>
-                <p className="text-lg font-black text-emerald-400">-0.8 dBTP</p>
+                <p className="text-lg font-black text-emerald-400">
+                  {masterMeasurement ? `${masterMeasurement.truePeakDbtp.toFixed(1)} dBTP` : '—'}
+                </p>
                 <div className="flex items-center justify-between text-[9px] text-slate-400">
-                  <span>Headroom: 0.8 dB</span>
-                  <span>Clip Safe: TRUE</span>
+                  <span>
+                    Headroom: {masterMeasurement ? (masteringChain.targetDbtp - masterMeasurement.truePeakDbtp).toFixed(1) : '—'} dB
+                  </span>
+                  <span>
+                    Clip Safe: {masterMeasurement ? (masterMeasurement.truePeakDbtp <= masteringChain.targetDbtp ? 'TRUE' : 'FALSE') : '—'}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Stereo Phase Correlation & Dynamic Crest Factor */}
+            {/* Stereo Phase Correlation */}
             <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
               <div className="flex items-center justify-between text-[10px]">
                 <span className="text-slate-400 font-bold uppercase">Stereo Phase Correlation</span>
-                <span className="text-cyan-400 font-bold">+0.88 (Mono Compatible)</span>
+                <span className="text-cyan-400 font-bold">
+                  {masterMeasurement
+                    ? `${masterMeasurement.phaseCorrelation >= 0 ? '+' : ''}${masterMeasurement.phaseCorrelation.toFixed(2)} (${masterMeasurement.phaseCorrelation >= 0.5 ? 'Mono Compatible' : 'Mono Risk'})`
+                    : 'Not measured'}
+                </span>
               </div>
               <div className="h-2 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-800">
-                <div className="w-4/5 bg-gradient-to-r from-emerald-500 to-cyan-400 h-full rounded-full" />
+                <div
+                  className="bg-gradient-to-r from-emerald-500 to-cyan-400 h-full rounded-full"
+                  style={{ width: masterMeasurement ? `${Math.max(0, Math.min(100, ((masterMeasurement.phaseCorrelation + 1) / 2) * 100))}%` : '0%' }}
+                />
               </div>
             </div>
           </div>
