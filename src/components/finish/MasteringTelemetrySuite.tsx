@@ -10,12 +10,15 @@ import {
   AlertTriangle,
   Volume2,
   Shield,
+  Upload,
 } from 'lucide-react';
 import { useStudioSession } from '../../app/StudioSessionContext';
 
 export const MasteringTelemetrySuite: React.FC = () => {
   const {
     referenceTrack,
+    currentMixSpectralProfile,
+    handleLoadReferenceTrack,
     monitoringMode,
     handleToggleReferenceAB,
     activeMasterCandidateId,
@@ -25,6 +28,19 @@ export const MasteringTelemetrySuite: React.FC = () => {
     isBouncing,
     masterMeasurement,
   } = useStudioSession();
+
+  const [isLoadingReference, setIsLoadingReference] = useState(false);
+  const handleReferenceFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setIsLoadingReference(true);
+    try {
+      await handleLoadReferenceTrack(file);
+    } finally {
+      setIsLoadingReference(false);
+    }
+  };
 
   const activeCand =
     masterCandidates.find((c) => c.candidateId === activeMasterCandidateId) || masterCandidates[0];
@@ -270,17 +286,20 @@ export const MasteringTelemetrySuite: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 4: COMMERCIAL REFERENCE TRACK COMPARISON */}
+        {/* TAB 4: COMMERCIAL REFERENCE TRACK COMPARISON -- real upload, real
+            measurement, shares state with the Mix room's reference tab. */}
         {activeTelemetryTab === 'reference' && (
           <div className="space-y-3">
             <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <span className="font-black text-xs text-slate-200 uppercase truncate">
-                  {referenceTrack?.name || 'Commercial Reference'}
+                  {referenceTrack?.name || 'No reference loaded'}
                 </span>
-                <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[9px] font-black">
-                  LEVEL MATCHED (-0.8dB)
-                </span>
+                <label className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[9px] font-black cursor-pointer flex items-center gap-1 shrink-0">
+                  <Upload className="w-3 h-3" />
+                  <span>{isLoadingReference ? 'ANALYZING…' : referenceTrack ? 'REPLACE' : 'LOAD FILE'}</span>
+                  <input type="file" accept="audio/*" className="hidden" onChange={handleReferenceFileChange} disabled={isLoadingReference} />
+                </label>
               </div>
 
               {/* Strict Governance Notice */}
@@ -289,31 +308,57 @@ export const MasteringTelemetrySuite: React.FC = () => {
                 <span>Reference audio is used for acoustic comparison only. Never exported or used for generative training.</span>
               </div>
 
+              {!referenceTrack && (
+                <p className="text-[10px] text-slate-500 font-sans">
+                  Upload a real reference track -- nothing is loaded by default.
+                </p>
+              )}
+
+              {referenceTrack && !currentMixSpectralProfile && (
+                <p className="text-[10px] text-slate-500 font-sans">
+                  Reference measured. Run Measure This Master to get this project's own numbers to compare it
+                  against.
+                </p>
+              )}
+
               {/* Comparison Delta Grid */}
-              <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-                <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                  <span className="text-slate-500 block text-[8px]">BASS ENERGY</span>
-                  <span className="font-bold text-amber-400">+1.2 dB (Solid)</span>
+              {referenceTrack && currentMixSpectralProfile && (
+                <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                  <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                    <span className="text-slate-500 block text-[8px]">BASS ENERGY DELTA</span>
+                    <span className="font-bold text-amber-400">
+                      {(currentMixSpectralProfile.lowEndEnergyDb - referenceTrack.lowEndEnergyDb).toFixed(1)} dB
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                    <span className="text-slate-500 block text-[8px]">VOCAL PRESENCE DELTA</span>
+                    <span className="font-bold text-cyan-400">
+                      {(currentMixSpectralProfile.vocalPresenceDb - referenceTrack.vocalPresenceDb).toFixed(1)} dB
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
+                    <span className="text-slate-500 block text-[8px]">STEREO WIDTH</span>
+                    <span className="font-bold text-emerald-400">
+                      {currentMixSpectralProfile.stereoWidthScore}% vs {referenceTrack.stereoWidthScore}%
+                    </span>
+                  </div>
                 </div>
-                <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                  <span className="text-slate-500 block text-[8px]">VOCAL PRESENCE</span>
-                  <span className="font-bold text-cyan-400">-0.6 dB (Target)</span>
-                </div>
-                <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                  <span className="text-slate-500 block text-[8px]">STEREO WIDTH</span>
-                  <span className="font-bold text-emerald-400">88% Match</span>
-                </div>
-              </div>
+              )}
 
               {/* A/B Audition Button */}
               <div className="pt-1 flex items-center justify-between">
-                <span className="text-[10px] text-slate-400">Audition Path: Monitor Only</span>
+                <span className="text-[10px] text-slate-400">
+                  {referenceTrack ? `${referenceTrack.integratedLufs.toFixed(1)} LUFS · ${referenceTrack.durationSec.toFixed(0)}s` : 'Audition Path: Monitor Only'}
+                </span>
                 <button
                   onClick={handleToggleReferenceAB}
-                  className={`px-3 py-1.5 rounded-xl font-black text-xs transition cursor-pointer flex items-center space-x-1.5 ${
-                    monitoringMode.abMode === 'REF'
-                      ? 'bg-cyan-400 text-slate-950 shadow-md shadow-cyan-500/30'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                  disabled={!referenceTrack?.audioUrl}
+                  className={`px-3 py-1.5 rounded-xl font-black text-xs transition flex items-center space-x-1.5 ${
+                    !referenceTrack?.audioUrl
+                      ? 'bg-slate-900 text-slate-600 cursor-not-allowed border border-slate-800'
+                      : monitoringMode.abMode === 'REF'
+                        ? 'bg-cyan-400 text-slate-950 shadow-md shadow-cyan-500/30 cursor-pointer'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer'
                   }`}
                 >
                   <Radio className="w-3.5 h-3.5" />

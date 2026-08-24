@@ -92,6 +92,7 @@ import { registerAudioAsset, makeClip, PlaceClipOptions } from '../audio/audioCl
 import { buildDeliveryPackage, disposeDelivery, DeliveryPackage } from '../audio/deliveryPackage';
 import { MaskingReport, analyzeMasking } from '../audio/maskingAnalysis';
 import { masteringTelemetryEngine, LoudnessTelemetryReport } from '../audio/masteringTelemetryEngine';
+import { analyzeMixSpectralProfile, MixSpectralProfile } from '../audio/referenceTrackAnalysis';
 import { audioEncoders } from '../lib/audioEncoders';
 
 export type MasterBounceFormat = 'WAV_24' | 'WAV_16' | 'FLAC';
@@ -694,6 +695,8 @@ export interface StudioSessionState {
   mixSnapshots: MixSnapshot[];
   activeSnapshotId: string | null;
   referenceTrack: ReferenceTrackConfig | null;
+  currentMixSpectralProfile: MixSpectralProfile | null;
+  handleLoadReferenceTrack: (file: File) => Promise<ReferenceTrackConfig>;
   focusedTrackId: string | null;
   handleSetFocusedTrackId: (trackId: string | null) => void;
   monitoringMode: {
@@ -3734,20 +3737,13 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     },
   ]);
   const [activeSnapshotId, setActiveSnapshotId] = useState<string | null>('snap_initial');
-  const [referenceTrack, setReferenceTrack] = useState<ReferenceTrackConfig | null>({
-    id: 'ref_01',
-    name: 'Commercial Top-40 Reference (Urban / Hip-Hop)',
-    durationSec: 194,
-    integratedLufs: -13.8,
-    peakDbfs: -0.2,
-    stereoWidthScore: 82,
-    lowEndEnergyDb: -4.5,
-    vocalPresenceDb: 2.1,
-    dynamicRangeDb: 8.4,
-    autoLevelMatch: true,
-    gainTrimDb: -0.8,
-    isActiveAudition: false,
-  });
+  // Was a fabricated default -- "Commercial Top-40 Reference (Urban / Hip-
+  // Hop)" at -13.8 LUFS, 82% width, none of it measured from any file,
+  // presented as already loaded before a creator ever uploaded anything.
+  // Real or nothing: null until handleLoadReferenceTrack analyzes a real file.
+  const [referenceTrack, setReferenceTrack] = useState<ReferenceTrackConfig | null>(null);
+  const [currentMixSpectralProfile, setCurrentMixSpectralProfile] = useState<MixSpectralProfile | null>(null);
+  const referenceAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [focusedMixTrackId, setFocusedMixTrackId] = useState<string | null>(null);
 
@@ -3764,6 +3760,29 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     isBypassed: false,
     abMode: 'MIX',
   });
+
+  /**
+   * "HEAR REFERENCE" used to just flip a label -- handleToggleReferenceAB
+   * only ever set monitoringMode.abMode, and nothing in audioEngine read it,
+   * so the project's mix kept playing underneath a button that claimed to be
+   * "LISTENING TO REF." This lives at the provider level rather than inside
+   * whichever room's component happens to be mounted, so switching rooms
+   * mid-audition doesn't unmount the effect and silently restore the mix.
+   */
+  useEffect(() => {
+    const el = referenceAudioRef.current;
+    if (monitoringMode.abMode === 'REF' && referenceTrack?.audioUrl) {
+      audioEngine.setMasterVolume(-60);
+      if (el) {
+        el.currentTime = 0;
+        void el.play().catch(() => undefined);
+      }
+    } else {
+      audioEngine.setMasterVolume(dawState.masterVolume);
+      el?.pause();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monitoringMode.abMode, referenceTrack?.audioUrl]);
 
   const handleSetFocusedTrackId = useCallback((trackId: string | null) => {
     setFocusedMixTrackId(trackId);
@@ -4516,8 +4535,47 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     const left = result.buffer.getChannelData(0);
     const right = result.buffer.numberOfChannels > 1 ? result.buffer.getChannelData(1) : left;
     const measurement = masteringTelemetryEngine.measureLoudness(left, right, result.sampleRate);
-    return { result, measurement };
+    // Same real measurement a reference file gets, run on the project's own
+    // bounce, so a reference comparison has two real numbers either side of
+    // it rather than one real and one invented.
+    const spectralProfile = analyzeMixSpectralProfile(left, right, result.sampleRate);
+    setCurrentMixSpectralProfile(spectralProfile);
+    return { result, measurement, spectralProfile };
   }, []);
+
+  /**
+   * Analyzes a creator-supplied reference file for real -- the same
+   * masteringTelemetryEngine loudness measurement and the same band/width
+   * analysis the project's own bounce gets, so what shows up as "loaded"
+   * was actually measured from the file handed to it.
+   */
+  const handleLoadReferenceTrack = useCallback(
+    async (file: File): Promise<ReferenceTrackConfig> => {
+      const buffer = await decodeAudioFile(file);
+      const left = buffer.getChannelData(0);
+      const right = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : left;
+      const loudness = masteringTelemetryEngine.measureLoudness(left, right, buffer.sampleRate);
+      const spectral = analyzeMixSpectralProfile(left, right, buffer.sampleRate);
+      const config: ReferenceTrackConfig = {
+        id: `ref_${Date.now()}`,
+        name: file.name.replace(/\.[^/.]+$/, ''),
+        audioUrl: URL.createObjectURL(file),
+        durationSec: buffer.duration,
+        integratedLufs: loudness.integratedLufs,
+        peakDbfs: loudness.truePeakDbtp,
+        stereoWidthScore: spectral.stereoWidthScore,
+        lowEndEnergyDb: spectral.lowEndEnergyDb,
+        vocalPresenceDb: spectral.vocalPresenceDb,
+        dynamicRangeDb: loudness.crestFactorDb,
+        autoLevelMatch: true,
+        gainTrimDb: 0,
+        isActiveAudition: false,
+      };
+      setReferenceTrack(config);
+      return config;
+    },
+    [decodeAudioFile]
+  );
 
   const [maskingReport, setMaskingReport] = useState<MaskingReport | null>(null);
   const [isAnalyzingMasking, setIsAnalyzingMasking] = useState(false);
@@ -4882,6 +4940,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       mixSnapshots,
       activeSnapshotId,
       referenceTrack,
+      currentMixSpectralProfile,
+      handleLoadReferenceTrack,
       focusedTrackId: focusedMixTrackId,
       handleSetFocusedTrackId,
       monitoringMode,
@@ -5056,6 +5116,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       mixSnapshots,
       activeSnapshotId,
       referenceTrack,
+      currentMixSpectralProfile,
+      handleLoadReferenceTrack,
       focusedMixTrackId,
       handleSetFocusedTrackId,
       monitoringMode,
@@ -5118,6 +5180,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <StudioSessionContext.Provider value={value}>
       {children}
+      {referenceTrack?.audioUrl && <audio ref={referenceAudioRef} src={referenceTrack.audioUrl} />}
       <CreativeResourceVaultModal
         isOpen={isVaultModalOpen}
         onClose={() => setIsVaultModalOpen(false)}
