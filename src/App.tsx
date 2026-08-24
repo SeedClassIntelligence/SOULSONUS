@@ -130,7 +130,6 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isAiControlRoomOpen, setIsAiControlRoomOpen] = useState(false);
   const [isPianoOpen, setIsPianoOpen] = useState(false);
-  const [isVoiceBarOpen, setIsVoiceBarOpen] = useState(false);
   const [isSoulFlowOpen, setIsSoulFlowOpen] = useState(false);
 
   // Drawers
@@ -258,7 +257,6 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       if (detail === 'export') setIsExportOpen(true);
       if (detail === 'projects' || detail === 'save') setIsProjectMenuOpen(true);
       if (detail === 'piano' || detail === 'keyboard') setIsPianoOpen((prev) => !prev);
-      if (detail === 'voice_command' || detail === 'command') setIsVoiceBarOpen((prev) => !prev);
       if (detail === 'soulflow' || detail === 'pipeline') setIsSoulFlowOpen((prev) => !prev);
 
       if (detail === 'proposal' || detail === 'realization' || (typeof detail === 'object' && detail?.type === 'realization')) {
@@ -546,6 +544,16 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         )}
       </main>
 
+      {/*
+        * Persistent, not a drawer. This used to open from a "COMMAND" toggle
+        * in the utility bar, one button among a dozen -- so a creator who
+        * didn't know it existed had no way to talk to the studio at all. It's
+        * the one thing every room should offer without being found first.
+        */}
+      <div className="max-w-[1440px] w-full mx-auto px-3 md:px-4 pb-3">
+        <VoiceCommandBar onExecuteCommand={handleVoiceCommand} />
+      </div>
+
       {/* Bottom Master Studio Telemetry & Status Bar */}
       <StudioMasterStatusBar />
 
@@ -732,24 +740,6 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         </div>
       )}
 
-      {/*
-        * The command bar. It had a real speech recogniser and a real parser
-        * and no file rendered it, so neither had ever run. It opens from the
-        * utility bar rather than sitting on screen, because a studio does not
-        * need a text prompt in front of the grid at all times.
-        */}
-      {isVoiceBarOpen && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[min(900px,92vw)]">
-          <VoiceCommandBar onExecuteCommand={handleVoiceCommand} />
-          <button
-            onClick={() => setIsVoiceBarOpen(false)}
-            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-800 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold cursor-pointer"
-            title="Close the command bar"
-          >
-            ×
-          </button>
-        </div>
-      )}
     </div>
   );
 };

@@ -125,19 +125,6 @@ export const StudioUtilityBar: React.FC = () => {
 
           <button
             type="button"
-            id="btn-voice-command"
-            onClick={() =>
-              window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'voice_command' }))
-            }
-            className="px-2.5 py-1 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/40 text-[10px] font-bold flex items-center space-x-1.5 transition cursor-pointer active:scale-95"
-            title="Speak or type a studio command"
-          >
-            <Mic className="w-3 h-3 text-purple-400" />
-            <span>COMMAND</span>
-          </button>
-
-          <button
-            type="button"
             id="btn-soulflow"
             onClick={() =>
               window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'soulflow' }))
