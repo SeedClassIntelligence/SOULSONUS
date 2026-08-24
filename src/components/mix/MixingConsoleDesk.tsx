@@ -36,6 +36,7 @@ export const MixingConsoleDesk: React.FC = () => {
     handleUpdateBusChannel,
     handleToggleInsertBypass,
     handleReorderTrackInserts,
+    setSelectionContext,
   } = useStudioSession();
 
   const [activeBusView, setActiveBusView] = useState<'ALL' | 'TRACKS' | 'BUSES'>('ALL');
@@ -258,10 +259,20 @@ export const MixingConsoleDesk: React.FC = () => {
                 >
                   M
                 </button>
+                {/* Had no real effect -- e.stopPropagation() and nothing
+                    else. A real per-channel recorder (OverdubRecorder)
+                    already exists, reachable from the Songwriting Suite
+                    drawer, so this opens that for this specific track
+                    rather than building a second recording UI into a
+                    crowded channel strip. */}
                 <button
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectionContext((prev) => ({ ...prev, selectedTrackId: track.id }));
+                    window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'songwriting' }));
+                  }}
                   className="py-1 rounded bg-slate-900 text-slate-400 hover:text-rose-400 border border-slate-800 text-[9px] font-black transition cursor-pointer"
-                  title="Record Arm Input"
+                  title="Open the recorder for this track"
                 >
                   ARM
                 </button>
