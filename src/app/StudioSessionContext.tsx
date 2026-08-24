@@ -4901,6 +4901,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       isVisualizationOpen,
       isVaultModalOpen,
       isAudioImportModalOpen,
+      isVoiceCloneDrawerOpen,
       dawState,
       tracks,
       sections,
