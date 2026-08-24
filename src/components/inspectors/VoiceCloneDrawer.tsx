@@ -5,6 +5,7 @@ import {
   Mic,
   Sparkles,
   ShieldCheck,
+  AlertCircle,
   Play,
   Check,
   Plus,
@@ -23,38 +24,24 @@ interface VoiceCloneDrawerProps {
   onClose: () => void;
 }
 
+/**
+ * No singing-voice-synthesis model is wired into this deployment. ACE-Step's
+ * real tasks -- cover, repaint, extract, lego, text2music, complete -- take
+ * audio or a style prompt, not lyrics-plus-a-chosen-voice-identity; that's a
+ * different capability (what a dedicated singing synthesizer does) that
+ * nothing in this stack provides yet. This list used to carry fabricated
+ * rights claims ("VERIFIED & EXCLUSIVE", consent IDs, "APPROVED") for voices
+ * that were never real to begin with -- names only, so the picker below is
+ * honest about being a preview of a feature, not a working one.
+ */
 const VOICE_PROFILES = [
-  {
-    id: 'prof_creator_01',
-    name: 'SoulSonus Creator Signature Voice',
-    type: 'CREATOR_ORIGINAL',
-    rights: 'VERIFIED & EXCLUSIVE',
-    consentId: 'PROOF_AUTH_01',
-    status: 'APPROVED',
-    desc: 'Trained strictly on your authenticated personal recordings.',
-  },
-  {
-    id: 'prof_studio_session_warm',
-    name: 'Studio Warm Baritone (Licensed)',
-    type: 'STUDIO_VAULT',
-    rights: 'ROYALTY_FREE_CLEARED',
-    consentId: 'PROOF_LIC_BARI_88',
-    status: 'APPROVED',
-    desc: '100% commercially cleared studio session vocalist dataset.',
-  },
-  {
-    id: 'prof_ethereal_soprano',
-    name: 'Ethereal Soprano (Licensed)',
-    type: 'STUDIO_VAULT',
-    rights: 'ROYALTY_FREE_CLEARED',
-    consentId: 'PROOF_LIC_SOPR_12',
-    status: 'APPROVED',
-    desc: 'Full dynamic vocal range cleared under E16 compliance.',
-  },
+  { id: 'prof_creator_01', name: 'Your Own Voice', desc: 'Would train on your own recordings, once a real identity model is wired in.' },
+  { id: 'prof_studio_session_warm', name: 'Studio Warm Baritone', desc: 'A licensed session voice, once a real licensed voice library is wired in.' },
+  { id: 'prof_ethereal_soprano', name: 'Ethereal Soprano', desc: 'A licensed session voice, once a real licensed voice library is wired in.' },
 ];
 
 export const VoiceCloneDrawer: React.FC<VoiceCloneDrawerProps> = ({ isOpen, onClose }) => {
-  const { tracks, handleUpdateVoiceIdentitySettings, handleAddVocalTake } = useStudioSession();
+  const { tracks } = useStudioSession();
 
   const vocalTrack = tracks.find((t) => t.instrument === 'vocal_synth' || t.id === 't-vocal') || tracks[0];
 
@@ -64,39 +51,25 @@ export const VoiceCloneDrawer: React.FC<VoiceCloneDrawerProps> = ({ isOpen, onCl
   const [timbreBlend, setTimbreBlend] = useState(100);
   const [formantShift, setFormantShift] = useState(0);
   const [breathiness, setBreathiness] = useState(25);
-  const [isRecordingTraining, setIsRecordingTraining] = useState(false);
-  const [isSynthesizing, setIsSynthesizing] = useState(false);
-  const [trainingSamplesCount, setTrainingSamplesCount] = useState(3);
-  const [synthesizedSuccess, setSynthesizedSuccess] = useState(false);
 
   const activeProfile = VOICE_PROFILES.find((p) => p.id === selectedProfileId) || VOICE_PROFILES[0];
 
-  const handleRecordSample = () => {
-    setIsRecordingTraining(true);
-    setTimeout(() => {
-      setIsRecordingTraining(false);
-      setTrainingSamplesCount((prev) => prev + 1);
-    }, 1500);
-  };
+  // No calibration-capture pipeline is wired in either -- there is nothing
+  // for a recorded sample to train, so recording one and reporting a sample
+  // count would be exactly the same fabrication as the synthesis button
+  // below, one step earlier in the flow.
+  const trainingUnavailable =
+    'No voice-identity model is wired into this deployment, so there is nothing for a captured sample to train yet.';
 
-  const handleSynthesizeSinging = () => {
-    if (!lyricsInput.trim()) return;
-    setIsSynthesizing(true);
-    setSynthesizedSuccess(false);
-
-    setTimeout(() => {
-      setIsSynthesizing(false);
-      setSynthesizedSuccess(true);
-
-      // Create synthetic vocal take and add to vocal track
-      if (vocalTrack) {
-        handleAddVocalTake(vocalTrack.id, {
-          name: `Cloned Voice (${activeProfile.name.slice(0, 15)}...)`,
-          rating: 5,
-        });
-      }
-    }, 2000);
-  };
+  // No singing-voice-synthesis model is wired into this deployment -- ACE-
+  // Step's real tasks don't take lyrics-plus-a-voice-identity as input, and
+  // nothing else in this stack does either. This used to be a setTimeout
+  // that unconditionally reported success and added a take with no audio
+  // behind it after two seconds. It says the truth now instead.
+  const synthesisUnavailable =
+    'No singing-voice-synthesis model is wired into this deployment yet. ACE-Step (the model this build actually ' +
+    'uses) generates and reshapes audio from a prompt or a source recording -- it does not sing lyrics in a chosen ' +
+    'voice identity. That is a different capability, and nothing here provides it.';
 
   return (
     <AnimatePresence>
@@ -171,7 +144,7 @@ export const VoiceCloneDrawer: React.FC<VoiceCloneDrawerProps> = ({ isOpen, onCl
                 <div className="space-y-2">
                   <div className="text-[11px] font-bold text-slate-300 uppercase flex items-center justify-between">
                     <span>Select Singing Voice Model</span>
-                    <span className="text-emerald-400 text-[10px]">E16 AUTHORIZED</span>
+                    <span className="text-amber-400 text-[10px]">NO MODEL WIRED</span>
                   </div>
 
                   <div className="grid grid-cols-1 gap-2">
@@ -268,63 +241,48 @@ export const VoiceCloneDrawer: React.FC<VoiceCloneDrawerProps> = ({ isOpen, onCl
                   </div>
                 </div>
 
-                {/* Synthesize Action */}
+                {/* Synthesize Action -- disabled, honestly, rather than a fake
+                    progress bar over a two-second timer that used to always
+                    "succeed" and add a take with no audio behind it. */}
                 <button
-                  onClick={handleSynthesizeSinging}
-                  disabled={isSynthesizing || !lyricsInput.trim()}
-                  className={`w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition cursor-pointer shadow-lg ${
-                    isSynthesizing
-                      ? 'bg-pink-400 text-slate-950 animate-pulse'
-                      : synthesizedSuccess
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-pink-600 hover:bg-pink-500 text-white shadow-pink-600/30'
-                  }`}
+                  disabled
+                  title={synthesisUnavailable}
+                  className="w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 bg-slate-800 text-slate-500 cursor-not-allowed"
                 >
-                  <Wand2 className="w-4 h-4" />
-                  <span>
-                    {isSynthesizing
-                      ? 'Synthesizing Vocals with Cloned Voice...'
-                      : synthesizedSuccess
-                      ? 'Vocal Take Added to Track!'
-                      : 'SYNTHESIZE SUNG VOCAL TAKE'}
-                  </span>
+                  <AlertCircle className="w-4 h-4" />
+                  <span>NO SINGING MODEL WIRED</span>
                 </button>
+                <p className="text-[10px] text-slate-500 leading-relaxed">{synthesisUnavailable}</p>
               </div>
             ) : (
               /* TAB 2: CLONE & TRAIN VOICE IDENTITY */
               <div className="space-y-4">
                 <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
                   <div className="flex items-center space-x-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    <span className="font-bold text-white text-xs uppercase">Your Exclusive Cloned Voice</span>
+                    <AlertCircle className="w-4 h-4 text-amber-400" />
+                    <span className="font-bold text-white text-xs uppercase">No Voice-Identity Model Wired</span>
                   </div>
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    SoulSonus builds your personal singing voice model by capturing short vocalizations (vowels, humming, and pitch glides).
+                    A real voice-cloning pipeline would train on captured vocalizations here. Nothing in this
+                    deployment does that yet, so there is no identity to calibrate and no consent to record against
+                    one.
                   </p>
-                  <div className="flex items-center justify-between text-xs font-mono pt-2 border-t border-slate-800">
-                    <span className="text-slate-400">Calibrated Samples:</span>
-                    <span className="text-amber-400 font-bold">{trainingSamplesCount} Samples Trained</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="text-slate-400">Consent Proof Token:</span>
-                    <span className="text-emerald-400 font-bold">#PROOF_AUTH_01 (Signed)</span>
-                  </div>
                 </div>
 
-                {/* Record New Calibration Sample */}
-                <div className="p-4 rounded-xl bg-slate-900/80 border border-amber-500/30 space-y-3">
-                  <h4 className="text-xs font-bold text-amber-300 uppercase">Record New Voice Sample</h4>
-                  <p className="text-[11px] text-slate-400">
-                    Sing a sustained vowel "Ahhh" (C3) for 3 seconds to update your vocal tract harmonics.
-                  </p>
+                {/* Record New Calibration Sample -- disabled, honestly, rather
+                    than a fake setTimeout incrementing a sample count with
+                    nothing behind it. */}
+                <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase">Record New Voice Sample</h4>
+                  <p className="text-[11px] text-slate-500">{trainingUnavailable}</p>
 
                   <button
-                    onClick={handleRecordSample}
-                    disabled={isRecordingTraining}
-                    className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center space-x-2 transition cursor-pointer"
+                    disabled
+                    title={trainingUnavailable}
+                    className="w-full py-2.5 rounded-xl bg-slate-800 text-slate-500 font-bold text-xs flex items-center justify-center space-x-2 cursor-not-allowed"
                   >
                     <Mic className="w-4 h-4" />
-                    <span>{isRecordingTraining ? 'Recording Voice Vowel...' : 'RECORD 3-SECOND VOCAL SAMPLE'}</span>
+                    <span>NO MODEL TO TRAIN</span>
                   </button>
                 </div>
               </div>
