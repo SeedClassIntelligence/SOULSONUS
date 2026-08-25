@@ -80,7 +80,7 @@ export const StudioUtilityBar: React.FC = () => {
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'workstation' }))}
           className={`px-3 py-1 rounded-xl border text-[10px] font-black flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-sm ${
-            activeWorkspace === 'BUILD'
+            activeWorkspace === 'CREATE'
               ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 border-cyan-400 font-black'
               : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
           }`}

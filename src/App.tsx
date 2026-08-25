@@ -19,7 +19,6 @@ import { MixWorkspace } from './components/mix/MixWorkspace';
 import { FinishMasterWorkspace } from './components/finish/FinishMasterWorkspace';
 import { FinalizationGateAndSign } from './components/finish/FinalizationGateAndSign';
 import { WriteRecordWorkspace } from './components/workspaces/WriteRecordWorkspace';
-import { BuildWorkspace } from './components/workspaces/BuildWorkspace';
 import { RealizationRouter } from './lib/realizationRouter';
 import { proposeRealization } from './lib/realizationProposal';
 import { GenerationCandidate, RealizationRoute } from './types/daw';
@@ -528,12 +527,12 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
           </div>
         ) : activeWorkspace === 'WRITE_RECORD' ? (
           <WriteRecordWorkspace />
-        ) : activeWorkspace === 'BUILD' ? (
-          // Build rendered the Create canvas, so the arrangement workspace —
-          // the section builder, the section-scoped lanes and the undo cluster —
-          // was in the tree of no room at all.
-          <BuildWorkspace />
         ) : (
+          // Create and Build were two destinations for one continuous act --
+          // beatbox, shape it, beatbox more -- so a session that used to be
+          // spent crossing between them now happens on this one screen.
+          // 'BUILD' is kept only so a project saved before this merge still
+          // resolves somewhere real instead of a blank room.
           <StudioCanvas />
         )}
       </main>

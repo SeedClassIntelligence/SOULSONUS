@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { WorkspaceTab } from '../types/daw';
-import { Sparkles, Layers, Mic, Sliders, ShieldCheck, Activity } from 'lucide-react';
+import { Sparkles, Mic, Sliders, ShieldCheck, Activity } from 'lucide-react';
 
 interface WorkspaceNavProps {
   activeWorkspace: WorkspaceTab;
@@ -15,39 +15,32 @@ const WORKSPACES: { id: WorkspaceTab; label: string; icon: React.ReactNode; colo
     label: '1. CREATE',
     icon: <Sparkles className="w-4 h-4 text-amber-400" />,
     color: 'amber',
-    desc: 'Capture, Beatbox & 64-Step Grid',
-  },
-  {
-    id: 'BUILD',
-    label: '2. BUILD',
-    icon: <Layers className="w-4 h-4 text-cyan-400" />,
-    color: 'cyan',
-    desc: 'Arrangement, Timeline & Realization',
+    desc: 'Capture, Beatbox, Arrangement & 64-Step Grid',
   },
   {
     id: 'WRITE_RECORD',
-    label: '3. WRITE & RECORD',
+    label: '2. WRITE & RECORD',
     icon: <Mic className="w-4 h-4 text-pink-400" />,
     color: 'pink',
     desc: 'Lyrics, Cadence & Vocal Take Stack',
   },
   {
     id: 'MIX',
-    label: '4. MIX',
+    label: '3. MIX',
     icon: <Sliders className="w-4 h-4 text-emerald-400" />,
     color: 'emerald',
     desc: 'Dynamic Multi-Track Console & Bus FX',
   },
   {
     id: 'MASTER',
-    label: '5. MASTER',
+    label: '4. MASTER',
     icon: <Activity className="w-4 h-4 text-indigo-400" />,
     color: 'indigo',
     desc: '7-Stage Mastering Rack, LUFS & Reference A/B',
   },
   {
     id: 'RELEASE',
-    label: '6. RELEASE',
+    label: '5. RELEASE',
     icon: <ShieldCheck className="w-4 h-4 text-purple-400" />,
     color: 'purple',
     desc: 'Finalization Gate, SeedSignature & Export',

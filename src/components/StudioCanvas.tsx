@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { Track, PianoRollTool } from '../types/daw';
 import { UnifiedTrackLane } from './UnifiedTrackLane';
+import { SectionBuilder } from './SectionBuilder';
+import { ShootAroundControls } from './ShootAroundControls';
+import { TimelineAudioPanel } from './TimelineAudioPanel';
 import { TICKS_PER_16TH, TICKS_PER_BEAT } from '../utils/musicMath';
 import { detectionEngine } from '../audio/detectionEngine';
 import {
@@ -37,6 +40,7 @@ import {
   Eraser,
   Brain,
   Compass,
+  Wand2,
 } from 'lucide-react';
 
 const INSTRUMENT_ICONS: { [key: string]: React.ReactNode } = {
@@ -200,6 +204,7 @@ export const StudioCanvas: React.FC = () => {
     setIsInspectorOpen,
     sections,
     setSections,
+    handleUpdateSections,
     handleToggleMute,
     handleToggleSolo,
     handleChangeVolume,
@@ -207,6 +212,14 @@ export const StudioCanvas: React.FC = () => {
     handleNudgeTrackPattern,
     handleShiftTrackRow,
     handleClearTrack,
+    handleClearAll,
+    handleCloneBarToAll,
+    handleInvertPattern,
+    handleRandomize,
+    handleUndo,
+    handleRedo,
+    canUndo,
+    canRedo,
     handleToggleStep,
     calibratingTrackId,
     setCalibratingTrackId,
@@ -245,6 +258,12 @@ export const StudioCanvas: React.FC = () => {
   const setSeedTargetMode = (v: 'NEW_TRACK' | 'ADD_LAYER') => updateEditorPrefs({ seedTargetMode: v });
 
   const [isAddTrackOpen, setIsAddTrackOpen] = useState(false);
+  // The section editor (rename, retag, remap bars, add/remove sections) was
+  // Build's whole reason to exist as a separate room. Selecting a section to
+  // scope by was already real here; only editing what a section *is* was
+  // missing. It opens over this same screen instead of somewhere else, since
+  // shaping the song and structuring it are one continuous act, not two.
+  const [isSectionEditorOpen, setIsSectionEditorOpen] = useState(false);
 
   // Universal Arranger Toolbar State
 
@@ -471,18 +490,12 @@ export const StudioCanvas: React.FC = () => {
   const getSeedStripLabel = () => {
     switch (activeWorkspace) {
       case 'CREATE':
+      case 'BUILD':
         return {
           title: 'ORIGINATE ROOT CREATIVE SEED:',
           subtitle: '(Authoritative creative origin • Decomposed into canonical track objects)',
           color: 'text-amber-300',
           iconColor: 'text-amber-400',
-        };
-      case 'BUILD':
-        return {
-          title: 'RECORD CONTRIBUTION SEED / STACK LAYER:',
-          subtitle: '(Child performance seeds • Non-destructive layer lineage attached to tracks)',
-          color: 'text-cyan-300',
-          iconColor: 'text-cyan-400',
         };
       case 'WRITE_RECORD':
         return {
@@ -559,6 +572,18 @@ export const StudioCanvas: React.FC = () => {
                     </div>
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => setIsSectionEditorOpen((v) => !v)}
+                  className={`py-1 px-2 rounded-lg border text-[10px] font-bold transition cursor-pointer ${
+                    isSectionEditorOpen
+                      ? 'bg-cyan-500 text-slate-950 border-cyan-400'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="Rename, retag, remap bars, or add/remove sections"
+                >
+                  {isSectionEditorOpen ? 'CLOSE SECTION EDITOR' : 'EDIT SECTIONS'}
+                </button>
               </div>
 
               {/* Song Length */}
@@ -655,6 +680,18 @@ export const StudioCanvas: React.FC = () => {
                 ))}
               </div>
             </div>
+
+            {isSectionEditorOpen && (
+              <div className="mb-2">
+                <SectionBuilder
+                  sections={sections}
+                  onUpdateSections={handleUpdateSections}
+                  tracks={tracks}
+                  currentStep={dawState.currentStep}
+                  onSelectBarView={(barView) => updateEditorPrefs({ activeBarView: barView })}
+                />
+              </div>
+            )}
 
             {songLengthNotice && (
               <div
@@ -831,7 +868,7 @@ export const StudioCanvas: React.FC = () => {
                 </button>
 
                 {/* + ADD TRACK Button (Moved Up Top) */}
-                <div className="relative">
+                <div className="relative flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setIsAddTrackOpen(!isAddTrackOpen)}
@@ -840,6 +877,29 @@ export const StudioCanvas: React.FC = () => {
                   >
                     <Plus className="w-3 h-3 stroke-[3]" />
                     <span>+ ADD TRACK</span>
+                  </button>
+
+                  {/* Had no onClick at all -- opened nothing, called nothing.
+                      Routes through the same real event every other realization
+                      trigger in the app uses, rather than a second, parallel
+                      mechanism. */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const targetTrackId = selectionContext.selectedTrackId || tracks[0]?.id;
+                      if (!targetTrackId) return;
+                      window.dispatchEvent(
+                        new CustomEvent('soulsonus:openDrawer', {
+                          detail: { type: 'realization', trackId: targetTrackId },
+                        })
+                      );
+                    }}
+                    disabled={!tracks.length}
+                    className="px-2.5 py-0.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black transition cursor-pointer text-[9px] flex items-center space-x-1 shadow-sm"
+                    title="Realize the focused track with AI"
+                  >
+                    <Wand2 className="w-3 h-3" />
+                    <span>AI REALIZATION</span>
                   </button>
 
                   {isAddTrackOpen && (
@@ -889,6 +949,21 @@ export const StudioCanvas: React.FC = () => {
                   )}
                 </div>
               </div>
+            </div>
+
+            <div className="mb-2">
+              <ShootAroundControls
+                onCloneBar1ToAll={() => handleCloneBarToAll(0)}
+                onNudgeLeft={() => handleNudgeTrackPattern('all', 'left')}
+                onNudgeRight={() => handleNudgeTrackPattern('all', 'right')}
+                onRandomizeBar1={() => handleRandomize(0)}
+                onClearAll={handleClearAll}
+                onInvertPattern={handleInvertPattern}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                onUndo={() => { handleUndo(); }}
+                onRedo={() => { handleRedo(); }}
+              />
             </div>
 
             {/* 2.5 CREATOR PERFORMANCE & SEED CAPTURE STRIP */}
@@ -1021,6 +1096,10 @@ export const StudioCanvas: React.FC = () => {
                   onShiftRow={(dir) => handleShiftTrackRow(trackIdx, dir)}
                 />
               ))}
+            </div>
+
+            <div className="mt-2">
+              <TimelineAudioPanel />
             </div>
           </div>
         </div>
