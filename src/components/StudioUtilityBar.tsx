@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain, Cable, Compass, Disc, Eye, Layers, Mic, Sliders, Sparkles, Target } from 'lucide-react';
+import { Brain, Cable, Compass, Database, Disc, Eye, Layers, Mic, Music2, Sliders, Sparkles, Target, Users } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 
 /**
@@ -13,6 +13,7 @@ import { useStudioSession } from '../app/StudioSessionContext';
 export const StudioUtilityBar: React.FC = () => {
   const {
     setIsAudioImportModalOpen,
+    setIsVaultModalOpen,
     tracks,
     selectionContext,
     activeWorkspace,
@@ -28,6 +29,38 @@ export const StudioUtilityBar: React.FC = () => {
         <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider hidden sm:inline">
           STUDIO UTILITIES:
         </span>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'piano' }))}
+          className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold flex items-center space-x-1.5 transition cursor-pointer active:scale-95"
+          title="Open Interactive Virtual Piano Keyboard (Play with Computer Keys A-L / Z-X)"
+        >
+          <Music2 className="w-3 h-3 text-cyan-400" />
+          <span>🎹 PIANO</span>
+        </button>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'training' }))}
+          className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-[10px] font-bold flex items-center space-x-1.5 transition cursor-pointer active:scale-95"
+          title="Open Creator Training & My Sounds Studio (Signature + Root Sound Vault + Voice Cloning)"
+        >
+          <Sparkles className="w-3 h-3 text-amber-400" />
+          <span>TRAIN SIGNATURE</span>
+        </button>
+        <button
+          onClick={() => setIsVaultModalOpen(true)}
+          className="px-2.5 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center space-x-1.5 transition cursor-pointer active:scale-95"
+          title="Sound sourcing — the runtime, the factory slots, the candidates, and what has been ruled out"
+        >
+          <Database className="w-3 h-3 text-emerald-400" />
+          <span>SOUND SOURCING</span>
+        </button>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'collab' }))}
+          className="px-2.5 py-1 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold flex items-center space-x-1.5 transition cursor-pointer active:scale-95"
+          title="Open Real-Time Collaboration, Team Presence & Split Sheets"
+        >
+          <Users className="w-3 h-3 text-purple-400" />
+          <span>COLLAB</span>
+        </button>
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'intelligence' }))}
           className="px-3 py-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-[10px] flex items-center space-x-1.5 transition cursor-pointer shadow-md shadow-amber-500/20 active:scale-95"

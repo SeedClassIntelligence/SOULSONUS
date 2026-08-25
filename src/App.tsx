@@ -122,7 +122,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [tourInitialAspect, setTourInitialAspect] = useState<TourAspectId>('OVERVIEW');
   const [isTrainingOpen, setIsTrainingOpen] = useState(false);
-  const [trainingInitialTab, setTrainingInitialTab] = useState<'TRAINING_PILLARS' | 'VOICE_CLONING_LAB' | 'SOUND_VAULT'>('TRAINING_PILLARS');
+  const [trainingInitialTab] = useState<'TRAINING_PILLARS' | 'VOICE_CLONING_LAB' | 'SOUND_VAULT'>('TRAINING_PILLARS');
   const [isSoundLibraryOpen, setIsSoundLibraryOpen] = useState(false);
   const [isDatasetRegistryOpen, setIsDatasetRegistryOpen] = useState(false);
   const [isCollaborationOpen, setIsCollaborationOpen] = useState(false);
@@ -490,15 +490,9 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
           setTourInitialAspect('OVERVIEW');
           setIsTourOpen(true);
         }}
-        onOpenTraining={() => {
-          setTrainingInitialTab('TRAINING_PILLARS');
-          setIsTrainingOpen(true);
-        }}
         onOpenSoundLibrary={() => setIsSoundLibraryOpen(true)}
         onOpenDatasetRegistry={() => setIsDatasetRegistryOpen(true)}
-        onOpenCollaboration={() => setIsCollaborationOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
-        onOpenPiano={() => setIsPianoOpen(true)}
         onOpenProjects={() => setIsProjectMenuOpen(true)}
         onBackToLanding={onBackToLanding}
         isMicActive={detectionSettings.enabled}

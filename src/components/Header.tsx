@@ -7,11 +7,8 @@ import {
   Volume2,
   HelpCircle,
   Sliders,
-  Sparkles,
   Search,
-  Users,
   Download,
-  Database,
   RotateCcw,
   Repeat,
   Radio,
@@ -34,13 +31,10 @@ interface HeaderProps {
   onSelectPreset: (preset: Preset) => void;
   onOpenHelp: () => void;
   onOpenTour?: () => void;
-  onOpenTraining: () => void;
   onOpenSoundLibrary: () => void;
   onOpenDatasetRegistry: () => void;
-  onOpenCollaboration: () => void;
   onOpenExport: () => void;
   onOpenVault?: () => void;
-  onOpenPiano?: () => void;
   onOpenProjects?: () => void;
   onBackToLanding?: () => void;
   isMicActive: boolean;
@@ -55,17 +49,14 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectPreset,
   onOpenHelp,
   onOpenTour,
-  onOpenTraining,
   onOpenSoundLibrary,
   onOpenDatasetRegistry,
-  onOpenCollaboration,
   onOpenExport,
-  onOpenPiano,
   onOpenProjects,
   onBackToLanding,
   isMicActive,
 }) => {
-  const { setIsVaultModalOpen, handleTransposeAllTracks, handleToggleMetronome } = useStudioSession();
+  const { handleTransposeAllTracks, handleToggleMetronome } = useStudioSession();
   const [isLooping, setIsLooping] = useState(true);
   // Read from the project rather than from this component. It used to be a
   // `useState(true)` here that nothing else could see -- so the button looked
@@ -200,16 +191,6 @@ export const Header: React.FC<HeaderProps> = ({
             <span>💾 PROJECTS</span>
           </button>
 
-          {/* Virtual Piano Keyboard Toggle Button */}
-          <button
-            type="button"
-            onClick={() => (onOpenPiano ? onOpenPiano() : window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'piano' })))}
-            className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold transition cursor-pointer active:scale-95"
-            title="Open Interactive Virtual Piano Keyboard (Play with Computer Keys A-L / Z-X)"
-          >
-            <span>🎹 PIANO</span>
-          </button>
-
           {/* Time Signature */}
           <div
             className="hidden sm:flex items-center space-x-1 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 text-xs font-mono"
@@ -232,44 +213,12 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
-            id="btn-train-signature"
-            onClick={onOpenTraining}
-            className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold transition cursor-pointer shadow-sm shadow-amber-500/10"
-            title="Open Creator Training & My Sounds Studio (E13 Signature + R09 Root Sound Vault + Voice Cloning)"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>TRAIN SIGNATURE</span>
-          </button>
-
-          {/* The tooltip here promised "25,000+ Open-Source Instruments, 808s,
-              SoundFonts & Synths". None are bundled. What the panel actually
-              shows is where sounds come from and what may become one. */}
-          <button
-            id="btn-sound-sourcing"
-            onClick={() => setIsVaultModalOpen(true)}
-            className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-mono font-bold transition cursor-pointer"
-            title="Sound sourcing — the runtime, the factory slots, the candidates, and what has been ruled out"
-          >
-            <Database className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden sm:inline">SOUND SOURCING</span>
-          </button>
-
-          <button
             onClick={onOpenHelp}
             className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-mono font-bold transition cursor-pointer"
             title="Open Master Studio Manual & Resource Center (Complete Guides, Trigger Manuals & Cheatsheet)"
           >
             <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
             <span>MANUAL</span>
-          </button>
-
-          <button
-            onClick={onOpenCollaboration}
-            className="hidden lg:flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-mono font-bold transition cursor-pointer"
-            title="Open Real-Time Collaboration, Team Presence & Split Sheets"
-          >
-            <Users className="w-3.5 h-3.5 text-purple-400" />
-            <span>COLLAB</span>
           </button>
 
           <button
