@@ -286,6 +286,29 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
           durationTicks: newDur,
           midiNote: initialMidi,
         });
+      } else if (action === 'RESIZE_LEFT') {
+        // The end stays put; only the start moves, so the handle labeled
+        // "nudge start" actually changes the start rather than the note's
+        // length from the wrong edge. This branch never existed -- the
+        // handle called handleNoteMouseDown with 'RESIZE_LEFT' and nothing
+        // downstream recognised that action, so dragging it did nothing at
+        // all, in the preview or the committed state.
+        const endTick = initialStartTick + initialDuration;
+        const newStart = snapTick(
+          Math.max(0, Math.min(endTick - 15, initialStartTick + deltaTicks)),
+          snapGridTicks || TICKS_PER_16TH
+        );
+        const newDur = endTick - newStart;
+        currentCalculatedStart = newStart;
+        currentCalculatedDur = newDur;
+
+        setActiveDrag({
+          noteId: note.id,
+          action: 'RESIZE_LEFT',
+          startTick: newStart,
+          durationTicks: newDur,
+          midiNote: initialMidi,
+        });
       }
     };
 
@@ -301,6 +324,12 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
           handleMoveNotes(track.id, [note.id], deltaTicks, deltaMidi);
         }
       } else if (action === 'RESIZE_RIGHT') {
+        if (currentCalculatedDur !== note.durationTicks) {
+          handleResizeNote(track.id, note.id, currentCalculatedDur);
+        }
+      } else if (action === 'RESIZE_LEFT') {
+        const deltaTicks = currentCalculatedStart - note.startTick;
+        if (deltaTicks !== 0) handleMoveNotes(track.id, [note.id], deltaTicks, 0);
         if (currentCalculatedDur !== note.durationTicks) {
           handleResizeNote(track.id, note.id, currentCalculatedDur);
         }
@@ -742,7 +771,11 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                 const liveMidi = isBeingDragged ? activeDrag.midiNote : note.midiNote;
 
                 const leftPercent = (liveStartTick / songSpanTicks) * 100;
-                const widthPercent = Math.max(1.2, (liveDuration / songSpanTicks) * 100);
+                // 1.2% left the shortest notes barely wider than their own resize
+                // handles combined, so grabbing the body to move or transpose one
+                // almost always hit a handle instead. 2% leaves real room between
+                // them at any zoom level actually used.
+                const widthPercent = Math.max(2, (liveDuration / songSpanTicks) * 100);
                 const isNoteSelected = selectedNoteIds.includes(note.id);
                 const noteName = isDrum ? track.name.split(' ')[0].toUpperCase() : midiToNoteName(liveMidi);
 
@@ -810,7 +843,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                         }
                         handleNoteMouseDown(e, note, 'RESIZE_LEFT');
                       }}
-                      className="absolute left-0 top-0 bottom-0 w-2 hover:bg-white/40 cursor-ew-resize"
+                      className="absolute left-0 top-0 bottom-0 w-1.5 hover:bg-white/40 cursor-ew-resize"
                       title="Drag left to nudge start"
                     />
 
@@ -879,7 +912,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                         handleNoteMouseDown(e, note, 'RESIZE_RIGHT');
                       }}
                       title="Drag to Stretch Duration"
-                      className="absolute right-0 top-0 bottom-0 w-3 hover:bg-white/60 cursor-ew-resize flex items-center justify-center group/stretch"
+                      className="absolute right-0 top-0 bottom-0 w-1.5 hover:bg-white/60 cursor-ew-resize flex items-center justify-center group/stretch"
                     >
                       <div className="w-1 h-3 bg-black/40 group-hover/stretch:bg-black/70 rounded-full" />
                     </div>
