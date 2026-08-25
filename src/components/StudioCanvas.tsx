@@ -710,6 +710,114 @@ export const StudioCanvas: React.FC = () => {
               </div>
             )}
 
+
+            <div className="mb-2">
+              <ShootAroundControls
+                onCloneBar1ToAll={() => handleCloneBarToAll(0)}
+                onNudgeLeft={() => handleNudgeTrackPattern('all', 'left')}
+                onNudgeRight={() => handleNudgeTrackPattern('all', 'right')}
+                onRandomizeBar1={() => handleRandomize(0)}
+                onClearAll={handleClearAll}
+                onInvertPattern={handleInvertPattern}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                onUndo={() => { handleUndo(); }}
+                onRedo={() => { handleRedo(); }}
+              />
+            </div>
+
+            {/* 2.5 CREATOR PERFORMANCE & SEED CAPTURE STRIP */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-gradient-to-r from-amber-500/15 via-slate-900/90 to-cyan-500/15 rounded-2xl border border-amber-500/40 text-xs font-mono mb-2 shadow-xl">
+              <div className="flex items-center space-x-2">
+                <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <Mic className="w-4 h-4 text-amber-400 animate-pulse" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-black text-amber-300 tracking-wider">
+                    CREATOR PERFORMANCE CAPTURE:
+                  </div>
+                  {/* What the microphone is doing, rather than what was asked
+                      of it. A creator who performs for forty seconds and finds
+                      an empty session needs to have been told, at the moment
+                      it happened, that nothing was being heard. */}
+                  {captureError ? (
+                    <div id="capture-status" className="text-[9px] text-rose-300 max-w-md leading-relaxed">
+                      {captureError}
+                    </div>
+                  ) : detectionSettings.enabled ? (
+                    <div id="capture-status" className="flex items-center gap-2">
+                      <span className="text-[9px] text-emerald-300 font-mono">LISTENING</span>
+                      {/* Live input, so silence looks like silence and a hit
+                          looks like a hit. These meters existed in the
+                          calibration drawer and never moved, because nothing
+                          was reading what the engine measures. */}
+                      <div className="flex items-center gap-1" title="Live input level: low band and high band">
+                        <div className="w-16 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                          <div
+                            id="meter-low"
+                            className="h-full bg-amber-400 transition-[width] duration-75"
+                            style={{ width: `${Math.min(100, (detectionSettings.currentLowLevel || 0) * 100)}%` }}
+                          />
+                        </div>
+                        <div className="w-16 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                          <div
+                            id="meter-high"
+                            className="h-full bg-cyan-400 transition-[width] duration-75"
+                            style={{ width: `${Math.min(100, (detectionSettings.currentHighLevel || 0) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span className="text-[9px] text-slate-500 font-mono">
+                        {Math.round((detectionSettings.currentLowLevel || 0) * 100)}% /{' '}
+                        {Math.round((detectionSettings.currentHighLevel || 0) * 100)}%
+                      </span>
+                    </div>
+                  ) : (
+                    <div id="capture-status" className="text-[9px] text-slate-400">
+                      Creates a track and opens the microphone. Nothing is recorded until it does.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {/* 1. BEATBOX BUTTON */}
+                <button
+                  type="button"
+                  data-testid="capture-mouth"
+                  onClick={() => handleQuickPerformanceCapture('MOUTH')}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 font-black text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-md shadow-amber-500/10"
+                  title="Create Beatbox Track & Arm Mic (Kick & Snare Transient Capture)"
+                >
+                  <Drum className="w-3.5 h-3.5 text-amber-400" />
+                  <span>🎤 BEATBOX (MOUTH)</span>
+                </button>
+
+                {/* 2. CLAP / TAP BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => handleQuickPerformanceCapture('BODY')}
+                  className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 font-black text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-md shadow-cyan-500/10"
+                  title="Create Hand Clap & Body Percussion Track"
+                >
+                  <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>👏 CLAP / TAP (BODY)</span>
+                </button>
+
+                {/* 3. HUM / MELODY BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => handleQuickPerformanceCapture('KEYS')}
+                  className="px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/50 font-black text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-md shadow-purple-500/10"
+                  title="Create Voice Melody / Hum Track (Pitch Detection & Scale Snap)"
+                >
+                  <Music className="w-3.5 h-3.5 text-purple-400" />
+                  <span>🎹 HUM / VOICE (MELODY)</span>
+                </button>
+
+              </div>
+            </div>
+
             {/* 2. UNIVERSAL ARRANGER EDITING TOOLBAR */}
             <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-900/90 rounded-xl border border-slate-800 text-[10px] font-mono mb-2">
               {/* Tool Selection Group */}
@@ -948,113 +1056,6 @@ export const StudioCanvas: React.FC = () => {
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
-
-            <div className="mb-2">
-              <ShootAroundControls
-                onCloneBar1ToAll={() => handleCloneBarToAll(0)}
-                onNudgeLeft={() => handleNudgeTrackPattern('all', 'left')}
-                onNudgeRight={() => handleNudgeTrackPattern('all', 'right')}
-                onRandomizeBar1={() => handleRandomize(0)}
-                onClearAll={handleClearAll}
-                onInvertPattern={handleInvertPattern}
-                canUndo={canUndo}
-                canRedo={canRedo}
-                onUndo={() => { handleUndo(); }}
-                onRedo={() => { handleRedo(); }}
-              />
-            </div>
-
-            {/* 2.5 CREATOR PERFORMANCE & SEED CAPTURE STRIP */}
-            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-gradient-to-r from-amber-500/15 via-slate-900/90 to-cyan-500/15 rounded-2xl border border-amber-500/40 text-xs font-mono mb-2 shadow-xl">
-              <div className="flex items-center space-x-2">
-                <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  <Mic className="w-4 h-4 text-amber-400 animate-pulse" />
-                </div>
-                <div>
-                  <div className="text-[11px] font-black text-amber-300 tracking-wider">
-                    CREATOR PERFORMANCE CAPTURE:
-                  </div>
-                  {/* What the microphone is doing, rather than what was asked
-                      of it. A creator who performs for forty seconds and finds
-                      an empty session needs to have been told, at the moment
-                      it happened, that nothing was being heard. */}
-                  {captureError ? (
-                    <div id="capture-status" className="text-[9px] text-rose-300 max-w-md leading-relaxed">
-                      {captureError}
-                    </div>
-                  ) : detectionSettings.enabled ? (
-                    <div id="capture-status" className="flex items-center gap-2">
-                      <span className="text-[9px] text-emerald-300 font-mono">LISTENING</span>
-                      {/* Live input, so silence looks like silence and a hit
-                          looks like a hit. These meters existed in the
-                          calibration drawer and never moved, because nothing
-                          was reading what the engine measures. */}
-                      <div className="flex items-center gap-1" title="Live input level: low band and high band">
-                        <div className="w-16 h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                          <div
-                            id="meter-low"
-                            className="h-full bg-amber-400 transition-[width] duration-75"
-                            style={{ width: `${Math.min(100, (detectionSettings.currentLowLevel || 0) * 100)}%` }}
-                          />
-                        </div>
-                        <div className="w-16 h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                          <div
-                            id="meter-high"
-                            className="h-full bg-cyan-400 transition-[width] duration-75"
-                            style={{ width: `${Math.min(100, (detectionSettings.currentHighLevel || 0) * 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                      <span className="text-[9px] text-slate-500 font-mono">
-                        {Math.round((detectionSettings.currentLowLevel || 0) * 100)}% /{' '}
-                        {Math.round((detectionSettings.currentHighLevel || 0) * 100)}%
-                      </span>
-                    </div>
-                  ) : (
-                    <div id="capture-status" className="text-[9px] text-slate-400">
-                      Creates a track and opens the microphone. Nothing is recorded until it does.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                {/* 1. BEATBOX BUTTON */}
-                <button
-                  type="button"
-                  data-testid="capture-mouth"
-                  onClick={() => handleQuickPerformanceCapture('MOUTH')}
-                  className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 font-black text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-md shadow-amber-500/10"
-                  title="Create Beatbox Track & Arm Mic (Kick & Snare Transient Capture)"
-                >
-                  <Drum className="w-3.5 h-3.5 text-amber-400" />
-                  <span>🎤 BEATBOX (MOUTH)</span>
-                </button>
-
-                {/* 2. CLAP / TAP BUTTON */}
-                <button
-                  type="button"
-                  onClick={() => handleQuickPerformanceCapture('BODY')}
-                  className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 font-black text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-md shadow-cyan-500/10"
-                  title="Create Hand Clap & Body Percussion Track"
-                >
-                  <Activity className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>👏 CLAP / TAP (BODY)</span>
-                </button>
-
-                {/* 3. HUM / MELODY BUTTON */}
-                <button
-                  type="button"
-                  onClick={() => handleQuickPerformanceCapture('KEYS')}
-                  className="px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/50 font-black text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shadow-md shadow-purple-500/10"
-                  title="Create Voice Melody / Hum Track (Pitch Detection & Scale Snap)"
-                >
-                  <Music className="w-3.5 h-3.5 text-purple-400" />
-                  <span>🎹 HUM / VOICE (MELODY)</span>
-                </button>
-
               </div>
             </div>
 
