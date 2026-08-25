@@ -49,7 +49,7 @@ const SECTION_TAG_CONFIG: Record<
     defaultEnergy: 'low',
     bg: 'bg-blue-500/10 hover:bg-blue-500/20',
     border: 'border-blue-500/40',
-    badgeBg: 'bg-blue-500 text-slate-950 font-black',
+    badgeBg: 'bg-blue-500/20 text-blue-300 border border-blue-500/40 font-bold',
     textColor: 'text-blue-300',
     description: 'Sparse intro atmosphere setting up the rhythm foundation.',
   },
@@ -58,7 +58,7 @@ const SECTION_TAG_CONFIG: Record<
     defaultEnergy: 'medium',
     bg: 'bg-cyan-500/10 hover:bg-cyan-500/20',
     border: 'border-cyan-500/40',
-    badgeBg: 'bg-cyan-400 text-slate-950 font-black',
+    badgeBg: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold',
     textColor: 'text-cyan-300',
     description: 'Steady groove carrying storytelling lyrics or melody.',
   },
@@ -67,7 +67,7 @@ const SECTION_TAG_CONFIG: Record<
     defaultEnergy: 'high',
     bg: 'bg-amber-500/10 hover:bg-amber-500/20',
     border: 'border-amber-500/40',
-    badgeBg: 'bg-amber-400 text-slate-950 font-black',
+    badgeBg: 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold',
     textColor: 'text-amber-300',
     description: 'Rising tension and fill acceleration before the main hook.',
   },
@@ -76,7 +76,7 @@ const SECTION_TAG_CONFIG: Record<
     defaultEnergy: 'high',
     bg: 'bg-yellow-500/10 hover:bg-yellow-500/20',
     border: 'border-yellow-500/40',
-    badgeBg: 'bg-yellow-400 text-slate-950 font-black',
+    badgeBg: 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 font-bold',
     textColor: 'text-yellow-300',
     description: 'Peak thematic hook with full instrumentation.',
   },
@@ -85,7 +85,7 @@ const SECTION_TAG_CONFIG: Record<
     defaultEnergy: 'peak',
     bg: 'bg-rose-500/10 hover:bg-rose-500/20',
     border: 'border-rose-500/40',
-    badgeBg: 'bg-rose-500 text-white font-black',
+    badgeBg: 'bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold',
     textColor: 'text-rose-300',
     description: 'Maximum energy payoff with intense kick and bass drive.',
   },
@@ -94,7 +94,7 @@ const SECTION_TAG_CONFIG: Record<
     defaultEnergy: 'medium',
     bg: 'bg-purple-500/10 hover:bg-purple-500/20',
     border: 'border-purple-500/40',
-    badgeBg: 'bg-purple-400 text-slate-950 font-black',
+    badgeBg: 'bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold',
     textColor: 'text-purple-300',
     description: 'Harmonic contrast or rhythmic departure from main loop.',
   },
@@ -103,7 +103,7 @@ const SECTION_TAG_CONFIG: Record<
     defaultEnergy: 'low',
     bg: 'bg-indigo-500/10 hover:bg-indigo-500/20',
     border: 'border-indigo-500/40',
-    badgeBg: 'bg-indigo-400 text-slate-950 font-black',
+    badgeBg: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-bold',
     textColor: 'text-indigo-300',
     description: 'Stripped back beat isolating melody or vocal harmonics.',
   },
@@ -112,7 +112,7 @@ const SECTION_TAG_CONFIG: Record<
     defaultEnergy: 'low',
     bg: 'bg-emerald-500/10 hover:bg-emerald-500/20',
     border: 'border-emerald-500/40',
-    badgeBg: 'bg-emerald-400 text-slate-950 font-black',
+    badgeBg: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold',
     textColor: 'text-emerald-300',
     description: 'Resolving fadeout or tail section ending the track.',
   },
@@ -409,21 +409,18 @@ export const SectionBuilder: React.FC<SectionBuilderProps> = ({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl select-none">
+    <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-lg select-none">
       {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-2 border-b border-slate-800">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
             <Layers className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-100 flex items-center gap-2">
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-200">
               ARRANGEMENT SECTION BUILDER
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40">
-                PHASE 06: STRUCTURE
-              </span>
             </h3>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
               Map pattern bar indices to arrangement tags (Intro, Verse, Chorus, Drop) with automated structure heuristics.
             </p>
           </div>
@@ -436,10 +433,10 @@ export const SectionBuilder: React.FC<SectionBuilderProps> = ({
             type="button"
             id="btn-generate-structure-heuristics"
             onClick={() => handleGenerateStructure()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-cyan-500 hover:from-amber-400 hover:to-cyan-400 text-slate-950 text-xs font-extrabold transition shadow-md shadow-amber-500/20 active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-extrabold transition shadow-sm active:scale-95"
             title="Auto-analyze active patterns and map arrangement sections"
           >
-            <Wand2 className="w-3.5 h-3.5 text-slate-950 fill-slate-950" />
+            <Wand2 className="w-3.5 h-3.5 text-amber-400" />
             <span>GENERATE STRUCTURE</span>
           </button>
 
@@ -498,7 +495,7 @@ export const SectionBuilder: React.FC<SectionBuilderProps> = ({
                 <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="font-mono font-black text-slate-300">BAR {barNum}</span>
                   {tagConfig && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${tagConfig.badgeBg}`}>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-lg ${tagConfig.badgeBg}`}>
                       {mappedSec?.tag}
                     </span>
                   )}
@@ -573,11 +570,11 @@ export const SectionBuilder: React.FC<SectionBuilderProps> = ({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, height: 0 }}
-                className={`p-3 rounded-xl border transition-all ${config.bg} ${config.border} flex flex-wrap items-center justify-between gap-3`}
+                className={`p-3 rounded-xl border bg-slate-950/50 hover:bg-slate-900/60 transition-all ${config.border} flex flex-wrap items-center justify-between gap-3`}
               >
                 {/* Tag & Name */}
                 <div className="flex items-center gap-3 min-w-[200px]">
-                  <span className={`text-xs px-2.5 py-1 rounded-lg shadow-sm ${config.badgeBg}`}>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-lg ${config.badgeBg}`}>
                     {sec.tag}
                   </span>
                   <div>
