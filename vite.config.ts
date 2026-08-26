@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import {defineConfig, type Plugin} from 'vite';
@@ -32,8 +33,29 @@ const serveOrtRaw = (): Plugin => ({
   },
 });
 
+/**
+ * The commit this bundle was built from, stamped into the page.
+ *
+ * Without it there is no way to tell a stale deploy from a broken change:
+ * the build goes green, the site looks identical, and the only recourse is
+ * guessing. Seven characters in the status bar settles it. Netlify exposes
+ * COMMIT_REF; a local build reads git; neither means "dev".
+ */
+function buildId(): string {
+  const fromCI = process.env.COMMIT_REF || process.env.VERCEL_GIT_COMMIT_SHA;
+  if (fromCI) return fromCI.slice(0, 7);
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+  } catch {
+    return 'dev';
+  }
+}
+
 export default defineConfig(() => {
   return {
+    define: {
+      __BUILD_ID__: JSON.stringify(buildId()),
+    },
     plugins: [serveOrtRaw(), react(), tailwindcss()],
     resolve: {
       alias: {

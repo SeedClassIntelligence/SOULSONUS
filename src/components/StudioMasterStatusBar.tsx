@@ -39,6 +39,17 @@ export const StudioMasterStatusBar: React.FC = () => {
             <span className="text-slate-500">NOT SAVED YET</span>
           )}
         </div>
+        <span className="text-slate-700 hidden sm:inline">•</span>
+        {/* Which commit this bundle came from. A green deploy that changes
+            nothing on screen is indistinguishable from a broken change
+            without it. */}
+        <span
+          className="text-slate-500 hidden sm:inline"
+          data-testid="build-id"
+          title="The commit this build came from"
+        >
+          BUILD: {__BUILD_ID__}
+        </span>
       </div>
 
       {/* Right: Provenance, Rights & Collab Telemetry */}
