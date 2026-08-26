@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ArrowLeft,
   Drum,
@@ -10,7 +10,9 @@ import {
   Target,
   Plus,
   Play,
+  Square,
   Download,
+  CornerDownRight,
 } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { SOUND_PRESETS } from './UnifiedTrackLane';
@@ -60,10 +62,25 @@ export const InstrumentRoom: React.FC<InstrumentRoomProps> = ({ onClose }) => {
     handleQuantizeTrackNotes,
     handleTransposeNotes,
     handleUpdateChannelStrip,
+    audioAssets,
+    handlePlaceAudioClip,
+    handleRemoveAudioClip,
   } = useStudioSession();
 
   const [tab, setTab] = useState<Tab>('TRAIN');
   const [openSlotIndex, setOpenSlotIndex] = useState<number | null>(null);
+  const [playingClipId, setPlayingClipId] = useState<string | null>(null);
+  const [destTrackId, setDestTrackId] = useState<string>('');
+  const [sentNote, setSentNote] = useState<string | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+
+  // A take that is playing when this room closes would keep playing.
+  useEffect(() => {
+    return () => {
+      audioElRef.current?.pause();
+      audioElRef.current = null;
+    };
+  }, []);
 
   const takes = tracks.filter((t) => t.isSourceTrack);
   const padSlots = Array.from({ length: PAD_COUNT }, (_, i) => takes[i] || null);
@@ -85,6 +102,155 @@ export const InstrumentRoom: React.FC<InstrumentRoomProps> = ({ onClose }) => {
   const previewPad = (track: (typeof tracks)[number]) => {
     audioEngine.triggerForInstrument(track.instrument, track.pitch || 'C3', 100, track);
   };
+
+  /**
+   * Every performance pass on a pad is already stored as its own immutable,
+   * hashed asset plus a clip -- `stopSeedRecording` appends one per take. This
+   * is that list, surfaced: real audio, real peaks, playable, and placeable on
+   * a DAW track through the same `handlePlaceAudioClip` the vocal booth's
+   * "→ TIMELINE" button uses.
+   */
+  const takesOnPad = focused?.audioClips || [];
+
+  const stopTakePlayback = () => {
+    audioElRef.current?.pause();
+    audioElRef.current = null;
+    setPlayingClipId(null);
+  };
+
+  const playTake = (clipId: string, url: string) => {
+    stopTakePlayback();
+    if (!url) return;
+    const el = new Audio(url);
+    audioElRef.current = el;
+    setPlayingClipId(clipId);
+    el.onended = () => setPlayingClipId(null);
+    el.onerror = () => setPlayingClipId(null);
+    void el.play().catch(() => setPlayingClipId(null));
+  };
+
+  /**
+   * Where a take goes when it is sent. The default is a real arrangement
+   * track, never the pad it came from -- sending a take back onto its own pad
+   * just makes a second take on that pad, which is not what "to the DAW"
+   * means.
+   */
+  const defaultDestId = tracks.find((t) => !t.isSourceTrack)?.id || focused?.id || '';
+
+  /** Assign a take to a DAW track, at the playhead, on the notes' own grid. */
+  const sendTakeToDaw = (assetId: string, label: string) => {
+    const target = destTrackId || defaultDestId;
+    if (!target) return;
+    const clip = handlePlaceAudioClip(target, assetId, {
+      startTick: (dawState.currentStep || 0) * TICKS_PER_16TH,
+      sourceDescription: label,
+    });
+    const targetName = tracks.find((t) => t.id === target)?.name || 'track';
+    setSentNote(clip ? `Sent to ${targetName} at the playhead.` : 'That take could not be placed.');
+    window.setTimeout(() => setSentNote(null), 4000);
+  };
+
+  const renderTakeStack = () => (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+          Takes ({takesOnPad.length})
+        </span>
+        {takesOnPad.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] text-slate-600">send to</span>
+            <select
+              value={destTrackId || defaultDestId}
+              onChange={(e) => setDestTrackId(e.target.value)}
+              className="bg-white/5 text-slate-300 text-[10px] px-1.5 py-0.5 rounded border border-white/10 cursor-pointer max-w-[150px]"
+            >
+              {tracks.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {takesOnPad.length === 0 ? (
+        <p className="text-[11px] text-slate-600">
+          No takes on this pad yet. Each time you perform into it, the recording is kept here as its own take.
+        </p>
+      ) : (
+        <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
+          {takesOnPad.map((clip, i) => {
+            const asset = audioAssets[clip.assetId];
+            const peaks = asset?.peaks || [];
+            const isPlaying = playingClipId === clip.id;
+            const label = `Take ${String(i + 1).padStart(2, '0')}`;
+            return (
+              <div key={clip.id} className="p-2 rounded-lg bg-white/[0.03] border border-white/10 flex items-center gap-2">
+                <button
+                  onClick={() => (isPlaying ? stopTakePlayback() : playTake(clip.id, asset?.url || ''))}
+                  disabled={!asset?.url}
+                  className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
+                    isPlaying ? 'bg-amber-400 text-slate-950' : 'bg-white/5 hover:bg-white/10 text-slate-300'
+                  }`}
+                  title={asset?.url ? 'Play this take' : 'This take’s audio is not loaded in this session'}
+                >
+                  {isPlaying ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                </button>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[10px] font-bold text-white">{label}</span>
+                    <span className="text-[9px] font-mono text-slate-600">
+                      {asset ? `${asset.durationSeconds.toFixed(1)}s` : '—'}
+                    </span>
+                  </div>
+                  {/* Real peaks from the registered asset, not a drawn shape. */}
+                  <div className="flex items-center gap-[1px] h-4 mt-0.5">
+                    {peaks.length > 0 ? (
+                      peaks.slice(0, 96).map((p, pi) => (
+                        <div
+                          key={pi}
+                          className="flex-1 bg-orange-400/70 rounded-[1px]"
+                          style={{ height: `${Math.max(6, Math.min(100, p * 100))}%` }}
+                        />
+                      ))
+                    ) : (
+                      <span className="text-[9px] text-slate-700">no waveform stored</span>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => sendTakeToDaw(clip.assetId, label)}
+                  className="shrink-0 px-2 h-7 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 text-[9px] font-black flex items-center gap-1 transition cursor-pointer"
+                  title="Place this take on a DAW track at the playhead"
+                >
+                  <CornerDownRight className="w-3 h-3" />
+                  <span>TO DAW</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (playingClipId === clip.id) stopTakePlayback();
+                    handleRemoveAudioClip(clip.id);
+                  }}
+                  className="shrink-0 p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition cursor-pointer"
+                  title="Delete this take"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {sentNote && (
+        <div className="text-[10px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-2 py-1">
+          {sentNote}
+        </div>
+      )}
+    </div>
+  );
 
   const renderPadGrid = () => (
     <div className="grid grid-cols-4 gap-3">
@@ -242,9 +408,6 @@ export const InstrumentRoom: React.FC<InstrumentRoomProps> = ({ onClose }) => {
                       : 'not trained yet'}
                   </div>
                 </div>
-                <div className="text-[10px] text-slate-500 font-mono">
-                  {focused.steps.filter(Boolean).length} hits captured on this pad so far
-                </div>
                 <button
                   onClick={() => void handleCalibrateTrack(focused.id)}
                   disabled={calibratingTrackId === focused.id}
@@ -272,6 +435,7 @@ export const InstrumentRoom: React.FC<InstrumentRoomProps> = ({ onClose }) => {
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
+                <div className="pt-3 border-t border-white/10">{renderTakeStack()}</div>
               </>
             ) : (
               <p className="text-xs text-slate-500">Pick a pad on the left — an empty one to start it, a filled one to keep training it.</p>
@@ -358,6 +522,7 @@ export const InstrumentRoom: React.FC<InstrumentRoomProps> = ({ onClose }) => {
                   <Wand2 className="w-3.5 h-3.5" />
                   <span>ASK AI TO TWEAK</span>
                 </button>
+                <div className="pt-3 border-t border-white/10">{renderTakeStack()}</div>
               </>
             ) : (
               <p className="text-xs text-slate-500">Tap a pad to preview it and see its pattern.</p>
