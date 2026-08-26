@@ -2750,7 +2750,13 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       name,
       instrument,
       steps: Array(songStepsRef.current).fill(false),
-      mute: false,
+      // A capture pad is not a channel in the arrangement. It holds the raw
+      // performance so it can be replayed and placed deliberately; the hits
+      // themselves are classified onto the real instrument channels. Muted
+      // keeps the voice out of the mix and -- because resolveCaptureTarget
+      // only considers audible tracks -- also stops a hummed line landing on
+      // the pad instead of the melody channel it belongs on.
+      mute: true,
       solo: false,
       volume: 0,
       pitch,

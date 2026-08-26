@@ -157,6 +157,11 @@ export function resolveClips(
 ): { track: Track; clip: AudioClip; asset: AudioAsset }[] {
   const out: { track: Track; clip: AudioClip; asset: AudioAsset }[] = [];
   for (const track of tracks) {
+    // Mute means mute. This did not look at the flag, so a muted track kept
+    // playing its audio -- the fader said silent and the speakers disagreed.
+    // It also matters for capture pads, whose raw take is reference material
+    // held on a muted track rather than a voice doubled under the kit.
+    if (track.mute) continue;
     for (const clip of track.audioClips || []) {
       const asset = assets[clip.assetId];
       // A clip whose asset is gone is skipped rather than played as silence at

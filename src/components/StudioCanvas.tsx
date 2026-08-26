@@ -948,7 +948,12 @@ export const StudioCanvas: React.FC = () => {
 
             {/* 4. MULTI-TRACK UNIFIED LANES */}
             <div className="space-y-2 max-h-[850px] overflow-y-auto pr-1 custom-scrollbar">
-              {tracks.map((track, trackIdx) => (
+              {/* Capture pads are not arrangement channels. Performing used to
+                  spawn a "MOUTH — Seed Take 01" lane into the DAW on every
+                  pass, which is the clutter the instrument exists to remove.
+                  The pads live in the instrument; what lands here is what the
+                  classifier routed onto real instrument channels. */}
+              {tracks.filter((t) => !t.isSourceTrack).map((track, trackIdx) => (
                 <UnifiedTrackLane
                   key={track.id}
                   track={track}
