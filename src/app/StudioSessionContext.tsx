@@ -542,6 +542,17 @@ export interface StudioSessionState {
   seedRecords: SeedSignatureRecord[];
   lineageRecords: AssetLineageRecord[];
   decisionRecords: GenerationDecisionRecord[];
+
+  /**
+   * The sealed creator signature, once there is one.
+   *
+   * This used to have nowhere to land. The training room computed a real
+   * profile, hashed it, and called `onSaveSignature` -- a prop App.tsx never
+   * passed. The signature was dropped on the floor at the moment it was
+   * sealed, so nothing downstream could be conditioned on who the creator is.
+   */
+  creatorSignature: CreatorMusicSignature | null;
+  handleSaveCreatorSignature: (signature: CreatorMusicSignature) => void;
   
   // History Stack
   canUndo: boolean;
@@ -2495,6 +2506,30 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const [lineageRecords, setLineageRecords] = useState<AssetLineageRecord[]>([]);
   const [decisionRecords, setDecisionRecords] = useState<GenerationDecisionRecord[]>([]);
+  const [creatorSignature, setCreatorSignature] = useState<CreatorMusicSignature | null>(null);
+
+  /**
+   * Receives a sealed signature and applies what it measured.
+   *
+   * Sealing used to end at the modal's own `onClose`. Everything the profile
+   * had measured about the creator -- the thresholds they tuned against their
+   * own mouth, above all -- stayed inside a component that was about to
+   * unmount. A threshold the creator calibrated and the detector never reads
+   * is the same as not having calibrated.
+   */
+  const handleSaveCreatorSignature = useCallback((signature: CreatorMusicSignature) => {
+    setCreatorSignature(signature);
+
+    const { kickSensitivity, snareSensitivity } = signature.thresholds;
+    // Null means the creator left the control at its shipped default, which
+    // says nothing about them -- so it must not overwrite anything.
+    if (kickSensitivity === null && snareSensitivity === null) return;
+    setDetectionSettings((prev) => ({
+      ...prev,
+      ...(kickSensitivity !== null ? { kickThreshold: kickSensitivity } : {}),
+      ...(snareSensitivity !== null ? { snareThreshold: snareSensitivity } : {}),
+    }));
+  }, []);
 
   const handleCommitCandidateTransaction = useCallback((result: CommitTransactionResult, targetTrackId?: string): boolean => {
     if (!result.committed || !result.candidate || !result.commitTransactionId) {
@@ -4927,6 +4962,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       seedRecords,
       lineageRecords,
       decisionRecords,
+      creatorSignature,
+      handleSaveCreatorSignature,
       canUndo,
       canRedo,
       handleUndo,
@@ -5113,6 +5150,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       seedRecords,
       lineageRecords,
       decisionRecords,
+      creatorSignature,
+      handleSaveCreatorSignature,
       canUndo,
       canRedo,
       handleUndo,

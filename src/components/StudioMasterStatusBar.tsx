@@ -3,9 +3,14 @@ import { useStudioSession } from '../app/StudioSessionContext';
 import { Activity, ShieldCheck, Cpu, Volume2, Users, FileCheck, Layers } from 'lucide-react';
 
 export const StudioMasterStatusBar: React.FC = () => {
-  const { dawState, creatorName, seedRecords, tracks, lastSavedAt, persistenceError, isHydrating } = useStudioSession();
+  const { dawState, creatorName, seedRecords, tracks, lastSavedAt, persistenceError, isHydrating, creatorSignature } =
+    useStudioSession();
 
   const isSigned = seedRecords && seedRecords.length > 0;
+
+  // What the sealed signature actually measured, in the creator's terms. This
+  // slot read "READY TO SIGN" forever, because sealing had nowhere to land.
+  const pocket = creatorSignature?.style?.performance.pocket;
 
   return (
     <footer className="w-full bg-slate-950 border-t border-slate-900 px-4 py-2 text-[11px] font-mono text-slate-400 flex flex-wrap items-center justify-between gap-3 select-none">
@@ -56,7 +61,22 @@ export const StudioMasterStatusBar: React.FC = () => {
       <div className="flex items-center space-x-3">
         <div className="flex items-center space-x-1">
           <ShieldCheck className={`w-3.5 h-3.5 ${isSigned ? 'text-emerald-400' : 'text-amber-400'}`} />
-          <span>SEEDSIGNATURE: <strong className={isSigned ? 'text-emerald-300' : 'text-amber-300'}>{isSigned ? 'VERIFIED' : 'READY TO SIGN'}</strong></span>
+          <span>
+            SEEDSIGNATURE:{' '}
+            <strong className={isSigned ? 'text-emerald-300' : 'text-amber-300'}>
+              {isSigned ? 'VERIFIED' : 'READY TO SIGN'}
+            </strong>
+          </span>
+          {creatorSignature && (
+            <span
+              className="text-purple-300"
+              data-testid="creator-signature"
+              title="Sealed signature — realization is conditioned on this"
+            >
+              SIGNATURE: {creatorSignature.signatureHash.slice(0, 7)}
+              {pocket && pocket.onsets > 0 ? ` · ${pocket.reads}` : ''}
+            </span>
+          )}
         </div>
         <span className="text-slate-700 hidden md:inline">•</span>
         <div className="flex items-center space-x-1 hidden md:flex">

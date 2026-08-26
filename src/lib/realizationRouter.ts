@@ -30,6 +30,7 @@ import {
   RealizationScoreBasis,
   IntentThresholdPolicy,
   IntentViolation,
+  CreatorMusicSignature,
 } from '../types/daw';
 import { DEFAULT_THRESHOLD_POLICY } from './realizationVerifier';
 import { computePreservationScores } from './inference/audioPreservationScoring';
@@ -50,6 +51,54 @@ export interface RealizationRequest {
    */
   repaintStartSeconds?: number;
   repaintEndSeconds?: number;
+  /**
+   * The creator's sealed signature, when they have one.
+   *
+   * Realization ran identically for every creator on the platform: the
+   * instruction sent to ACE named the target role and nothing about the person
+   * whose performance was being re-rendered. The training room measured their
+   * pocket, their subdivisions, their velocity range and their tempo, and none
+   * of it reached the model. Optional, because a creator who has not trained
+   * must still be able to realize.
+   */
+  creatorSignature?: CreatorMusicSignature | null;
+}
+
+/**
+ * Turns a measured profile into a phrase a model can act on.
+ *
+ * Only measured fields become words. A null pocket says nothing and is
+ * omitted, rather than becoming "on the grid" -- which would state something
+ * about the creator that was never measured, the exact failure this file's
+ * scores were rewritten to stop committing.
+ */
+export function describeCreatorFeel(signature?: CreatorMusicSignature | null): string {
+  const style = signature?.style;
+  if (!style) return '';
+
+  const parts: string[] = [];
+
+  const pocket = style.performance.pocket;
+  if (pocket && pocket.onsets > 0) {
+    const ms = Math.abs(Math.round(pocket.meanOffsetMs));
+    parts.push(pocket.reads === 'on the grid' ? 'timed tight to the grid' : `${ms}ms ${pocket.reads}`);
+  }
+
+  const topSubdivision = style.performance.subdivisions[0];
+  if (topSubdivision) parts.push(`phrasing in ${topSubdivision.label}`);
+
+  const velocity = style.performance.velocity;
+  if (velocity) {
+    parts.push(
+      velocity.max - velocity.min < 25
+        ? 'even dynamics'
+        : `dynamics ranging ${Math.round(velocity.min)} to ${Math.round(velocity.max)}`
+    );
+  }
+
+  if (style.choices.bpm) parts.push(`at ${Math.round(style.choices.bpm)}bpm`);
+
+  return parts.length ? `Match the creator's feel: ${parts.join(', ')}.` : '';
 }
 
 export class RealizationRouter {
@@ -106,10 +155,16 @@ export class RealizationRouter {
           // that was sent in, and its output length is locked to the source, so
           // what comes back lands where the take already sits.
           const sourceAudio = await fetch(sourceAudioUrl).then((r) => r.blob());
+          const baseInstruction = req.prompt || `Perform this as ${req.targetRole.replace(/_/g, ' ')}`;
+          const feel = describeCreatorFeel(req.creatorSignature);
           const realization = await getE05Provider().realize(
             {
               task: 'cover',
-              instruction: req.prompt || `Perform this as ${req.targetRole.replace(/_/g, ' ')}`,
+              // The creator's measured feel rides with the request. Without it
+              // this instruction was identical for every person on the
+              // platform, so a trained signature changed nothing about what
+              // came back.
+              instruction: feel ? `${baseInstruction}. ${feel}` : baseInstruction,
             },
             { sourceAudio, sourceFileName: `${req.sourceTrack.id}.wav` }
           );
@@ -204,7 +259,15 @@ export class RealizationRouter {
           const realization = await getE05Provider().realize(
             {
               task: 'repaint',
-              instruction: req.prompt || `Repaint ${req.targetRole.replace(/_/g, ' ')}`,
+              // Repaint re-performs a region, so the creator's feel applies
+              // here for the same reason it applies to cover. Extract does not
+              // get it: separating stems that already exist is not a
+              // performance, and describing a feel to it would be noise.
+              instruction: ((): string => {
+                const base = req.prompt || `Repaint ${req.targetRole.replace(/_/g, ' ')}`;
+                const feel = describeCreatorFeel(req.creatorSignature);
+                return feel ? `${base}. ${feel}` : base;
+              })(),
               repaintStartSeconds: start,
               repaintEndSeconds: end,
             },

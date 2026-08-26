@@ -92,6 +92,8 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     handleInvertPattern,
     handleClearTrack,
     handleStopCapture,
+    creatorSignature,
+    handleSaveCreatorSignature,
   } = useStudioSession();
 
   // Undo was reachable only from the Build room's control cluster, while takes
@@ -271,6 +273,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
             route,
             prompt: typeof detail === 'object' ? detail?.prompt : `Realize ${targetTrack.name} with ${route}`,
             projectVersion: dawState.projectVersion || 'v1.0.0',
+            creatorSignature,
           })
             .then((candidate) => {
               setActiveCandidate(candidate);
@@ -305,7 +308,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       window.removeEventListener('soulsonus:openDrawer', handleDrawerEvent);
       window.removeEventListener('soulsonus:openTour', handleTourEvent);
     };
-  }, [handleOpenProposal, tracks, dawState.projectVersion, setIsInspectorOpen, setIsCalibrationOpen, setIsVisualizationOpen]);
+  }, [handleOpenProposal, tracks, dawState.projectVersion, creatorSignature, setIsInspectorOpen, setIsCalibrationOpen, setIsVisualizationOpen]);
 
   // Play / Stop / Mic Handlers
   const handleTogglePlay = useCallback(async () => {
@@ -658,6 +661,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         isOpen={isTrainingOpen}
         initialTab={trainingInitialTab}
         onClose={() => setIsTrainingOpen(false)}
+        onSaveSignature={handleSaveCreatorSignature}
         tracks={tracks}
         calibratingTrackId={calibratingTrackId}
         onCalibrateTrack={handleCalibrateTrack}
