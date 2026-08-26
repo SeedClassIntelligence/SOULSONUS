@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { StudioSessionProvider, useStudioSession } from './app/StudioSessionContext';
 import { Header } from './components/Header';
 import { WorkspaceNav } from './components/WorkspaceNav';
@@ -220,21 +220,12 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     setIsCandidateDrawerOpen(false);
   }, [handleCommitCandidateTransaction]);
 
-  // Open a room's side panel the first time the creator arrives there, as an
-  // introduction to it. Only the first time: re-opening it on every visit
-  // overrides an explicit decision to close it, which reads as the app
-  // ignoring you every time you step out of the room and back.
-  const autoOpenedRooms = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (autoOpenedRooms.current.has(activeWorkspace)) return;
-    // Build no longer auto-opens the track workstation: now that the room
-    // renders the arrangement workspace, that drawer covered the section
-    // builder's own controls on arrival.
-    if (activeWorkspace === 'WRITE_RECORD') {
-      autoOpenedRooms.current.add(activeWorkspace);
-      setIsSongwritingSuiteOpen(true);
-    }
-  }, [activeWorkspace]);
+  // Write & Record used to auto-open the full Songwriting Suite drawer on
+  // arrival, covering the room's own lyric studio and quick vocal recorder
+  // the same way Build's drawer once covered the section builder -- that
+  // case was already removed for Build; this was the other half of it.
+  // The room works on its own now; the Suite is a deliberate pull-out via
+  // the Studio Utilities button, same as Track Workstation for Mix.
 
   // Listen for drawer/modal open events dispatched from UI components
   useEffect(() => {
