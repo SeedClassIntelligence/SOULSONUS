@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Brain, Cable, Compass, Database, Disc, Eye, Layers, Menu, Mic, Music2, Sliders, Sparkles, Target, Users, X } from 'lucide-react';
+import { Brain, Cable, Compass, Database, Disc, Drum, Eye, Layers, Menu, Mic, Music2, Sliders, Sparkles, Target, Users, X } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 
 /**
@@ -73,6 +73,14 @@ export const StudioUtilityBar: React.FC = () => {
         >
           <Music2 className="w-3 h-3 text-cyan-400" />
           <span>🎹 PIANO</span>
+        </button>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'capture' }))}
+          className="px-2.5 py-1 rounded-xl bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border border-orange-500/40 text-[10px] font-bold flex items-center space-x-1.5 transition cursor-pointer active:scale-95"
+          title="Open Performance Capture (Metronome-guided Beatbox, Clap/Tap & Hum/Melody takes, with AI tweak)"
+        >
+          <Drum className="w-3 h-3 text-orange-400" />
+          <span>🥁 PERFORMANCE CAPTURE</span>
         </button>
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'training' }))}

@@ -8,6 +8,7 @@ import { FocusModeView } from './components/FocusModeView';
 import { QuickInspectorDrawer } from './components/inspectors/QuickInspectorDrawer';
 import { TrackWorkstationDrawer } from './components/inspectors/TrackWorkstationDrawer';
 import { SongwritingSuiteDrawer } from './components/inspectors/SongwritingSuiteDrawer';
+import { PerformanceCaptureDrawer } from './components/inspectors/PerformanceCaptureDrawer';
 import { VoiceCloneDrawer } from './components/inspectors/VoiceCloneDrawer';
 import { ExternalHardwareMidiDrawer } from './components/inspectors/ExternalHardwareMidiDrawer';
 import { CalibrationDrawer } from './components/inspectors/CalibrationDrawer';
@@ -136,6 +137,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const [isTrackWorkstationOpen, setIsTrackWorkstationOpen] = useState(false);
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const [isSongwritingSuiteOpen, setIsSongwritingSuiteOpen] = useState(false);
+  const [isPerformanceCaptureOpen, setIsPerformanceCaptureOpen] = useState(false);
   const [isHardwareMidiOpen, setIsHardwareMidiOpen] = useState(false);
   const [isNativeBrainOpen, setIsNativeBrainOpen] = useState(false);
   const [isCandidateDrawerOpen, setIsCandidateDrawerOpen] = useState(false);
@@ -248,6 +250,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       if (detail === 'projects' || detail === 'save') setIsProjectMenuOpen(true);
       if (detail === 'piano' || detail === 'keyboard') setIsPianoOpen((prev) => !prev);
       if (detail === 'soulflow' || detail === 'pipeline') setIsSoulFlowOpen((prev) => !prev);
+      if (detail === 'capture' || detail === 'performance') setIsPerformanceCaptureOpen((prev) => !prev);
 
       if (detail === 'proposal' || detail === 'realization' || (typeof detail === 'object' && detail?.type === 'realization')) {
         const trId = typeof detail === 'object' ? detail?.trackId : undefined;
@@ -564,6 +567,11 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         bpm={dawState.bpm}
         isPlaying={dawState.isPlaying}
         currentStep={dawState.currentStep}
+      />
+
+      <PerformanceCaptureDrawer
+        isOpen={isPerformanceCaptureOpen}
+        onClose={() => setIsPerformanceCaptureOpen(false)}
       />
 
       <VoiceCloneDrawer
