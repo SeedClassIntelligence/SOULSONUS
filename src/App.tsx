@@ -8,7 +8,7 @@ import { FocusModeView } from './components/FocusModeView';
 import { QuickInspectorDrawer } from './components/inspectors/QuickInspectorDrawer';
 import { TrackWorkstationDrawer } from './components/inspectors/TrackWorkstationDrawer';
 import { SongwritingSuiteDrawer } from './components/inspectors/SongwritingSuiteDrawer';
-import { PerformanceCaptureDrawer } from './components/inspectors/PerformanceCaptureDrawer';
+import { PerformanceCaptureRoom } from './components/PerformanceCaptureRoom';
 import { VoiceCloneDrawer } from './components/inspectors/VoiceCloneDrawer';
 import { ExternalHardwareMidiDrawer } from './components/inspectors/ExternalHardwareMidiDrawer';
 import { CalibrationDrawer } from './components/inspectors/CalibrationDrawer';
@@ -77,7 +77,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     seedRecords,
     handleAddSeedRecord,
     calibratingTrackId,
-    setCalibratingTrackId,
+    handleCalibrateTrack,
     creatorName,
     selectionContext,
     setSelectionContext,
@@ -454,20 +454,6 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     [setTracks, setDawState]
   );
 
-  const handleCalibrateTrack = useCallback(
-    async (trackId: string) => {
-      setCalibratingTrackId(trackId);
-      const profile = await detectionEngine.calibrateTrack(trackId, 2000);
-      if (profile) {
-        setTracks((prev) =>
-          prev.map((t) => (t.id === trackId ? { ...t, detectionProfile: profile } : t))
-        );
-      }
-      setCalibratingTrackId(null);
-    },
-    [setCalibratingTrackId, setTracks]
-  );
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between font-sans selection:bg-amber-500 selection:text-slate-950">
       {/* Persistent Top Studio Shell Header */}
@@ -507,6 +493,8 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       <main className="flex-1 p-3 md:p-4 max-w-[1440px] w-full mx-auto space-y-3">
         {focusTrackId ? (
           <FocusModeView />
+        ) : isPerformanceCaptureOpen ? (
+          <PerformanceCaptureRoom onClose={() => setIsPerformanceCaptureOpen(false)} />
         ) : activeWorkspace === 'MIX' ? (
           <MixWorkspace />
         ) : activeWorkspace === 'MASTER' ? (
@@ -567,11 +555,6 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         bpm={dawState.bpm}
         isPlaying={dawState.isPlaying}
         currentStep={dawState.currentStep}
-      />
-
-      <PerformanceCaptureDrawer
-        isOpen={isPerformanceCaptureOpen}
-        onClose={() => setIsPerformanceCaptureOpen(false)}
       />
 
       <VoiceCloneDrawer

@@ -580,6 +580,8 @@ export interface StudioSessionState {
   // Calibration State
   calibratingTrackId: string | null;
   setCalibratingTrackId: (id: string | null) => void;
+  /** Listens 2s, learns this track's center frequency and threshold, stores it as its detectionProfile. */
+  handleCalibrateTrack: (trackId: string) => Promise<void>;
 
   // Creator Info
   creatorName: string;
@@ -2027,6 +2029,15 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Calibrating Track ID
   const [calibratingTrackId, setCalibratingTrackId] = useState<string | null>(null);
+
+  const handleCalibrateTrack = useCallback(async (trackId: string) => {
+    setCalibratingTrackId(trackId);
+    const profile = await detectionEngine.calibrateTrack(trackId, 2000);
+    if (profile) {
+      setTracks((prev) => prev.map((t) => (t.id === trackId ? { ...t, detectionProfile: profile } : t)));
+    }
+    setCalibratingTrackId(null);
+  }, []);
 
   // Seed Records
   const [seedRecords, setSeedRecords] = useState<SeedSignatureRecord[]>([]);
@@ -4942,6 +4953,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       handleCommitCandidateTransaction,
       calibratingTrackId,
       setCalibratingTrackId,
+      handleCalibrateTrack,
       creatorName,
       coproducerContext,
       editorPrefs,
@@ -5126,6 +5138,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       handleAddSeedRecord,
       handleCommitCandidateTransaction,
       calibratingTrackId,
+      handleCalibrateTrack,
       creatorName,
       coproducerContext,
       editorPrefs,
