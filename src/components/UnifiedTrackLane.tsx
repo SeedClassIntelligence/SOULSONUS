@@ -115,8 +115,18 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
     track.instrument === 'hihat' ||
     track.instrument === 'percussion';
 
-  // Melodic tracks default to expanded pitch view (height: 200px)
-  const [isExpanded, setIsExpanded] = useState<boolean>(!isDrum);
+  // Melodic tracks used to open their 200px pitch grid by default, so three
+  // of them filled the screen before the arrangement could be read at all.
+  // Collapsed is the overview; the pitch grid is one click away, and stays
+  // open once opened.
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  /**
+   * Three rows of per-track controls -- source, sound, sonus, level,
+   * transform, clear, delete -- sat above every lane at all times, so five
+   * tracks meant scrolling past buttons to reach the music. They are the same
+   * controls, kept behind one click.
+   */
+  const [showChrome, setShowChrome] = useState<boolean>(false);
   const [trackHeight, setTrackHeight] = useState<number>(isDrum ? 60 : 200);
   const [activeDrag, setActiveDrag] = useState<DragState | null>(null);
   const [editingLyricNoteId, setEditingLyricNoteId] = useState<string | null>(null);
@@ -478,6 +488,19 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                 S
               </button>
 
+              {/* Per-track controls, on request rather than always */}
+              <button
+                onClick={() => setShowChrome((v) => !v)}
+                className={`w-5 h-5 rounded border flex items-center justify-center text-[10px] font-bold transition cursor-pointer ${
+                  showChrome
+                    ? 'bg-amber-500 text-slate-950 border-amber-400'
+                    : 'bg-slate-900 hover:bg-slate-800 text-slate-500 hover:text-slate-300 border-slate-800'
+                }`}
+                title={showChrome ? 'Hide track controls' : 'Show track controls (source, sound, level, transform)'}
+              >
+                {showChrome ? '▴' : '▾'}
+              </button>
+
               {/* Delete Track */}
               <button
                 onClick={() => handleDeleteTrack(track.id)}
@@ -489,6 +512,8 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
             </div>
           </div>
 
+          {showChrome && (
+            <>
           {/* Middle: SOURCE, SOUND Vault, Octave Transpose */}
           <div className="flex items-center justify-between gap-1 text-[9px]">
             <div className="flex items-center gap-1">
@@ -671,6 +696,8 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
               </button>
             </div>
           </div>
+            </>
+          )}
         </div>
 
         {/* 2. RIGHT HIGH-RESOLUTION PIANO ROLL & EVENT CANVAS */}
