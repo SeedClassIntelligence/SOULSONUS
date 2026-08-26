@@ -127,140 +127,142 @@ export const VirtualPianoKeyboard: React.FC<VirtualPianoKeyboardProps> = ({ isOp
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 50 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="fixed bottom-14 left-1/2 -translate-x-1/2 w-[95vw] max-w-4xl bg-slate-950/95 border border-slate-800 rounded-2xl shadow-2xl p-4 z-50 backdrop-blur-md font-mono select-none"
+          initial={{ y: '100%' }}
+          animate={{ y: 0 }}
+          exit={{ y: '100%' }}
+          transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+          className="fixed bottom-0 left-0 right-0 w-full bg-black border-t border-white/10 shadow-2xl z-50 font-mono select-none"
         >
-          {/* Header Bar */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-xs">
-            <div className="flex items-center space-x-3">
-              <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center space-x-1.5">
-                <Piano className="w-4 h-4" />
-                <span className="font-bold text-slate-100 uppercase tracking-wide">VIRTUAL PIANO KEYBOARD</span>
-              </div>
+          <div className="max-w-5xl mx-auto px-4 pt-3 pb-4">
+            {/* Header Bar */}
+            <div className="flex items-center justify-between pb-3 text-xs">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-1.5 text-slate-300">
+                  <Piano className="w-4 h-4 text-slate-500" />
+                  <span className="font-bold uppercase tracking-wide">Virtual Keyboard</span>
+                </div>
 
-              {/* Active Sound / Instrument Selector */}
-              <div className="flex items-center space-x-1.5">
-                <span className="text-slate-500 text-[10px]">SOUND:</span>
-                <select
-                  value={activeTrack?.id || ''}
-                  onChange={(e) => {
-                    setSelectedTrackId(e.target.value);
-                    if (setFocusTrackId) setFocusTrackId(e.target.value);
-                  }}
-                  className="bg-slate-900 text-cyan-300 text-xs px-2 py-1 rounded border border-slate-800 focus:outline-none cursor-pointer"
-                >
-                  {tracks.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.vaultLabel || t.instrument})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Octave Shifter & Close */}
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-1 bg-slate-900 px-2 py-1 rounded-lg border border-slate-800 text-[11px]">
-                <span className="text-slate-400">OCTAVE:</span>
-                <span className="text-amber-400 font-bold">C{baseOctave} (MIDI {baseMidi})</span>
-                <button
-                  type="button"
-                  onClick={() => setBaseOctave((o) => Math.max(1, o - 1))}
-                  className="px-1.5 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-amber-300 text-[10px] font-bold ml-1 cursor-pointer"
-                  title="Octave Down (Key: Z)"
-                >
-                  [-8ve]
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBaseOctave((o) => Math.min(6, o + 1))}
-                  className="px-1.5 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-amber-300 text-[10px] font-bold cursor-pointer"
-                  title="Octave Up (Key: X)"
-                >
-                  [+8ve]
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
-                title="Close Piano Keyboard"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Keyboard Keys Canvas */}
-          <div className="relative w-full h-40 sm:h-48 mt-3 bg-slate-900 rounded-xl p-1 shadow-inner overflow-hidden flex">
-            {/* White Keys Layer */}
-            <div className="w-full h-full flex gap-1">
-              {WHITE_KEYS.map((offset) => {
-                const midi = baseMidi + offset;
-                const isPressed = activeMidiNotes.includes(midi);
-                const keyLabel = WHITE_KEY_LABELS[offset] || '';
-                const noteName = midiToNoteName(midi);
-
-                return (
-                  <button
-                    key={`white_${offset}`}
-                    type="button"
-                    onMouseDown={() => playMidiNote(midi, 0.4)}
-                    className={`flex-1 h-full rounded-b-lg flex flex-col justify-between items-center pb-2 pt-1 transition-all cursor-pointer select-none shadow-md ${
-                      isPressed
-                        ? 'bg-amber-400 text-slate-950 scale-[0.98] shadow-inner font-black'
-                        : 'bg-gradient-to-b from-slate-100 to-slate-300 hover:from-white hover:to-slate-200 text-slate-800'
-                    }`}
-                  >
-                    <span className="text-[9px] font-bold text-slate-400">{keyLabel}</span>
-                    <span className="text-[10px] sm:text-xs font-bold font-mono">{noteName}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Black Keys Layer (Absolute Positioning) */}
-            <div className="absolute inset-0 pointer-events-none flex">
-              {BLACK_KEYS.map((bk) => {
-                const midi = baseMidi + bk.offset;
-                const isPressed = activeMidiNotes.includes(midi);
-                const noteName = midiToNoteName(midi);
-
-                return (
-                  <button
-                    key={`black_${bk.offset}`}
-                    type="button"
-                    style={{ left: `${bk.leftPercent}%`, width: '5.2%' }}
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      playMidiNote(midi, 0.4);
+                {/* Active Sound / Instrument Selector */}
+                <div className="flex items-center space-x-1.5">
+                  <span className="text-slate-600 text-[10px]">SOUND:</span>
+                  <select
+                    value={activeTrack?.id || ''}
+                    onChange={(e) => {
+                      setSelectedTrackId(e.target.value);
+                      if (setFocusTrackId) setFocusTrackId(e.target.value);
                     }}
-                    className={`absolute top-1 h-[60%] rounded-b-md flex flex-col justify-between items-center pb-1 pt-1 pointer-events-auto transition-all cursor-pointer select-none shadow-xl z-20 ${
-                      isPressed
-                        ? 'bg-cyan-400 text-slate-950 scale-[0.97] shadow-inner font-black'
-                        : 'bg-gradient-to-b from-slate-900 to-black hover:from-slate-800 hover:to-slate-900 text-slate-300 border border-slate-700'
-                    }`}
+                    className="bg-white/5 text-slate-300 text-xs px-2 py-1 rounded border border-white/10 focus:outline-none cursor-pointer"
                   >
-                    <span className="text-[8px] font-mono text-slate-500">{bk.label}</span>
-                    <span className="text-[8.5px] sm:text-[9.5px] font-mono font-bold">{noteName}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+                    {tracks.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.vaultLabel || t.instrument})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-          {/* Computer Keyboard Helper Bar */}
-          <div className="flex items-center justify-between pt-2.5 text-[10px] text-slate-400">
-            <span>
-              💡 <strong className="text-slate-200">Play with Computer Keyboard:</strong> Keys <code className="text-amber-300 bg-slate-900 px-1 py-0.2 rounded">A S D F G H J K L ; '</code> for white keys, <code className="text-cyan-300 bg-slate-900 px-1 py-0.2 rounded">W E T Y U O P</code> for black keys.
-            </span>
-            <span>
-              Octave Up/Down: <code className="text-amber-300 bg-slate-900 px-1 py-0.2 rounded">Z / X</code>
-            </span>
+              {/* Octave Shifter & Close */}
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-1 bg-white/5 px-2 py-1 rounded-lg border border-white/10 text-[11px]">
+                  <span className="text-slate-500">OCTAVE:</span>
+                  <span className="text-slate-200 font-bold">C{baseOctave} (MIDI {baseMidi})</span>
+                  <button
+                    type="button"
+                    onClick={() => setBaseOctave((o) => Math.max(1, o - 1))}
+                    className="px-1.5 py-0.5 rounded bg-black hover:bg-white/10 text-slate-400 hover:text-slate-200 text-[10px] font-bold ml-1 cursor-pointer"
+                    title="Octave Down (Key: Z)"
+                  >
+                    [-8ve]
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBaseOctave((o) => Math.min(6, o + 1))}
+                    className="px-1.5 py-0.5 rounded bg-black hover:bg-white/10 text-slate-400 hover:text-slate-200 text-[10px] font-bold cursor-pointer"
+                    title="Octave Up (Key: X)"
+                  >
+                    [+8ve]
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                  title="Close Piano Keyboard"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Keyboard Keys Canvas */}
+            <div className="relative w-full h-32 sm:h-40 bg-white/[0.03] rounded-xl p-1 overflow-hidden flex">
+              {/* White Keys Layer */}
+              <div className="w-full h-full flex gap-1">
+                {WHITE_KEYS.map((offset) => {
+                  const midi = baseMidi + offset;
+                  const isPressed = activeMidiNotes.includes(midi);
+                  const keyLabel = WHITE_KEY_LABELS[offset] || '';
+                  const noteName = midiToNoteName(midi);
+
+                  return (
+                    <button
+                      key={`white_${offset}`}
+                      type="button"
+                      onMouseDown={() => playMidiNote(midi, 0.4)}
+                      className={`flex-1 h-full rounded-b-lg flex flex-col justify-between items-center pb-2 pt-1 transition-all cursor-pointer select-none ${
+                        isPressed
+                          ? 'bg-orange-400 text-slate-950 scale-[0.98] font-black'
+                          : 'bg-gradient-to-b from-slate-100 to-slate-300 hover:from-white hover:to-slate-200 text-slate-800'
+                      }`}
+                    >
+                      <span className="text-[9px] font-bold text-slate-400">{keyLabel}</span>
+                      <span className="text-[10px] sm:text-xs font-bold font-mono">{noteName}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Black Keys Layer (Absolute Positioning) */}
+              <div className="absolute inset-0 pointer-events-none flex">
+                {BLACK_KEYS.map((bk) => {
+                  const midi = baseMidi + bk.offset;
+                  const isPressed = activeMidiNotes.includes(midi);
+                  const noteName = midiToNoteName(midi);
+
+                  return (
+                    <button
+                      key={`black_${bk.offset}`}
+                      type="button"
+                      style={{ left: `${bk.leftPercent}%`, width: '5.2%' }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        playMidiNote(midi, 0.4);
+                      }}
+                      className={`absolute top-1 h-[60%] rounded-b-md flex flex-col justify-between items-center pb-1 pt-1 pointer-events-auto transition-all cursor-pointer select-none z-20 ${
+                        isPressed
+                          ? 'bg-cyan-400 text-slate-950 scale-[0.97] font-black'
+                          : 'bg-gradient-to-b from-slate-900 to-black hover:from-slate-800 hover:to-slate-900 text-slate-300 border border-white/10'
+                      }`}
+                    >
+                      <span className="text-[8px] font-mono text-slate-500">{bk.label}</span>
+                      <span className="text-[8.5px] sm:text-[9.5px] font-mono font-bold">{noteName}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Computer Keyboard Helper Bar */}
+            <div className="flex items-center justify-between pt-2.5 text-[10px] text-slate-600">
+              <span>
+                <strong className="text-slate-400">Play with computer keyboard:</strong> <code className="text-slate-400 bg-white/5 px-1 py-0.2 rounded">A S D F G H J K L ; '</code> for white keys, <code className="text-slate-400 bg-white/5 px-1 py-0.2 rounded">W E T Y U O P</code> for black keys.
+              </span>
+              <span>
+                Octave: <code className="text-slate-400 bg-white/5 px-1 py-0.2 rounded">Z / X</code>
+              </span>
+            </div>
           </div>
         </motion.div>
       )}
