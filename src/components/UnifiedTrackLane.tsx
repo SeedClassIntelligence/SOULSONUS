@@ -66,7 +66,7 @@ const INSTRUMENT_ICONS: Record<string, React.ReactNode> = {
   harmony: <Mic className="w-3.5 h-3.5 text-indigo-400" />,
 };
 
-const SOUND_PRESETS: Record<string, string[]> = {
+export const SOUND_PRESETS: Record<string, string[]> = {
   kick: ['TR-808 Heavy Kick', 'Punchy Studio Kick', 'Acoustic Maple Kick', 'Dubler Oral Kick'],
   snare: ['Crisp Vintage Snare', 'Layered Clap Pop', 'Acoustic Snare', 'Dubler Oral Snare'],
   hihat: ['Tight 808 Closed Hat', 'Semi-Open Sizzle Hat', 'Acoustic Studio Hat', 'Dubler Oral Hat'],

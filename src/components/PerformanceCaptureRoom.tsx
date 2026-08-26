@@ -1,6 +1,8 @@
-import React from 'react';
-import { ArrowLeft, Drum, Activity, Music, Wand2, AlertCircle, Trash2, Eraser, Target, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, Drum, Activity, Music, Wand2, AlertCircle, Trash2, Eraser, Target, Plus, Zap, ChevronDown } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
+import { SOUND_PRESETS } from './UnifiedTrackLane';
+import { TICKS_PER_16TH, TICKS_PER_BEAT } from '../utils/musicMath';
 
 /**
  * The rhythm/melody counterpart to Write & Record: a full-room dedicated
@@ -63,6 +65,7 @@ export const PerformanceCaptureRoom: React.FC<PerformanceCaptureRoomProps> = ({ 
     dawState,
     handleToggleMetronome,
     tracks,
+    setTracks,
     selectionContext,
     setSelectionContext,
     detectionSettings,
@@ -73,10 +76,14 @@ export const PerformanceCaptureRoom: React.FC<PerformanceCaptureRoomProps> = ({ 
     handleClearTrack,
     handleCalibrateTrack,
     calibratingTrackId,
+    handleQuantizeTrackNotes,
   } = useStudioSession();
+
+  const [expandedTakeId, setExpandedTakeId] = useState<string | null>(null);
 
   const focusedTrack = tracks.find((t) => t.id === selectionContext.selectedTrackId) || null;
   const takes = tracks.filter((t) => t.isSourceTrack);
+  const expandedTake = takes.find((t) => t.id === expandedTakeId) || null;
 
   return (
     <div className="w-full space-y-5 pb-8">
@@ -229,9 +236,14 @@ export const PerformanceCaptureRoom: React.FC<PerformanceCaptureRoomProps> = ({ 
             return (
               <div
                 key={t.id}
-                onClick={() => setSelectionContext((prev) => ({ ...prev, selectedTrackId: t.id }))}
+                onClick={() => {
+                  setSelectionContext((prev) => ({ ...prev, selectedTrackId: t.id }));
+                  setExpandedTakeId((prev) => (prev === t.id ? null : t.id));
+                }}
                 className={`group relative aspect-square rounded-2xl bg-gradient-to-b from-white/[0.06] to-transparent border flex flex-col items-center justify-center gap-1.5 p-2 transition cursor-pointer overflow-hidden ${
-                  isFocused
+                  expandedTakeId === t.id
+                    ? 'border-white shadow-[0_0_24px_-4px_rgba(255,255,255,0.35)]'
+                    : isFocused
                     ? 'border-white/70 shadow-[0_0_24px_-4px_rgba(255,255,255,0.25)]'
                     : isTrained
                     ? 'border-orange-500/50 hover:border-orange-400/70'
@@ -281,22 +293,10 @@ export const PerformanceCaptureRoom: React.FC<PerformanceCaptureRoomProps> = ({ 
                   ))}
                 </div>
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void handleCalibrateTrack(t.id);
-                  }}
-                  disabled={isTraining}
-                  className={`mt-1 px-2 py-0.5 rounded-md text-[9px] font-bold flex items-center gap-1 transition cursor-pointer ${
-                    isTraining
-                      ? 'bg-amber-500/20 text-amber-300 animate-pulse'
-                      : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-orange-300'
-                  }`}
-                  title="Listen for 2 seconds and learn this take's own sound, so future hits route here first"
-                >
-                  <Target className="w-2.5 h-2.5" />
-                  <span>{isTraining ? 'LISTENING…' : 'TRAIN'}</span>
-                </button>
+                <span className="mt-1 flex items-center gap-1 text-[8px] text-slate-600 uppercase tracking-wider">
+                  <ChevronDown className={`w-2.5 h-2.5 transition-transform ${expandedTakeId === t.id ? 'rotate-180' : ''}`} />
+                  {expandedTakeId === t.id ? 'showing' : 'tap to open'}
+                </span>
               </div>
             );
           })}
@@ -306,6 +306,97 @@ export const PerformanceCaptureRoom: React.FC<PerformanceCaptureRoomProps> = ({ 
           <p className="text-xs text-slate-600 mt-4">
             Hit one of the three pads above to lay down your first take.
           </p>
+        )}
+
+        {/* Revealed system for the tapped take -- Train / Assign / Tighten, all real */}
+        {expandedTake && (
+          <div className="mt-4 p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-white">{expandedTake.name}</h4>
+                <p className="text-[10px] text-slate-500">
+                  {expandedTake.detectionProfile?.centerFreq
+                    ? `Trained: ~${expandedTake.detectionProfile.centerFreq}Hz signature`
+                    : 'Not trained — using the default classifier'}
+                </p>
+              </div>
+              <button
+                onClick={() => setExpandedTakeId(null)}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                title="Collapse"
+              >
+                <ChevronDown className="w-4 h-4 rotate-180" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* TRAIN */}
+              <div className="p-3 rounded-xl bg-black border border-white/10 space-y-2">
+                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">1. Train</div>
+                <p className="text-[10px] text-slate-500 leading-snug">
+                  Listen for 2s and learn this take's own sound, so future hits route here first.
+                </p>
+                <button
+                  onClick={() => void handleCalibrateTrack(expandedTake.id)}
+                  disabled={calibratingTrackId === expandedTake.id}
+                  className={`w-full px-2 py-1.5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    calibratingTrackId === expandedTake.id
+                      ? 'bg-amber-500/20 text-amber-300 animate-pulse'
+                      : 'bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border border-orange-500/40'
+                  }`}
+                >
+                  <Target className="w-3 h-3" />
+                  <span>{calibratingTrackId === expandedTake.id ? 'LISTENING…' : 'TRAIN THIS SOUND'}</span>
+                </button>
+              </div>
+
+              {/* ASSIGN */}
+              <div className="p-3 rounded-xl bg-black border border-white/10 space-y-2">
+                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">2. Assign</div>
+                <p className="text-[10px] text-slate-500 leading-snug">Pick the sound this take actually plays.</p>
+                <select
+                  value={expandedTake.vaultLabel || (SOUND_PRESETS[expandedTake.instrument] || [])[0] || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setTracks((prev) => prev.map((tr) => (tr.id === expandedTake.id ? { ...tr, vaultLabel: val } : tr)));
+                  }}
+                  className="w-full bg-white/5 text-slate-200 text-[10px] font-bold px-2 py-1.5 rounded-lg border border-white/10 focus:outline-none cursor-pointer"
+                >
+                  {(SOUND_PRESETS[expandedTake.instrument] || ['Default Sound Vault Asset']).map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* TIGHTEN */}
+              <div className="p-3 rounded-xl bg-black border border-white/10 space-y-2">
+                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">3. Tighten</div>
+                <p className="text-[10px] text-slate-500 leading-snug">
+                  Your take keeps its natural feel by default. Snap it to the grid if you want it tighter.
+                </p>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => handleQuantizeTrackNotes(expandedTake.id, [], TICKS_PER_16TH)}
+                    className="flex-1 px-2 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold flex items-center justify-center gap-1 transition cursor-pointer"
+                    title="Snap every hit in this take to the nearest 16th note"
+                  >
+                    <Zap className="w-3 h-3" />
+                    <span>1/16</span>
+                  </button>
+                  <button
+                    onClick={() => handleQuantizeTrackNotes(expandedTake.id, [], TICKS_PER_BEAT)}
+                    className="flex-1 px-2 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold flex items-center justify-center gap-1 transition cursor-pointer"
+                    title="Snap every hit in this take to the nearest beat"
+                  >
+                    <Zap className="w-3 h-3" />
+                    <span>1/4</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         <p className="text-[11px] text-slate-600 pt-4 mt-4 border-t border-white/10">
