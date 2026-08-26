@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Drum, Activity, Music, Plus, X, Maximize2, Circle } from 'lucide-react';
+import { Drum, Activity, Music, Plus, X, Maximize2, Circle, Square } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 
 /**
@@ -39,6 +39,8 @@ export const InstrumentStrip: React.FC<InstrumentStripProps> = ({ onExpand, onCl
   } = useStudioSession();
 
   const [openSlot, setOpenSlot] = useState<number | null>(null);
+  /** What the next take is performed with. Beatbox is the ordinary case. */
+  const [mode, setMode] = useState<'MOUTH' | 'BODY' | 'KEYS'>('MOUTH');
 
   const pads = tracks.filter((t) => t.isSourceTrack);
   const slots = Array.from({ length: PAD_COUNT }, (_, i) => pads[i] || null);
@@ -50,15 +52,53 @@ export const InstrumentStrip: React.FC<InstrumentStripProps> = ({ onExpand, onCl
       <div className="flex items-center justify-between gap-3 mb-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
           <span className="text-[10px] font-bold uppercase tracking-[0.09em] text-orange-400">Instrument</span>
+
+          {/* What you perform with. Named, not an unlabelled icon. */}
+          <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-white/5 border border-white/10">
+            {MODALITIES.map((mo) => (
+              <button
+                key={mo.m}
+                onClick={() => setMode(mo.m)}
+                disabled={listening}
+                className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition cursor-pointer disabled:opacity-40 ${
+                  mode === mo.m ? 'bg-white text-slate-950' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {mo.label}
+              </button>
+            ))}
+          </div>
+
+          {/* The whole point of the room, and it used to be reachable only by
+              clicking an empty pad and then an unlabelled icon. */}
+          {listening ? (
+            <button
+              onClick={() => void handleStopCapture()}
+              className="px-3 py-1 rounded-lg bg-rose-500 hover:bg-rose-400 text-white text-[11px] font-black flex items-center gap-1.5 transition cursor-pointer active:scale-95"
+            >
+              <Square className="w-3 h-3 fill-current" />
+              <span>STOP</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => handleQuickPerformanceCapture(mode)}
+              className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-black flex items-center gap-1.5 transition cursor-pointer active:scale-95 shadow-[0_0_14px_-4px_rgba(225,29,72,.9)]"
+              title="Record a performance — the hits are split onto the drum channels below as you play"
+            >
+              <Circle className="w-3 h-3 fill-current" />
+              <span>RECORD</span>
+            </button>
+          )}
+
           {listening ? (
             <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              LISTENING · {Math.round((detectionSettings.currentLowLevel || 0) * 100)}/
+              {Math.round((detectionSettings.currentLowLevel || 0) * 100)}/
               {Math.round((detectionSettings.currentHighLevel || 0) * 100)}
             </span>
           ) : (
-            <span className="text-[10px] font-mono text-slate-600 truncate">
-              train a pad · perform · it lands below
+            <span className="text-[10px] font-mono text-slate-600 truncate hidden lg:inline">
+              hits split onto the channels below as you perform
             </span>
           )}
         </div>
@@ -77,14 +117,6 @@ export const InstrumentStrip: React.FC<InstrumentStripProps> = ({ onExpand, onCl
           >
             METRO
           </button>
-          {listening && (
-            <button
-              onClick={() => void handleStopCapture()}
-              className="px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-bold transition cursor-pointer"
-            >
-              STOP
-            </button>
-          )}
           <button
             onClick={onExpand}
             className="p-1 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/10 transition cursor-pointer"
