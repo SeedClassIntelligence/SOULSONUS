@@ -6,7 +6,6 @@ import { SectionBuilder } from './SectionBuilder';
 import { ShootAroundControls } from './ShootAroundControls';
 import { TimelineAudioPanel } from './TimelineAudioPanel';
 import { TICKS_PER_16TH, TICKS_PER_BEAT } from '../utils/musicMath';
-import { detectionEngine } from '../audio/detectionEngine';
 import {
   Layers,
   Plus,
@@ -224,17 +223,13 @@ export const StudioCanvas: React.FC = () => {
     calibratingTrackId,
     setCalibratingTrackId,
     setIsCalibrationOpen,
-    handleCreateSourceTrack,
-    startSeedRecording,
     handleAddTrackLayer,
     handleToggleTrackViewMode,
     handleTransposeNotes,
     handleQuantizeTrackNotes,
     detectionSettings,
-    setDetectionSettings,
     captureError,
-    setCaptureError,
-    setIsAudioImportModalOpen,
+    handleQuickPerformanceCapture,
     editorPrefs,
     updateEditorPrefs,
     handleSetSongBars,
@@ -392,63 +387,6 @@ export const StudioCanvas: React.FC = () => {
     setTracks((prev) => [...prev, newTrack]);
     setSelectionContext((prev) => ({ ...prev, selectedTrackId: id }));
     setIsAddTrackOpen(false);
-  };
-
-  const handleQuickPerformanceCapture = async (modality: 'MOUTH' | 'BODY' | 'KEYS' | 'AUDIO' | 'LYRICS') => {
-    if (modality === 'AUDIO') {
-      setIsAudioImportModalOpen(true);
-      return;
-    }
-    if (modality !== 'MOUTH' && modality !== 'BODY' && modality !== 'KEYS') return;
-
-    // The microphone first, and only then the track.
-    //
-    // This used to create the seed track, arm the classifier and mark the
-    // studio as recording without ever looking at whether the microphone
-    // opened. `detectionEngine.start()` returns false and logs to the console
-    // when getUserMedia is refused -- in a sandboxed frame, on a denied
-    // permission, with no input device -- and the result was discarded. What a
-    // creator saw was a pulsing record button, an armed capture row, and after
-    // forty seconds of performing: no notes, no waveform, no audio, nothing to
-    // play back. Identical to a studio that simply does not work.
-    setCaptureError(null);
-    if (detectionSettings.enabled) return;
-
-    detectionEngine.setCaptureModality(modality);
-    const opened = await detectionEngine.start();
-    if (!opened) {
-      detectionEngine.setCaptureModality(null);
-      setCaptureError(
-        'The microphone did not open, so nothing is being recorded. The browser refused access — ' +
-          'check that this page is allowed to use the microphone, that a device is connected, and that ' +
-          'the page is not running inside a frame that blocks it.'
-      );
-      return;
-    }
-
-    const seedTrackId = handleCreateSourceTrack(modality);
-
-    // Keep the performance itself, not just what was classified out of it.
-    // This opens the microphone a second time, for the recorder, and it can
-    // fail on its own -- so it is reported on its own rather than folded into
-    // the classifier's success.
-    if (modality !== 'KEYS') {
-      const kept = await startSeedRecording(seedTrackId);
-      if (!kept) {
-        setCaptureError(
-          'Listening, and classifying what you play — but the recorder could not open the microphone, ' +
-            'so the take itself is not being kept this time.'
-        );
-      }
-    }
-
-    setDetectionSettings((prev) => ({
-      ...prev,
-      enabled: true,
-      micConnected: true,
-      kickThreshold: modality === 'MOUTH' ? 0.45 : 0.6,
-      snareThreshold: modality === 'MOUTH' ? 0.45 : 0.35,
-    }));
   };
 
   const getTrackTheme = (track: Track) => {

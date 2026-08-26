@@ -621,6 +621,13 @@ export interface StudioSessionState {
   handleToggleMetronome: () => Promise<boolean>;
   /** Ends capture: classifier off, modality cleared, take kept, microphone released. */
   handleStopCapture: () => Promise<{ trackId: string; seconds: number } | null>;
+  /**
+   * The one action behind every performance-capture entry point: the inline
+   * Create-room strip and the dedicated Performance Capture room both call
+   * this, so arming the mic, seeding the track and keeping the take can't
+   * drift into two different behaviors depending on where you clicked.
+   */
+  handleQuickPerformanceCapture: (modality: 'MOUTH' | 'BODY' | 'KEYS' | 'AUDIO' | 'LYRICS') => Promise<void>;
   /** Loads an instrument that has been admitted to the factory. */
   handleLoadFactoryInstrument: (catalogId: string) => Promise<{ ok: boolean; message: string }>;
   /** Calls a session player. The take lands on its own channel, beside yours. */
@@ -2752,6 +2759,63 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     setSelectionContext((prev) => ({ ...prev, selectedTrackId: sourceTrackId }));
     return sourceTrackId;
   }, [tracks, updateTracksWithHistory]);
+
+  const handleQuickPerformanceCapture = useCallback(async (modality: 'MOUTH' | 'BODY' | 'KEYS' | 'AUDIO' | 'LYRICS') => {
+    if (modality === 'AUDIO') {
+      setIsAudioImportModalOpen(true);
+      return;
+    }
+    if (modality !== 'MOUTH' && modality !== 'BODY' && modality !== 'KEYS') return;
+
+    // The microphone first, and only then the track.
+    //
+    // This used to create the seed track, arm the classifier and mark the
+    // studio as recording without ever looking at whether the microphone
+    // opened. `detectionEngine.start()` returns false and logs to the console
+    // when getUserMedia is refused -- in a sandboxed frame, on a denied
+    // permission, with no input device -- and the result was discarded. What a
+    // creator saw was a pulsing record button, an armed capture row, and after
+    // forty seconds of performing: no notes, no waveform, no audio, nothing to
+    // play back. Identical to a studio that simply does not work.
+    setCaptureError(null);
+    if (detectionSettings.enabled) return;
+
+    detectionEngine.setCaptureModality(modality);
+    const opened = await detectionEngine.start();
+    if (!opened) {
+      detectionEngine.setCaptureModality(null);
+      setCaptureError(
+        'The microphone did not open, so nothing is being recorded. The browser refused access — ' +
+          'check that this page is allowed to use the microphone, that a device is connected, and that ' +
+          'the page is not running inside a frame that blocks it.'
+      );
+      return;
+    }
+
+    const seedTrackId = handleCreateSourceTrack(modality);
+
+    // Keep the performance itself, not just what was classified out of it.
+    // This opens the microphone a second time, for the recorder, and it can
+    // fail on its own -- so it is reported on its own rather than folded into
+    // the classifier's success.
+    if (modality !== 'KEYS') {
+      const kept = await startSeedRecording(seedTrackId);
+      if (!kept) {
+        setCaptureError(
+          'Listening, and classifying what you play — but the recorder could not open the microphone, ' +
+            'so the take itself is not being kept this time.'
+        );
+      }
+    }
+
+    setDetectionSettings((prev) => ({
+      ...prev,
+      enabled: true,
+      micConnected: true,
+      kickThreshold: modality === 'MOUTH' ? 0.45 : 0.6,
+      snareThreshold: modality === 'MOUTH' ? 0.45 : 0.35,
+    }));
+  }, [detectionSettings.enabled, handleCreateSourceTrack, startSeedRecording]);
 
   /**
    * Calling a player, and putting what they hand back on its own track.
@@ -4896,6 +4960,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       startSeedRecording,
       stopSeedRecording,
       handleStopCapture,
+      handleQuickPerformanceCapture,
       captureError,
       setCaptureError,
       handleToggleMetronome,
@@ -5079,6 +5144,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       startSeedRecording,
       stopSeedRecording,
       handleStopCapture,
+      handleQuickPerformanceCapture,
       captureError,
       setCaptureError,
       handleToggleMetronome,

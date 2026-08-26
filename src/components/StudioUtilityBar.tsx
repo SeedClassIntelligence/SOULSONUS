@@ -1,5 +1,5 @@
-import React from 'react';
-import { Brain, Cable, Compass, Database, Disc, Eye, Layers, Mic, Music2, Sliders, Sparkles, Target, Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { Brain, Cable, Compass, Database, Disc, Eye, Layers, Menu, Mic, Music2, Sliders, Sparkles, Target, Users, X } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 
 /**
@@ -9,6 +9,11 @@ import { useStudioSession } from '../app/StudioSessionContext';
  * BUILD — so eight workstations and the audio import were unreachable from
  * Mix, Master, Write & Record and Release. It is rendered once at app level
  * now, above the room, so every room can reach them.
+ *
+ * Fourteen buttons used to sit here open at all times, above every room --
+ * a wall of controls before any creative surface was visible. They're tools
+ * you reach for, not a dashboard you read, so they now live behind a single
+ * menu button and only take up space when opened.
  */
 export const StudioUtilityBar: React.FC = () => {
   const {
@@ -21,14 +26,46 @@ export const StudioUtilityBar: React.FC = () => {
     setIsInspectorOpen,
   } = useStudioSession();
   const selectedTrack = tracks.find((t) => t.id === selectionContext.selectedTrackId) || tracks[0];
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
     <div className="w-full max-w-[1440px] mx-auto px-3 md:px-4">
-      <div className="px-4 py-2 bg-slate-900/90 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-2.5 text-xs font-mono select-none">
-        <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider hidden sm:inline">
-          STUDIO UTILITIES:
-        </span>
+      <div className="px-4 py-2 bg-slate-900/90 border border-slate-800 rounded-2xl flex items-center justify-between gap-2.5 text-xs font-mono select-none relative">
+        <button
+          type="button"
+          onClick={() => setIsMenuOpen((v) => !v)}
+          className={`px-3 py-1.5 rounded-xl border text-[10px] font-bold flex items-center space-x-1.5 transition cursor-pointer active:scale-95 ${
+            isMenuOpen
+              ? 'bg-amber-500 text-slate-950 border-amber-400 font-black'
+              : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+          }`}
+        >
+          <Menu className="w-3.5 h-3.5" />
+          <span>STUDIO TOOLS</span>
+        </button>
+
+        <div className="flex items-center space-x-2 text-[10px] text-slate-400">
+          <span>
+            Active Track: <strong className="text-amber-300">{selectedTrack?.name || '—'}</strong>
+          </span>
+        </div>
+
+        {isMenuOpen && (
+          <div className="absolute left-0 top-[calc(100%+6px)] z-40 w-full sm:w-auto bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                STUDIO UTILITIES
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen(false)}
+                className="text-slate-500 hover:text-slate-300 cursor-pointer"
+                title="Close"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 max-w-2xl">
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'piano' }))}
           className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold flex items-center space-x-1.5 transition cursor-pointer active:scale-95"
@@ -168,13 +205,9 @@ export const StudioUtilityBar: React.FC = () => {
             <Compass className="w-3 h-3 text-emerald-400" />
             <span>PIPELINE</span>
           </button>
-        </div>
-
-        <div className="flex items-center space-x-2 text-[10px] text-slate-400">
-          <span>
-            Active Track: <strong className="text-amber-300">{selectedTrack?.name || '—'}</strong>
-          </span>
-        </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
