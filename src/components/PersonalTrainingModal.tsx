@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { CreatorMusicSignature } from '../types/daw';
+import { startTakeRecording, decodeTakeBlob, dominantFrequency, type TakeRecording } from '../audio/takeRecorder';
 import {
   X,
   Mic,
@@ -51,6 +52,9 @@ interface SoundVaultItem {
   associatedGesture?: string;
   isRootSeed: boolean;
   dateAdded: string;
+  /** Peak per slice, taken from the recording. Absent on the shipped presets. */
+  waveform?: number[];
+  durationSeconds?: number;
 }
 
 interface VoiceCharacterModel {
@@ -70,8 +74,6 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
   onSaveSignature,
   initialTab = 'TRAINING_PILLARS',
 }) => {
-  if (!isOpen) return null;
-
   const { tracks, handleAddVocalTake, dawState, detectionSettings, decisionRecords } = useStudioSession();
 
   /** What is known right now, so the creator reads it before sealing it. */
@@ -239,41 +241,75 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
     },
   ]);
 
-  // Live Recording Simulator
   const [isRecording, setIsRecording] = useState(false);
   const [activeRecordingLabel, setActiveRecordingLabel] = useState<string | null>(null);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const recordingRef = useRef<TakeRecording | null>(null);
+  const auditionRef = useRef<HTMLAudioElement | null>(null);
 
-  const handleTriggerRecording = (
+  /**
+   * Records a signature seed. This was a `setTimeout` that never opened the
+   * microphone: after 1.8s it filed a vault entry pointing at one hardcoded
+   * WAV, with a hardcoded 65Hz, whatever you had performed. The counter went
+   * up and nothing was captured.
+   *
+   * Now the button arms the mic and stays armed -- press it again to stop --
+   * and the seed carries the audio that was actually recorded, its measured
+   * length, its own waveform and its measured pitch.
+   */
+  const handleTriggerRecording = async (
     label: string,
     category: 'vocal_percussion' | 'body_sound' | 'voice_sample' | 'keys_instrument' | 'found_audio'
   ) => {
-    setIsRecording(true);
-    setActiveRecordingLabel(label);
-
-    setTimeout(() => {
+    // Second press on the armed button: stop and keep the take.
+    if (isRecording) {
+      if (activeRecordingLabel !== label) return;
+      const session = recordingRef.current;
+      recordingRef.current = null;
       setIsRecording(false);
       setActiveRecordingLabel(null);
+      if (!session) return;
 
-      // 1. Auto-save raw root creativity seed to R09 Vault
-      const newSeedItem: SoundVaultItem = {
+      const take = await session.stop();
+      const decoded = await decodeTakeBlob(take.blob);
+      const seed: SoundVaultItem = {
         id: `vs_root_${Date.now()}`,
         name: `${label} (Root Seed)`,
         category,
         tags: ['root_seed', 'creator_recorded', 'raw_wav'],
-        freqHz: 65,
-        sampleUrl: '/audio/realization/realization_bass_cand_ace_1786813844336.wav',
+        freqHz: decoded ? dominantFrequency(decoded) : 0,
+        sampleUrl: take.url,
         associatedGesture: label,
         isRootSeed: true,
         dateAdded: new Date().toLocaleDateString(),
+        waveform: take.waveform,
+        durationSeconds: Math.round(take.durationSeconds * 100) / 100,
       };
 
-      setVaultSounds((prev) => [newSeedItem, ...prev]);
-
-      // 2. Update category counter
+      setVaultSounds((prev) => [seed, ...prev]);
       setPercussionCategories((prev) =>
         prev.map((p) => (p.name === label ? { ...p, recorded: true, count: p.count + 1 } : p))
       );
-    }, 1800);
+      return;
+    }
+
+    setRecordError(null);
+    try {
+      recordingRef.current = await startTakeRecording();
+      setIsRecording(true);
+      setActiveRecordingLabel(label);
+    } catch {
+      // Denied, or no input device. Say so instead of showing a fake success.
+      setRecordError('The microphone is not available. Allow mic access and try again.');
+    }
+  };
+
+  /** Plays a vault seed. This used to be a console.log. */
+  const handleAuditionSeed = (snd: SoundVaultItem) => {
+    auditionRef.current?.pause();
+    const el = new Audio(snd.sampleUrl);
+    auditionRef.current = el;
+    void el.play().catch(() => setRecordError(`"${snd.name}" could not be played.`));
   };
 
   const handleSynthesizeSingingTake = () => {
@@ -363,6 +399,11 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
     if (vaultFilter === 'KEYS') return s.category === 'keys_instrument';
     return true;
   });
+
+  // Every hook above runs on every render. This early return used to sit at the
+  // top of the component, so opening the modal changed the hook count between
+  // renders -- React reported "Expected static flag was missing" each time.
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 md:p-6 select-none font-sans">
@@ -505,21 +546,21 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                         </div>
 
                         <button
-                          onClick={() => handleTriggerRecording(cat.name, 'vocal_percussion')}
-                          disabled={isRecording}
-                          className={`w-full py-2 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                          onClick={() => void handleTriggerRecording(cat.name, 'vocal_percussion')}
+                          disabled={isRecording && activeRecordingLabel !== cat.name}
+                          className={`w-full py-2 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 ${
                             isRecording && activeRecordingLabel === cat.name
-                              ? 'bg-amber-400 text-slate-950 animate-pulse'
+                              ? 'bg-rose-500 text-white animate-pulse'
                               : 'bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-200'
                           }`}
                         >
                           <Mic className="w-3.5 h-3.5" />
                           <span>
                             {isRecording && activeRecordingLabel === cat.name
-                              ? 'Recording Live...'
+                              ? 'Stop & Keep Take'
                               : cat.recorded
                               ? 'Record Extra Seed'
-                              : 'Record 3 Samples'}
+                              : 'Record a Sample'}
                           </span>
                         </button>
                       </div>
@@ -585,11 +626,15 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                       <p className="text-[10px] text-slate-400">Glide from your lowest chest note up to your highest falsetto note over 4 seconds.</p>
                     </div>
                     <button
-                      onClick={() => handleTriggerRecording('Octave Glide', 'voice_sample')}
+                      onClick={() => void handleTriggerRecording('Octave Glide', 'voice_sample')}
                       className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
                     >
                       <Mic className="w-3.5 h-3.5" />
-                      <span>{isRecording ? 'Listening to Glide...' : 'RECORD 4s PITCH GLIDE'}</span>
+                      <span>
+                        {isRecording && activeRecordingLabel === 'Octave Glide'
+                          ? 'STOP & KEEP GLIDE'
+                          : 'RECORD PITCH GLIDE'}
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -622,7 +667,7 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                         <div className="text-xs font-bold text-white">{v.vowel}</div>
                         <div className="text-[10px] text-pink-300 font-mono">{v.freqPeak}</div>
                         <button
-                          onClick={() => handleTriggerRecording(`Vowel ${v.vowel}`, 'voice_sample')}
+                          onClick={() => void handleTriggerRecording(`Vowel ${v.vowel}`, 'voice_sample')}
                           className={`w-full py-1.5 rounded text-[10px] font-bold transition cursor-pointer ${
                             v.recorded ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-slate-300 hover:bg-pink-500 hover:text-slate-950'
                           }`}
@@ -940,7 +985,7 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                 </div>
 
                 <button
-                  onClick={() => handleTriggerRecording('Custom Root Audio', 'found_audio')}
+                  onClick={() => void handleTriggerRecording('Custom Root Audio', 'found_audio')}
                   className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-emerald-600/20"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -969,13 +1014,27 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                           )}
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                          <span>{snd.category}</span> • <span>Freq: {snd.freqHz}Hz</span> • <span>{snd.dateAdded}</span>
+                          <span>{snd.category}</span> •{' '}
+                          <span>{snd.freqHz > 0 ? `${snd.freqHz}Hz` : 'unpitched'}</span>
+                          {snd.durationSeconds !== undefined && <span> • {snd.durationSeconds}s</span>} •{' '}
+                          <span>{snd.dateAdded}</span>
                         </div>
+                        {snd.waveform && snd.waveform.length > 0 && (
+                          <span className="flex items-end gap-[1px] h-3 w-[128px] mt-1">
+                            {snd.waveform.map((v, wi) => (
+                              <span
+                                key={wi}
+                                className="flex-1 bg-emerald-400/70 rounded-[.5px]"
+                                style={{ height: `${Math.max(6, Math.min(100, v * 100))}%` }}
+                              />
+                            ))}
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     <button
-                      onClick={() => console.log('Auditioning vault sound', snd.sampleUrl)}
+                      onClick={() => handleAuditionSeed(snd)}
                       className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer"
                       title="Audition Sound"
                     >
@@ -990,10 +1049,17 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
 
         {/* BOTTOM ACTION BAR */}
         <div className="p-3 md:px-6 border-t border-slate-800 bg-slate-950 flex items-center justify-between text-xs font-mono shrink-0">
-          <div className="flex items-center gap-2 text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>All recorded root seeds & trained voice models are 100% exclusive to creator.</span>
-          </div>
+          {recordError ? (
+            <div className="flex items-center gap-2 text-amber-300">
+              <ShieldCheck className="w-4 h-4 text-amber-400" />
+              <span>{recordError}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-slate-400">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>All recorded root seeds & trained voice models are 100% exclusive to creator.</span>
+            </div>
+          )}
 
           <button
             onClick={handleSaveSignature}

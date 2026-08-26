@@ -103,3 +103,46 @@ export async function startTakeRecording(): Promise<TakeRecording> {
     },
   };
 }
+
+/**
+ * Dominant frequency of a recording, by autocorrelation.
+ *
+ * A seed's stated frequency used to be a literal in the source -- every take
+ * claimed 65Hz whatever was sung into it. This measures the take instead, and
+ * returns 0 when the signal is too quiet or too noisy to have a pitch, so a
+ * silent recording says nothing rather than saying something wrong.
+ */
+export function dominantFrequency(buffer: AudioBuffer): number {
+  const rate = buffer.sampleRate;
+  const data = buffer.getChannelData(0);
+  // A window from the middle of the take: the attack and the tail are the
+  // least periodic parts of it.
+  const size = Math.min(data.length, 2048 * 8);
+  const from = Math.max(0, Math.floor((data.length - size) / 2));
+  const win = data.subarray(from, from + size);
+
+  let rms = 0;
+  for (let i = 0; i < win.length; i++) rms += win[i] * win[i];
+  rms = Math.sqrt(rms / win.length);
+  if (rms < 0.005) return 0;
+
+  // 55Hz..1200Hz covers the low chest note through a whistled hi-hat.
+  const minLag = Math.floor(rate / 1200);
+  const maxLag = Math.min(Math.floor(rate / 55), Math.floor(win.length / 2));
+
+  let bestLag = -1;
+  let bestScore = 0;
+  for (let lag = minLag; lag <= maxLag; lag++) {
+    let sum = 0;
+    for (let i = 0; i < win.length - lag; i++) sum += win[i] * win[i + lag];
+    const score = sum / (win.length - lag);
+    if (score > bestScore) {
+      bestScore = score;
+      bestLag = lag;
+    }
+  }
+  // Correlation below a fraction of the signal's own energy means the window
+  // was noise, not a note.
+  if (bestLag < 0 || bestScore < rms * rms * 0.3) return 0;
+  return Math.round(rate / bestLag);
+}
