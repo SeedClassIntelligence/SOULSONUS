@@ -8,7 +8,7 @@ import { FocusModeView } from './components/FocusModeView';
 import { QuickInspectorDrawer } from './components/inspectors/QuickInspectorDrawer';
 import { TrackWorkstationDrawer } from './components/inspectors/TrackWorkstationDrawer';
 import { SongwritingSuiteDrawer } from './components/inspectors/SongwritingSuiteDrawer';
-import { PerformanceCaptureRoom } from './components/PerformanceCaptureRoom';
+import { InstrumentRoom } from './components/InstrumentRoom';
 import { VoiceCloneDrawer } from './components/inspectors/VoiceCloneDrawer';
 import { ExternalHardwareMidiDrawer } from './components/inspectors/ExternalHardwareMidiDrawer';
 import { CalibrationDrawer } from './components/inspectors/CalibrationDrawer';
@@ -494,7 +494,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         {focusTrackId ? (
           <FocusModeView />
         ) : isPerformanceCaptureOpen ? (
-          <PerformanceCaptureRoom onClose={() => setIsPerformanceCaptureOpen(false)} />
+          <InstrumentRoom onClose={() => setIsPerformanceCaptureOpen(false)} />
         ) : activeWorkspace === 'MIX' ? (
           <MixWorkspace />
         ) : activeWorkspace === 'MASTER' ? (
