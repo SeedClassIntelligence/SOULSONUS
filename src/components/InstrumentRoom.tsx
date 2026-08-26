@@ -306,11 +306,34 @@ export const InstrumentRoom: React.FC<InstrumentRoomProps> = ({ onClose }) => {
           >
             <span className="text-[10px] font-bold text-white text-center leading-tight line-clamp-2">{t.name}</span>
             <span className="text-[8px] font-mono text-slate-500 truncate max-w-full">{t.vaultLabel || 'unassigned'}</span>
-            <div className="flex gap-[1px] h-2.5 items-end w-full px-1">
-              {t.steps.map((on, si) => (
-                <div key={si} className={`flex-1 rounded-[1px] ${on ? 'bg-amber-400' : 'bg-white/10'}`} style={{ height: on ? '100%' : '35%' }} />
-              ))}
-            </div>
+            {/* A pad shows its own performance, not a step strip. The steps
+                belong to the arrangement channels the hits were routed onto,
+                and drawing them here twice -- tiny on the pad, full size in
+                the lane -- was the same data claiming to be two things. */}
+            {(() => {
+              const padTakes = t.audioClips || [];
+              const latest = padTakes[padTakes.length - 1];
+              const peaks = latest ? audioAssets[latest.assetId]?.peaks || [] : [];
+              if (!peaks.length) {
+                return <span className="text-[8px] font-mono text-slate-700">no takes yet</span>;
+              }
+              return (
+                <>
+                  <div className="flex gap-[1px] h-3 items-center w-full px-1">
+                    {peaks.slice(0, 40).map((p, pi) => (
+                      <div
+                        key={pi}
+                        className="flex-1 bg-orange-400/70 rounded-[1px]"
+                        style={{ height: `${Math.max(8, Math.min(100, p * 100))}%` }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-[8px] font-mono text-slate-500">
+                    {padTakes.length} take{padTakes.length === 1 ? '' : 's'}
+                  </span>
+                </>
+              );
+            })()}
           </button>
         );
       })}
