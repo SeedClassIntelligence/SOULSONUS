@@ -264,6 +264,24 @@ export const StudioCanvas: React.FC = () => {
   // missing. It opens over this same screen instead of somewhere else, since
   // shaping the song and structuring it are one continuous act, not two.
   const [isSectionEditorOpen, setIsSectionEditorOpen] = useState(false);
+  /**
+   * Which bench is open above the lanes, if any.
+   *
+   * One at a time, by name. These panels were all open at once, which is what
+   * put five rows of controls in front of the first note.
+   */
+  const [activeBench, setActiveBench] = useState<'PERFORM' | 'PATTERN' | 'SECTIONS' | null>(null);
+
+  // Other rooms open the instrument through the app-wide drawer event; that
+  // has to land on the PERFORM bench rather than on a flag nothing reads.
+  useEffect(() => {
+    if (isInstrumentOpen) setActiveBench('PERFORM');
+  }, [isInstrumentOpen]);
+
+  // Closing the bench releases the shared flag, so the next external open fires.
+  useEffect(() => {
+    if (activeBench !== 'PERFORM' && isInstrumentOpen) setIsInstrumentOpen(false);
+  }, [activeBench, isInstrumentOpen, setIsInstrumentOpen]);
 
   // Universal Arranger Toolbar State
 
@@ -624,7 +642,7 @@ export const StudioCanvas: React.FC = () => {
               </div>
             </div>
 
-            {isSectionEditorOpen && (
+            {(isSectionEditorOpen || activeBench === 'SECTIONS') && (
               <div className="mb-2">
                 <SectionBuilder
                   sections={sections}
@@ -657,34 +675,35 @@ export const StudioCanvas: React.FC = () => {
             {/* Two rows that were each mostly empty -- pattern operations on
                 one, a single button on the next -- now share one. Opening the
                 instrument is the act that starts a session, so it leads. */}
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <button
-                type="button"
-                onClick={() => setIsInstrumentOpen((v) => !v)}
-                aria-expanded={isInstrumentOpen}
-                className={`px-3 py-2 rounded-xl border font-bold text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shrink-0 ${
-                  isInstrumentOpen
-                    ? 'bg-orange-500 text-slate-950 border-orange-400'
-                    : 'bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border-orange-500/40'
-                }`}
-                title="Open the instrument here -- beatbox, clap or hum, and the hits land on the channels below"
-              >
-                <Mic className="w-3.5 h-3.5" />
-                <span>{isInstrumentOpen ? 'CLOSE INSTRUMENT' : 'OPEN INSTRUMENT'}</span>
-              </button>
-
-              <ShootAroundControls
-                onCloneBar1ToAll={() => handleCloneBarToAll(0)}
-                onNudgeLeft={() => handleNudgeTrackPattern('all', 'left')}
-                onNudgeRight={() => handleNudgeTrackPattern('all', 'right')}
-                onRandomizeBar1={() => handleRandomize(0)}
-                onClearAll={handleClearAll}
-                onInvertPattern={handleInvertPattern}
-                canUndo={canUndo}
-                canRedo={canRedo}
-                onUndo={() => { handleUndo(); }}
-                onRedo={() => { handleRedo(); }}
-              />
+            {/* One bench at a time.
+                Every panel here used to be stacked open at once -- instrument,
+                pattern operations, section builder -- so five rows of controls
+                stood between the workspace tabs and the first note, and none
+                of them said what they were for. Nothing is removed and nothing
+                changes colour; each panel is named, and you open the one you
+                are working in. */}
+            <div className="flex flex-wrap items-center gap-1.5 mb-2">
+              {([
+                { id: 'PERFORM' as const, label: 'PERFORM', icon: <Mic className="w-3.5 h-3.5" />, on: 'bg-orange-500 text-slate-950 border-orange-400', off: 'bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border-orange-500/40' },
+                { id: 'PATTERN' as const, label: 'PATTERN', icon: <Layers className="w-3.5 h-3.5" />, on: 'bg-amber-500 text-slate-950 border-amber-400', off: 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40' },
+                { id: 'SECTIONS' as const, label: 'SECTIONS', icon: <Compass className="w-3.5 h-3.5" />, on: 'bg-cyan-500 text-slate-950 border-cyan-400', off: 'bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/40' },
+              ]).map((bench) => {
+                const active = activeBench === bench.id;
+                return (
+                  <button
+                    key={bench.id}
+                    type="button"
+                    onClick={() => setActiveBench(active ? null : bench.id)}
+                    aria-expanded={active}
+                    className={`px-3 py-2 rounded-xl border font-bold text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shrink-0 ${
+                      active ? bench.on : bench.off
+                    }`}
+                  >
+                    {bench.icon}
+                    <span>{bench.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {captureError && (
@@ -693,15 +712,28 @@ export const StudioCanvas: React.FC = () => {
               </div>
             )}
 
-            {/* Opens right here, under the button that opened it and directly
-                above the channels a performance lands on. It used to appear at
-                the top of the page, far from the click, which read as a
-                different thing happening rather than this control expanding. */}
-            {isInstrumentOpen && !isInstrumentFull && (
+            {activeBench === 'PERFORM' && !isInstrumentFull && (
               <div className="mb-2">
                 <InstrumentStrip
                   onExpand={() => setIsInstrumentFull(true)}
-                  onClose={() => setIsInstrumentOpen(false)}
+                  onClose={() => setActiveBench(null)}
+                />
+              </div>
+            )}
+
+            {activeBench === 'PATTERN' && (
+              <div className="mb-2">
+                <ShootAroundControls
+                  onCloneBar1ToAll={() => handleCloneBarToAll(0)}
+                  onNudgeLeft={() => handleNudgeTrackPattern('all', 'left')}
+                  onNudgeRight={() => handleNudgeTrackPattern('all', 'right')}
+                  onRandomizeBar1={() => handleRandomize(0)}
+                  onClearAll={handleClearAll}
+                  onInvertPattern={handleInvertPattern}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onUndo={() => { handleUndo(); }}
+                  onRedo={() => { handleRedo(); }}
                 />
               </div>
             )}
