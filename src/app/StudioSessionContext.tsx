@@ -2026,12 +2026,18 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     [decodeAudioFile, commitCaptureEvents, updateTracksWithHistory, handleRegisterAudioAsset]
   );
 
+  /** The take being recorded right now, if any. */
+  const seedRecordingRef = useRef<{ trackId: string; recording: TakeRecording } | null>(null);
+
   useEffect(() => {
     tracksRef.current = tracks;
     detectionEngine.setTracks(tracks);
     detectionEngine.setCallbacks({
       onCaptureEvent: (event) => {
+        // Monitoring always: this is what makes a hit audible and moves the
+        // meters while performing.
         monitorCaptureEvent(event);
+
         commitCaptureEvents([event]);
       },
       // The engine has always measured this and nothing ever asked for it, so
@@ -2657,7 +2663,6 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    * were already separated, which means a performance can be extracted again
    * later, by better analysis, without being performed again.
    */
-  const seedRecordingRef = useRef<{ trackId: string; recording: TakeRecording } | null>(null);
 
 
   const stopSeedRecording = useCallback(async (): Promise<{ trackId: string; seconds: number } | null> => {
@@ -2705,12 +2710,17 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       // never leaves a track claiming audio it does not have.
       return null;
     }
-  }, [updateTracksWithHistory, handleRegisterAudioAsset]);
+  }, [updateTracksWithHistory, handleRegisterAudioAsset, decodeAudioFile, commitCaptureEvents]);
 
   const startSeedRecording = useCallback(async (trackId: string) => {
     if (seedRecordingRef.current) await stopSeedRecording();
     try {
-      seedRecordingRef.current = { trackId, recording: await startTakeRecording() };
+      // Record from the microphone the analyser already opened, so the take
+      // and the detection are the same performance.
+      seedRecordingRef.current = {
+        trackId,
+        recording: await startTakeRecording(detectionEngine.getMediaStream()),
+      };
       return true;
     } catch {
       seedRecordingRef.current = null;

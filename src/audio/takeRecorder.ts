@@ -61,9 +61,19 @@ export async function decodeTakeBlob(blob: Blob): Promise<AudioBuffer | null> {
   }
 }
 
-/** Opens the microphone and starts recording. Throws if permission is refused. */
-export async function startTakeRecording(): Promise<TakeRecording> {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+/**
+ * Starts recording a take.
+ *
+ * Pass an already-open stream to record from it rather than opening a second
+ * microphone -- when the analyser is already listening, the take must come
+ * from the same stream it is analysing, or the two disagree about what was
+ * performed. Only a stream this function opened itself is released on stop.
+ *
+ * Throws if permission is refused and no stream was supplied.
+ */
+export async function startTakeRecording(existingStream?: MediaStream | null): Promise<TakeRecording> {
+  const borrowed = !!existingStream;
+  const stream = existingStream || (await navigator.mediaDevices.getUserMedia({ audio: true }));
   const recorder = new MediaRecorder(stream);
   const chunks: Blob[] = [];
   const startedAt = Date.now();
@@ -73,7 +83,10 @@ export async function startTakeRecording(): Promise<TakeRecording> {
   };
   recorder.start(100);
 
-  const release = () => stream.getTracks().forEach((t) => t.stop());
+  // Never stop tracks we borrowed: the analyser is still using them.
+  const release = () => {
+    if (!borrowed) stream.getTracks().forEach((t) => t.stop());
+  };
 
   return {
     stop: () =>

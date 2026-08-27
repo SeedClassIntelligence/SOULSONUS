@@ -108,6 +108,19 @@ export class DetectionEngine {
     this.prevRms = 0;
   }
 
+  /**
+   * The microphone this engine already has open, if it is listening.
+   *
+   * Recording a take used to call `getUserMedia` a second time, so a
+   * performance was captured from a different stream than the one being
+   * analysed. Two streams on one device is a race at best -- and where the
+   * device hands its audio to only one consumer, the take records digital
+   * silence while the meters happily move. One microphone, tapped twice.
+   */
+  public getMediaStream(): MediaStream | null {
+    return this.mediaStream;
+  }
+
   public getCaptureModality(): CaptureModality | null {
     return this.captureModality;
   }
