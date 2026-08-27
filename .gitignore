@@ -11,3 +11,14 @@ __pycache__/
 *.pyo
 .gemini/
 public/ort/
+
+# Verification screenshots and throwaway Playwright scripts produced while
+# checking a change in the running app. Working artifacts, not source.
+verify_*.cjs
+audit_*.cjs
+wide_*.png
+rec_*.png
+train_*.png
+wire_*.png
+audit_*.png
+disclosure_*.png
