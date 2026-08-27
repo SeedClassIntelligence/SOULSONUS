@@ -553,6 +553,19 @@ export interface StudioSessionState {
    */
   creatorSignature: CreatorMusicSignature | null;
   handleSaveCreatorSignature: (signature: CreatorMusicSignature) => void;
+
+  /**
+   * Whether the instrument is open, and whether it is open full.
+   *
+   * This lived in App.tsx while the button that opens it lives down in the
+   * canvas, so the strip could only be rendered at the top of the page --
+   * nowhere near the control that summoned it. Shared here so it can open
+   * where a creator actually clicked.
+   */
+  isInstrumentOpen: boolean;
+  setIsInstrumentOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  isInstrumentFull: boolean;
+  setIsInstrumentFull: React.Dispatch<React.SetStateAction<boolean>>;
   
   // History Stack
   canUndo: boolean;
@@ -2507,6 +2520,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const [lineageRecords, setLineageRecords] = useState<AssetLineageRecord[]>([]);
   const [decisionRecords, setDecisionRecords] = useState<GenerationDecisionRecord[]>([]);
   const [creatorSignature, setCreatorSignature] = useState<CreatorMusicSignature | null>(null);
+  const [isInstrumentOpen, setIsInstrumentOpen] = useState(false);
+  const [isInstrumentFull, setIsInstrumentFull] = useState(false);
 
   /**
    * Receives a sealed signature and applies what it measured.
@@ -4964,6 +4979,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       decisionRecords,
       creatorSignature,
       handleSaveCreatorSignature,
+      isInstrumentOpen,
+      setIsInstrumentOpen,
+      isInstrumentFull,
+      setIsInstrumentFull,
       canUndo,
       canRedo,
       handleUndo,
@@ -5152,6 +5171,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       decisionRecords,
       creatorSignature,
       handleSaveCreatorSignature,
+      isInstrumentOpen,
+      setIsInstrumentOpen,
+      isInstrumentFull,
+      setIsInstrumentFull,
       canUndo,
       canRedo,
       handleUndo,

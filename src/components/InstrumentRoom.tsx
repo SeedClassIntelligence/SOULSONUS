@@ -67,7 +67,16 @@ export const InstrumentRoom: React.FC<InstrumentRoomProps> = ({ onClose }) => {
     handleRemoveAudioClip,
   } = useStudioSession();
 
-  const [tab, setTab] = useState<Tab>('TRAIN');
+  /**
+   * The room opens on PLAY.
+   *
+   * It used to open on TRAIN, so every time a creator reached for their beat
+   * machine the first thing it asked was to sample a sound. That interrupts
+   * the thing they came to do -- beatbox, record, create -- with an errand
+   * they did not ask for. Training a signature is a deliberate, separate act
+   * with its own room; it stays reachable here, it just stops being the door.
+   */
+  const [tab, setTab] = useState<Tab>('PLAY');
   const [openSlotIndex, setOpenSlotIndex] = useState<number | null>(null);
   const [playingClipId, setPlayingClipId] = useState<string | null>(null);
   const [destTrackId, setDestTrackId] = useState<string>('');
@@ -373,15 +382,24 @@ export const InstrumentRoom: React.FC<InstrumentRoomProps> = ({ onClose }) => {
 
       {/* Tabs */}
       <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/[0.03] border border-white/10 w-fit">
-        {(['TRAIN', 'PLAY', 'PACKS'] as Tab[]).map((tName) => (
+        {([
+          { t: 'PLAY' as Tab, label: 'PERFORM' },
+          { t: 'PACKS' as Tab, label: 'PACKS' },
+          { t: 'TRAIN' as Tab, label: 'SAMPLE' },
+        ]).map(({ t: tName, label }) => (
           <button
             key={tName}
             onClick={() => setTab(tName)}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
               tab === tName ? 'bg-white text-slate-950' : 'text-slate-400 hover:text-slate-200'
             }`}
+            title={
+              tName === 'TRAIN'
+                ? 'Sample a one-off sound onto a pad. To train your signature, use Train Signature.'
+                : undefined
+            }
           >
-            {tName}
+            {label}
           </button>
         ))}
       </div>
@@ -413,8 +431,30 @@ export const InstrumentRoom: React.FC<InstrumentRoomProps> = ({ onClose }) => {
         </div>
       )}
 
-      {/* ================= TRAIN ================= */}
+      {/* ================= SAMPLE ================= */}
       {tab === 'TRAIN' && (
+        <div className="space-y-4">
+          {/* Says which of the two this is. Sampling one sound onto one pad
+              and training a creator signature were both called "train", so
+              the beat machine looked like it wanted a training session before
+              you could play a note. They are different acts in different
+              rooms, and this one names the other. */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-black border border-white/10">
+            <p className="text-[11px] text-slate-400 max-w-xl leading-relaxed">
+              Teach <span className="text-slate-200 font-semibold">one pad</span> one sound, for this
+              session. Training your full signature — your kick, your snare, your range, your pocket —
+              is its own room.
+            </p>
+            <button
+              onClick={() =>
+                window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'training' }))
+              }
+              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-[11px] font-bold transition cursor-pointer shrink-0"
+            >
+              Open Train Signature →
+            </button>
+          </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           <div className="lg:col-span-7 p-5 rounded-2xl bg-black border border-white/10">
             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">Pads</div>
@@ -461,9 +501,10 @@ export const InstrumentRoom: React.FC<InstrumentRoomProps> = ({ onClose }) => {
                 <div className="pt-3 border-t border-white/10">{renderTakeStack()}</div>
               </>
             ) : (
-              <p className="text-xs text-slate-500">Pick a pad on the left — an empty one to start it, a filled one to keep training it.</p>
+              <p className="text-xs text-slate-500">Pick a pad on the left — an empty one to start it, a filled one to re-sample it.</p>
             )}
           </div>
+        </div>
         </div>
       )}
 

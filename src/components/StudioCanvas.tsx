@@ -4,6 +4,7 @@ import { Track, PianoRollTool } from '../types/daw';
 import { UnifiedTrackLane } from './UnifiedTrackLane';
 import { SectionBuilder } from './SectionBuilder';
 import { ShootAroundControls } from './ShootAroundControls';
+import { InstrumentStrip } from './InstrumentStrip';
 import { TimelineAudioPanel } from './TimelineAudioPanel';
 import { TICKS_PER_16TH, TICKS_PER_BEAT } from '../utils/musicMath';
 import {
@@ -228,6 +229,10 @@ export const StudioCanvas: React.FC = () => {
     handleTransposeNotes,
     handleQuantizeTrackNotes,
     captureError,
+    isInstrumentOpen,
+    setIsInstrumentOpen,
+    isInstrumentFull,
+    setIsInstrumentFull,
     editorPrefs,
     updateEditorPrefs,
     handleSetSongBars,
@@ -655,12 +660,17 @@ export const StudioCanvas: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <button
                 type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'capture' }))}
-                className="px-3 py-2 rounded-xl bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border border-orange-500/40 font-bold text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shrink-0"
-                title="Open the performance instrument -- train a sound on your voice, then perform it"
+                onClick={() => setIsInstrumentOpen((v) => !v)}
+                aria-expanded={isInstrumentOpen}
+                className={`px-3 py-2 rounded-xl border font-bold text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shrink-0 ${
+                  isInstrumentOpen
+                    ? 'bg-orange-500 text-slate-950 border-orange-400'
+                    : 'bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border-orange-500/40'
+                }`}
+                title="Open the instrument here -- beatbox, clap or hum, and the hits land on the channels below"
               >
                 <Mic className="w-3.5 h-3.5" />
-                <span>OPEN INSTRUMENT</span>
+                <span>{isInstrumentOpen ? 'CLOSE INSTRUMENT' : 'OPEN INSTRUMENT'}</span>
               </button>
 
               <ShootAroundControls
@@ -680,6 +690,19 @@ export const StudioCanvas: React.FC = () => {
             {captureError && (
               <div id="capture-status" className="text-[9px] text-rose-300 max-w-md leading-relaxed mb-2">
                 {captureError}
+              </div>
+            )}
+
+            {/* Opens right here, under the button that opened it and directly
+                above the channels a performance lands on. It used to appear at
+                the top of the page, far from the click, which read as a
+                different thing happening rather than this control expanding. */}
+            {isInstrumentOpen && !isInstrumentFull && (
+              <div className="mb-2">
+                <InstrumentStrip
+                  onExpand={() => setIsInstrumentFull(true)}
+                  onClose={() => setIsInstrumentOpen(false)}
+                />
               </div>
             )}
 

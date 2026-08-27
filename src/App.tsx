@@ -9,7 +9,6 @@ import { QuickInspectorDrawer } from './components/inspectors/QuickInspectorDraw
 import { TrackWorkstationDrawer } from './components/inspectors/TrackWorkstationDrawer';
 import { SongwritingSuiteDrawer } from './components/inspectors/SongwritingSuiteDrawer';
 import { InstrumentRoom } from './components/InstrumentRoom';
-import { InstrumentStrip } from './components/InstrumentStrip';
 import { VoiceCloneDrawer } from './components/inspectors/VoiceCloneDrawer';
 import { ExternalHardwareMidiDrawer } from './components/inspectors/ExternalHardwareMidiDrawer';
 import { CalibrationDrawer } from './components/inspectors/CalibrationDrawer';
@@ -94,6 +93,10 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     handleStopCapture,
     creatorSignature,
     handleSaveCreatorSignature,
+    isInstrumentOpen,
+    setIsInstrumentOpen,
+    isInstrumentFull,
+    setIsInstrumentFull,
   } = useStudioSession();
 
   // Undo was reachable only from the Build room's control cluster, while takes
@@ -140,9 +143,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const [isTrackWorkstationOpen, setIsTrackWorkstationOpen] = useState(false);
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const [isSongwritingSuiteOpen, setIsSongwritingSuiteOpen] = useState(false);
-  const [isPerformanceCaptureOpen, setIsPerformanceCaptureOpen] = useState(false);
   /** The instrument's full Train / Play / Packs room, opened from the strip. */
-  const [isInstrumentFull, setIsInstrumentFull] = useState(false);
   const [isHardwareMidiOpen, setIsHardwareMidiOpen] = useState(false);
   const [isNativeBrainOpen, setIsNativeBrainOpen] = useState(false);
   const [isCandidateDrawerOpen, setIsCandidateDrawerOpen] = useState(false);
@@ -255,7 +256,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       if (detail === 'projects' || detail === 'save') setIsProjectMenuOpen(true);
       if (detail === 'piano' || detail === 'keyboard') setIsPianoOpen((prev) => !prev);
       if (detail === 'soulflow' || detail === 'pipeline') setIsSoulFlowOpen((prev) => !prev);
-      if (detail === 'capture' || detail === 'performance') setIsPerformanceCaptureOpen((prev) => !prev);
+      if (detail === 'capture' || detail === 'performance') setIsInstrumentOpen((prev) => !prev);
 
       if (detail === 'proposal' || detail === 'realization' || (typeof detail === 'object' && detail?.type === 'realization')) {
         const trId = typeof detail === 'object' ? detail?.trackId : undefined;
@@ -497,18 +498,6 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
 
       {/* Main Studio Canvas & 6-Workspace Room Switching */}
       <main className="flex-1 p-3 md:p-4 max-w-[1440px] w-full mx-auto space-y-3">
-        {/* The instrument sits ON the arrangement, not instead of it. Opening
-            it used to swap the whole room out, which hid the very lanes a
-            performance lands on. The strip stays above whatever room you are
-            in; the full Train / Play / Packs room is still one click away for
-            the deeper work. */}
-        {!focusTrackId && isPerformanceCaptureOpen && !isInstrumentFull && (
-          <InstrumentStrip
-            onExpand={() => setIsInstrumentFull(true)}
-            onClose={() => setIsPerformanceCaptureOpen(false)}
-          />
-        )}
-
         {focusTrackId ? (
           <FocusModeView />
         ) : isInstrumentFull ? (
