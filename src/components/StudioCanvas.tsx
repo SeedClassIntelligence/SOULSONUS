@@ -251,6 +251,8 @@ export const StudioCanvas: React.FC = () => {
   const setSeedTargetMode = (v: 'NEW_TRACK' | 'ADD_LAYER') => updateEditorPrefs({ seedTargetMode: v });
 
   const [isAddTrackOpen, setIsAddTrackOpen] = useState(false);
+  /** Snap/scale/transpose/quantize/velocity, shown when a creator asks for them. */
+  const [showNoteSettings, setShowNoteSettings] = useState(false);
   // The section editor (rename, retag, remap bars, add/remove sections) was
   // Build's whole reason to exist as a separate room. Selecting a section to
   // scope by was already real here; only editing what a section *is* was
@@ -647,7 +649,20 @@ export const StudioCanvas: React.FC = () => {
             )}
 
 
-            <div className="mb-2">
+            {/* Two rows that were each mostly empty -- pattern operations on
+                one, a single button on the next -- now share one. Opening the
+                instrument is the act that starts a session, so it leads. */}
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'capture' }))}
+                className="px-3 py-2 rounded-xl bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border border-orange-500/40 font-bold text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shrink-0"
+                title="Open the performance instrument -- train a sound on your voice, then perform it"
+              >
+                <Mic className="w-3.5 h-3.5" />
+                <span>OPEN INSTRUMENT</span>
+              </button>
+
               <ShootAroundControls
                 onCloneBar1ToAll={() => handleCloneBarToAll(0)}
                 onNudgeLeft={() => handleNudgeTrackPattern('all', 'left')}
@@ -662,27 +677,11 @@ export const StudioCanvas: React.FC = () => {
               />
             </div>
 
-            {/* 2.5 Performance capture used to be three links sitting flat in this
-                canvas, each just firing off a new track with nothing else
-                around it -- disjointed from everything else here. That whole
-                act (train a sound, perform it, shape it) is its own space now,
-                one door in, not three buttons pretending to be a feature. */}
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'capture' }))}
-                className="px-3 py-1.5 rounded-xl bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border border-orange-500/40 font-bold text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95"
-                title="Open the performance instrument -- train a sound on your voice, then perform it"
-              >
-                <Mic className="w-3.5 h-3.5" />
-                <span>OPEN INSTRUMENT</span>
-              </button>
-              {captureError && (
-                <div id="capture-status" className="text-[9px] text-rose-300 max-w-md leading-relaxed">
-                  {captureError}
-                </div>
-              )}
-            </div>
+            {captureError && (
+              <div id="capture-status" className="text-[9px] text-rose-300 max-w-md leading-relaxed mb-2">
+                {captureError}
+              </div>
+            )}
 
             {/* 2. UNIVERSAL ARRANGER EDITING TOOLBAR */}
             <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-900/90 rounded-xl border border-slate-800 text-[10px] font-mono mb-2">
@@ -756,8 +755,32 @@ export const StudioCanvas: React.FC = () => {
                 </button>
               </div>
 
-              {/* Musical Snap, Scale & Automation Group */}
+              {/* Note-editing settings, grouped and disclosed.
+                  Snap, scale, transpose, quantize and velocity are five
+                  settings for one activity -- editing notes -- and they sat in
+                  an undifferentiated strip beside two primary actions, so
+                  nothing in the row read as more important than anything else.
+                  The settings fold behind one labelled control; the two
+                  buttons that start work stay out. */}
               <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowNoteSettings((v) => !v)}
+                  aria-expanded={showNoteSettings}
+                  className={`px-2 py-1 rounded-lg border text-[9px] font-extrabold uppercase tracking-wide transition cursor-pointer flex items-center gap-1 ${
+                    showNoteSettings
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      : 'bg-slate-950 text-slate-400 hover:text-slate-200 border-slate-800'
+                  }`}
+                  title="Snap, scale, transpose, quantize and velocity"
+                >
+                  <Sliders className="w-3 h-3" />
+                  <span>Notes</span>
+                  <span className="opacity-70">{showNoteSettings ? '▴' : '▾'}</span>
+                </button>
+
+                {showNoteSettings && (
+                  <>
                 {/* Snap Grid */}
                 <div className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800">
                   <span className="text-[9px] text-slate-500">SNAP:</span>
@@ -841,7 +864,10 @@ export const StudioCanvas: React.FC = () => {
                   VELOCITY
                 </button>
 
-                {/* + ADD TRACK Button (Moved Up Top) */}
+                  </>
+                )}
+
+                {/* Primary actions: these start work, so they stay visible. */}
                 <div className="relative flex items-center gap-1.5">
                   <button
                     type="button"

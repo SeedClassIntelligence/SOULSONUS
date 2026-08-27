@@ -127,6 +127,17 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
    * controls, kept behind one click.
    */
   const [showChrome, setShowChrome] = useState<boolean>(false);
+  /**
+   * Whether this lane's occasional controls are showing.
+   *
+   * Eight lanes carried five or six always-on buttons each -- around forty
+   * icons competing with the eight track names, which lost. Mute and Solo
+   * stay put because they are pressed constantly; the DSP drawer, height
+   * toggle, chrome toggle and delete appear when the lane is hovered or
+   * selected, which is when a creator is actually reaching for them.
+   */
+  const [isHovered, setIsHovered] = useState<boolean>(false);
+  const revealControls = isHovered || isSelected || showChrome;
   const [trackHeight, setTrackHeight] = useState<number>(isDrum ? 60 : 200);
   const [activeDrag, setActiveDrag] = useState<DragState | null>(null);
   const [editingLyricNoteId, setEditingLyricNoteId] = useState<string | null>(null);
@@ -377,6 +388,8 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
   return (
     <div
       onClick={onSelectTrack}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={`flex flex-col bg-slate-950/95 rounded-2xl border transition-all cursor-pointer shadow-lg overflow-hidden ${
         isSelected
           ? 'border-amber-500/80 ring-1 ring-amber-500/30 bg-slate-900/90'
@@ -403,21 +416,26 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
               >
                 {INSTRUMENT_ICONS[track.instrument] || <Activity className="w-3.5 h-3.5 text-amber-400" />}
               </button>
-              <div>
-                <div className="flex items-center gap-1">
-                  <span className="font-bold text-slate-100 text-xs truncate max-w-[95px]" title={track.name}>
+              {/* The name is the one thing a creator scans for, and it was the
+                  thing being truncated: five always-on buttons squeezed it to
+                  95px, so every lane read "Kick (Thu...". The buttons that are
+                  only used occasionally now appear on hover or when the lane is
+                  selected, and the name gets the space back. */}
+              <div className="min-w-0">
+                <div className="flex items-baseline gap-1 min-w-0">
+                  <span className="font-bold text-slate-100 text-xs truncate" title={track.name}>
                     {track.name}
                   </span>
-                  <span className="text-[9px] text-slate-400 font-normal">
-                    ({notes.length} {notes.length === 1 ? 'note' : 'notes'})
+                  <span className="text-[9px] text-slate-500 font-normal shrink-0 tabular-nums">
+                    {notes.length}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               {/* Native Track Height / Expand Toggle */}
-              {!isDrum && (
+              {!isDrum && revealControls && (
                 <div className="flex items-center gap-0.5 bg-slate-900 p-0.5 rounded border border-slate-800">
                   <button
                     type="button"
@@ -455,6 +473,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
               )}
 
               {/* Workstation DSP Drawer Toggle */}
+              {revealControls && (
               <button
                 onClick={() => {
                   setSelectionContext((prev) => ({ ...prev, selectedTrackId: track.id }));
@@ -465,8 +484,11 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
               >
                 <Sliders className="w-2.5 h-2.5" />
               </button>
+              )}
 
-              {/* Mute */}
+              {/* Mute and Solo stay: they are pressed constantly while
+                  arranging, and hiding them behind a hover would cost more
+                  than the row space they take. */}
               <button
                 onClick={() => handleToggleMute(track.id)}
                 className={`w-5 h-5 rounded text-[9.5px] font-black transition cursor-pointer ${
@@ -489,6 +511,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
               </button>
 
               {/* Per-track controls, on request rather than always */}
+              {revealControls && (
               <button
                 onClick={() => setShowChrome((v) => !v)}
                 className={`w-5 h-5 rounded border flex items-center justify-center text-[10px] font-bold transition cursor-pointer ${
@@ -500,8 +523,10 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
               >
                 {showChrome ? '▴' : '▾'}
               </button>
+              )}
 
               {/* Delete Track */}
+              {revealControls && (
               <button
                 onClick={() => handleDeleteTrack(track.id)}
                 className="w-5 h-5 rounded bg-slate-900 hover:bg-rose-600 text-slate-500 hover:text-white border border-slate-800 flex items-center justify-center text-[10px] font-bold transition cursor-pointer"
@@ -509,6 +534,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
               >
                 ✕
               </button>
+              )}
             </div>
           </div>
 
