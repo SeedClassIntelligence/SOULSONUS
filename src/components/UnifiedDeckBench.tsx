@@ -95,17 +95,17 @@ export const UnifiedDeckBench: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  if (dawState.isRecording) handleStopCapture();
+                  if (dawState.isRecordingMic) handleStopCapture();
                   else handleStartCaptureForTab(activeModalityTab);
                 }}
                 className={`px-3 py-1.5 rounded-xl font-black text-[10px] flex items-center space-x-1.5 transition cursor-pointer ${
-                  dawState.isRecording
+                  dawState.isRecordingMic
                     ? 'bg-red-600 text-white animate-pulse shadow-lg shadow-red-600/50'
                     : 'bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30'
                 }`}
               >
                 <span className="w-2 h-2 rounded-full bg-red-500" />
-                <span>{dawState.isRecording ? 'RECORDING' : 'RECORD'}</span>
+                <span>{dawState.isRecordingMic ? 'RECORDING' : 'RECORD'}</span>
               </button>
               <span className="text-[10px] font-bold text-slate-400 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">
                 {Math.round(dawState.bpm)} BPM
@@ -114,7 +114,7 @@ export const UnifiedDeckBench: React.FC = () => {
                 type="button"
                 onClick={() => void handleToggleMetronome()}
                 className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
-                  dawState.isMetronomeOn
+                  dawState.metronomeOn
                     ? 'bg-amber-500 text-slate-950 border-amber-400 font-black'
                     : 'bg-slate-950 text-slate-400 border-slate-800'
                 }`}
@@ -196,7 +196,7 @@ export const UnifiedDeckBench: React.FC = () => {
             {/* Undo / Redo */}
             <button
               type="button"
-              onClick={onUndo}
+              onClick={handleUndo}
               disabled={!canUndo}
               className="px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed text-[10px] font-bold flex items-center space-x-1 cursor-pointer transition"
             >
@@ -205,7 +205,7 @@ export const UnifiedDeckBench: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={onRedo}
+              onClick={handleRedo}
               disabled={!canRedo}
               className="px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed text-[10px] font-bold flex items-center space-x-1 cursor-pointer transition"
             >
