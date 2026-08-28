@@ -492,6 +492,11 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         soulFlowStageLabel={dawState.soulFlowState}
       />
 
+      {/* Sleek Collapsible Studio Utilities Bar */}
+      <div className="pt-2">
+        <StudioUtilityBar />
+      </div>
+
       {/* Main Studio Canvas & 6-Workspace Room Switching */}
       <main className="flex-1 p-3 md:p-4 max-w-[1440px] w-full mx-auto space-y-3">
         {focusTrackId ? (
