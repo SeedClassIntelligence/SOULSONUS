@@ -202,6 +202,16 @@ export const Header: React.FC<HeaderProps> = ({
 
           <div className="h-4 w-px bg-slate-800 hidden md:block" />
 
+          {/* Studio Intelligence (Co-Producer & Autonomous Engineer Hub) */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'intelligence' }))}
+            className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-mono font-black text-xs transition cursor-pointer shadow-md shadow-amber-500/20 active:scale-95"
+            title="Open Studio Intelligence Hub (Co-Producer, Autonomous Engineer, Tutor, Guide & Manager)"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-slate-950 animate-pulse" />
+            <span>✦ STUDIO INTELLIGENCE</span>
+          </button>
+
           {/* Modal Portals */}
           <button
             onClick={() => (onOpenTour ? onOpenTour() : window.dispatchEvent(new CustomEvent('soulsonus:openTour', { detail: { aspectId: 'OVERVIEW' } })))}

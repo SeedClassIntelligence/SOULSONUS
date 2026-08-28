@@ -522,16 +522,6 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         )}
       </main>
 
-      {/*
-        * Persistent, not a drawer. This used to open from a "COMMAND" toggle
-        * in the utility bar, one button among a dozen -- so a creator who
-        * didn't know it existed had no way to talk to the studio at all. It's
-        * the one thing every room should offer without being found first.
-        */}
-      <div className="max-w-[1440px] w-full mx-auto px-3 md:px-4 pb-3">
-        <VoiceCommandBar onExecuteCommand={handleVoiceCommand} />
-      </div>
-
       {/* Bottom Master Studio Telemetry & Status Bar */}
       <StudioMasterStatusBar />
 
