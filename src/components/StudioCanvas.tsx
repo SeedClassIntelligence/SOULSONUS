@@ -43,21 +43,24 @@ import {
   Wand2,
 } from 'lucide-react';
 
-const INSTRUMENT_ICONS: { [key: string]: React.ReactNode } = {
-  kick: <Drum className="w-3.5 h-3.5 text-amber-400" />,
-  snare: <Target className="w-3.5 h-3.5 text-cyan-400" />,
-  hihat: <Sparkles className="w-3.5 h-3.5 text-emerald-400" />,
-  melody: <Music className="w-3.5 h-3.5 text-purple-400" />,
-  bass: <Disc className="w-3.5 h-3.5 text-cyan-400" />,
-  vocal_synth: <Mic className="w-3.5 h-3.5 text-pink-400" />,
-  percussion: <Activity className="w-3.5 h-3.5 text-amber-400" />,
-  strings: <Music className="w-3.5 h-3.5 text-blue-400" />,
-  harmony: <Mic className="w-3.5 h-3.5 text-indigo-400" />,
-  lyric_seed: <FileText className="w-3.5 h-3.5 text-pink-400" />,
-  mouth_seed: <Mic className="w-3.5 h-3.5 text-amber-400" />,
-  body_seed: <Activity className="w-3.5 h-3.5 text-cyan-400" />,
-  keys_seed: <Music className="w-3.5 h-3.5 text-purple-400" />,
-  audio_seed: <Disc className="w-3.5 h-3.5 text-blue-400" />,
+const getInstrumentIconByName = (key: string): React.ReactNode => {
+  switch (key) {
+    case 'kick': return <Drum className="w-3.5 h-3.5 text-amber-400" />;
+    case 'snare': return <Target className="w-3.5 h-3.5 text-cyan-400" />;
+    case 'hihat': return <Sparkles className="w-3.5 h-3.5 text-emerald-400" />;
+    case 'melody': return <Music className="w-3.5 h-3.5 text-purple-400" />;
+    case 'bass': return <Disc className="w-3.5 h-3.5 text-cyan-400" />;
+    case 'vocal_synth': return <Mic className="w-3.5 h-3.5 text-pink-400" />;
+    case 'percussion': return <Activity className="w-3.5 h-3.5 text-amber-400" />;
+    case 'strings': return <Music className="w-3.5 h-3.5 text-blue-400" />;
+    case 'harmony': return <Mic className="w-3.5 h-3.5 text-indigo-400" />;
+    case 'lyric_seed': return <FileText className="w-3.5 h-3.5 text-pink-400" />;
+    case 'mouth_seed': return <Mic className="w-3.5 h-3.5 text-amber-400" />;
+    case 'body_seed': return <Activity className="w-3.5 h-3.5 text-cyan-400" />;
+    case 'keys_seed': return <Music className="w-3.5 h-3.5 text-purple-400" />;
+    case 'audio_seed': return <Disc className="w-3.5 h-3.5 text-blue-400" />;
+    default: return <Activity className="w-3.5 h-3.5 text-slate-400" />;
+  }
 };
 
 const COLOR_THEMES: {
@@ -431,21 +434,21 @@ export const StudioCanvas: React.FC = () => {
   };
 
   const getTrackIcon = (track: Track) => {
-    const nameLower = track.name.toLowerCase();
-    if (track.sourceModality === 'LYRICS' || nameLower.includes('lyrics')) return INSTRUMENT_ICONS.lyric_seed;
-    if (track.sourceModality === 'MOUTH' || nameLower.includes('mouth')) return INSTRUMENT_ICONS.mouth_seed;
-    if (track.sourceModality === 'BODY' || nameLower.includes('body')) return INSTRUMENT_ICONS.body_seed;
-    if (track.sourceModality === 'KEYS' || nameLower.includes('keys')) return INSTRUMENT_ICONS.keys_seed;
-    if (track.sourceModality === 'AUDIO' || nameLower.includes('audio')) return INSTRUMENT_ICONS.audio_seed;
-    if (track.instrument === 'kick' || nameLower.includes('kick')) return INSTRUMENT_ICONS.kick;
-    if (track.instrument === 'snare' || nameLower.includes('snare') || nameLower.includes('clap')) return INSTRUMENT_ICONS.snare;
-    if (track.instrument === 'hihat' || nameLower.includes('hat')) return INSTRUMENT_ICONS.hihat;
-    if (track.instrument === 'bass' || nameLower.includes('bass') || nameLower.includes('808')) return INSTRUMENT_ICONS.bass;
-    if (nameLower.includes('string')) return INSTRUMENT_ICONS.strings;
-    if (nameLower.includes('harmony') || nameLower.includes('ad-lib')) return INSTRUMENT_ICONS.harmony;
-    if (track.instrument === 'vocal_synth' || nameLower.includes('vocal')) return INSTRUMENT_ICONS.vocal_synth;
-    if (track.instrument === 'percussion') return INSTRUMENT_ICONS.percussion;
-    return INSTRUMENT_ICONS.melody;
+    const nameLower = track.name ? track.name.toLowerCase() : '';
+    if (track.sourceModality === 'LYRICS' || nameLower.includes('lyrics')) return getInstrumentIconByName('lyric_seed');
+    if (track.sourceModality === 'MOUTH' || nameLower.includes('mouth')) return getInstrumentIconByName('mouth_seed');
+    if (track.sourceModality === 'BODY' || nameLower.includes('body')) return getInstrumentIconByName('body_seed');
+    if (track.sourceModality === 'KEYS' || nameLower.includes('keys')) return getInstrumentIconByName('keys_seed');
+    if (track.sourceModality === 'AUDIO' || nameLower.includes('audio')) return getInstrumentIconByName('audio_seed');
+    if (track.instrument === 'kick' || nameLower.includes('kick')) return getInstrumentIconByName('kick');
+    if (track.instrument === 'snare' || nameLower.includes('snare') || nameLower.includes('clap')) return getInstrumentIconByName('snare');
+    if (track.instrument === 'hihat' || nameLower.includes('hat')) return getInstrumentIconByName('hihat');
+    if (track.instrument === 'bass' || nameLower.includes('bass') || nameLower.includes('808')) return getInstrumentIconByName('bass');
+    if (nameLower.includes('string')) return getInstrumentIconByName('strings');
+    if (nameLower.includes('harmony') || nameLower.includes('ad-lib')) return getInstrumentIconByName('harmony');
+    if (track.instrument === 'vocal_synth' || nameLower.includes('vocal')) return getInstrumentIconByName('vocal_synth');
+    if (track.instrument === 'percussion') return getInstrumentIconByName('percussion');
+    return getInstrumentIconByName('melody');
   };
 
   const getSeedStripLabel = () => {
