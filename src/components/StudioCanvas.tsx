@@ -5,7 +5,7 @@ import { UnifiedTrackLane } from './UnifiedTrackLane';
 import { SectionBuilder } from './SectionBuilder';
 import { ShootAroundControls } from './ShootAroundControls';
 import { InstrumentStrip } from './InstrumentStrip';
-import { TimelineAudioPanel } from './TimelineAudioPanel';
+import { UnifiedDeckBench } from './UnifiedDeckBench';
 import { TICKS_PER_16TH, TICKS_PER_BEAT } from '../utils/musicMath';
 import {
   Layers,
@@ -270,17 +270,17 @@ export const StudioCanvas: React.FC = () => {
    * One at a time, by name. These panels were all open at once, which is what
    * put five rows of controls in front of the first note.
    */
-  const [activeBench, setActiveBench] = useState<'PERFORM' | 'PATTERN' | 'SECTIONS' | null>(null);
+  const [activeBench, setActiveBench] = useState<'UNIFIED' | 'PERFORM' | 'PATTERN' | 'SECTIONS' | null>('UNIFIED');
 
   // Other rooms open the instrument through the app-wide drawer event; that
-  // has to land on the PERFORM bench rather than on a flag nothing reads.
+  // has to land on the UNIFIED bench rather than on a flag nothing reads.
   useEffect(() => {
-    if (isInstrumentOpen) setActiveBench('PERFORM');
+    if (isInstrumentOpen) setActiveBench('UNIFIED');
   }, [isInstrumentOpen]);
 
   // Closing the bench releases the shared flag, so the next external open fires.
   useEffect(() => {
-    if (activeBench !== 'PERFORM' && isInstrumentOpen) setIsInstrumentOpen(false);
+    if (activeBench !== 'UNIFIED' && activeBench !== 'PERFORM' && isInstrumentOpen) setIsInstrumentOpen(false);
   }, [activeBench, isInstrumentOpen, setIsInstrumentOpen]);
 
   // Universal Arranger Toolbar State
@@ -684,6 +684,7 @@ export const StudioCanvas: React.FC = () => {
                 are working in. */}
             <div className="flex flex-wrap items-center gap-1.5 mb-2">
               {([
+                { id: 'UNIFIED' as const, label: 'UNIFIED DECK', icon: <Zap className="w-3.5 h-3.5" />, on: 'bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-600/30', off: 'bg-blue-600/15 hover:bg-blue-600/25 text-blue-300 border-blue-500/40' },
                 { id: 'PERFORM' as const, label: 'PERFORM', icon: <Mic className="w-3.5 h-3.5" />, on: 'bg-orange-500 text-slate-950 border-orange-400', off: 'bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border-orange-500/40' },
                 { id: 'PATTERN' as const, label: 'PATTERN', icon: <Layers className="w-3.5 h-3.5" />, on: 'bg-amber-500 text-slate-950 border-amber-400', off: 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40' },
                 { id: 'SECTIONS' as const, label: 'SECTIONS', icon: <Compass className="w-3.5 h-3.5" />, on: 'bg-cyan-500 text-slate-950 border-cyan-400', off: 'bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/40' },
@@ -709,6 +710,12 @@ export const StudioCanvas: React.FC = () => {
             {captureError && (
               <div id="capture-status" className="text-[9px] text-rose-300 max-w-md leading-relaxed mb-2">
                 {captureError}
+              </div>
+            )}
+
+            {activeBench === 'UNIFIED' && (
+              <div className="mb-2">
+                <UnifiedDeckBench />
               </div>
             )}
 
