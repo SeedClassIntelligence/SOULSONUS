@@ -65,12 +65,12 @@ export const PRESETS: Preset[] = [
     bpm: 110,
     description: 'Designed for live beatboxing & full composition separation (Drums, Bass, Synths, Strings, Vocals)!',
     tracks: [
-      { id: 't-kick', name: 'Kick (Thump)', instrument: 'kick', color: '#f59e0b', steps: defaultKickSteps, noteEvents: convertStepsToNoteEvents(defaultKickSteps, 'C1'), viewMode: 'GRID', mute: false, solo: false, volume: 0, pitch: 'C1' },
-      { id: 't-snare', name: 'Snare (Clap/Pop)', instrument: 'snare', color: '#06b6d4', steps: defaultSnareSteps, noteEvents: convertStepsToNoteEvents(defaultSnareSteps, 'C2'), viewMode: 'GRID', mute: false, solo: false, volume: -2, pitch: 'C2' },
-      { id: 't-hat', name: 'Hi-Hat (Tss)', instrument: 'hihat', color: '#10b981', steps: defaultHiHatSteps, noteEvents: convertStepsToNoteEvents(defaultHiHatSteps, 'F#3'), viewMode: 'GRID', mute: false, solo: false, volume: -6, pitch: 'F#3' },
-      { id: 't-bass', name: '808 / Sub Bass', instrument: 'bass', color: '#f43f5e', steps: defaultBassSteps, noteEvents: convertStepsToNoteEvents(defaultBassSteps, 'C1'), viewMode: 'PIANO_ROLL', mute: false, solo: false, volume: -1, pitch: 'C1' },
-      { id: 't-melody', name: 'Lead Synth / Keys', instrument: 'melody', color: '#a855f7', steps: defaultMelodySteps, noteEvents: convertStepsToNoteEvents(defaultMelodySteps, 'C3', defaultNotes), viewMode: 'PIANO_ROLL', notes: defaultNotes, mute: false, solo: false, volume: -4, pitch: 'C3' },
-      { id: 't-strings', name: 'Strings Ensemble', instrument: 'melody', color: '#3b82f6', steps: defaultStringsSteps, noteEvents: convertStepsToNoteEvents(defaultStringsSteps, 'G3'), viewMode: 'PIANO_ROLL', notes: new Array(64).fill('G3'), mute: false, solo: false, volume: -5, pitch: 'G3' },
+      { id: 't-kick', name: 'Kick (Thump)', instrument: 'kick', color: '#f59e0b', steps: createEmptySteps(), noteEvents: [], viewMode: 'GRID', mute: false, solo: false, volume: 0, pitch: 'C1' },
+      { id: 't-snare', name: 'Snare (Clap/Pop)', instrument: 'snare', color: '#06b6d4', steps: createEmptySteps(), noteEvents: [], viewMode: 'GRID', mute: false, solo: false, volume: -2, pitch: 'C2' },
+      { id: 't-hat', name: 'Hi-Hat (Tss)', instrument: 'hihat', color: '#10b981', steps: createEmptySteps(), noteEvents: [], viewMode: 'GRID', mute: false, solo: false, volume: -6, pitch: 'F#3' },
+      { id: 't-bass', name: '808 / Sub Bass', instrument: 'bass', color: '#f43f5e', steps: createEmptySteps(), noteEvents: [], viewMode: 'PIANO_ROLL', mute: false, solo: false, volume: -1, pitch: 'C1' },
+      { id: 't-melody', name: 'Lead Synth / Keys', instrument: 'melody', color: '#a855f7', steps: createEmptySteps(), noteEvents: [], viewMode: 'PIANO_ROLL', notes: new Array(64).fill('C3'), mute: false, solo: false, volume: -4, pitch: 'C3' },
+      { id: 't-strings', name: 'Strings Ensemble', instrument: 'melody', color: '#3b82f6', steps: createEmptySteps(), noteEvents: [], viewMode: 'PIANO_ROLL', notes: new Array(64).fill('G3'), mute: false, solo: false, volume: -5, pitch: 'G3' },
       {
         id: 't-vocal',
         name: 'Lead Vocal Track',
