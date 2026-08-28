@@ -17,6 +17,7 @@ import {
   Lock,
   BookOpen,
   Compass,
+  Sparkles,
 } from 'lucide-react';
 import { DAWState, Preset } from '../types/daw';
 import { PRESETS } from '../data/presets';

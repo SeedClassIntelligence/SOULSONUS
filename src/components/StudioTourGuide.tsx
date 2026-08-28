@@ -58,7 +58,7 @@ export interface TourAspect {
   steps: TourStep[];
 }
 
-export const TOUR_ASPECTS: TourAspect[] = [
+export const getTourAspects = (): TourAspect[] => [
   {
     id: 'OVERVIEW',
     title: 'Platform Overview & Human-First Philosophy',
@@ -465,7 +465,8 @@ export const StudioTourGuide: React.FC<StudioTourGuideProps> = ({
 
   if (!isOpen) return null;
 
-  const currentAspect = TOUR_ASPECTS.find((a) => a.id === activeAspectId) || TOUR_ASPECTS[0];
+  const tourAspects = getTourAspects();
+  const currentAspect = tourAspects.find((a) => a.id === activeAspectId) || tourAspects[0];
   const currentStep = currentAspect.steps[currentStepIndex] || currentAspect.steps[0];
   const totalStepsInAspect = currentAspect.steps.length;
 
@@ -474,9 +475,9 @@ export const StudioTourGuide: React.FC<StudioTourGuideProps> = ({
       setCurrentStepIndex(currentStepIndex + 1);
     } else {
       // Advance to next aspect if available
-      const currentAspectIdx = TOUR_ASPECTS.findIndex((a) => a.id === activeAspectId);
-      if (currentAspectIdx < TOUR_ASPECTS.length - 1) {
-        setActiveAspectId(TOUR_ASPECTS[currentAspectIdx + 1].id);
+      const currentAspectIdx = tourAspects.findIndex((a) => a.id === activeAspectId);
+      if (currentAspectIdx < tourAspects.length - 1) {
+        setActiveAspectId(tourAspects[currentAspectIdx + 1].id);
         setCurrentStepIndex(0);
       } else {
         onClose();
@@ -488,9 +489,9 @@ export const StudioTourGuide: React.FC<StudioTourGuideProps> = ({
     if (currentStepIndex > 0) {
       setCurrentStepIndex(currentStepIndex - 1);
     } else {
-      const currentAspectIdx = TOUR_ASPECTS.findIndex((a) => a.id === activeAspectId);
+      const currentAspectIdx = tourAspects.findIndex((a) => a.id === activeAspectId);
       if (currentAspectIdx > 0) {
-        const prevAspect = TOUR_ASPECTS[currentAspectIdx - 1];
+        const prevAspect = tourAspects[currentAspectIdx - 1];
         setActiveAspectId(prevAspect.id);
         setCurrentStepIndex(prevAspect.steps.length - 1);
       }
@@ -536,7 +537,7 @@ export const StudioTourGuide: React.FC<StudioTourGuideProps> = ({
 
           {/* Aspect Selection Carousel Strip */}
           <div className="px-4 py-2 bg-slate-950 border-b border-slate-900 flex items-center space-x-1.5 overflow-x-auto scrollbar-none">
-            {TOUR_ASPECTS.map((aspect) => {
+            {tourAspects.map((aspect) => {
               const isActive = aspect.id === activeAspectId;
               return (
                 <button
@@ -654,7 +655,7 @@ export const StudioTourGuide: React.FC<StudioTourGuideProps> = ({
               >
                 <span>
                   {currentStepIndex === totalStepsInAspect - 1 &&
-                  activeAspectId === TOUR_ASPECTS[TOUR_ASPECTS.length - 1].id
+                  activeAspectId === tourAspects[tourAspects.length - 1].id
                     ? 'FINISH TOUR'
                     : 'NEXT STEP'}
                 </span>
