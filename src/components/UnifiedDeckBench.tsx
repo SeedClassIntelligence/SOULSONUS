@@ -177,35 +177,47 @@ export const UnifiedDeckBench: React.FC = () => {
     setSelectionContext((prev) => ({ ...prev, selectedTrackId: newPadId }));
   };
 
+  const [isDeckExpanded, setIsDeckExpanded] = useState(true);
+
   return (
     <div className="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-2xl mb-3 font-mono select-none flex flex-col space-y-3">
-      {/* TOP WORKSTATION HEADER & PATTERN CONTROLS TOGGLE */}
+      {/* TOP WORKSTATION HEADER & COLLAPSE TOGGLE */}
       <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800">
-        <div className="flex items-center space-x-2">
+        <button
+          type="button"
+          onClick={() => setIsDeckExpanded((v) => !v)}
+          className="flex items-center space-x-2 text-left cursor-pointer hover:opacity-80 transition"
+        >
           <Mic className="w-4.5 h-4.5 text-cyan-400" />
           <span className="text-xs font-black uppercase text-slate-100 tracking-wider">
             LIVE SEED & BEATBOX ENGINE
           </span>
           <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-        </div>
+          {isDeckExpanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+        </button>
 
         {/* Shoot Around Pattern Controls Folded Menu Trigger */}
-        <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={() => setIsPatternControlsOpen((v) => !v)}
-            className={`px-3 py-1.5 rounded-xl border text-[10px] font-black tracking-wide flex items-center space-x-1.5 transition cursor-pointer ${
-              isPatternControlsOpen
-                ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
-                : 'bg-slate-950 text-amber-400 border-slate-800 hover:border-slate-700'
-            }`}
-          >
-            <Zap className="w-3.5 h-3.5" />
-            <span>PATTERN CONTROLS</span>
-            {isPatternControlsOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
-        </div>
+        {isDeckExpanded && (
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => setIsPatternControlsOpen((v) => !v)}
+              className={`px-3 py-1.5 rounded-xl border text-[10px] font-black tracking-wide flex items-center space-x-1.5 transition cursor-pointer ${
+                isPatternControlsOpen
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
+                  : 'bg-slate-950 text-amber-400 border-slate-800 hover:border-slate-700'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>PATTERN CONTROLS</span>
+              {isPatternControlsOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          </div>
+        )}
       </div>
+
+      {isDeckExpanded && (
+        <>
 
       {/* INSTANT PASS-BY-PASS OVERDUB CONTROLLER DECK */}
       <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-inner">
@@ -458,6 +470,8 @@ export const UnifiedDeckBench: React.FC = () => {
           <span className="text-[10px] font-black uppercase">ADD PAD</span>
         </button>
       </div>
+      </>
+      )}
     </div>
   );
 };

@@ -274,6 +274,7 @@ export const StudioCanvas: React.FC = () => {
    * put five rows of controls in front of the first note.
    */
   const [activeBench, setActiveBench] = useState<'UNIFIED' | 'PERFORM' | 'PATTERN' | 'SECTIONS' | null>('UNIFIED');
+  const [isScopeExpanded, setIsScopeExpanded] = useState(true);
 
   // Other rooms open the instrument through the app-wide drawer event; that
   // has to land on the UNIFIED bench rather than on a flag nothing reads.
@@ -558,68 +559,78 @@ export const StudioCanvas: React.FC = () => {
 
             {/* 2. SECTIONS HEADER & PRODUCTION SCOPE */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-slate-800">
-              <div className="flex items-center space-x-1">
-                <span className="text-[9px] font-bold text-slate-500 mr-1 uppercase">SCOPE:</span>
-                <button
-                  onClick={() =>
-                    setActiveProductionScope({
-                      scopeType: 'ALL_SONG',
-                      startBar: 1,
-                      endBar: 16,
-                    })
-                  }
-                  className={`py-1 px-2 rounded-lg border text-left transition cursor-pointer ${
-                    activeProductionScope.scopeType === 'ALL_SONG'
-                      ? 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow-sm'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <span className="text-[10px] font-bold">ALL SONG</span>
-                </button>
-                {sections.map((sec, sIdx) => (
-                  <button
-                    key={sec.id}
-                    onClick={() => {
-                      setSelectionContext((prev) => ({ ...prev, selectedSectionId: sec.id }));
-                      setActiveProductionScope({
-                        scopeType: 'SECTION',
-                        sectionId: sec.id,
-                        startBar: sIdx * 4 + 1,
-                        endBar: (sIdx + 1) * 4,
-                      });
-                    }}
-                    className={`py-1 px-2.5 rounded-lg border text-left transition cursor-pointer ${
-                      activeProductionScope.scopeType === 'SECTION' && activeProductionScope.sectionId === sec.id
-                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-sm font-bold'
-                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-1.5 text-[10px]">
-                      <span className="font-bold">{sec.name}</span>
-                      <span className="text-[9px] text-slate-500">{sec.bars}b</span>
-                    </div>
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setIsSectionEditorOpen((v) => !v)}
-                  className={`py-1 px-2 rounded-lg border text-[10px] font-bold transition cursor-pointer ${
-                    isSectionEditorOpen
-                      ? 'bg-cyan-500 text-slate-950 border-cyan-400'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                  }`}
-                  title="Rename, retag, remap bars, or add/remove sections"
-                >
-                  {isSectionEditorOpen ? 'CLOSE SECTION EDITOR' : 'EDIT SECTIONS'}
-                </button>
-              </div>
-
-              {/* Song Length */}
-              <div
-                id="song-length-control"
-                className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-xl border border-slate-800 text-[10px] font-mono"
+              <button
+                type="button"
+                onClick={() => setIsScopeExpanded((v) => !v)}
+                className="flex items-center space-x-1 text-[9px] font-bold text-slate-500 hover:text-slate-300 uppercase transition cursor-pointer"
               >
-                <span className="text-slate-500 font-bold px-1.5">BARS</span>
+                <span>SCOPE & SECTIONS</span>
+                {isScopeExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+
+              {isScopeExpanded && (
+                <div className="flex flex-wrap items-center justify-between gap-2 w-full pt-1">
+                  <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar">
+                    <button
+                      onClick={() =>
+                        setActiveProductionScope({
+                          scopeType: 'ALL_SONG',
+                          startBar: 1,
+                          endBar: 16,
+                        })
+                      }
+                      className={`py-1 px-2 rounded-lg border text-left transition cursor-pointer ${
+                        activeProductionScope.scopeType === 'ALL_SONG'
+                          ? 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow-sm'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <span className="text-[10px] font-bold">ALL SONG</span>
+                    </button>
+                    {sections.map((sec, sIdx) => (
+                      <button
+                        key={sec.id}
+                        onClick={() => {
+                          setSelectionContext((prev) => ({ ...prev, selectedSectionId: sec.id }));
+                          setActiveProductionScope({
+                            scopeType: 'SECTION',
+                            sectionId: sec.id,
+                            startBar: sIdx * 4 + 1,
+                            endBar: (sIdx + 1) * 4,
+                          });
+                        }}
+                        className={`py-1 px-2.5 rounded-lg border text-left transition cursor-pointer ${
+                          activeProductionScope.scopeType === 'SECTION' && activeProductionScope.sectionId === sec.id
+                            ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-sm font-bold'
+                            : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-1.5 text-[10px]">
+                          <span className="font-bold">{sec.name}</span>
+                          <span className="text-[9px] text-slate-500">{sec.bars}b</span>
+                        </div>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setIsSectionEditorOpen((v) => !v)}
+                      className={`py-1 px-2 rounded-lg border text-[10px] font-bold transition cursor-pointer ${
+                        isSectionEditorOpen
+                          ? 'bg-cyan-500 text-slate-950 border-cyan-400'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Rename, retag, remap bars, or add/remove sections"
+                    >
+                      {isSectionEditorOpen ? 'CLOSE SECTION EDITOR' : 'EDIT SECTIONS'}
+                    </button>
+                  </div>
+
+                  {/* Song Length */}
+                  <div
+                    id="song-length-control"
+                    className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-xl border border-slate-800 text-[10px] font-mono"
+                  >
+                    <span className="text-slate-500 font-bold px-1.5">BARS</span>
                 <button
                   type="button"
                   id="btn-song-bars-dec"
@@ -706,6 +717,8 @@ export const StudioCanvas: React.FC = () => {
                 ))}
               </div>
             </div>
+          )}
+        </div>
 
             {/* 2. UNIVERSAL ARRANGER EDITING TOOLBAR */}
             <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-900/90 rounded-xl border border-slate-800 text-[10px] font-mono mb-2">
