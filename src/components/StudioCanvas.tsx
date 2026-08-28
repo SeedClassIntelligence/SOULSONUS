@@ -490,7 +490,71 @@ export const StudioCanvas: React.FC = () => {
       {/* FULL-SCREEN FULL-WIDTH MULTI-TRACK INTEGRATED ARRANGER (100% Edge-to-Edge) */}
       <div className="w-full bg-slate-950 p-4 flex flex-col justify-between space-y-3 min-h-[600px]">
         <div>
-            {/* 1. SECTIONS HEADER & PRODUCTION SCOPE */}
+            {/* 1. BENCH SELECTOR TABS */}
+            <div className="flex flex-wrap items-center gap-1.5 mb-2">
+              {([
+                { id: 'UNIFIED' as const, label: 'UNIFIED DECK', icon: <Zap className="w-3.5 h-3.5" />, on: 'bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-600/30', off: 'bg-blue-600/15 hover:bg-blue-600/25 text-blue-300 border-blue-500/40' },
+                { id: 'PERFORM' as const, label: 'PERFORM', icon: <Mic className="w-3.5 h-3.5" />, on: 'bg-orange-500 text-slate-950 border-orange-400', off: 'bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border-orange-500/40' },
+                { id: 'PATTERN' as const, label: 'PATTERN', icon: <Layers className="w-3.5 h-3.5" />, on: 'bg-amber-500 text-slate-950 border-amber-400', off: 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40' },
+                { id: 'SECTIONS' as const, label: 'SECTIONS', icon: <Compass className="w-3.5 h-3.5" />, on: 'bg-cyan-500 text-slate-950 border-cyan-400', off: 'bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/40' },
+              ]).map((bench) => {
+                const active = activeBench === bench.id;
+                return (
+                  <button
+                    key={bench.id}
+                    type="button"
+                    onClick={() => setActiveBench(active ? null : bench.id)}
+                    aria-expanded={active}
+                    className={`px-3 py-2 rounded-xl border font-bold text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shrink-0 ${
+                      active ? bench.on : bench.off
+                    }`}
+                  >
+                    {bench.icon}
+                    <span>{bench.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {captureError && (
+              <div id="capture-status" className="text-[9px] text-rose-300 max-w-md leading-relaxed mb-2">
+                {captureError}
+              </div>
+            )}
+
+            {activeBench === 'UNIFIED' && (
+              <div className="mb-2">
+                <UnifiedDeckBench />
+              </div>
+            )}
+
+            {activeBench === 'PERFORM' && !isInstrumentFull && (
+              <div className="mb-2">
+                <InstrumentStrip
+                  onExpand={() => setIsInstrumentFull(true)}
+                  onClose={() => setActiveBench(null)}
+                />
+              </div>
+            )}
+
+            {activeBench === 'PATTERN' && (
+              <div className="mb-2">
+                <ShootAroundControls
+                  onCloneBar1ToAll={() => handleCloneBarToAll(0)}
+                  onNudgeLeft={() => handleNudgeTrackPattern('all', 'left')}
+                  onNudgeRight={() => handleNudgeTrackPattern('all', 'right')}
+                  onRandomizeBar1={() => handleRandomize(0)}
+                  onClearAll={handleClearAll}
+                  onInvertPattern={handleInvertPattern}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onUndo={() => { handleUndo(); }}
+                  onRedo={() => { handleRedo(); }}
+                />
+              </div>
+            )}
+
+            {/* 2. SECTIONS HEADER & PRODUCTION SCOPE */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-slate-800">
               <div className="flex items-center space-x-1">
                 <span className="text-[9px] font-bold text-slate-500 mr-1 uppercase">SCOPE:</span>
@@ -625,8 +689,6 @@ export const StudioCanvas: React.FC = () => {
                 >
                   ALL {totalSongSteps}
                 </button>
-                {/* One button per bar. A long song gets a long strip, which
-                    scrolls rather than shrinking each bar past legibility. */}
                 {Array.from({ length: songBarCount }, (_, i) => i + 1).map((barNum) => (
                   <button
                     key={barNum}
@@ -642,109 +704,6 @@ export const StudioCanvas: React.FC = () => {
                 ))}
               </div>
             </div>
-
-            {(isSectionEditorOpen || activeBench === 'SECTIONS') && (
-              <div className="mb-2">
-                <SectionBuilder
-                  sections={sections}
-                  onUpdateSections={handleUpdateSections}
-                  tracks={tracks}
-                  currentStep={dawState.currentStep}
-                  onSelectBarView={(barView) => updateEditorPrefs({ activeBarView: barView })}
-                />
-              </div>
-            )}
-
-            {songLengthNotice && (
-              <div
-                id="song-length-notice"
-                className="flex items-center justify-between gap-2 mb-2 px-2 py-1 rounded-lg border border-amber-500/40 bg-amber-500/10 text-[10px] font-mono text-amber-300"
-              >
-                <span>{songLengthNotice}</span>
-                <button
-                  type="button"
-                  onClick={() => setSongLengthNotice(null)}
-                  className="text-amber-400/70 hover:text-amber-200 font-bold px-1 cursor-pointer"
-                  title="Dismiss"
-                >
-                  &times;
-                </button>
-              </div>
-            )}
-
-
-            {/* Two rows that were each mostly empty -- pattern operations on
-                one, a single button on the next -- now share one. Opening the
-                instrument is the act that starts a session, so it leads. */}
-            {/* One bench at a time.
-                Every panel here used to be stacked open at once -- instrument,
-                pattern operations, section builder -- so five rows of controls
-                stood between the workspace tabs and the first note, and none
-                of them said what they were for. Nothing is removed and nothing
-                changes colour; each panel is named, and you open the one you
-                are working in. */}
-            <div className="flex flex-wrap items-center gap-1.5 mb-2">
-              {([
-                { id: 'UNIFIED' as const, label: 'UNIFIED DECK', icon: <Zap className="w-3.5 h-3.5" />, on: 'bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-600/30', off: 'bg-blue-600/15 hover:bg-blue-600/25 text-blue-300 border-blue-500/40' },
-                { id: 'PERFORM' as const, label: 'PERFORM', icon: <Mic className="w-3.5 h-3.5" />, on: 'bg-orange-500 text-slate-950 border-orange-400', off: 'bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border-orange-500/40' },
-                { id: 'PATTERN' as const, label: 'PATTERN', icon: <Layers className="w-3.5 h-3.5" />, on: 'bg-amber-500 text-slate-950 border-amber-400', off: 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40' },
-                { id: 'SECTIONS' as const, label: 'SECTIONS', icon: <Compass className="w-3.5 h-3.5" />, on: 'bg-cyan-500 text-slate-950 border-cyan-400', off: 'bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/40' },
-              ]).map((bench) => {
-                const active = activeBench === bench.id;
-                return (
-                  <button
-                    key={bench.id}
-                    type="button"
-                    onClick={() => setActiveBench(active ? null : bench.id)}
-                    aria-expanded={active}
-                    className={`px-3 py-2 rounded-xl border font-bold text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shrink-0 ${
-                      active ? bench.on : bench.off
-                    }`}
-                  >
-                    {bench.icon}
-                    <span>{bench.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {captureError && (
-              <div id="capture-status" className="text-[9px] text-rose-300 max-w-md leading-relaxed mb-2">
-                {captureError}
-              </div>
-            )}
-
-            {activeBench === 'UNIFIED' && (
-              <div className="mb-2">
-                <UnifiedDeckBench />
-              </div>
-            )}
-
-            {activeBench === 'PERFORM' && !isInstrumentFull && (
-              <div className="mb-2">
-                <InstrumentStrip
-                  onExpand={() => setIsInstrumentFull(true)}
-                  onClose={() => setActiveBench(null)}
-                />
-              </div>
-            )}
-
-            {activeBench === 'PATTERN' && (
-              <div className="mb-2">
-                <ShootAroundControls
-                  onCloneBar1ToAll={() => handleCloneBarToAll(0)}
-                  onNudgeLeft={() => handleNudgeTrackPattern('all', 'left')}
-                  onNudgeRight={() => handleNudgeTrackPattern('all', 'right')}
-                  onRandomizeBar1={() => handleRandomize(0)}
-                  onClearAll={handleClearAll}
-                  onInvertPattern={handleInvertPattern}
-                  canUndo={canUndo}
-                  canRedo={canRedo}
-                  onUndo={() => { handleUndo(); }}
-                  onRedo={() => { handleRedo(); }}
-                />
-              </div>
-            )}
 
             {/* 2. UNIVERSAL ARRANGER EDITING TOOLBAR */}
             <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-900/90 rounded-xl border border-slate-800 text-[10px] font-mono mb-2">

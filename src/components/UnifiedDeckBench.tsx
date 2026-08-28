@@ -58,8 +58,31 @@ export const UnifiedDeckBench: React.FC = () => {
       handleStopCapture();
       return;
     }
-    // Create new pad slot and trigger capture
-    handleStartCaptureForTab(activeModalityTab);
+    const newPadId = `track_pad_${Date.now()}`;
+    const padNumber = takes.length + 1;
+    let inst = 'oral_beatbox';
+    let modality: 'MOUTH' | 'BODY' | 'KEYS' = 'MOUTH';
+    if (activeModalityTab === 'CLAP_TAP') { inst = 'body_percussion'; modality = 'BODY'; }
+    if (activeModalityTab === 'HUM_VOICE') { inst = 'vocal_hum'; modality = 'MOUTH'; }
+    if (activeModalityTab === 'INSTRUMENT') { inst = 'vocal_synth'; modality = 'KEYS'; }
+
+    const newPadTrack: any = {
+      id: newPadId,
+      name: `Pad 0${padNumber}`,
+      instrument: inst,
+      color: '#06b6d4',
+      isMuted: false,
+      isSoloed: false,
+      volume: 0.8,
+      pan: 0,
+      isSourceTrack: true,
+      sourceModality: modality,
+      events: [],
+      audioClips: [],
+    };
+
+    setTracks((prev) => [...prev, newPadTrack]);
+    setSelectionContext((prev) => ({ ...prev, selectedTrackId: newPadId }));
   };
 
   return (

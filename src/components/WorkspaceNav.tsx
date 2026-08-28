@@ -80,23 +80,6 @@ export const WorkspaceNav: React.FC<WorkspaceNavProps> = ({ activeWorkspace, onS
   return (
     <div className="w-full bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2 shadow-lg relative z-30 select-none font-mono">
       <div className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar py-1">
-        {/* STUDIO TOOLS Button on the EXACT SAME line */}
-        <button
-          type="button"
-          onClick={() => setIsToolsOpen((v) => !v)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shrink-0 ${
-            isToolsOpen
-              ? 'bg-amber-500 text-slate-950 border border-amber-400 font-black shadow-md'
-              : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-          }`}
-          title="Open Studio Utilities Menu"
-        >
-          <Menu className="w-3.5 h-3.5" />
-          <span>STUDIO TOOLS</span>
-        </button>
-
-        <span className="w-px h-4 bg-slate-800 mx-1 shrink-0" />
-
         {/* 5 Creator Workspace Navigation Tabs */}
         {WORKSPACES.map((ws) => {
           const isActive = activeWorkspace === ws.id;
@@ -123,6 +106,23 @@ export const WorkspaceNav: React.FC<WorkspaceNavProps> = ({ activeWorkspace, onS
             </button>
           );
         })}
+
+        <span className="w-px h-4 bg-slate-800 mx-1 shrink-0" />
+
+        {/* STUDIO TOOLS Button (BEHIND 5. RELEASE) */}
+        <button
+          type="button"
+          onClick={() => setIsToolsOpen((v) => !v)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shrink-0 ${
+            isToolsOpen
+              ? 'bg-amber-500 text-slate-950 border border-amber-400 font-black shadow-md'
+              : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+          }`}
+          title="Open Studio Utilities Menu"
+        >
+          <Menu className="w-3.5 h-3.5" />
+          <span>STUDIO TOOLS</span>
+        </button>
       </div>
 
       <div className="flex items-center space-x-3 text-xs text-slate-400 font-mono">
