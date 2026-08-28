@@ -18,13 +18,14 @@ interface InstrumentStripProps {
 
 const PAD_COUNT = 8;
 
-const MODALITIES: { m: 'MOUTH' | 'BODY' | 'KEYS'; icon: React.ReactNode; color: string; label: string }[] = [
+const getModalities = (): { m: 'MOUTH' | 'BODY' | 'KEYS'; icon: React.ReactNode; color: string; label: string }[] => [
   { m: 'MOUTH', icon: <Drum className="w-3 h-3" />, color: 'text-amber-400', label: 'Beatbox' },
   { m: 'BODY', icon: <Activity className="w-3 h-3" />, color: 'text-cyan-400', label: 'Clap / Tap' },
   { m: 'KEYS', icon: <Music className="w-3 h-3" />, color: 'text-purple-400', label: 'Hum / Voice' },
 ];
 
 export const InstrumentStrip: React.FC<InstrumentStripProps> = ({ onExpand, onClose }) => {
+  const modalities = getModalities();
   const {
     dawState,
     handleToggleMetronome,
@@ -55,7 +56,7 @@ export const InstrumentStrip: React.FC<InstrumentStripProps> = ({ onExpand, onCl
 
           {/* What you perform with. Named, not an unlabelled icon. */}
           <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-white/5 border border-white/10">
-            {MODALITIES.map((mo) => (
+            {modalities.map((mo) => (
               <button
                 key={mo.m}
                 onClick={() => setMode(mo.m)}
@@ -150,7 +151,7 @@ export const InstrumentStrip: React.FC<InstrumentStripProps> = ({ onExpand, onCl
                 className="w-[86px] h-[58px] shrink-0 rounded-xl border border-dashed border-white/10 flex items-center justify-center gap-1"
               >
                 {openSlot === i ? (
-                  MODALITIES.map((mo) => (
+                  modalities.map((mo) => (
                     <button
                       key={mo.m}
                       onClick={() => {

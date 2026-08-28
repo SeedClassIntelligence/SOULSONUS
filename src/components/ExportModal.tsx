@@ -8,14 +8,16 @@ interface ExportModalProps {
   onClose: () => void;
 }
 
-const ICONS: Record<string, React.ReactNode> = {
-  wav: <FileAudio className="w-4 h-4 text-amber-400" />,
-  flac: <Music className="w-4 h-4 text-cyan-400" />,
-  zip: <Layers className="w-4 h-4 text-purple-400" />,
-  json: <ShieldCheck className="w-4 h-4 text-emerald-400" />,
+const iconFor = (name: string) => {
+  const ext = name.split('.').pop() || '';
+  switch (ext) {
+    case 'wav': return <FileAudio className="w-4 h-4 text-amber-400" />;
+    case 'flac': return <Music className="w-4 h-4 text-cyan-400" />;
+    case 'zip': return <Layers className="w-4 h-4 text-purple-400" />;
+    case 'json': return <ShieldCheck className="w-4 h-4 text-emerald-400" />;
+    default: return <FileCode className="w-4 h-4 text-slate-400" />;
+  }
 };
-
-const iconFor = (name: string) => ICONS[name.split('.').pop() || ''] || <FileCode className="w-4 h-4 text-slate-400" />;
 
 /**
  * Export used to write a four-line text file and name it a WAV — the same text

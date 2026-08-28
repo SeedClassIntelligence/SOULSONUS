@@ -93,7 +93,7 @@ interface ProposalOption {
   };
 }
 
-const STUDIO_EMPHASES: { id: StudioEmphasis; label: string; icon: React.ReactNode; desc: string }[] = [
+const getStudioEmphases = (): { id: StudioEmphasis; label: string; icon: React.ReactNode; desc: string }[] => [
   { id: 'CO_PRODUCER', label: 'PRODUCER', icon: <Music className="w-3.5 h-3.5 text-amber-400" />, desc: 'Composition, chords, arrangement, bounce & songwriting' },
   { id: 'AUDIO_ENGINEER', label: 'ENGINEER', icon: <Activity className="w-3.5 h-3.5 text-cyan-400" />, desc: 'Acoustic mud, 808/kick carving, vocal dynamics & LUFS' },
   { id: 'TUTOR', label: 'TUTOR', icon: <GraduationCap className="w-3.5 h-3.5 text-emerald-400" />, desc: 'Music theory explanations, acoustic principles & techniques' },
@@ -105,6 +105,7 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
   isOpen,
   onClose,
 }) => {
+  const studioEmphases = getStudioEmphases();
   const {
     activeWorkspace,
     dawState,
@@ -158,7 +159,7 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
     setConfig(updated);
     saveAiConfig(updated);
 
-    const empLabel = STUDIO_EMPHASES.find((e) => e.id === newEmphasis)?.label || newEmphasis;
+    const empLabel = studioEmphases.find((e) => e.id === newEmphasis)?.label || newEmphasis;
     setMessages((prev) => [
       ...prev,
       {
@@ -431,7 +432,7 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
 
           {/* Emphasis Role Tabs (Producer, Engineer, Tutor, Guide, Manager) */}
           <div className="grid grid-cols-5 gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
-            {STUDIO_EMPHASES.map((emp) => {
+            {studioEmphases.map((emp) => {
               const isSelected = config.emphasis === emp.id;
               return (
                 <button

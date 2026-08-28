@@ -37,13 +37,14 @@ interface InstrumentRoomProps {
 type Tab = 'TRAIN' | 'PLAY' | 'PACKS';
 const PAD_COUNT = 8;
 
-const MODALITIES: { modality: 'MOUTH' | 'BODY' | 'KEYS'; icon: React.ReactNode; color: string }[] = [
+const getModalities = (): { modality: 'MOUTH' | 'BODY' | 'KEYS'; icon: React.ReactNode; color: string }[] => [
   { modality: 'MOUTH', icon: <Drum className="w-3.5 h-3.5" />, color: 'text-amber-400' },
   { modality: 'BODY', icon: <Activity className="w-3.5 h-3.5" />, color: 'text-cyan-400' },
   { modality: 'KEYS', icon: <Music className="w-3.5 h-3.5" />, color: 'text-purple-400' },
 ];
 
 export const InstrumentRoom: React.FC<InstrumentRoomProps> = ({ onClose }) => {
+  const modalities = getModalities();
   const {
     dawState,
     handleToggleMetronome,
@@ -273,7 +274,7 @@ export const InstrumentRoom: React.FC<InstrumentRoomProps> = ({ onClose }) => {
             >
               {isOpen ? (
                 <div className="flex flex-col items-center gap-1.5">
-                  {MODALITIES.map((m) => (
+                  {modalities.map((m) => (
                     <button
                       key={m.modality}
                       onClick={() => startInSlot(m.modality)}

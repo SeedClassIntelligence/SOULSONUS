@@ -9,7 +9,7 @@ interface WorkspaceNavProps {
   soulFlowStageLabel?: string;
 }
 
-const WORKSPACES: { id: WorkspaceTab; label: string; icon: React.ReactNode; color: string; desc: string }[] = [
+const getWorkspaces = (): { id: WorkspaceTab; label: string; icon: React.ReactNode; color: string; desc: string }[] => [
   {
     id: 'CREATE',
     label: '1. CREATE',
@@ -48,11 +48,12 @@ const WORKSPACES: { id: WorkspaceTab; label: string; icon: React.ReactNode; colo
 ];
 
 export const WorkspaceNav: React.FC<WorkspaceNavProps> = ({ activeWorkspace, onSelectWorkspace }) => {
+  const workspaces = getWorkspaces();
   return (
     <div className="w-full bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2 shadow-lg relative z-30 select-none font-mono">
       <div className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar py-1">
         {/* 5 Creator Workspace Navigation Tabs */}
-        {WORKSPACES.map((ws) => {
+        {workspaces.map((ws) => {
           const isActive = activeWorkspace === ws.id;
           return (
             <button
