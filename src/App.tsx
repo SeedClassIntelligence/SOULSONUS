@@ -34,6 +34,7 @@ import { SeedSignatureModal } from './components/SeedSignatureModal';
 import { ExportModal } from './components/ExportModal';
 import { AiControlRoomModal } from './components/AiControlRoomModal';
 import { VirtualPianoKeyboard } from './components/VirtualPianoKeyboard';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProjectMenu } from './components/ProjectMenu';
 import { StudioUtilityBar } from './components/StudioUtilityBar';
 
@@ -757,8 +758,10 @@ export default function App() {
   }
 
   return (
-    <StudioSessionProvider>
-      <AppInner onBackToLanding={handleBackToLanding} />
-    </StudioSessionProvider>
+    <ErrorBoundary>
+      <StudioSessionProvider>
+        <AppInner onBackToLanding={handleBackToLanding} />
+      </StudioSessionProvider>
+    </ErrorBoundary>
   );
 }

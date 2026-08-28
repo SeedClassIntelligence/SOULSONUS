@@ -112,7 +112,7 @@ export const UnifiedDeckBench: React.FC = () => {
               </span>
               <button
                 type="button"
-                onClick={handleToggleMetronome}
+                onClick={() => void handleToggleMetronome()}
                 className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
                   dawState.isMetronomeOn
                     ? 'bg-amber-500 text-slate-950 border-amber-400 font-black'
@@ -132,7 +132,8 @@ export const UnifiedDeckBench: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {takes.slice(0, 3).map((take, idx) => {
               const isSelected = take.id === selectedTrackId;
-              const isMouth = take.sourceModality === 'MOUTH' || take.name.toLowerCase().includes('mouth');
+              const trackName = take.name || '';
+              const isMouth = take.sourceModality === 'MOUTH' || (typeof trackName === 'string' && trackName.toLowerCase().includes('mouth'));
               return (
                 <div
                   key={take.id}
