@@ -54,16 +54,19 @@ interface DragState {
   midiNote: number;
 }
 
-const INSTRUMENT_ICONS: Record<string, React.ReactNode> = {
-  kick: <Drum className="w-3.5 h-3.5 text-amber-400" />,
-  snare: <Target className="w-3.5 h-3.5 text-cyan-400" />,
-  hihat: <Sparkles className="w-3.5 h-3.5 text-emerald-400" />,
-  melody: <Music className="w-3.5 h-3.5 text-purple-400" />,
-  bass: <Disc className="w-3.5 h-3.5 text-rose-400" />,
-  vocal_synth: <Mic className="w-3.5 h-3.5 text-pink-400" />,
-  percussion: <Activity className="w-3.5 h-3.5 text-amber-400" />,
-  strings: <Music className="w-3.5 h-3.5 text-blue-400" />,
-  harmony: <Mic className="w-3.5 h-3.5 text-indigo-400" />,
+const getTrackLaneIcon = (key: string): React.ReactNode => {
+  switch (key) {
+    case 'kick': return <Drum className="w-3.5 h-3.5 text-amber-400" />;
+    case 'snare': return <Target className="w-3.5 h-3.5 text-cyan-400" />;
+    case 'hihat': return <Sparkles className="w-3.5 h-3.5 text-emerald-400" />;
+    case 'melody': return <Music className="w-3.5 h-3.5 text-purple-400" />;
+    case 'bass': return <Disc className="w-3.5 h-3.5 text-rose-400" />;
+    case 'vocal_synth': return <Mic className="w-3.5 h-3.5 text-pink-400" />;
+    case 'percussion': return <Activity className="w-3.5 h-3.5 text-amber-400" />;
+    case 'strings': return <Music className="w-3.5 h-3.5 text-blue-400" />;
+    case 'harmony': return <Mic className="w-3.5 h-3.5 text-indigo-400" />;
+    default: return <Activity className="w-3.5 h-3.5 text-amber-400" />;
+  }
 };
 
 export const SOUND_PRESETS: Record<string, string[]> = {
@@ -414,7 +417,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                 className="p-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/40 transition cursor-pointer active:scale-95 group"
                 title={`Click to audition / preview ${track.name} sound`}
               >
-                {INSTRUMENT_ICONS[track.instrument] || <Activity className="w-3.5 h-3.5 text-amber-400" />}
+                {getTrackLaneIcon(track.instrument)}
               </button>
               {/* The name is the one thing a creator scans for, and it was the
                   thing being truncated: five always-on buttons squeezed it to
