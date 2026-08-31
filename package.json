@@ -10,7 +10,9 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test": "npx esbuild scripts/test_comprehensive_platform_verification.ts --bundle --platform=node | node",
-    "copy-ort": "node scripts/copy-ort.cjs"
+    "copy-ort": "node scripts/copy-ort.cjs",
+    "seed:audit": "node scripts/seed_audit.mjs",
+    "seed:gate": "node scripts/seed_audit.mjs --gate"
   },
   "overrides": {
     "protobufjs": "^7.4.0"
