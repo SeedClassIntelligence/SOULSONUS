@@ -1,636 +1,620 @@
-<title>SoulSonus Create Console</title>
+<title>SoulSonus Studio Console</title>
 <style>
 :root{
-  --slate-950:#020617; --slate-900:#0f172a; --slate-800:#1e293b; --slate-700:#334155;
-  --slate-600:#475569; --slate-500:#64748b; --slate-400:#94a3b8; --slate-300:#cbd5e1;
-  --slate-200:#e2e8f0; --slate-100:#f1f5f9;
-  --amber-300:#fcd34d; --amber-400:#fbbf24; --amber-500:#f59e0b; --orange-500:#f97316;
-  --cyan-300:#67e8f9; --cyan-400:#22d3ee; --cyan-500:#06b6d4;
-  --emerald-400:#34d399; --emerald-500:#10b981;
-  --rose-500:#f43f5e; --purple-500:#a855f7; --blue-500:#3b82f6; --violet-500:#8b5cf6;
-  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
-}
+--s950:#020617;--s900:#0f172a;--s800:#1e293b;--s700:#334155;--s600:#475569;--s500:#64748b;
+--s400:#94a3b8;--s300:#cbd5e1;--s200:#e2e8f0;--s100:#f1f5f9;
+--a300:#fcd34d;--a400:#fbbf24;--a500:#f59e0b;--o500:#f97316;
+--c300:#67e8f9;--c400:#22d3ee;--c500:#06b6d4;
+--e400:#34d399;--e500:#10b981;--r500:#f43f5e;--p500:#a855f7;--b500:#3b82f6;--v500:#8b5cf6;--pk500:#ec4899;
+--sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;}
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--slate-950);color:var(--slate-100);font-family:var(--sans);font-size:13px;line-height:1.45;overflow:hidden;-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--s950);color:var(--s100);font-family:var(--sans);font-size:12.5px;line-height:1.4;overflow:hidden}
 button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer;font-size:inherit}
-button:focus-visible{outline:2px solid var(--amber-500);outline-offset:2px}
-::-webkit-scrollbar{width:8px;height:8px}
-::-webkit-scrollbar-track{background:#090d16;border-radius:4px}
-::-webkit-scrollbar-thumb{background:var(--slate-700);border-radius:4px}
-::-webkit-scrollbar-thumb:hover{background:var(--amber-500)}
-
-/* ══ shell: fixed viewport, never a page scroll ══ */
+button:focus-visible{outline:2px solid var(--a500);outline-offset:1px}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:#090d16}
+::-webkit-scrollbar-thumb{background:var(--s700);border-radius:4px}::-webkit-scrollbar-thumb:hover{background:var(--a500)}
 .app{height:100%;display:grid;grid-template-rows:auto 1fr auto}
 .mid{display:grid;grid-template-columns:auto 1fr auto;min-height:0}
+
+/* brand */
+.mark{width:30px;height:30px;border-radius:11px;background:linear-gradient(to top right,var(--a500),var(--o500),var(--c400));padding:2px;box-shadow:0 6px 18px rgba(245,158,11,.22);flex-shrink:0}
+.mark>i{display:flex;width:100%;height:100%;background:var(--s950);border-radius:9px;align-items:center;justify-content:center;font-family:var(--mono);font-weight:900;font-size:13px;color:var(--a400);font-style:normal}
+.word{font-family:var(--mono);font-weight:900;letter-spacing:.15em;font-size:15px;background:linear-gradient(to right,var(--a300),var(--s100),var(--c300));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* header */
+.hdr{background:var(--s950);border-bottom:1px solid var(--s800)}
+.band{display:flex;align-items:center;gap:8px;padding:6px 12px;flex-wrap:wrap;border-bottom:1px solid rgba(30,41,59,.55)}
+.band:last-child{border-bottom:none}
+.pill{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:5px 9px;border:1px solid var(--s800);border-radius:7px;background:var(--s900);color:var(--s400);white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.pill:hover{border-color:var(--s600);color:var(--s200)}
+.pill.on{background:rgba(245,158,11,.13);border-color:rgba(245,158,11,.45);color:var(--a300)}
+.pill.si{background:linear-gradient(90deg,rgba(245,158,11,.22),rgba(249,115,22,.16));border-color:var(--a500);color:var(--a300);font-weight:700}
+.pill.tour{border-color:rgba(245,158,11,.35);color:var(--a400)}
+.pill.exp{background:var(--a500);border-color:var(--a500);color:var(--s950)}
+.pill.rec{color:var(--r500);border-color:rgba(244,63,94,.4)}
+.pill.loop.on{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.5);color:var(--e400)}
+.pill.mini{padding:3px 6px;font-size:9px}
+.title{background:var(--s900);border:1px solid var(--s800);color:var(--s100);font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;width:230px}
+.title:focus{outline:none;border-color:var(--a500)}
+.ro{font-family:var(--mono);font-size:11px;color:var(--s300);display:inline-flex;align-items:center;gap:5px;padding:0 6px}
+.ro b{color:var(--a300);font-variant-numeric:tabular-nums}
+.sep{width:1px;height:18px;background:var(--s800)}
+.rooms{display:flex;gap:3px}
+.room{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:7px 13px;border-radius:8px;color:var(--s500);border:1px solid transparent;display:inline-flex;gap:6px;align-items:center}
+.room:hover{color:var(--s300);background:var(--s900)}
+.room[aria-current="true"]{background:rgba(245,158,11,.13);border-color:rgba(245,158,11,.45);color:var(--a300)}
+select,input[type=range]{accent-color:var(--a500)}
+select{background:var(--s900);border:1px solid var(--s800);color:var(--s300);font-family:var(--mono);font-size:10px;padding:4px 7px;border-radius:7px}
+
+/* left consolidated menu */
+.nav{width:186px;background:var(--s950);border-right:1px solid var(--s800);display:flex;flex-direction:column;overflow-y:auto;transition:width .16s}
+.nav.mini{width:50px}
+.nav.mini .nlabel,.nav.mini .ngrp{display:none}
+.nav.mini .nbtn{justify-content:center;padding:8px 0}
+.ngrp{font-family:var(--mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--s600);padding:10px 12px 4px}
+.nbtn{display:flex;align-items:center;gap:8px;margin:1px 6px;padding:7px 9px;border-radius:8px;border:1px solid transparent;color:var(--s400);font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;width:calc(100% - 12px);text-align:left;position:relative}
+.nbtn:hover{background:var(--s900);color:var(--s100)}
+.nbtn .swatch{width:16px;height:16px;border-radius:5px;display:grid;place-items:center;font-size:9px;flex-shrink:0;background:color-mix(in srgb,var(--k) 22%,transparent);color:var(--k);border:1px solid color-mix(in srgb,var(--k) 45%,transparent)}
+.nbtn.open{background:color-mix(in srgb,var(--k) 14%,transparent);border-color:color-mix(in srgb,var(--k) 40%,transparent);color:var(--s100)}
+.nav.mini .nbtn::after{content:attr(data-n);position:absolute;left:44px;background:var(--s800);border:1px solid var(--s700);color:var(--s100);font-size:9.5px;padding:4px 8px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;z-index:90}
+.nav.mini .nbtn:hover::after{opacity:1}
+.navfoot{margin-top:auto;padding:8px 6px;border-top:1px solid var(--s800)}
+
+/* work column */
 .work{display:grid;grid-template-rows:auto 1fr;min-width:0;min-height:0}
+.bench{display:flex;gap:4px;padding:7px 12px;background:var(--s900);border-bottom:1px solid var(--s800);align-items:center;flex-wrap:wrap}
+.bt{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:7px 14px;border-radius:8px;border:1px solid var(--s800);background:var(--s950);color:var(--s400)}
+.bt[aria-selected="true"]{background:rgba(59,130,246,.16);border-color:var(--b500);color:#93c5fd}
+.stage{overflow-y:auto;padding:10px 12px 14px;min-height:0}
 
-/* ══ brand (centralized lockup) ══ */
-.mark{width:32px;height:32px;border-radius:12px;background:linear-gradient(to top right,var(--amber-500),var(--orange-500),var(--cyan-400));padding:2px;box-shadow:0 8px 20px rgba(245,158,11,.2);flex-shrink:0}
-.mark>i{display:flex;width:100%;height:100%;background:var(--slate-950);border-radius:10px;align-items:center;justify-content:center;font-family:var(--mono);font-weight:900;font-size:14px;color:var(--amber-400);font-style:normal}
-.mark.sm{width:24px;height:24px;border-radius:8px}.mark.sm>i{border-radius:7px;font-size:11px}
-.wordmark{font-family:var(--mono);font-weight:900;letter-spacing:.16em;background:linear-gradient(to right,var(--amber-300),var(--slate-100),var(--cyan-300));-webkit-background-clip:text;background-clip:text;color:transparent;font-size:16px;line-height:1.1}
-.subword{font-family:var(--mono);font-size:9px;color:var(--slate-400);letter-spacing:.1em}
-
-/* ══ L1 ══ */
-.l1{background:var(--slate-950);border-bottom:1px solid var(--slate-800);display:flex;align-items:center;gap:14px;padding:8px 14px;flex-wrap:wrap}
-.proj{display:flex;flex-direction:column;gap:1px;padding-left:12px;border-left:1px solid var(--slate-800)}
-.proj input{background:rgba(15,23,42,.8);border:1px solid var(--slate-800);color:var(--slate-200);font-size:12px;font-weight:700;padding:4px 9px;border-radius:8px;max-width:210px}
-.proj input:focus{outline:none;border-color:var(--amber-500)}
-.proj span{font-family:var(--mono);font-size:9px;color:var(--slate-500);padding-left:2px}
-.tp{display:flex;gap:5px}
-.tbtn{width:29px;height:29px;display:grid;place-items:center;border:1px solid var(--slate-800);border-radius:8px;background:var(--slate-900);color:var(--slate-400);font-size:11px}
-.tbtn:hover{color:var(--slate-100);border-color:var(--slate-700)}
-.tbtn.rec{color:var(--rose-500)}
-.tbtn.on{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.4);color:var(--amber-400)}
-.meta{display:flex;gap:13px;padding:0 12px;border-left:1px solid var(--slate-800);border-right:1px solid var(--slate-800)}
-.meta div{display:flex;flex-direction:column}
-.meta small{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;color:var(--slate-500);text-transform:uppercase}
-.meta b{font-family:var(--mono);font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--slate-200)}
-.rooms{display:flex;gap:2px}
-.room{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:7px 11px;color:var(--slate-500);border:1px solid transparent;border-radius:8px}
-.room:hover{color:var(--slate-300);background:var(--slate-900)}
-.room[aria-current="true"]{color:var(--amber-300);background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3)}
-.si{display:flex;align-items:center;gap:7px;padding:6px 12px;border:1px solid rgba(245,158,11,.35);border-radius:8px;background:rgba(245,158,11,.1);color:var(--amber-300);font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
-.si:hover{background:rgba(245,158,11,.2)}
-.pulse{width:6px;height:6px;border-radius:50%;background:var(--amber-400);animation:p 2.4s ease-in-out infinite}
-@keyframes p{0%,100%{opacity:1}50%{opacity:.25}}
-@media(prefers-reduced-motion:reduce){.pulse,.dot{animation:none}}
-
-/* ══ L4 rail (compartments live here) ══ */
-.rail{width:52px;background:var(--slate-950);border-right:1px solid var(--slate-800);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:3px;overflow-y:auto}
-.rail-lbl{font-family:var(--mono);font-size:7.5px;letter-spacing:.1em;color:var(--slate-600);text-transform:uppercase;margin:6px 0 3px}
-.rbtn{width:38px;height:34px;display:grid;place-items:center;border-radius:8px;color:var(--slate-500);font-size:15px;border:1px solid transparent;position:relative}
-.rbtn:hover{background:var(--slate-900);color:var(--amber-300)}
-.rbtn.open{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35);color:var(--amber-400)}
-.rbtn::after{content:attr(data-name);position:absolute;left:44px;top:50%;transform:translateY(-50%);background:var(--slate-800);border:1px solid var(--slate-700);color:var(--slate-100);font-family:var(--mono);font-size:10px;padding:4px 8px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s;z-index:60}
-.rbtn:hover::after{opacity:1}
-
-/* ══ L2 contextual band ══ */
-.l2{background:var(--slate-900);border-bottom:1px solid var(--slate-800);padding:9px 14px}
-.l2-hd{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:8px}
-.l2-title{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--slate-200)}
-.l2-sub{font-size:11.5px;color:var(--slate-500)}
-.mods{display:flex;gap:3px;flex-wrap:wrap}
-.mod{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:6px 12px;border:1px solid var(--slate-800);border-radius:8px;background:var(--slate-950);color:var(--slate-400)}
-.mod:hover{border-color:var(--slate-700);color:var(--slate-200)}
-.mod[aria-selected="true"]{background:var(--amber-500);border-color:var(--amber-500);color:var(--slate-950)}
-.l2-grid{display:grid;grid-template-columns:1.1fr 1fr 1.15fr;gap:10px;margin-top:9px}
-@media(max-width:1200px){.l2-grid{grid-template-columns:1fr 1fr}}
-.card{background:var(--slate-950);border:1px solid var(--slate-800);border-radius:10px;overflow:hidden}
-.card-hd{display:flex;align-items:center;gap:7px;padding:6px 10px;border-bottom:1px solid var(--slate-800)}
-.card-hd b{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--slate-400)}
-.scope{position:relative;height:74px}
-canvas{display:block;width:100%;height:74px}
-.livedot{position:absolute;top:7px;right:9px;display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--rose-500)}
-.dot{width:5px;height:5px;border-radius:50%;background:var(--rose-500);animation:p 1.3s infinite}
-.kv{display:flex;justify-content:space-between;gap:10px;padding:4px 10px;border-bottom:1px solid rgba(30,41,59,.6);font-size:11.5px}
+/* generic panel */
+.pan{border:1px solid var(--s800);border-radius:11px;background:var(--s900);margin-bottom:10px;overflow:hidden}
+.ph{display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--s800);cursor:pointer;width:100%;text-align:left}
+.ph b{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--s200)}
+.ph .cv{margin-left:auto;color:var(--s500);font-size:10px}
+.pb{padding:10px 11px}
+.tag{font-family:var(--mono);font-size:7.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;padding:2px 5px;border-radius:4px}
+.tag.new{color:var(--c300);border:1px solid rgba(34,211,238,.45);background:rgba(6,182,212,.12)}
+.tag.held{color:var(--s500);border:1px solid var(--s800)}
+.tag.scaf{color:var(--a400);border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.08)}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+@media(max-width:1250px){.grid3{grid-template-columns:1fr 1fr}}
+.card{background:var(--s950);border:1px solid var(--s800);border-radius:9px;overflow:hidden}
+.ch{padding:6px 9px;border-bottom:1px solid var(--s800);display:flex;align-items:center;gap:6px}
+.ch b{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--s400)}
+.kv{display:flex;justify-content:space-between;gap:9px;padding:4px 9px;border-bottom:1px solid rgba(30,41,59,.5);font-size:11.5px}
 .kv:last-child{border-bottom:none}
-.kv dt{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-500);white-space:nowrap}
-.kv dd{margin:0;color:var(--slate-200);text-align:right}
-.hyp{padding:7px 10px;border-bottom:1px solid rgba(30,41,59,.6)}
+.kv dt{font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--s500)}
+.kv dd{margin:0;color:var(--s200);text-align:right;font-variant-numeric:tabular-nums}
+.ok{color:var(--e400)}.bad{color:var(--r500)}.warn{color:var(--a400)}
+
+/* expression engine */
+.eng-ctl{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:9px}
+.big{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:9px 16px;border-radius:9px;display:inline-flex;gap:7px;align-items:center}
+.big.rec{background:linear-gradient(90deg,#e11d48,#f43f5e);color:#fff;box-shadow:0 4px 14px rgba(244,63,94,.3)}
+.big.ovr{background:rgba(6,182,212,.14);border:1px solid rgba(34,211,238,.5);color:var(--c300)}
+.big.dis{border:1px solid var(--s800);color:var(--s600);cursor:not-allowed}
+.mon{height:34px;border:1px solid var(--s800);border-radius:8px;background:var(--s950);display:grid;grid-template-columns:repeat(16,1fr);margin-bottom:9px;position:relative;overflow:hidden}
+.mon i{border-right:1px solid rgba(30,41,59,.7)}
+.mon span{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--s500)}
+.mods{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:9px}
+.mtab{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.07em;padding:7px 13px;border-radius:8px;border:1px solid var(--s800);background:var(--s950);color:var(--s400)}
+.mtab[aria-selected="true"]{background:var(--b500);border-color:var(--b500);color:#fff}
+.mtab.newm{border-color:rgba(34,211,238,.45);color:var(--c300)}
+.mtab.newm[aria-selected="true"]{background:var(--c500);border-color:var(--c500);color:var(--s950)}
+.pads{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.pad{background:var(--s950);border:1px solid var(--s800);border-radius:9px;padding:9px 11px}
+.pad small{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--s600);display:block}
+.pad b{display:block;font-size:12.5px;font-weight:600;color:var(--s100);margin:5px 0 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pad .r{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px}
+.pad .r span{color:var(--s500)}.pad .r em{font-style:normal;color:var(--c400)}
+.pad.add{border-style:dashed;display:grid;place-items:center;color:var(--s500);font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.pad.add:hover{border-color:var(--c500);color:var(--c300)}
+
+/* scope */
+.chips{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.chip{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:6px 11px;border-radius:7px;border:1px solid var(--s800);background:var(--s950);color:var(--s400)}
+.chip:hover{border-color:var(--s600);color:var(--s200)}
+.chip.on{background:var(--a500);border-color:var(--a500);color:var(--s950)}
+.chip sup{color:var(--s600);font-size:8px;margin-left:3px}
+.chip.on sup{color:rgba(2,6,23,.55)}
+.chip.ai{border-color:rgba(34,211,238,.45);color:var(--c300)}
+
+/* timeline */
+.tlhd{display:grid;grid-template-columns:230px 1fr;gap:8px;padding:5px 0;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--s600);border-bottom:1px solid var(--s800);margin-bottom:5px}
+.bars{display:grid;grid-template-columns:repeat(4,1fr)}
+.bars div{border-left:1px solid var(--s800);padding-left:6px;display:flex;justify-content:space-between;padding-right:8px}
+.bars em{font-style:normal;color:var(--s700);letter-spacing:.2em}
+.lane{display:grid;grid-template-columns:230px 1fr;gap:8px;align-items:center;margin-bottom:3px}
+.lh{display:flex;align-items:center;gap:6px;padding:7px 9px;background:var(--s900);border:1px solid var(--s800);border-radius:9px}
+.lane.sel .lh{border-color:var(--k);box-shadow:0 0 0 1px color-mix(in srgb,var(--k) 40%,transparent)}
+.lico{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:10px;background:color-mix(in srgb,var(--k) 20%,transparent);color:var(--k);flex-shrink:0}
+.lh b{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--s100);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lh .cnt{font-family:var(--mono);font-size:9px;color:var(--s600)}
+.lh .ms{margin-left:auto;display:flex;gap:2px}
+.ms button{width:17px;height:17px;border:1px solid var(--s800);border-radius:4px;font-family:var(--mono);font-size:8px;color:var(--s500);display:grid;place-items:center}
+.ms button:hover{color:var(--s100);border-color:var(--s600)}
+.tl{display:grid;grid-template-columns:repeat(64,1fr);gap:1px;height:44px;align-items:center;background:var(--s950);border:1px solid var(--s800);border-radius:8px;padding:3px;min-width:560px;position:relative}
+.tl::before{content:'';position:absolute;left:3px;top:2px;bottom:2px;width:2px;background:var(--a500);border-radius:2px;z-index:2}
+.st{height:100%;border-radius:3px;position:relative}
+.st.b{box-shadow:inset 1px 0 0 rgba(51,65,85,.55)}
+.st.h{background:var(--k);box-shadow:0 0 8px color-mix(in srgb,var(--k) 35%,transparent)}
+.st.h::after{content:'';position:absolute;inset:4px 1px;background:repeating-linear-gradient(90deg,rgba(2,6,23,.45) 0 1px,transparent 1px 2px)}
+.tlwrap{overflow-x:auto}
+
+/* mixer */
+.strip{background:var(--s950);border:1px solid var(--s800);border-radius:9px;padding:8px;display:flex;flex-direction:column;gap:6px;align-items:center}
+.strip .nm{font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;color:var(--s300);text-align:center;height:22px;overflow:hidden}
+.fad{width:100%;height:78px;background:var(--s900);border:1px solid var(--s800);border-radius:6px;position:relative;overflow:hidden}
+.fad i{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,color-mix(in srgb,var(--k) 70%,transparent),color-mix(in srgb,var(--k) 25%,transparent))}
+.fad u{position:absolute;left:2px;right:2px;height:3px;background:var(--s100);border-radius:2px;text-decoration:none}
+.strip .db{font-family:var(--mono);font-size:9.5px;color:var(--s200);font-variant-numeric:tabular-nums}
+.strip .btns{display:flex;gap:3px}
+.strip .btns button{width:19px;height:18px;border:1px solid var(--s800);border-radius:4px;font-family:var(--mono);font-size:8px;color:var(--s500)}
+.sl{display:flex;align-items:center;gap:8px;padding:4px 0}
+.sl label{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--s500);width:92px}
+.sl input{flex:1}
+.sl b{font-family:var(--mono);font-size:10px;color:var(--s200);width:62px;text-align:right;font-variant-numeric:tabular-nums}
+.sl .rst{font-family:var(--mono);font-size:8px;color:var(--s600);border:1px solid var(--s800);border-radius:4px;padding:2px 4px}
+.sl .rst:hover{color:var(--a400);border-color:rgba(245,158,11,.4)}
+.gate{display:flex;align-items:center;gap:9px;padding:8px 10px;border-bottom:1px solid rgba(30,41,59,.5)}
+.gate .bdg{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;padding:2px 7px;border-radius:4px;margin-left:auto}
+.bdg.p{background:rgba(16,185,129,.15);color:var(--e400);border:1px solid rgba(16,185,129,.4)}
+.bdg.b{background:rgba(244,63,94,.15);color:var(--r500);border:1px solid rgba(244,63,94,.4)}
+.stage7{display:flex;flex-direction:column;gap:3px}
+.st7{display:flex;align-items:center;gap:8px;padding:6px 9px;background:var(--s950);border:1px solid var(--s800);border-radius:7px;font-size:11.5px}
+.st7 .n{font-family:var(--mono);font-size:9px;color:var(--s600);width:14px}
+.st7 .sw{margin-left:auto;font-family:var(--mono);font-size:8.5px;letter-spacing:.09em;padding:2px 7px;border-radius:4px;border:1px solid rgba(16,185,129,.4);color:var(--e400);background:rgba(16,185,129,.12)}
+.st7.byp .sw{border-color:var(--s700);color:var(--s600);background:none}
+.st7.byp{opacity:.55}
+
+/* right dock */
+.dock{width:342px;background:var(--s950);border-left:1px solid var(--s800);display:flex;flex-direction:column;min-height:0;transition:width .16s}
+.dock.mini{width:38px}
+.dock.mini .dbody,.dock.mini .dhd b,.dock.mini .dhd .tag{display:none}
+.dhd{display:flex;align-items:center;gap:7px;padding:7px 9px;border-bottom:1px solid var(--s800)}
+.dhd b{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--s400)}
+.dbody{overflow-y:auto;padding:9px;display:flex;flex-direction:column;gap:9px;min-height:0}
+.hyp{padding:7px 9px;border-bottom:1px solid rgba(30,41,59,.5)}
 .hyp:last-child{border-bottom:none}
-.hyp-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:5px}
-.hyp-top b{font-size:12px;font-weight:600;color:var(--slate-200)}
-.hyp-top span{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;color:var(--slate-400)}
-.bar{height:3px;background:var(--slate-800);border-radius:2px;overflow:hidden}
-.bar i{display:block;height:100%;background:var(--slate-600)}
-.hyp.lead .bar i{background:var(--amber-500)}
-.hyp.lead .hyp-top b{color:var(--amber-300)}
-.mini{display:flex;gap:4px;margin-top:6px}
-
-/* ══ L3 canvas ══ */
-.l3{display:grid;grid-template-rows:auto auto 1fr;min-height:0;padding:9px 14px 0}
-.secs{display:flex;gap:3px;margin-bottom:8px}
-.sec{flex:1;padding:5px 9px;border:1px solid var(--slate-800);border-top:2px solid var(--slate-700);border-radius:0 0 8px 8px;background:var(--slate-900);text-align:left}
-.sec[aria-current="true"]{border-top-color:var(--amber-500);background:var(--slate-800)}
-.sec b{display:block;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--slate-200)}
-.sec span{font-family:var(--mono);font-size:8.5px;color:var(--slate-500)}
-.tools{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px}
-.tool{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border:1px solid var(--slate-800);border-radius:8px;background:var(--slate-900);color:var(--slate-400)}
-.tool:hover{border-color:var(--slate-700);color:var(--slate-200)}
-.tool.on{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.4);color:var(--amber-300)}
-.tool.ai{border-color:rgba(34,211,238,.35);color:var(--cyan-300)}
-.lanes{overflow:auto;padding-bottom:10px;display:flex;flex-direction:column;gap:2px}
-.lane{display:grid;grid-template-columns:186px 1fr;gap:7px;align-items:center}
-.lane-hd{display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--slate-900);border:1px solid var(--slate-800);border-left:3px solid var(--c);border-radius:8px}
-.lane-hd b{font-size:11px;font-weight:600;color:var(--slate-200);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lane-hd i{margin-left:auto;font-family:var(--mono);font-size:8.5px;font-style:normal;color:var(--slate-600)}
-.lane-hd u{text-decoration:none;font-family:var(--mono);font-size:8.5px;color:var(--slate-500);cursor:pointer}
-.lane-hd u:hover{color:var(--amber-400)}
-.grid{display:grid;grid-template-columns:repeat(32,1fr);gap:1px;height:25px;min-width:520px}
-.cell{background:var(--slate-900);border-radius:1px}
-.cell.b4{box-shadow:inset 1px 0 0 var(--slate-800)}
-.cell.hit{background:var(--c)}
-.cell.sus{background:color-mix(in srgb,var(--c) 40%,transparent)}
-
-/* ══ right dock ══ */
-.dock{width:352px;background:var(--slate-950);border-left:1px solid var(--slate-800);display:flex;flex-direction:column;min-height:0;transition:width .16s}
-.dock.collapsed{width:40px}
-.dock.collapsed .dock-body,.dock.collapsed .dock-hd b{display:none}
-.dock-hd{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--slate-800)}
-.dock-hd b{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--slate-400)}
-.dock-body{overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:10px;min-height:0}
-.acc-hd{display:flex;align-items:center;gap:7px;padding:7px 10px;border-bottom:1px solid var(--slate-800);cursor:pointer;width:100%;text-align:left}
-.acc-hd b{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--slate-300)}
-.acc-hd .caret{margin-left:auto;color:var(--slate-500);font-size:10px}
-.irow{display:grid;grid-template-columns:88px 1fr;gap:8px;padding:5px 10px;border-bottom:1px solid rgba(30,41,59,.6);align-items:baseline}
+.hyp .t{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px}
+.hyp .t b{font-size:11.5px;color:var(--s200)}
+.hyp .t span{font-family:var(--mono);font-size:10.5px;color:var(--s400)}
+.bar{height:3px;background:var(--s800);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--s600)}
+.hyp.lead .bar i{background:var(--c400)}.hyp.lead .t b{color:var(--c300)}
+.irow{display:grid;grid-template-columns:82px 1fr;gap:7px;padding:5px 9px;border-bottom:1px solid rgba(30,41,59,.5)}
 .irow:last-child{border-bottom:none}
-.irow dt{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--slate-500)}
-.irow dd{margin:0;font-size:11.5px;color:var(--slate-200)}
-.lock{color:var(--emerald-400)}.free{color:var(--amber-300)}
-.traj{display:flex;align-items:center;gap:6px;font-size:11.5px}
-.traj i{flex:1;height:3px;border-radius:2px;background:linear-gradient(90deg,var(--violet-500),var(--amber-400))}
-.msg{padding:8px 10px;font-size:11.5px;line-height:1.55;border-bottom:1px solid rgba(30,41,59,.6);color:var(--slate-300)}
-.msg .who{display:block;font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:3px}
-.msg.you{background:var(--slate-900)}.msg.you .who{color:var(--cyan-400)}
-.msg.si .who{color:var(--amber-400)}
-.cs{margin:9px;border:1px solid rgba(245,158,11,.35);border-radius:10px;background:linear-gradient(180deg,rgba(245,158,11,.09),transparent 55%)}
-.cs-hd{padding:7px 10px;border-bottom:1px solid var(--slate-800);font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--amber-300)}
-.cs-s{padding:8px 10px;border-bottom:1px solid rgba(30,41,59,.6)}
-.cs-s>em{display:block;font-style:normal;font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--slate-500);margin-bottom:5px}
-.cs-s ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
-.cs-s li{font-size:11.5px;padding-left:14px;position:relative;color:var(--slate-300)}
-.cs-s li::before{position:absolute;left:0}
-.cs-ch li::before{content:'›';color:var(--amber-400)}
-.cs-kp li::before{content:'✓';color:var(--emerald-400);font-size:10px}
-.cs-act{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px 10px}
-.btn{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border:1px solid var(--slate-800);border-radius:8px;background:var(--slate-900);color:var(--slate-300);text-align:center}
-.btn:hover{border-color:var(--slate-600);color:var(--slate-100)}
-.btn.primary{background:var(--amber-500);border-color:var(--amber-500);color:var(--slate-950)}
-.btn.primary:hover{background:var(--amber-400)}
-.btn.cyan{border-color:rgba(34,211,238,.4);color:var(--cyan-300);background:rgba(6,182,212,.1)}
-.relay{margin:0 9px 9px;border:1px solid rgba(34,211,238,.45);border-radius:10px;background:rgba(6,182,212,.07)}
+.irow dt{font-family:var(--mono);font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--s500)}
+.irow dd{margin:0;font-size:11.5px;color:var(--s200)}
+.traj{display:flex;align-items:center;gap:6px}.traj i{flex:1;height:3px;border-radius:2px;background:linear-gradient(90deg,var(--v500),var(--a400))}
+.msg{padding:8px 9px;font-size:11.5px;line-height:1.55;border-bottom:1px solid rgba(30,41,59,.5);color:var(--s300)}
+.msg .w{display:block;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:3px}
+.msg.you{background:var(--s900)}.msg.you .w{color:var(--c400)}.msg.si .w{color:var(--a400)}
+.cs{margin:8px;border:1px solid rgba(245,158,11,.35);border-radius:9px;background:linear-gradient(180deg,rgba(245,158,11,.08),transparent 55%)}
+.csh{padding:7px 9px;border-bottom:1px solid var(--s800);font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--a300)}
+.css{padding:7px 9px;border-bottom:1px solid rgba(30,41,59,.5)}
+.css em{display:block;font-style:normal;font-family:var(--mono);font-size:8px;letter-spacing:.11em;text-transform:uppercase;color:var(--s500);margin-bottom:4px}
+.css ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.css li{font-size:11.5px;padding-left:13px;position:relative;color:var(--s300)}
+.css li::before{position:absolute;left:0}
+.cch li::before{content:'›';color:var(--a400)}.ckp li::before{content:'✓';color:var(--e400);font-size:10px}
+.csa{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px 9px}
+.b{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:6px 7px;border:1px solid var(--s800);border-radius:7px;background:var(--s900);color:var(--s300);text-align:center}
+.b:hover{border-color:var(--s600);color:var(--s100)}
+.b.pri{background:var(--a500);border-color:var(--a500);color:var(--s950)}
+.b.cy{border-color:rgba(34,211,238,.45);color:var(--c300);background:rgba(6,182,212,.1)}
+.b.big2{padding:10px;font-size:10px}
+.b[disabled]{opacity:.4;cursor:not-allowed}
+.relay{margin:0 8px 8px;border:1px solid rgba(34,211,238,.45);border-radius:9px;background:rgba(6,182,212,.06)}
 .relay[hidden]{display:none!important}
-.relay-hd{padding:8px 10px;border-bottom:1px solid var(--slate-800)}
-.relay-hd b{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan-300)}
-.relay-hd p{margin:4px 0 0;font-size:11px;color:var(--slate-400);line-height:1.5}
-textarea{width:100%;min-height:58px;resize:vertical;background:var(--slate-950);border:1px solid var(--slate-800);border-radius:8px;color:var(--slate-100);font-family:var(--sans);font-size:11.5px;padding:7px 8px;line-height:1.5;margin:8px 0 0}
-textarea:focus{outline:none;border-color:var(--cyan-500)}
-textarea::placeholder{color:var(--slate-600)}
-.hist{padding:6px 10px;font-family:var(--mono);font-size:10.5px}
-.hnode{display:flex;gap:7px;padding:3px 0;color:var(--slate-400)}
-.hnode .g{color:var(--slate-600);white-space:pre}
-.hnode.cur{color:var(--amber-300)}
-.hnode em{margin-left:auto;font-style:normal;color:var(--slate-600);font-size:9.5px}
+textarea{width:100%;min-height:56px;background:var(--s950);border:1px solid var(--s800);border-radius:7px;color:var(--s100);font-family:var(--sans);font-size:11.5px;padding:7px;resize:vertical}
+textarea:focus{outline:none;border-color:var(--c500)}
+.hist{padding:5px 9px;font-family:var(--mono);font-size:10px}
+.hn{display:flex;gap:6px;padding:3px 0;color:var(--s400)}.hn .g{color:var(--s600);white-space:pre}
+.hn.cur{color:var(--a300)}.hn em{margin-left:auto;font-style:normal;color:var(--s600);font-size:9px}
 
-/* ══ overlays: drawers + modals ══ */
-.scrim{position:fixed;inset:0;background:rgba(2,6,23,.72);backdrop-filter:blur(2px);z-index:70;opacity:0;pointer-events:none;transition:opacity .16s}
+/* overlays */
+.scrim{position:fixed;inset:0;background:rgba(2,6,23,.75);z-index:70;opacity:0;pointer-events:none;transition:.15s}
 .scrim.on{opacity:1;pointer-events:auto}
-.drawer{position:fixed;top:0;right:0;bottom:0;width:min(430px,88vw);background:var(--slate-950);border-left:1px solid var(--slate-800);z-index:80;transform:translateX(100%);transition:transform .2s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-24px 0 60px rgba(2,6,23,.7)}
-.drawer.on{transform:translateX(0)}
-.modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-48%) scale(.98);width:min(620px,92vw);max-height:82vh;background:var(--slate-950);border:1px solid var(--slate-800);border-radius:16px;z-index:80;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:.16s;box-shadow:0 30px 80px rgba(2,6,23,.8)}
-.modal.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
-.ov-hd{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--slate-800)}
-.ov-hd b{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--amber-300)}
-.ov-hd .x{margin-left:auto;width:26px;height:26px;display:grid;place-items:center;border-radius:7px;border:1px solid var(--slate-800);color:var(--slate-400)}
-.ov-hd .x:hover{color:var(--slate-100);border-color:var(--slate-600)}
-.ov-body{overflow-y:auto;padding:14px;font-size:12px;color:var(--slate-300);line-height:1.6}
-.ov-body h4{margin:0 0 8px;font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--slate-500);font-weight:700}
-.ov-body .grp{margin-bottom:16px}
-.slider{display:flex;align-items:center;gap:9px;padding:5px 0}
-.slider label{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-500);width:82px}
-.slider input{flex:1;accent-color:var(--amber-500)}
-.slider b{font-family:var(--mono);font-size:10.5px;color:var(--slate-200);width:52px;text-align:right;font-variant-numeric:tabular-nums}
+.dr{position:fixed;top:0;right:0;bottom:0;width:min(440px,90vw);background:var(--s950);border-left:1px solid var(--s800);z-index:80;transform:translateX(100%);transition:transform .2s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-24px 0 60px rgba(2,6,23,.75)}
+.dr.on{transform:none}
+.md{position:fixed;top:50%;left:50%;transform:translate(-50%,-48%) scale(.98);width:min(640px,93vw);max-height:84vh;background:var(--s950);border:1px solid var(--s800);border-radius:15px;z-index:80;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:.15s;box-shadow:0 30px 80px rgba(2,6,23,.85)}
+.md.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.oh{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid var(--s800)}
+.oh b{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--k,var(--a300))}
+.oh .x{margin-left:auto;width:25px;height:25px;border:1px solid var(--s800);border-radius:7px;color:var(--s400);display:grid;place-items:center}
+.ob{overflow-y:auto;padding:14px;font-size:12px;color:var(--s300);line-height:1.6}
+.ob h4{margin:0 0 7px;font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--s500)}
+.ob .g{margin-bottom:15px}
 
-/* ══ status ══ */
-.status{display:flex;align-items:center;background:var(--slate-950);border-top:1px solid var(--slate-800);flex-wrap:wrap}
-.st{display:flex;align-items:center;gap:6px;padding:7px 13px;border-right:1px solid var(--slate-900)}
-.st small{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--slate-500)}
-.st b{font-family:var(--mono);font-size:10.5px;color:var(--slate-200)}
-.tag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:2px 5px;border-radius:4px}
-.tag.new{color:var(--cyan-300);border:1px solid rgba(34,211,238,.4);background:rgba(6,182,212,.1)}
-.tag.held{color:var(--slate-500);border:1px solid var(--slate-800)}
+/* status */
+.sb{background:var(--s950);border-top:1px solid var(--s800)}
+.sr{display:flex;align-items:center;flex-wrap:wrap;border-bottom:1px solid rgba(30,41,59,.5)}
+.sr:last-child{border-bottom:none}
+.si2{display:flex;align-items:center;gap:6px;padding:6px 13px;border-right:1px solid rgba(30,41,59,.5);font-family:var(--mono);font-size:9.5px;color:var(--s500)}
+.si2 b{color:var(--s200)}
 </style>
 
 <div class="app">
-
-<!-- ═══ L1 · PERSISTENT CONTEXT ═══ -->
-<header class="l1">
-  <div style="display:flex;align-items:center;gap:10px">
-    <div class="mark"><i>S</i></div>
-    <div style="display:flex;flex-direction:column">
-      <span class="wordmark">SOULSONUS</span>
-      <span class="subword">DAW &amp; INTELLIGENCE</span>
-    </div>
+<header class="hdr">
+  <div class="band">
+    <div class="mark"><i>S</i></div><span class="word">SOULSONUS</span>
+    <button class="pill on">✦ Story / Home</button>
+    <input class="title" value="Dubler Vocal Beatbox Master" aria-label="Project name">
+    <span class="sep"></span>
+    <button class="pill">✦ Blank Canvas</button><button class="pill">▤ Projects</button>
+    <button class="pill si" style="margin-left:auto" data-dr="brain">✣ Studio Intelligence</button>
+    <button class="pill tour">◷ Studio Tour</button><button class="pill">▤ Manual</button>
+    <button class="pill exp" data-md="export">⬇ Export</button>
   </div>
-  <div class="proj">
-    <input value="Made It Through — Master" aria-label="Project name">
-    <span>rev <b id="revA">18</b> · 100% master creator</span>
+  <div class="band">
+    <button class="pill">↺</button><button class="pill on">▶</button><button class="pill">◻</button>
+    <button class="pill rec">● Rec</button><button class="pill loop on">⇄ Loop</button>
+    <span class="ro">◷ <b>1:01.1</b></span><span class="sep"></span>
+    <span class="ro">BPM: <b>110</b></span><button class="pill">Metro</button>
+    <span class="ro">Q: <b>1/16</b></span><span class="sep"></span>
+    <span class="ro">♪ KEY: <b>C MIN</b></span>
+    <button class="pill mini">−1</button><button class="pill mini">+1</button>
+    <button class="pill mini">−8ve</button><button class="pill mini">+8ve</button>
+    <span class="ro">SIG: <b>4/4</b></span><span class="sep"></span>
+    <span class="ro">🔊</span><input type="range" value="72" style="width:96px">
+    <select><option>Choose Preset…</option><option>Dubler Beatbox Seed</option><option>Neo-Soul Pocket</option></select>
   </div>
-  <div class="tp">
-    <button class="tbtn" title="Play">▶</button>
-    <button class="tbtn rec" title="Record">●</button>
-    <button class="tbtn on" title="Loop">↻</button>
-    <button class="tbtn" title="Metronome">♩</button>
+  <div class="band">
+    <nav class="rooms" id="rooms">
+      <button class="room" data-r="CREATE" aria-current="true">✦ 1. Create</button>
+      <button class="room" data-r="WRITE">🎤 2. Write &amp; Record</button>
+      <button class="room" data-r="MIX">⇅ 3. Mix</button>
+      <button class="room" data-r="MASTER">∿ 4. Master</button>
+      <button class="room" data-r="RELEASE">⛨ 5. Release</button>
+    </nav>
+    <span class="ro" style="margin-left:auto;color:var(--s500)">∿ Studio Workspace Engine</span>
   </div>
-  <div class="meta">
-    <div><small>BPM</small><b>94.00</b></div>
-    <div><small>Key</small><b>C♯m</b></div>
-    <div><small>Bar</small><b>17:02.3</b></div>
-    <div><small>Meter</small><b>4/4</b></div>
-  </div>
-  <nav class="rooms" id="rooms" aria-label="Studio rooms">
-    <button class="room" data-room="CREATE" aria-current="true">1 · Create</button>
-    <button class="room" data-room="WRITE">2 · Write &amp; Record</button>
-    <button class="room" data-room="MIX">3 · Mix</button>
-    <button class="room" data-room="MASTER">4 · Master</button>
-    <button class="room" data-room="RELEASE">5 · Release</button>
-  </nav>
-  <button class="si" style="margin-left:auto" data-drawer="brain"><span class="pulse"></span>✣ Studio Intelligence</button>
-  <button class="btn" data-modal="export">Export</button>
 </header>
 
 <div class="mid">
-
-  <!-- ═══ L4 · UTILITY RAIL — compartments, zero footprint when closed ═══ -->
-  <nav class="rail" aria-label="Specialist workstations">
-    <span class="rail-lbl">Tools</span>
-    <button class="rbtn" data-drawer="inspector" data-name="Inspector">◱</button>
-    <button class="rbtn" data-drawer="workstation" data-name="Track Workstation">▤</button>
-    <button class="rbtn" data-modal="piano" data-name="Piano">▦</button>
-    <button class="rbtn" data-drawer="instrument" data-name="Instrument Room">◎</button>
-    <button class="rbtn" data-drawer="songwriting" data-name="Songwriting Suite">✎</button>
-    <span class="rail-lbl">Brain</span>
-    <button class="rbtn" data-drawer="brain" data-name="Native Brain">✣</button>
-    <button class="rbtn" data-drawer="radar" data-name="Radial Radar">◈</button>
-    <button class="rbtn" data-drawer="pipeline" data-name="Pipeline">⇉</button>
-    <span class="rail-lbl">I/O</span>
-    <button class="rbtn" data-modal="import" data-name="Import Audio">⤓</button>
-    <button class="rbtn" data-drawer="sourcing" data-name="Sound Sourcing">♬</button>
-    <button class="rbtn" data-drawer="midi" data-name="MIDI Hardware">⌘</button>
-    <button class="rbtn" data-drawer="calibration" data-name="Calibration">◐</button>
-    <span class="rail-lbl">Rights</span>
-    <button class="rbtn" data-modal="signature" data-name="SeedSignature">⛨</button>
-    <button class="rbtn" data-modal="collab" data-name="Collaboration">⚇</button>
+  <nav class="nav" id="nav" aria-label="Studio utilities and workstations">
+    <div class="ngrp">Creator</div>
+    <button class="nbtn" style="--k:var(--c400)" data-md="piano" data-n="Piano"><span class="swatch">▦</span><span class="nlabel">Piano</span></button>
+    <button class="nbtn" style="--k:var(--o500)" data-dr="instrument" data-n="Instrument"><span class="swatch">◎</span><span class="nlabel">Instrument</span></button>
+    <button class="nbtn" style="--k:var(--a400)" data-md="signature" data-n="Signature"><span class="swatch">✦</span><span class="nlabel">Signature</span></button>
+    <button class="nbtn" style="--k:var(--e400)" data-dr="sourcing" data-n="Sourcing"><span class="swatch">♬</span><span class="nlabel">Sourcing</span></button>
+    <button class="nbtn" style="--k:var(--p500)" data-md="collab" data-n="Collab"><span class="swatch">⚇</span><span class="nlabel">Collab</span></button>
+    <button class="nbtn" style="--k:var(--pk500)" data-dr="songwriting" data-n="Songwriting"><span class="swatch">✎</span><span class="nlabel">Songwriting</span></button>
+    <div class="ngrp">Intelligence</div>
+    <button class="nbtn" style="--k:var(--v500)" data-dr="brain" data-n="Native Brain"><span class="swatch">✣</span><span class="nlabel">Native Brain</span></button>
+    <button class="nbtn" style="--k:var(--c400)" data-dr="workstation" data-n="Workstation"><span class="swatch">▤</span><span class="nlabel">Workstation</span></button>
+    <button class="nbtn" style="--k:var(--s400)" data-dr="radar" data-n="Radial Radar"><span class="swatch">◈</span><span class="nlabel">Radial Radar</span></button>
+    <button class="nbtn" style="--k:var(--e400)" data-dr="pipeline" data-n="Pipeline"><span class="swatch">⇉</span><span class="nlabel">Pipeline</span></button>
+    <button class="nbtn" style="--k:var(--c400)" data-dr="intent" data-n="Creative Intent"><span class="swatch">◐</span><span class="nlabel">Creative Intent</span></button>
+    <div class="ngrp">Signal &amp; I/O</div>
+    <button class="nbtn" style="--k:var(--s400)" data-dr="inspector" data-n="Inspector"><span class="swatch">◱</span><span class="nlabel">Inspector</span></button>
+    <button class="nbtn" style="--k:var(--b500)" data-dr="midi" data-n="MIDI Hardware"><span class="swatch">⌘</span><span class="nlabel">MIDI Hardware</span></button>
+    <button class="nbtn" style="--k:var(--s400)" data-dr="calibration" data-n="Calibration"><span class="swatch">◐</span><span class="nlabel">Calibration</span></button>
+    <button class="nbtn" style="--k:var(--b500)" data-md="import" data-n="Import Audio"><span class="swatch">⤓</span><span class="nlabel">Import Audio</span></button>
+    <div class="navfoot"><button class="b" id="navT" style="width:100%">⟨ Collapse</button></div>
   </nav>
 
-  <!-- ═══ WORK COLUMN ═══ -->
   <div class="work">
-
-    <!-- ═══ L2 · CONTEXTUAL ACTIVITY (changes with the room) ═══ -->
-    <section class="l2" id="l2">
-      <div class="l2-hd">
-        <span class="l2-title" id="l2Title">Live Expression Engine</span>
-        <span class="tag new">New</span>
-        <span class="l2-sub" id="l2Sub">beatbox is one modality of seven, not the whole system</span>
-      </div>
-      <div id="l2Content"></div>
-    </section>
-
-    <!-- ═══ L3 · PRODUCTION CANVAS ═══ -->
-    <section class="l3">
-      <div class="secs" id="secs">
-        <button class="sec"><b>Intro Beat</b><span>bars 1–8</span></button>
-        <button class="sec" aria-current="true"><b>Verse Pocket</b><span>bars 9–24</span></button>
-        <button class="sec"><b>Chorus Lead Hook</b><span>bars 25–40</span></button>
-        <button class="sec"><b>Outro Resolving Tail</b><span>bars 41–48</span></button>
-      </div>
-      <div class="tools">
-        <button class="tool on">Select</button><button class="tool">Draw</button>
-        <button class="tool">Stretch</button><button class="tool">Split</button>
-        <button class="tool">Erase</button><button class="tool">Notes</button>
-        <button class="tool">Quantize</button><button class="tool">Add Track</button>
-        <button class="tool ai">✦ AI Realization</button>
-        <button class="tool">Edit Sections</button><button class="tool">4 / 8 / 16 / 32 / 64</button>
-      </div>
-      <div class="lanes" id="lanes"></div>
-    </section>
+    <div class="bench" id="bench">
+      <button class="bt" aria-selected="true">Unified Deck</button>
+      <button class="bt">Perform</button><button class="bt">Pattern</button><button class="bt">Sections</button>
+      <span class="ro" style="margin-left:auto;color:var(--s600)" id="benchNote">Hits split onto isolated channels in real-time as you perform.</span>
+    </div>
+    <div class="stage" id="stage"></div>
   </div>
 
-  <!-- ═══ RIGHT DOCK · the connective intelligence ═══ -->
   <aside class="dock" id="dock">
-    <div class="dock-hd">
-      <button class="btn" id="dockToggle" style="padding:4px 7px" aria-expanded="true" title="Collapse dock">⟩</button>
-      <b>Intelligence</b>
-      <span class="tag new" style="margin-left:auto">New</span>
-    </div>
-    <div class="dock-body">
-
-      <div class="card">
-        <button class="acc-hd" data-acc="intent" aria-expanded="true"><b>Creative Intent</b><span class="caret">▾</span></button>
-        <dl id="acc-intent" style="margin:0">
+    <div class="dhd"><button class="b" id="dockT" style="padding:4px 6px">⟩</button><b>Intelligence</b><span class="tag new" style="margin-left:auto">New</span></div>
+    <div class="dbody">
+      <div class="pan" style="margin:0;border-color:rgba(34,211,238,.3)">
+        <button class="ph" data-a="int"><b style="color:var(--c300)">Interpretation</b><span class="tag new">New</span><span class="cv">▾</span></button>
+        <div id="a-int"></div>
+      </div>
+      <div class="pan" style="margin:0">
+        <button class="ph" data-a="ci"><b>Creative Intent</b><span class="tag new">New</span><span class="cv">▾</span></button>
+        <dl id="a-ci" style="margin:0">
           <div class="irow"><dt>Emotion</dt><dd><span class="traj">Intimate <i></i> Resolute</span></dd></div>
           <div class="irow"><dt>Genre</dt><dd>Neo-soul / gospel</dd></div>
-          <div class="irow"><dt>Groove</dt><dd>Behind the beat <span style="color:var(--slate-500);font-family:var(--mono)">−14 ms</span></dd></div>
-          <div class="irow"><dt>Preserve</dt><dd class="lock">Lead melody · vocal cadence · beatbox timing</dd></div>
-          <div class="irow"><dt>Transform</dt><dd class="free">Harmony · instrumentation · texture</dd></div>
+          <div class="irow"><dt>Groove</dt><dd>Behind the beat −14 ms</dd></div>
+          <div class="irow"><dt>Preserve</dt><dd class="ok">Melody · cadence · beatbox timing</dd></div>
+          <div class="irow"><dt>Transform</dt><dd class="warn">Harmony · instrumentation · texture</dd></div>
           <div class="irow"><dt>Energy</dt><dd>Controlled lift</dd></div>
           <div class="irow"><dt>Arrangement</dt><dd>Sparse verse → expansive hook</dd></div>
         </dl>
       </div>
-
-      <div class="card" style="border-color:rgba(245,158,11,.3)">
-        <button class="acc-hd" data-acc="si" aria-expanded="true"><b style="color:var(--amber-300)">✣ Co-Producer</b><span class="caret">▾</span></button>
-        <div id="acc-si">
-          <div style="padding:4px 10px;font-family:var(--mono);font-size:8.5px;color:var(--slate-600)">reading 8 tracks · 4 sections · rev <span id="revB">18</span></div>
+      <div class="pan" style="margin:0;border-color:rgba(245,158,11,.3)">
+        <button class="ph" data-a="si"><b style="color:var(--a300)">✣ Co-Producer</b><span class="tag held">Held</span><span class="cv">▾</span></button>
+        <div id="a-si">
+          <div style="padding:4px 9px;font-family:var(--mono);font-size:8px;color:var(--s600)">reading 8 tracks · 4 sections · rev <span id="rB">18</span></div>
           <div id="thread">
-            <div class="msg you"><span class="who">You</span>Make the second chorus feel like I’ve finally made it through something. Don’t touch my vocal.</div>
-            <div class="msg si"><span class="who">Co-Producer</span>Your performance lifted in the last phrase. I’d hold that with harmonic width and rhythmic density rather than tempo — pushing BPM would break the pocket you played.</div>
+            <div class="msg you"><span class="w">You</span>Make the second chorus feel like I’ve finally made it through something. Don’t touch my vocal.</div>
+            <div class="msg si"><span class="w">Co-Producer</span>Your performance lifted in the last phrase. I’d hold that with harmonic width and rhythmic density rather than tempo — pushing BPM would break the pocket you played.</div>
           </div>
-          <div class="cs" id="cs">
-            <div class="cs-hd">Proposed Change · Harmony Stem</div>
-            <div class="cs-s cs-ch"><em>Will change</em>
-              <ul><li>Widen voicing across the hook</li><li>Raise upper harmony +3 semitones</li><li>Reduce density in verse</li><li>Introduce response vocal in chorus</li></ul></div>
-            <div class="cs-s cs-kp"><em>Guaranteed unchanged</em>
-              <ul><li>Lead vocal</li><li>Melody</li><li>Beatbox timing</li><li>Lyrics</li></ul></div>
-            <div class="cs-act">
-              <button class="btn">Preview</button>
-              <button class="btn primary" id="applyBtn">Apply</button>
-              <button class="btn">Alt</button>
-              <button class="btn" id="rejectBtn">Reject</button>
-            </div>
+          <div class="cs">
+            <div class="csh">Proposed Change · Harmony Stems</div>
+            <div class="css cch"><em>Will change</em><ul><li>Widen voicing across the hook</li><li>Upper harmony +3 semitones</li><li>Reduce density in verse</li><li>Response vocal in chorus</li></ul></div>
+            <div class="css ckp"><em>Guaranteed unchanged</em><ul><li>Lead vocal</li><li>Melody</li><li>Beatbox timing</li><li>Lyrics</li></ul></div>
+            <div class="csa"><button class="b">Preview</button><button class="b pri" id="apply">Apply</button><button class="b">Alt</button><button class="b" id="rej">Reject</button></div>
           </div>
           <div class="relay" id="relay" hidden>
-            <div class="relay-hd"><b>That’s not what I heard</b>
-              <p>Your words, kept against this candidate. The conversation continues from here — this is not a discard.</p></div>
-            <div style="padding:0 10px 10px">
-              <textarea id="relayText" placeholder="The lift is there but it went polite on me. I heard it get heavier, not prettier…"></textarea>
-              <div style="display:flex;gap:4px;margin-top:7px">
-                <button class="btn cyan" id="relaySend" style="flex:1">Send to Co-Producer</button>
-                <button class="btn" id="relayCancel">Cancel</button>
-              </div>
-            </div>
+            <div style="padding:8px 9px;border-bottom:1px solid var(--s800)">
+              <b style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--c300)">That’s not what I heard</b>
+              <p style="margin:4px 0 0;font-size:11px;color:var(--s400)">Your words, kept against this candidate. The conversation continues — this is not a discard.</p></div>
+            <div style="padding:8px 9px">
+              <textarea id="rTx" placeholder="The lift is there but it went polite on me. I heard it get heavier, not prettier…"></textarea>
+              <div style="display:flex;gap:4px;margin-top:6px"><button class="b cy" id="rSend" style="flex:1">Send to Co-Producer</button><button class="b" id="rCan">Cancel</button></div></div>
           </div>
         </div>
       </div>
-
-      <div class="card">
-        <button class="acc-hd" data-acc="hist" aria-expanded="true"><b>Creative History</b><span class="caret">▾</span></button>
-        <div id="acc-hist">
-          <div class="hist">
-            <div class="hnode"><span class="g">●</span>Original Seed<em>mimic · 3 passes</em></div>
-            <div class="hnode"><span class="g">├─</span>Beatbox Interp 01<em>rev 04</em></div>
-            <div class="hnode"><span class="g">├─</span>Bass Realization 03<em>rev 12</em></div>
-            <div class="hnode"><span class="g">└─</span>Arrangement v4<em>rev 15</em></div>
-            <div class="hnode"><span class="g">  ├─</span>Dark Version<em>rev 16</em></div>
-            <div class="hnode"><span class="g">  └─</span>Hopeful Version<em>rev 17</em></div>
-            <div class="hnode cur"><span class="g">    └─</span>Current<em id="revC">rev 18</em></div>
-          </div>
-          <div style="padding:0 10px 10px"><button class="btn" style="width:100%">Drums from rev 12 + bass from rev 16</button></div>
-        </div>
+      <div class="pan" style="margin:0">
+        <button class="ph" data-a="h"><b>Creative History</b><span class="tag new">New</span><span class="cv">▾</span></button>
+        <div id="a-h"><div class="hist">
+          <div class="hn"><span class="g">●</span>Original Seed<em>3 passes</em></div>
+          <div class="hn"><span class="g">├─</span>Beatbox Interp 01<em>rev 04</em></div>
+          <div class="hn"><span class="g">├─</span>Bass Realization 03<em>rev 12</em></div>
+          <div class="hn"><span class="g">└─</span>Arrangement v4<em>rev 15</em></div>
+          <div class="hn"><span class="g">  ├─</span>Dark Version<em>rev 16</em></div>
+          <div class="hn"><span class="g">  └─</span>Hopeful Version<em>rev 17</em></div>
+          <div class="hn cur"><span class="g">    └─</span>Current<em id="rC">rev 18</em></div></div>
+          <div style="padding:0 9px 9px"><button class="b" style="width:100%">Drums rev 12 + bass rev 16</button></div></div>
       </div>
     </div>
   </aside>
 </div>
 
-<!-- ═══ STATUS ═══ -->
-<footer class="status">
-  <div class="st"><small>SeedSignature</small><b style="color:var(--emerald-400)">Ready to sign</b></div>
-  <div class="st"><small>Rights</small><b>100% Master Creator</b></div>
-  <div class="st"><small>Collab</small><b>1 active</b></div>
-  <div class="st"><small>Revision</small><b id="revD">18</b></div>
-  <div class="st"><small>Relay gaps</small><b id="gapN">0</b></div>
-  <div class="st" style="margin-left:auto;border-right:none;gap:11px">
-    <span><span class="tag held">Held</span> <small style="letter-spacing:0;text-transform:none">already in the build</small></span>
-    <span><span class="tag new">New</span> <small style="letter-spacing:0;text-transform:none">connective intelligence</small></span>
+<footer class="sb">
+  <div class="sr">
+    <span class="si2">🔊 MASTER BUS: <b>−0.5dB LIMITER ACTIVE</b></span>
+    <span class="si2">◷ DSP CPU: <b>3%</b></span>
+    <span class="si2">▤ PROJECT: <b>Dubler Vocal Beatbox Master (v1.0.0)</b></span>
+    <span class="si2">SAVED <b>10:59 AM</b></span>
+    <span class="si2">BUILD: <b>de939c8</b></span>
+  </div>
+  <div class="sr">
+    <span class="si2">⛨ SEEDSIGNATURE: <b class="ok">READY TO SIGN</b></span>
+    <span class="si2">◈ RIGHTS: <b>100% SoulSonus Master Creator</b></span>
+    <span class="si2">⚇ COLLAB: <b>1 ACTIVE</b></span>
+    <span class="si2">REV: <b id="rD">18</b></span>
+    <span class="si2">RELAY GAPS: <b id="gN">0</b></span>
+    <span class="si2" style="margin-left:auto;border:none"><span class="tag held">Held</span> already built &nbsp; <span class="tag new">New</span> connective intelligence &nbsp; <span class="tag scaf">Scaffold</span> placeholder, not the room</span>
   </div>
 </footer>
 </div>
 
 <div class="scrim" id="scrim"></div>
-<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
-  <div class="ov-hd"><b id="drawerTitle">Inspector</b><button class="x" data-close>✕</button></div>
-  <div class="ov-body" id="drawerBody"></div>
-</aside>
-<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-  <div class="ov-hd"><b id="modalTitle">SeedSignature</b><button class="x" data-close>✕</button></div>
-  <div class="ov-body" id="modalBody"></div>
-</div>
+<aside class="dr" id="dr" role="dialog" aria-modal="true"><div class="oh"><b id="drT"></b><button class="x" data-c>✕</button></div><div class="ob" id="drB"></div></aside>
+<div class="md" id="md" role="dialog" aria-modal="true"><div class="oh"><b id="mdT"></b><button class="x" data-c>✕</button></div><div class="ob" id="mdB"></div></div>
 
 <script>
-/* ── track data: names + colours lifted from src/data/presets.ts ── */
-const TRACKS=[
- ['Kick (Thump)','#f59e0b','kick',[0,6,8,16,22,24,30],0],
- ['Snare (Clap/Pop)','#06b6d4','snare',[4,12,20,28],0],
- ['Hi-Hat (Tss)','#10b981','hihat',[0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30],0],
- ['808 / Sub Bass','#f43f5e','bass',[0,7,10,16,23,26],0],
- ['Lead Synth / Keys','#a855f7','melody',[2,3,10,11,18,19,26,27],1],
- ['Strings Ensemble','#3b82f6','melody',[8,9,10,11,12,24,25,26,27,28,29],1],
- ['Lead Vocal Track','#22d3ee','vocal',[1,2,3,4,5,13,14,15,16,17,18,25,26,27,28],1],
- ['Harmony Stems','#8b5cf6','vocal_synth',[13,14,15,25,26,27,28,29],1]];
+const TR=[['Kick (Thump)','#f59e0b','🥁',16,'kick'],['Snare (Clap/Pop)','#06b6d4','◎',118,'snare'],
+['Hi-Hat (Tss)','#10b981','✦',32,'hihat'],['808 / Sub Bass','#f43f5e','◉',10,'bass'],
+['Lead Synth / Keys','#a855f7','♪',48,'melody'],['Strings Ensemble','#3b82f6','♫',12,'melody'],
+['Lead Vocal Track','#22d3ee','🎤',0,'vocal'],['Harmony Stems','#8b5cf6','🎤',0,'vocal_synth']];
+const seeded=[[0,3,6,8,10,16,19,22,24,27,30,33,36,40,43,48],[4,12,20,28,36,44,52,60,5,13,21,29,37,45,53,61,6,14,22,30],
+[0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62],
+[0,7,14,21,28,35,42,49,56,60],[2,3,10,11,18,19,26,27,34,35,42,43,50,51,58,59],[16,17,18,32,33,34,48,49,50,51],[],[]];
 
-const lanes=document.getElementById('lanes');
-TRACKS.forEach(([n,c,inst,hits,sus])=>{
-  const r=document.createElement('div');r.className='lane';r.style.setProperty('--c',c);
-  r.innerHTML=`<div class="lane-hd"><b>${n}</b><u data-drawer="inspector">edit</u><i>${inst}</i></div>`;
-  const g=document.createElement('div');g.className='grid';
-  for(let i=0;i<32;i++){const d=document.createElement('div');
-    d.className='cell'+(hits.includes(i)?(sus?' sus':' hit'):'')+(i%4===0?' b4':'');g.appendChild(d);}
-  r.appendChild(g);lanes.appendChild(r);
-});
+function lanes(){return `<div class="tlwrap"><div class="tlhd"><span>Track / Source &nbsp;&nbsp;<em style="color:var(--s700)">4-BAR TIMELINE</em></span>
+<div class="bars">${[1,2,3,4].map(b=>`<div>BAR ${b}<em>.1 .2 .3 .4</em></div>`).join('')}</div></div>
+${TR.map(([n,c,ic,cnt],i)=>`<div class="lane${i===0?' sel':''}" style="--k:${c}">
+<div class="lh"><span class="lico">${ic}</span><b>${n}</b><span class="cnt">${cnt}</span>
+<span class="ms">${i===0?'<button>⇅</button>':''}<button>M</button><button>S</button>${i===0?'<button>▾</button><button>✕</button>':''}</span></div>
+<div class="tl">${Array.from({length:64},(_,s)=>`<div class="st${seeded[i].includes(s)?' h':''}${s%4===0?' b':''}"></div>`).join('')}</div></div>`).join('')}</div>`;}
 
-/* ── L2 content per room; CREATE also switches by modality ── */
-const MODES={
- beatbox:{w:'perc',read:[['Events','23 onsets'],['Classified','kick 9 · snare 6 · hat 8'],['Tempo','94.02 BPM'],['Pocket','−14 ms behind'],['Velocity','58 – 118'],['Mode','Groove — microtiming kept']],
-   hyp:[['Studio drum kit',91],['Trap kit / 808 hats',74],['Live room percussion',38]]},
- hum:{w:'tonal',read:[['Melody','7-note phrase'],['Key','D minor'],['Range','A3 – F4'],['Expressive timing','preserved'],['Contour','rising, resolving'],['Quantize','offered, not applied']],
-   hyp:[['Lead vocal line',86],['Rhodes / keys motif',69],['String counter-melody',44]]},
- sing:{w:'tonal',read:[['Melody','locked'],['Cadence','preserved'],['Syllables','4 / 6 / 5'],['Rhyme','bar 4'],['Words','“I been wai— … calling me home”'],['Fragments','2 kept as lyric seed']],
-   hyp:[['Keep as performed',94],['Double + harmony stack',71],['Lyric seed for rewrite',52]]},
- mimic:{w:'tonal',read:[['Heard','“Bummm-bum-ba-bumm”'],['Contour','F1 → C2'],['Groove','behind beat'],['Articulation','muted / plucked'],['Onsets','4 per bar'],['Register','sub-bass']],
-   hyp:[['Bass line',82],['Low synth',68],['Kick / bass hybrid',41]]},
- clap:{w:'perc',read:[['Events','16 onsets'],['Classified','clap 8 · rim 8'],['Tempo','93.88 BPM'],['Pocket','+3 ms ahead'],['Velocity','71 – 104'],['Mode','Assisted']],
-   hyp:[['Handclap layer',88],['Rim / cross-stick',63],['Snare replacement',35]]},
- speak:{w:'speech',read:[['Heard','“make the chorus feel like I made it through”'],['Intent','emotional trajectory'],['Scope','Chorus, bars 25–40'],['Emotion','resolute · rising'],['Constraint','“don’t touch my vocal”'],['Routed to','Studio Intelligence']],
-   hyp:[['Arrangement change',79],['Harmonic re-voicing',72],['Mix / dynamics',46]]},
- midi:{w:'perc',read:[['Device','Keystation 61'],['Notes','31 captured'],['Channel','1'],['Velocity curve','linear'],['Pocket','quantised at capture'],['Status','first-class, equal to voice']],
-   hyp:[['Rhodes / electric piano',90],['Pad / warm synth',66],['Plucked bass',29]]}};
+const MODES={beatbox:{n:'Oral Beatbox',pad:'MOUTH',hyp:[['Studio drum kit',91],['Trap kit / 808 hats',74],['Live room percussion',38]]},
+clap:{n:'Clap / Tap',pad:'BODY',hyp:[['Handclap layer',88],['Rim / cross-stick',63],['Snare replacement',35]]},
+hum:{n:'Hum / Voice',pad:'VOICE',hyp:[['Lead vocal line',86],['Rhodes / keys motif',69],['String counter-melody',44]]},
+midi:{n:'MIDI Keys',pad:'MIDI',hyp:[['Rhodes / electric piano',90],['Pad / warm synth',66],['Plucked bass',29]]},
+sing:{n:'Sing',new:1,pad:'VOICE',hyp:[['Keep as performed',94],['Double + harmony stack',71],['Lyric seed for rewrite',52]]},
+mimic:{n:'Mimic',new:1,pad:'MIMIC',hyp:[['Bass line',82],['Low synth',68],['Kick / bass hybrid',41]]},
+speak:{n:'Speak',new:1,pad:'DIRECTION',hyp:[['Arrangement change',79],['Harmonic re-voicing',72],['Mix / dynamics',46]]}};
+let mod='mimic',rev=18,gaps=0;
 
-let mod='mimic', wave='tonal';
+function engine(){const m=MODES[mod];return `
+<div class="pan"><button class="ph" data-a="eng"><b>🎤 Live Expression Engine</b><span class="tag new">Renamed +3</span>
+<span class="cv" style="margin-left:auto">▾</span></button>
+<div id="a-eng" class="pb">
+ <div class="eng-ctl"><button class="big rec">● Record Loop</button><button class="big ovr">+ Stack Overdub</button>
+ <button class="big dis">↩ Undo Last Pass</button>
+ <span style="margin-left:auto;display:flex;gap:6px"><span class="pill">Layers: 0 Passes</span><span class="pill">110 BPM</span><span class="pill">Metro</span><span class="pill">Pattern Controls ▾</span></span></div>
+ <div class="mon">${Array.from({length:16},()=>'<i></i>').join('')}<span>Live transient monitor ready</span></div>
+ <div class="mods">${Object.entries(MODES).map(([k,v])=>`<button class="mtab${v.new?' newm':''}" data-m="${k}" aria-selected="${k===mod}">${v.n}</button>`).join('')}
+ <span class="ro" style="margin-left:auto;color:var(--s600);font-size:10px">Hits split onto isolated channels in real-time as you perform.</span></div>
+ <div class="pads">${[1,2,3,4,5].map(i=>`<div class="pad"><small>${m.pad}</small><b>${i===1?m.pad+' — Seed Take':'Pad 0'+i}</b>
+ <div class="r"><span>${i===1?'23':'0'} events</span><em>Ready</em></div></div>`).join('')}
+ <div class="pad add">+ Add Pad</div></div>
+</div></div>`;}
 
-function exprHTML(){
-  const m=MODES[mod];
-  return `<div class="mods" role="tablist">${
-    ['beatbox','hum','sing','mimic','clap','speak','midi'].map(k=>
-      `<button class="mod" role="tab" data-mod="${k}" aria-selected="${k===mod}">${
-        k==='clap'?'Clap / Tap':k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div>
-  <div class="l2-grid">
-    <div class="card"><div class="card-hd"><b>Input</b><span class="tag held" style="margin-left:auto">Held</span></div>
-      <div class="scope"><canvas id="scope" width="600" height="74"></canvas>
-        <span class="livedot"><span class="dot"></span>Listening</span></div>
-      <div style="display:flex;gap:3px;padding:6px;flex-wrap:wrap">
-        <button class="tool on">Record Loop</button><button class="tool">Stack Overdub</button>
-        <button class="tool">Undo Pass</button><button class="tool">Pass 3/4</button></div></div>
-    <div class="card"><div class="card-hd"><b>Captured</b><span class="tag held" style="margin-left:auto">Held</span></div>
-      <dl style="margin:0">${m.read.map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl></div>
-    <div class="card" style="border-color:rgba(34,211,238,.3)">
-      <div class="card-hd"><b style="color:var(--cyan-300)">Interpretation — what this means</b><span class="tag new" style="margin-left:auto">New</span></div>
-      ${m.hyp.map(([n,p],i)=>`<div class="hyp${i?'':' lead'}">
-        <div class="hyp-top"><b>${n}</b><span>${p}%</span></div>
-        <div class="bar"><i style="width:${p}%"></i></div>
-        ${i?'':'<div class="mini"><button class="btn" style="flex:1">Realize</button><button class="btn" style="flex:1">Keep my timing</button></div>'}
-      </div>`).join('')}</div>
-  </div>`;
-}
+function scope(){return `<div class="pan"><button class="ph" data-a="sc"><b>Scope &amp; Sections</b><span class="cv" style="margin-left:auto">▾</span></button>
+<div id="a-sc" class="pb"><div class="chips" style="margin-bottom:8px">
+<button class="chip on">All Song</button><button class="chip">Intro Beat<sup>1b</sup></button>
+<button class="chip">Verse Pocket<sup>2b</sup></button><button class="chip">Chorus Lead Hook<sup>3b</sup></button>
+<button class="chip">Outro Resolving Tail<sup>4b</sup></button><button class="chip">Edit Sections</button>
+<span style="margin-left:auto" class="chips"><span class="ro" style="font-size:10px">BARS</span>
+<button class="chip">−</button><button class="chip on">4</button><button class="chip">+</button>
+<button class="chip">8</button><button class="chip">16</button><button class="chip">32</button><button class="chip">64</button></span></div>
+<div class="chips"><button class="chip on">All 64</button><button class="chip">Bar 1</button><button class="chip">Bar 2</button>
+<button class="chip">Bar 3</button><button class="chip">Bar 4</button></div></div></div>`;}
+
+function tools(){return `<div class="chips" style="margin-bottom:9px"><span class="ro" style="font-size:10px;color:var(--s600)">TOOL:</span>
+<button class="chip on">Select (V)</button><button class="chip">Draw (B)</button><button class="chip">Stretch (S)</button>
+<button class="chip">Split (C)</button><button class="chip">Erase (E)</button>
+<span style="margin-left:auto" class="chips"><button class="chip">Notes ▾</button><button class="chip">+ Add Track</button>
+<button class="chip ai">✦ AI Realization</button></span></div>`;}
 
 const ROOMS={
- CREATE:{t:'Live Expression Engine',s:'beatbox is one modality of seven, not the whole system',tag:'new',html:exprHTML},
- WRITE:{t:'Take Stack & Lyric Cadence',s:'four-layer vocal architecture — performance, character, identity, DSP',tag:'held',html:()=>`
-  <div class="l2-grid"><div class="card"><div class="card-hd"><b>Take Stack</b></div>
-    ${[1,2,3,4].map(i=>`<div class="kv"><dt>Take 0${i}</dt><dd>${i===2?'<span style="color:var(--emerald-400)">comped — bars 9–24</span>':'held'}</dd></div>`).join('')}</div>
-   <div class="card"><div class="card-hd"><b>Syllable Meter</b></div>
-    <div class="kv"><dt>Pattern</dt><dd>4 / 6 / 5</dd></div><div class="kv"><dt>Rhyme</dt><dd>bar 4 · bar 8</dd></div>
-    <div class="kv"><dt>Cadence</dt><dd class="lock">locked to performance</dd></div><div class="kv"><dt>Density</dt><dd>62% 16ths</dd></div></div>
-   <div class="card" style="border-color:rgba(34,211,238,.3)"><div class="card-hd"><b style="color:var(--cyan-300)">Lyric Seed — Mode B</b><span class="tag new" style="margin-left:auto">New</span></div>
-    <div class="kv"><dt>Phonetic</dt><dd>“I been wai— … calling me home”</dd></div>
-    <div class="kv"><dt>Theme read</dt><dd>return / redemption</dd></div>
-    <div class="kv"><dt>Melody</dt><dd class="lock">locked</dd></div>
-    <div style="padding:7px"><button class="btn" style="width:100%">Propose lyrics that fit this cadence</button></div></div></div>`},
- MIX:{t:'32-Channel Console & Co-Engineer',s:'per-track EQ, FET compression, sends, sub-buses',tag:'held',html:()=>`
-  <div class="l2-grid"><div class="card"><div class="card-hd"><b>Selected Channel — Lead Vocal</b></div>
-    ${[['Gain','−2.4 dB'],['Pan','C'],['HPF','88 Hz'],['Comp','4:1 · −6 dB GR'],['Verb send','−18 dB']].map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</div>
-   <div class="card"><div class="card-hd"><b>Sub-Buses</b></div>
-    ${[['Drum bus','−3.0'],['Music bus','−4.5'],['Vocal bus','−1.8'],['FX bus','−12.0']].map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v} dB</dd></div>`).join('')}</div>
-   <div class="card" style="border-color:rgba(245,158,11,.3)"><div class="card-hd"><b style="color:var(--amber-300)">Masking Analysis</b></div>
-    <div class="kv"><dt>Conflict</dt><dd style="color:var(--rose-500)">Strings vs vocal · 1.2–3 kHz</dd></div>
-    <div class="kv"><dt>Vocal LUFS</dt><dd>−17.4</dd></div><div class="kv"><dt>Cause</dt><dd>midrange density, not level</dd></div>
-    <div style="padding:7px"><button class="btn" style="width:100%">Ask why the vocal sounds buried</button></div></div></div>`},
- MASTER:{t:'Mastering Chain & Broadcast Telemetry',s:'ITU-R BS.1770-4 K-weighted · true-peak limiting',tag:'held',html:()=>`
-  <div class="l2-grid"><div class="card"><div class="card-hd"><b>Telemetry</b></div>
-    ${[['Integrated','−14.2 LUFS'],['Short-term','−12.8 LUFS'],['True peak','−1.1 dBTP'],['LRA','7.4 LU'],['Corr.','+0.72']].map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</div>
-   <div class="card"><div class="card-hd"><b>7-Stage Rack</b></div>
-    ${['Linear-phase EQ','Multiband comp','Saturation','Stereo width','Glue comp','4× oversampled limiter','Dither'].map((s,i)=>`<div class="kv"><dt>${i+1}</dt><dd>${s}</dd></div>`).join('')}</div>
-   <div class="card"><div class="card-hd"><b>Reference A/B</b></div>
-    <div class="kv"><dt>Target</dt><dd>−14.0 LUFS-I streaming</dd></div><div class="kv"><dt>Ceiling</dt><dd>−1.0 dBFS TP</dd></div>
-    <div class="kv"><dt>Verdict</dt><dd style="color:var(--emerald-400)">within spec</dd></div></div></div>`},
- RELEASE:{t:'Delivery, Rights & Finalization Gate',s:'consent proofs, split sheet, multi-format manifest',tag:'held',html:()=>`
-  <div class="l2-grid"><div class="card"><div class="card-hd"><b>Formats</b></div>
-    ${[['Master','24-bit / 48 kHz WAV'],['Streaming','24-bit / 44.1 kHz'],['Lossless','FLAC'],['Stems','8 isolated'],['MIDI','480 PPQ']].map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</div>
-   <div class="card"><div class="card-hd"><b>Rights Gate</b></div>
-    <div class="kv"><dt>Voice identity</dt><dd class="lock">#PROOF_LIC_BARI_88</dd></div>
-    <div class="kv"><dt>Split sheet</dt><dd>1 signature pending</dd></div>
-    <div class="kv"><dt>Provenance</dt><dd class="lock">SHA-256 chain intact</dd></div>
-    <div class="kv"><dt>AI disclosure</dt><dd>harmony stem · declared</dd></div></div>
-   <div class="card"><div class="card-hd"><b>Finalize</b></div>
-    <div style="padding:9px"><button class="btn primary" style="width:100%">Sign SeedSignature &amp; Release</button></div></div></div>`}};
+CREATE:()=>engine()+scope()+tools()+lanes(),
+WRITE:()=>`<div class="pan"><button class="ph" data-a="w1"><b>🎤 Four-Layer Vocal Architecture</b><span class="tag held">Held — full room</span><span class="cv" style="margin-left:auto">▾</span></button>
+<div id="a-w1" class="pb"><div class="grid3">
+<div class="card"><div class="ch"><b>L1 · Take Stack &amp; Comp</b></div>${[1,2,3,4].map(i=>`<div class="kv"><dt>Take 0${i}</dt><dd>${i===2?'<span class="ok">comped · bars 9–24</span>':'held'}</dd></div>`).join('')}</div>
+<div class="card"><div class="ch"><b>L2 · Vocal Character</b></div>${[['Palette','Warm'],['Alt','Airy · Raspy · Intimate'],['','Powerful · Breathy · Falsetto'],['','Gritty · Smooth · Choir']].map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</div>
+<div class="card"><div class="ch"><b>L3 · Voice Identity</b></div><div class="kv"><dt>Session vocalist</dt><dd>Baritone 88</dd></div>
+<div class="kv"><dt>Consent proof</dt><dd class="ok">#PROOF_LIC_BARI_88</dd></div><div class="kv"><dt>E16 status</dt><dd class="ok">verified</dd></div></div></div>
+<div class="grid2" style="margin-top:9px">
+<div class="card"><div class="ch"><b>L4 · Vocal DSP Chain</b></div>
+${[['Formant','−2 st'],['Scale snap','C minor diatonic'],['1176 FET','4:1 · −6 dB GR'],['Plate reverb','−18 dB send']].map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</div>
+<div class="card" style="border-color:rgba(34,211,238,.3)"><div class="ch"><b style="color:var(--c300)">Lyric Cadence — Mode B seed</b><span class="tag new" style="margin-left:auto">New</span></div>
+<div class="kv"><dt>Phonetic</dt><dd>“I been wai— … calling me home”</dd></div><div class="kv"><dt>Syllables</dt><dd>4 / 6 / 5</dd></div>
+<div class="kv"><dt>Rhyme</dt><dd>bar 4 · bar 8</dd></div><div class="kv"><dt>Melody</dt><dd class="ok">locked</dd></div>
+<div style="padding:7px"><button class="b" style="width:100%">Propose lyrics that fit this cadence</button></div></div></div></div></div>`+lanes(),
 
-function renderRoom(k){
-  const r=ROOMS[k];
-  document.getElementById('l2Title').textContent=r.t;
-  document.getElementById('l2Sub').textContent=r.s;
-  document.querySelector('.l2-hd .tag').className='tag '+r.tag;
-  document.querySelector('.l2-hd .tag').textContent=r.tag==='new'?'New':'Held';
-  document.getElementById('l2Content').innerHTML=r.html();
-  if(k==='CREATE'){wave=MODES[mod].w;startScope();}
-}
-document.getElementById('rooms').addEventListener('click',e=>{
-  const b=e.target.closest('.room');if(!b)return;
-  document.querySelectorAll('.room').forEach(x=>x.setAttribute('aria-current','false'));
-  b.setAttribute('aria-current','true');renderRoom(b.dataset.room);
-});
-document.getElementById('l2Content').addEventListener('click',e=>{
-  const b=e.target.closest('.mod');if(!b)return;
-  mod=b.dataset.mod;renderRoom('CREATE');
-});
+MIX:()=>`<div class="pan"><button class="ph" data-a="m1"><b>⇅ Mixing Console Desk</b><span class="tag held">Held — full room</span>
+<span class="ro" style="margin-left:auto;font-size:10px;color:var(--s600)">MixingConsoleDesk.tsx · 442 lines</span><span class="cv">▾</span></button>
+<div id="a-m1" class="pb">
+<div class="chips" style="margin-bottom:9px"><button class="chip on">Tracks</button><button class="chip">Buses</button>
+<span style="margin-left:auto" class="chips"><button class="chip">Acoustic Solo</button><button class="chip">Bypass All Channel DSP</button>
+<button class="chip">Monitor Dim (−20dB)</button><button class="chip">Record onto this track</button></span></div>
+<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:7px">
+${TR.map(([n,c],i)=>`<div class="strip" style="--k:${c}"><div class="nm">${n}</div>
+<div class="fad"><i style="height:${[62,58,44,70,52,46,66,54][i]}%"></i><u style="bottom:${[62,58,44,70,52,46,66,54][i]}%"></u></div>
+<span class="db">${['+0.0','−2.0','−6.0','−1.0','−4.0','−5.0','−2.4','−3.0'][i]}</span>
+<div class="btns"><button>M</button><button>S</button><button>Ø</button></div></div>`).join('')}</div></div></div>
 
-/* ── overlays: real compartments ── */
-const scrim=document.getElementById('scrim'),drawer=document.getElementById('drawer'),modal=document.getElementById('modal');
-const PANELS={
- inspector:['Inspector — Lead Vocal Track',`<div class="grp"><h4>Signal</h4>
-  ${[['Gain','−2.4','dB'],['Pan','0','C'],['HPF','88','Hz'],['Presence','+1.8','dB']].map(([l,v,u])=>
-  `<div class="slider"><label>${l}</label><input type="range" value="${50+ +v*4}"><b>${v} ${u}</b></div>`).join('')}</div>
-  <div class="grp"><h4>Performance — untouched</h4><p style="color:var(--emerald-400)">Micro-timing, phrasing and take boundaries are locked by Creative Intent. Nothing in this panel can alter them; the DSP chain runs after the performance, never over it.</p></div>
-  <div class="grp"><h4>Provenance</h4><p style="font-family:var(--mono);font-size:11px">take_04 · SHA-256 8f2a93b…e412 · human-authored · rev 15</p></div>`],
- workstation:['Track Workstation',`<div class="grp"><h4>Note events</h4><p>31 events at 480 PPQ. Pitch, micro-timing, duration envelope, velocity stalk and inline syllable lyric per event.</p></div>
-  <div class="grp"><h4>Realization route</h4><p>ORIGINAL · SAMPLE · INSTRUMENT · SYNTH · ACE performance transfer. The performance is the source; the route only decides what renders it.</p></div>
-  <div class="grp"><h4>Invariant locks</h4><p class="lock" style="color:var(--emerald-400)">BPM 94.00 exact · groove ±12 ms bass · melody locked · vocal phrasing locked</p></div>`],
- instrument:['Instrument Room',`<div class="grp"><h4>Loaded</h4><p>Vintage Rhodes · Strings Section · Analog 808 Sub · Vinyl Boom-Bap · Soul Horns · Muted Electric</p></div>
-  <div class="grp"><h4>Engine</h4><p>SpessaSynth GM SF2/SFZ multi-sample engine (E07) over the factory kit.</p></div>`],
- songwriting:['Songwriting Suite',`<div class="grp"><h4>Cadence</h4><p>16th-note syllable meter · rhyme scheme AABA · density 62%</p></div>
-  <div class="grp"><h4>Influence ledger</h4><p>Narrative perspective, rhyme density and melodic cadence are recorded independently of any voice-replica right.</p></div>`],
- brain:['✣ Studio Intelligence — Native Brain',`<div class="grp"><h4>Session context compiled</h4><p>8 tracks · 4 sections · 94.00 BPM · C♯m · rev 18 · 1 collaborator · 2 locked properties · 1 pending ChangeSet</p></div>
-  <div class="grp"><h4>Provider</h4><p>Local brain (on-device). Ollama · Gemini · OpenAI configurable. Reasoning happens here; SoulSonus governs; engines execute; you decide.</p></div>
-  <div class="grp"><h4>Emphasis</h4><p>Co-Producer · Audio Engineer · Studio Manager · Tutor · Platform Guide — one persistent intelligence, five emphases, never five assistants.</p></div>`],
- radar:['Radial Radar',`<div class="grp"><h4>Session awareness</h4><p>Spectral balance, arrangement density and section energy across the whole timeline at once.</p></div>
-  <div class="grp"><h4>Current read</h4><p>Verse sparse (0.31) → Chorus expansive (0.78). Matches the declared arrangement trajectory.</p></div>`],
- pipeline:['Pipeline',`<div class="grp"><h4>Flow</h4><p style="font-family:var(--mono);font-size:11px;line-height:1.9">Expression → Interpretation → Intent → Representation → Realization → Project state → Intelligence → ChangeSet → Your approval → Revision</p></div>
-  <div class="grp"><h4>Stage state</h4><p>Awaiting creator approval at stage 9. Nothing downstream runs until you decide.</p></div>`],
- sourcing:['Sound Sourcing',`<div class="grp"><h4>Retrieval</h4><p>LAION CLAP 512-dim cosine embedding match across the vault and factory kit.</p></div>
-  <div class="grp"><h4>Your bias</h4><p>You have rejected brighter synth timbres 7 times this project. Warmer results are ranked first.</p></div>`],
- midi:['MIDI Hardware',`<div class="grp"><h4>Detected</h4><p>Keystation 61 — WebMIDI, no mapping required.</p></div>
-  <div class="grp"><h4>Standing</h4><p>MIDI is a first-class input, equal to voice. Natural expression was added as a modality; it never replaced the conventional interfaces.</p></div>`],
- calibration:['Calibration',`<div class="grp"><h4>Input</h4><p>Default interface · 48 kHz · mic gain 1.5× · noise floor −62 dBFS</p></div>
-  <div class="grp"><h4>Onset thresholds</h4>
-  ${[['Kick','0.40'],['Snare','0.40'],['Hat','0.34']].map(([l,v])=>`<div class="slider"><label>${l}</label><input type="range" value="40"><b>${v}</b></div>`).join('')}</div>`]
-};
-const MODALS={
- signature:['SeedSignature',`<div class="grp"><h4>Provenance chain</h4><p style="font-family:var(--mono);font-size:11px">18 revisions · 41 takes · 6 realization candidates · unbroken SHA-256</p></div>
-  <div class="grp"><h4>Authorship</h4><p>Every take, note sequence and mix decision was hashed with WebCrypto as it happened, proving you are the original human author of the idea before any orchestration ran.</p></div>
-  <div class="grp"><button class="btn primary" style="width:100%;padding:10px">Sign revision 18</button></div>`],
- collab:['Collaboration',`<div class="grp"><h4>Participants</h4><p>You — owner, 100% master creator<br>1 vocalist — pending contribution</p></div>
-  <div class="grp"><h4>Split sheet</h4><p>Attribution is recorded per contribution and carried into the release manifest.</p></div>
-  <div class="grp"><p style="color:var(--amber-300)">Note: in the current build this panel holds demonstration data rather than a shared collaborative state model. Clause SRT-1.XV.4 flags it as a violation, not a gap.</p></div>`],
- import:['Import Audio',`<div class="grp"><h4>Accepted</h4><p>.wav · .mp3 · .flac · .aif · .m4a — analysed on drop for true BPM, key, meter, transient count and SHA-256 lineage.</p></div>
-  <div class="grp"><h4>Decomposition</h4><p>Quick 4-stem (Demucs v4) or deep 12-class extract, then populated directly into editable lanes.</p></div>`],
- piano:['Virtual Piano',`<div class="grp"><h4>Input</h4><p>On-screen keyboard routed through the same capture path as voice and hardware MIDI — one performance model, many ways in.</p></div>`],
- export:['Export',`<div class="grp"><h4>Deliverables</h4><p>24-bit/48 kHz WAV · lossless FLAC · 8 isolated stems · 480 PPQ MIDI · master manifest with provenance metadata.</p></div>
-  <div class="grp"><h4>Interop</h4><p>Opens in Ableton Live, Logic Pro and Pro Tools with stems and MIDI intact.</p></div>`]
-};
-function closeAll(){scrim.classList.remove('on');drawer.classList.remove('on');modal.classList.remove('on');
-  document.querySelectorAll('.rbtn.open').forEach(b=>b.classList.remove('open'));}
+<div class="grid2">
+<div class="pan"><button class="ph" data-a="m2"><b>Selected Channel — Lead Vocal</b><span class="tag held">Held</span><span class="cv" style="margin-left:auto">▾</span></button>
+<div id="a-m2" class="pb">
+${[['Highpass','88 Hz',30],['Low shelf','−1.5 dB',44],['Peaking','+1.8 dB @ 3k',62],['High shelf','+2.2 dB',66],
+['Comp thresh','−18 dB',36],['Comp ratio','4:1',50],['Reverb send','−18 dB',30],['Delay send','−24 dB',22]]
+.map(([l,v,p])=>`<div class="sl"><label>${l}</label><input type="range" value="${p}"><b>${v}</b><button class="rst">Reset</button></div>`).join('')}
+<div class="kv" style="margin-top:6px"><dt>Stage state</dt><dd class="ok">Active · not FLAT</dd></div>
+<div class="kv"><dt>Oversampling</dt><dd>2×</dd></div></div></div>
+
+<div class="pan"><button class="ph" data-a="m3"><b>Co-Engineer Analysis Suite</b><span class="tag held">Held</span><span class="cv" style="margin-left:auto">▾</span></button>
+<div id="a-m3" class="pb">
+<div class="chips" style="margin-bottom:9px"><button class="chip on">Analyse This Mix</button><button class="chip">Load File</button>
+<button class="chip">Replace</button><button class="chip">Recall</button></div>
+<div class="chips" style="margin-bottom:9px"><button class="chip">Hear Reference (A)</button><button class="chip on">Active Mix (B)</button></div>
+${[['Reference','No reference loaded'],['Mono compat','<span class="ok">Mono Compatible</span>'],['Correlation','+0.72'],
+['Spectral tilt','−3.1 dB/oct'],['Vocal LUFS','−17.4'],['Masking','<span class="bad">Strings vs vocal · 1.2–3 kHz</span>'],
+['Measured','<span class="warn">Not measured since last change</span>']].map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}
+<div style="padding:8px 0 0"><button class="b cy" style="width:100%">Ask the Co-Engineer why the vocal sounds buried</button></div></div></div></div>`,
+
+MASTER:()=>`<div class="pan"><button class="ph" data-a="k1"><b>∿ Master Stereo Waveform Console</b><span class="tag held">Held — full room</span>
+<span class="ro" style="margin-left:auto;font-size:10px;color:var(--s600)">MasterStereoWaveformConsole.tsx · 437 lines</span><span class="cv">▾</span></button>
+<div id="a-k1" class="pb"><div class="chips" style="margin-bottom:10px">
+<button class="chip on">Streaming Balanced (−14.0 LUFS)</button><button class="chip">Warm Analog Master (−13.0 LUFS)</button>
+<button class="chip">Modern Club Punch (−9.0 LUFS)</button></div>
+<div class="stage7">${[['Linear-phase EQ',1],['Multiband compressor',1],['Saturation',1],['Stereo width',1],['Glue compressor',0],['True-peak limiter (4× oversampled)',1],['Dither',1]]
+.map(([n,a],i)=>`<div class="st7${a?'':' byp'}"><span class="n">${i+1}</span>${n}<span class="sw">${a?'Active':'Bypassed'}</span></div>`).join('')}</div></div></div>
+
+<div class="grid2">
+<div class="pan"><button class="ph" data-a="k2"><b>Mastering Telemetry Suite</b><span class="tag held">Held</span><span class="cv" style="margin-left:auto">▾</span></button>
+<div id="a-k2" class="pb"><div class="chips" style="margin-bottom:9px"><button class="chip on">Measure This Master</button>
+<button class="chip">Hear Reference</button><button class="chip">Load File</button></div>
+${[['Integrated','−14.2 LUFS'],['Short-term','−12.8 LUFS'],['Momentary','−11.4 LUFS'],['True peak','−1.1 dBTP'],
+['LRA','7.4 LU'],['Correlation','+0.72'],['Mono','<span class="ok">Mono Compatible</span>'],
+['Target','<span class="ok">COMPLIANT</span>'],['Audition path','Monitor Only']].map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}
+<div style="padding:7px 0 0;font-family:var(--mono);font-size:9px;color:var(--s600)">ITU-R BS.1770-4 K-weighted</div></div></div>
+
+<div class="pan" style="border-color:rgba(16,185,129,.3)"><button class="ph" data-a="k3"><b style="color:var(--e400)">Finalization Gate &amp; Sign</b>
+<span class="tag held">Held</span><span class="ro" style="margin-left:auto;font-size:10px;color:var(--s600)">591 lines</span><span class="cv">▾</span></button>
+<div id="a-k3">
+${[['LINEAGE: Root Seed Present',1],['PROVENANCE: SHA-256 Verified Per Asset',1],['RESOURCES: Admission Cleared',1],['RIGHTS: Ownership &amp; Splits Verified',0]]
+.map(([n,p])=>`<div class="gate">${n}<span class="bdg ${p?'p':'b'}">${p?'Passed':'Blocked'}</span></div>`).join('')}
+<div class="pb"><div class="kv"><dt>Gate</dt><dd class="bad">GATE NOT SATISFIED</dd></div>
+<div class="kv"><dt>Master render</dt><dd>Not rendered yet</dd></div>
+<div class="kv"><dt>Delivery package</dt><dd>24/48 WAV · FLAC · stems · MIDI</dd></div>
+<button class="b big2" style="width:100%;margin-top:9px" disabled>⛨ Lock &amp; Sign E14 SeedSignature</button>
+<p style="font-size:11px;color:var(--s500);margin:7px 0 0">One split-sheet signature outstanding. The gate blocks release rather than warning about it.</p></div></div></div></div>`,
+
+RELEASE:()=>`<div class="pan"><button class="ph" data-a="x1"><b>⛨ Delivery &amp; Rights Governance</b><span class="tag held">Held — full room</span><span class="cv" style="margin-left:auto">▾</span></button>
+<div id="a-x1" class="pb"><div class="grid3">
+<div class="card"><div class="ch"><b>Formats</b></div>${[['Master','24-bit / 48 kHz WAV'],['Streaming','24-bit / 44.1 kHz'],['Lossless','FLAC'],['Stems','8 isolated'],['MIDI','480 PPQ']].map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</div>
+<div class="card"><div class="ch"><b>Rights</b></div><div class="kv"><dt>Voice identity</dt><dd class="ok">#PROOF_LIC_BARI_88</dd></div>
+<div class="kv"><dt>Split sheet</dt><dd class="warn">1 pending</dd></div><div class="kv"><dt>Provenance</dt><dd class="ok">SHA-256 intact</dd></div>
+<div class="kv"><dt>AI disclosure</dt><dd>harmony stems declared</dd></div></div>
+<div class="card"><div class="ch"><b>Interop</b></div><div class="kv"><dt>Ableton Live</dt><dd class="ok">stems + MIDI</dd></div>
+<div class="kv"><dt>Logic Pro</dt><dd class="ok">stems + MIDI</dd></div><div class="kv"><dt>Pro Tools</dt><dd class="ok">stems + MIDI</dd></div></div>
+</div></div></div>`};
+
+function interp(){const m=MODES[mod];return m.hyp.map(([n,p],i)=>`<div class="hyp${i?'':' lead'}">
+<div class="t"><b>${n}</b><span>${p}%</span></div><div class="bar"><i style="width:${p}%"></i></div>
+${i?'':'<div style="display:flex;gap:4px;margin-top:6px"><button class="b" style="flex:1">Realize</button><button class="b" style="flex:1">Keep my timing</button></div>'}</div>`).join('');}
+
+let room='CREATE';
+function render(){document.getElementById('stage').innerHTML=ROOMS[room]();document.getElementById('a-int').innerHTML=interp();
+ document.getElementById('benchNote').textContent=room==='CREATE'?'Hits split onto isolated channels in real-time as you perform.':'Full workspace — organizing layer never enters the room.';}
+document.getElementById('rooms').addEventListener('click',e=>{const b=e.target.closest('.room');if(!b)return;
+ document.querySelectorAll('.room').forEach(x=>x.setAttribute('aria-current','false'));b.setAttribute('aria-current','true');room=b.dataset.r;render();});
+document.getElementById('stage').addEventListener('click',e=>{const m=e.target.closest('.mtab');if(m){mod=m.dataset.m;render();}});
+
+/* accordions */
+document.addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(!a)return;
+ const b=document.getElementById('a-'+a.dataset.a);if(!b)return;const o=b.hidden;b.hidden=!o;
+ const c=a.querySelector('.cv');if(c)c.textContent=o?'▾':'▸';});
+
+/* overlays */
+const PAN={inspector:['Inspector — Kick (Thump)','var(--s400)',`<div class="g"><h4>Signal</h4><p>16 events · velocity 58–118 · pocket −14 ms behind grid.</p></div>
+<div class="g"><h4>Performance — untouched</h4><p style="color:var(--e400)">Micro-timing and phrasing are locked by Creative Intent. The DSP chain runs after the performance, never over it.</p></div>
+<div class="g"><h4>Provenance</h4><p style="font-family:var(--mono);font-size:11px">seed_take_01 · SHA-256 8f2a93b…e412 · human-authored · rev 15</p></div>`],
+workstation:['Track Workstation','var(--c400)',`<div class="g"><h4>Note events</h4><p>480 PPQ. Pitch, micro-timing, duration envelope, velocity stalk, inline syllable lyric per event.</p></div>
+<div class="g"><h4>Realization route</h4><p>ORIGINAL · SAMPLE · INSTRUMENT · SYNTH · ACE performance transfer.</p></div>
+<div class="g"><h4>Invariant locks</h4><p class="ok" style="color:var(--e400)">BPM 110.00 exact · ±6 ms drums · ±12 ms bass · melody locked · vocal phrasing locked</p></div>`],
+instrument:['Instrument Room','var(--o500)',`<div class="g"><h4>Loaded</h4><p>Vintage Rhodes · Strings Section · Analog 808 Sub · Vinyl Boom-Bap · Soul Horns · Muted Electric</p></div>
+<div class="g"><h4>Engine</h4><p>SpessaSynth GM SF2/SFZ multi-sample engine (E07) over the factory kit.</p></div>`],
+sourcing:['Sound Sourcing','var(--e400)',`<div class="g"><h4>Retrieval</h4><p>LAION CLAP 512-dim cosine embedding match across vault and factory kit.</p></div>
+<div class="g"><h4>Your bias</h4><p>You have rejected brighter synth timbres 7 times this project. Warmer results rank first.</p></div>`],
+songwriting:['Songwriting Suite','var(--pk500)',`<div class="g"><h4>Cadence</h4><p>16th-note syllable meter · rhyme scheme AABA · density 62%</p></div>
+<div class="g"><h4>Influence ledger</h4><p>Narrative perspective, rhyme density and melodic cadence recorded independently of any voice-replica right.</p></div>`],
+brain:['✣ Studio Intelligence — Native Brain','var(--v500)',`<div class="g"><h4>Session context compiled</h4><p>8 tracks · 4 sections · 110 BPM · C min · rev 18 · 1 collaborator · 3 locked properties · 1 pending ChangeSet</p></div>
+<div class="g"><h4>Provider</h4><p>Local brain, on-device. Ollama · Gemini · OpenAI configurable.</p></div>
+<div class="g"><h4>Emphasis</h4><p>Co-Producer · Audio Engineer · Studio Manager · Tutor · Platform Guide — one persistent intelligence, five emphases, never five assistants.</p></div>`],
+radar:['Radial Radar','var(--s400)',`<div class="g"><h4>Session awareness</h4><p>Spectral balance, arrangement density and section energy across the whole timeline at once.</p></div>
+<div class="g"><h4>Current read</h4><p>Verse sparse (0.31) → Chorus expansive (0.78). Matches declared arrangement trajectory.</p></div>`],
+pipeline:['Pipeline','var(--e400)',`<div class="g"><h4>Flow</h4><p style="font-family:var(--mono);font-size:11px;line-height:1.9">Expression → Interpretation → Intent → Representation → Realization → Project state → Intelligence → ChangeSet → Your approval → Revision</p></div>
+<div class="g"><h4>Stage state</h4><p>Awaiting creator approval at stage 9. Nothing downstream runs until you decide.</p></div>`],
+intent:['Creative Intent','var(--c400)',`<div class="g"><h4>What SoulSonus believes you are making</h4>
+<p>Emotion: Intimate → Resolute · Genre: Neo-soul / gospel · Groove: behind the beat, −14 ms</p></div>
+<div class="g"><h4>Preserve</h4><p class="ok" style="color:var(--e400)">Lead melody · vocal cadence · beatbox timing</p></div>
+<div class="g"><h4>Transform</h4><p style="color:var(--a400)">Harmony · instrumentation · texture</p></div>
+<div class="g"><h4>Why this panel exists</h4><p>Without it the intelligence is invisible — you can see what it made but never what it understood.</p></div>`],
+midi:['MIDI Hardware','var(--b500)',`<div class="g"><h4>Detected</h4><p>Keystation 61 — WebMIDI, no mapping required.</p></div>
+<div class="g"><h4>Standing</h4><p>MIDI is a first-class input, equal to voice. Natural expression was added as a modality; it never replaced the conventional interfaces.</p></div>`],
+calibration:['Calibration','var(--s400)',`<div class="g"><h4>Input</h4><p>Default interface · 48 kHz · mic gain 1.5× · noise floor −62 dBFS</p></div>
+<div class="g"><h4>Onset thresholds</h4>${[['Kick','0.40'],['Snare','0.40'],['Hat','0.34']].map(([l,v])=>`<div class="sl"><label>${l}</label><input type="range" value="40"><b>${v}</b></div>`).join('')}</div>`]};
+const MOD={signature:['SeedSignature','var(--a400)',`<div class="g"><h4>Provenance chain</h4><p style="font-family:var(--mono);font-size:11px">18 revisions · 41 takes · 6 realization candidates · unbroken SHA-256</p></div>
+<div class="g"><h4>Authorship</h4><p>Every take, note sequence and mix decision hashed with WebCrypto as it happened — proving you are the original human author before any orchestration ran.</p></div>
+<button class="b pri big2" style="width:100%">Sign revision 18</button>`],
+collab:['Collaboration','var(--p500)',`<div class="g"><h4>Participants</h4><p>You — owner, 100% master creator<br>1 vocalist — pending contribution</p></div>
+<div class="g"><h4>Split sheet</h4><p>Attribution recorded per contribution and carried into the release manifest.</p></div>
+<div class="g"><p style="color:var(--a400)">Clause SRT-1.XV.4: this panel currently holds demonstration data rather than a shared collaborative state model. Flagged as a violation, not a gap.</p></div>`],
+import:['Import Audio','var(--b500)',`<div class="g"><h4>Accepted</h4><p>.wav · .mp3 · .flac · .aif · .m4a — analysed on drop for true BPM, key, meter, transient count, SHA-256 lineage.</p></div>
+<div class="g"><h4>Decomposition</h4><p>Quick 4-stem (Demucs v4) or deep 12-class extract, populated directly into editable lanes.</p></div>`],
+piano:['Virtual Piano','var(--c400)',`<div class="g"><h4>Input</h4><p>On-screen keyboard routed through the same capture path as voice and hardware MIDI — one performance model, many ways in.</p></div>`],
+export:['Export','var(--a400)',`<div class="g"><h4>Deliverables</h4><p>24-bit/48 kHz WAV · lossless FLAC · 8 isolated stems · 480 PPQ MIDI · master manifest with provenance metadata.</p></div>`]};
+const scrim=document.getElementById('scrim'),dr=document.getElementById('dr'),md=document.getElementById('md');
+function shut(){scrim.classList.remove('on');dr.classList.remove('on');md.classList.remove('on');
+ document.querySelectorAll('.nbtn.open').forEach(b=>b.classList.remove('open'));}
 document.addEventListener('click',e=>{
-  const d=e.target.closest('[data-drawer]'),m=e.target.closest('[data-modal]');
-  if(d&&PANELS[d.dataset.drawer]){const[t,h]=PANELS[d.dataset.drawer];
-    document.getElementById('drawerTitle').textContent=t;document.getElementById('drawerBody').innerHTML=h;
-    closeAll();scrim.classList.add('on');drawer.classList.add('on');
-    if(d.classList.contains('rbtn'))d.classList.add('open');return;}
-  if(m&&MODALS[m.dataset.modal]){const[t,h]=MODALS[m.dataset.modal];
-    document.getElementById('modalTitle').textContent=t;document.getElementById('modalBody').innerHTML=h;
-    closeAll();scrim.classList.add('on');modal.classList.add('on');
-    if(m.classList.contains('rbtn'))m.classList.add('open');return;}
-  if(e.target.closest('[data-close]')||e.target===scrim)closeAll();
-});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAll();});
+ const d=e.target.closest('[data-dr]'),m=e.target.closest('[data-md]');
+ if(d&&PAN[d.dataset.dr]){const[t,k,h]=PAN[d.dataset.dr];shut();
+  document.getElementById('drT').textContent=t;document.getElementById('drT').style.setProperty('--k',k);
+  document.getElementById('drB').innerHTML=h;scrim.classList.add('on');dr.classList.add('on');
+  if(d.classList.contains('nbtn'))d.classList.add('open');return;}
+ if(m&&MOD[m.dataset.md]){const[t,k,h]=MOD[m.dataset.md];shut();
+  document.getElementById('mdT').textContent=t;document.getElementById('mdT').style.setProperty('--k',k);
+  document.getElementById('mdB').innerHTML=h;scrim.classList.add('on');md.classList.add('on');
+  if(m.classList.contains('nbtn'))m.classList.add('open');return;}
+ if(e.target.closest('[data-c]')||e.target===scrim)shut();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')shut();});
 
-/* ── dock + accordions ── */
-document.getElementById('dockToggle').addEventListener('click',()=>{
-  const d=document.getElementById('dock'),c=d.classList.toggle('collapsed');
-  document.getElementById('dockToggle').textContent=c?'⟨':'⟩';
-  document.getElementById('dockToggle').setAttribute('aria-expanded',String(!c));});
+document.getElementById('navT').addEventListener('click',()=>{const n=document.getElementById('nav'),c=n.classList.toggle('mini');
+ document.getElementById('navT').textContent=c?'⟩':'⟨ Collapse';});
+document.getElementById('dockT').addEventListener('click',()=>{const d=document.getElementById('dock'),c=d.classList.toggle('mini');
+ document.getElementById('dockT').textContent=c?'⟨':'⟩';});
 document.addEventListener('click',e=>{
-  const a=e.target.closest('[data-acc]');if(!a)return;
-  const body=document.getElementById('acc-'+a.dataset.acc),open=a.getAttribute('aria-expanded')==='true';
-  a.setAttribute('aria-expanded',String(!open));body.hidden=open;
-  a.querySelector('.caret').textContent=open?'▸':'▾';});
-
-/* ── changeset + relay gap ── */
-let rev=18,gaps=0;
-document.addEventListener('click',e=>{
-  if(e.target.id==='rejectBtn'){document.getElementById('relay').hidden=false;document.getElementById('relayText').focus();}
-  if(e.target.id==='relayCancel')document.getElementById('relay').hidden=true;
-  if(e.target.id==='applyBtn'){rev++;['revA','revB','revD'].forEach(i=>document.getElementById(i).textContent=rev);
-    document.getElementById('revC').textContent='rev '+rev;}
-  if(e.target.id==='relaySend'){
-    const t=document.getElementById('relayText'),v=t.value.trim();if(!v){t.focus();return;}
-    const th=document.getElementById('thread');
-    th.insertAdjacentHTML('beforeend',`<div class="msg you"><span class="who">You — relay gap</span>${v.replace(/</g,'&lt;')}</div>
-      <div class="msg si"><span class="who">Co-Producer</span>Heard. “Heavier, not prettier” reads as darkness up, brightness down — so I’ll thicken the low harmony and pull the upper voicing back instead of widening it. Still untouched: lead vocal, melody, beatbox timing. Logged against candidate c-0417.</div>`);
-    t.value='';document.getElementById('relay').hidden=true;
-    gaps++;document.getElementById('gapN').textContent=gaps;}
-});
-
-/* ── scope ── */
-let raf=null,tt=0;
-function startScope(){
-  const cv=document.getElementById('scope');if(!cv)return;
-  const cx=cv.getContext('2d'),reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  cancelAnimationFrame(raf);
-  (function draw(){
-    const w=cv.width,h=cv.height,mid=h/2;cx.clearRect(0,0,w,h);
-    cx.strokeStyle='#1e293b';cx.lineWidth=1;
-    for(let x=0;x<w;x+=w/16){cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,h);cx.stroke();}
-    cx.beginPath();
-    for(let x=0;x<w;x++){const p=x/w;let a;
-      if(wave==='perc'){const e=Math.max(0,1-((p*8)%1)*6);a=e*Math.sin(p*260+tt)*.9;}
-      else if(wave==='speech'){a=Math.sin(p*40+tt)*.35*(.5+.5*Math.sin(p*7+tt*.4));}
-      else{a=Math.sin(p*26+tt)*.55*(.55+.45*Math.sin(p*3.1+tt*.3));}
-      const y=mid+a*mid*.8;x?cx.lineTo(x,y):cx.moveTo(x,y);}
-    cx.strokeStyle='#f59e0b';cx.lineWidth=1.5;cx.stroke();
-    cx.strokeStyle='rgba(245,158,11,.16)';cx.lineWidth=5;cx.stroke();
-    if(!reduce){tt+=.05;raf=requestAnimationFrame(draw);}
-  })();
-}
-renderRoom('CREATE');
+ if(e.target.id==='rej'){document.getElementById('relay').hidden=false;document.getElementById('rTx').focus();}
+ if(e.target.id==='rCan')document.getElementById('relay').hidden=true;
+ if(e.target.id==='apply'){rev++;['rB','rD'].forEach(i=>document.getElementById(i).textContent=rev);document.getElementById('rC').textContent='rev '+rev;}
+ if(e.target.id==='rSend'){const t=document.getElementById('rTx'),v=t.value.trim();if(!v){t.focus();return;}
+  document.getElementById('thread').insertAdjacentHTML('beforeend',
+   `<div class="msg you"><span class="w">You — relay gap</span>${v.replace(/</g,'&lt;')}</div>
+    <div class="msg si"><span class="w">Co-Producer</span>Heard. “Heavier, not prettier” reads as darkness up, brightness down — so I’ll thicken the low harmony and pull the upper voicing back instead of widening it. Still untouched: lead vocal, melody, beatbox timing. Logged against candidate c-0417.</div>`);
+  t.value='';document.getElementById('relay').hidden=true;gaps++;document.getElementById('gN').textContent=gaps;}});
+render();
 </script>
