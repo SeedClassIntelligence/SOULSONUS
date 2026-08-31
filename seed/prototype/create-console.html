@@ -15,7 +15,11 @@ button{font-family:inherit;color:inherit;background:none;border:none;cursor:poin
 button:focus-visible{outline:2px solid var(--a500);outline-offset:1px}
 ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:#090d16}
 ::-webkit-scrollbar-thumb{background:var(--s700);border-radius:4px}::-webkit-scrollbar-thumb:hover{background:var(--a500)}
-.app{height:100%;display:grid;grid-template-rows:auto 1fr auto}
+.mockbar{position:fixed;top:0;left:0;right:0;z-index:200;background:repeating-linear-gradient(45deg,#7c2d12,#7c2d12 12px,#9a3412 12px,#9a3412 24px);color:#fff;padding:6px 14px;display:flex;align-items:center;gap:12px;font-size:11px;border-bottom:2px solid #fb923c}
+.mockbar b{font-family:var(--mono);font-size:10px;font-weight:900;letter-spacing:.16em;white-space:nowrap;background:#fb923c;color:#431407;padding:3px 9px;border-radius:5px}
+.mockbar span{opacity:.94;line-height:1.4}
+.mockbar code{font-family:var(--mono);font-size:10px;background:rgba(0,0,0,.3);padding:1px 5px;border-radius:3px}
+.app{height:calc(100% - 34px);margin-top:34px;display:grid;grid-template-rows:auto 1fr auto}
 .mid{display:grid;grid-template-columns:auto 1fr auto;min-height:0}
 
 /* brand */
@@ -252,6 +256,10 @@ textarea:focus{outline:none;border-color:var(--c500)}
 .si2 b{color:var(--s200)}
 </style>
 
+<div class="mockbar">
+  <b>MOCKUP — NOT THE APPLICATION</b>
+  <span>This is a layout drawing in <code>seed/prototype/</code>. It imports none of your components. Your real Studio Intelligence (607 lines), SeedSignature modal, toolbox and all 8 inspector drawers are untouched in <code>src/</code>. Panels here are sketches unless marked as built tools.</span>
+</div>
 <div class="app">
 <header class="hdr">
   <div class="band">
