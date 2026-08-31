@@ -863,3 +863,7 @@ It helps creators conceive, compose, produce, engineer, edit, collaborate on, an
 >
 > **Amendment C** (2026-08-31) — UI Reconciliation Specification — is recorded
 > in `seed/SRT-1-C.md`.
+
+> **Amendment D** (2026-08-31) — The Non-Reduction Clause — is recorded in
+> `seed/SRT-1-D.md`. It controls over every reorganization proposal in this
+> corpus, Amendment C included.

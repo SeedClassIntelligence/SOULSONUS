@@ -4,7 +4,8 @@
     "seed/SRT-1.md",
     "seed/SRT-1-A.md",
     "seed/SRT-1-B.md",
-    "seed/SRT-1-C.md"
+    "seed/SRT-1-C.md",
+    "seed/SRT-1-D.md"
   ],
   "checkKinds": {
     "symbol": "Identifier/pattern must occur at least `min` times within `scope`.",
@@ -1730,6 +1731,130 @@
       "checks": [
         {
           "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "D.1",
+      "section": "D",
+      "title": "The Mix room retains its full console, channel workstation and co-engineer suite",
+      "quote": "I like my mixing room",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "MixingConsoleDesk|SelectedChannelWorkstation|CoEngineerAnalysisSuite",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "D.2",
+      "section": "D",
+      "title": "The Master room retains its stereo console, telemetry suite and finalization gate",
+      "quote": "I like my mastering room",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "MasterStereoWaveformConsole|MasteringTelemetrySuite|FinalizationGateAndSign",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "D.3",
+      "section": "D",
+      "title": "The four-condition finalization gate still blocks when unsatisfied",
+      "quote": "GATE NOT SATISFIED",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "GATE NOT SATISFIED",
+          "scope": [
+            "src/components/finish"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "D.4",
+      "section": "D",
+      "title": "Reference A/B and mono-compatibility measurement survive in both rooms",
+      "quote": "ANALYSE THIS MIX / MEASURE THIS MASTER",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "Mono Risk|Mono Compatible",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 2
+        }
+      ]
+    },
+    {
+      "id": "D.5",
+      "section": "D",
+      "title": "Every side-panel drawer and modal survives reorganization",
+      "quote": "I like all of my side panel models",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "Drawer|Modal",
+          "scope": [
+            "src/components"
+          ],
+          "minFiles": 12
+        }
+      ]
+    },
+    {
+      "id": "D.6",
+      "section": "D",
+      "title": "Write & Record retains the four-layer vocal architecture",
+      "quote": "the write record. So we got some good work there.",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "VocalCompBuilder|VocalTakeStack|VocalDspChain|VoiceIdentitySynthesis",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "D.7",
+      "section": "D",
+      "title": "Per-channel DSP depth is not thinned",
+      "quote": "I am trying to organize my process.",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "highShelf|lowShelf|compressorRatio|reverbSend",
+          "scope": [
+            "src/audio"
+          ],
+          "minFiles": 2
+        }
+      ]
+    },
+    {
+      "id": "D.8",
+      "section": "D",
+      "title": "No organizing change removes capability to gain calm",
+      "quote": "I am not trying to just simply replace none of that shit.",
+      "checks": [
+        {
+          "kind": "attest",
+          "note": "Sign only when the change added navigation without removing any control."
         }
       ]
     }
