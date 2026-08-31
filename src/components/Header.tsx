@@ -1,3 +1,4 @@
+import { SoulSonusMark, SoulSonusWordmark } from './brand/SoulSonusLogo';
 import React, { useState } from 'react';
 import {
   Play,
@@ -79,18 +80,18 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center space-x-3">
           <button
             onClick={onBackToLanding}
-            className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-rose-600 flex items-center justify-center font-black text-base text-slate-950 shadow-md shadow-amber-500/20 hover:scale-105 transition cursor-pointer"
+            className="hover:scale-105 transition cursor-pointer"
             title="Return to SoulSonus Story & Landing Page"
           >
-            S
+            <SoulSonusMark size="md" />
           </button>
           <div className="flex items-center space-x-2">
             <button
               onClick={onBackToLanding}
-              className="text-sm font-black tracking-wider text-slate-100 uppercase hover:text-amber-300 transition cursor-pointer"
+              className="hover:opacity-80 transition cursor-pointer"
               title="Return to SoulSonus Story & Landing Page"
             >
-              SOULSONUS
+              <SoulSonusWordmark size="sm" />
             </button>
             <button
               onClick={onBackToLanding}

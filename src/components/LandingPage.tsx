@@ -1,3 +1,4 @@
+import { SoulSonusLogo, SoulSonusMark, SoulSonusWordmark } from './brand/SoulSonusLogo';
 import React, { useState } from 'react';
 import {
   Sparkles,
@@ -73,21 +74,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
 
       {/* Sticky Top Header Nav */}
       <nav className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-cyan-400 p-0.5 shadow-lg shadow-amber-500/20 flex items-center justify-center">
-            <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center font-black text-amber-400 font-mono text-sm">
-              S
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <span className="font-mono font-black text-base tracking-widest bg-gradient-to-r from-amber-300 via-slate-100 to-cyan-300 bg-clip-text text-transparent">
-              SOULSONUS
-            </span>
-            <span className="font-mono text-[9px] text-slate-400 tracking-wider">
-              DAW & INTELLIGENCE
-            </span>
-          </div>
-        </div>
+        <SoulSonusLogo size="md" sublabel="DAW & INTELLIGENCE" />
 
         <div className="hidden xl:flex items-center space-x-5 text-xs font-mono text-slate-400">
           <a href="#philosophy" className="hover:text-amber-300 transition">PHILOSOPHY</a>
@@ -838,10 +825,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterStudio }) => {
       <footer className="border-t border-slate-800/80 bg-slate-950 py-10 px-6 font-mono text-xs text-slate-500 relative z-10">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center space-x-3">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-amber-500 to-cyan-400 flex items-center justify-center font-bold text-xs text-slate-950">
-              S
-            </div>
-            <span className="font-bold text-slate-300">SOULSONUS</span>
+            <SoulSonusMark size="sm" />
+            <SoulSonusWordmark size="sm" />
             <span>• Built for Human Creators</span>
           </div>
 
