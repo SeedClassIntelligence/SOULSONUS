@@ -1,6 +1,11 @@
 {
   "spec": "SRT-1 Seed Conformance Registry",
-  "sources": ["seed/SRT-1.md", "seed/SRT-1-A.md"],
+  "sources": [
+    "seed/SRT-1.md",
+    "seed/SRT-1-A.md",
+    "seed/SRT-1-B.md",
+    "seed/SRT-1-C.md"
+  ],
   "checkKinds": {
     "symbol": "Identifier/pattern must occur at least `min` times within `scope`.",
     "wired": "Pattern must occur in at least `minFiles` DISTINCT files. Proves the concept is connected, not merely declared. Closes the Platform Audit Protocol's wiring-gap failure.",
@@ -8,118 +13,1725 @@
     "attest": "Not mechanically checkable. Requires a dated, evidenced signature in seed/attestations.json."
   },
   "clauses": [
-    {"id":"I.1","section":"I","title":"Creator intent is a first-class object distinct from audio","quote":"SoulSonus translates the human.","checks":[{"kind":"wired","pattern":"CreatorMusicSignature","scope":["src"],"minFiles":3}]},
-    {"id":"I.2","section":"I","title":"Realization carries creator identity, not only a target role","quote":"the interpretive bridge between that internal creative conception and an executable musical production","checks":[{"kind":"wired","pattern":"creatorSignature","scope":["src"],"minFiles":2}]},
-    {"id":"I.3","section":"I","title":"Non-musical expression is treated as creative information, not raw audio","quote":"interpret those different signals as creative information, not merely as raw audio","checks":[{"kind":"attest"}]},
-
-    {"id":"II.1","section":"II","title":"BPM is derived by the system, never required from the creator","quote":"A creator may know exactly what a song should sound like while lacking the technical vocabulary","checks":[{"kind":"symbol","pattern":"detectBpm|inferTempo|estimateTempo|analyzeBpm|trueBpm|detectedBpm","scope":["src"],"min":1}]},
-    {"id":"II.2","section":"II","title":"Key/scale is derived by the system","quote":"key; chord progression","checks":[{"kind":"symbol","pattern":"detectKey|keyDetect|detectedKey|keySignature|estimateKey","scope":["src"],"min":1}]},
-    {"id":"II.3","section":"II","title":"A complete path exists from untrained input to finished deliverable with zero parameter entry","quote":"What if the musician did not have to learn the machine's language before the machine could understand the musician?","checks":[{"kind":"attest"}]},
-
-    {"id":"III.1","section":"III","title":"Vocal mimicry is a named capture modality","quote":"The creator imitates an instrument, rhythm, bassline, melody... with their voice","checks":[{"kind":"symbol","pattern":"'MIMIC'|\"MIMIC\"|MIMIC","scope":["src"],"min":1}]},
-    {"id":"III.2","section":"III","title":"Humming resolves to a pitch trajectory and note candidates","quote":"audio waveform -> pitch trajectory -> note candidates -> timing grid","checks":[{"kind":"wired","pattern":"autoCorrelate|basicPitch|pitchHz","scope":["src"],"minFiles":3}]},
-    {"id":"III.3","section":"III","title":"Beatboxing is classified into percussive families, not looped","quote":"Beatboxing is not merely recorded and looped. The original concept was to interpret it.","checks":[{"kind":"wired","pattern":"PERCUSSIVE_CLASSES|classifyOnset","scope":["src"],"minFiles":2}]},
-    {"id":"III.4","section":"III","title":"One sung performance feeds several processors simultaneously","quote":"SoulSonus should not unnecessarily destroy the multidimensional character of the input. A single performance can feed several processors.","checks":[{"kind":"symbol","pattern":"MultiProcessorFanout|fanOutPerformance|ExpressionFanout","scope":["src"],"min":1}]},
-    {"id":"III.5","section":"III","title":"Spoken creative direction reaches the reasoning layer, not a fixed command table","quote":"The intelligence layer interprets the creative request and maps it to executable musical operations.","checks":[{"kind":"symbol","pattern":"reasoningFallthrough|toReasoningProvider|REASONING_FALLTHROUGH","scope":["src/audio/voiceCommands.ts","src/lib"],"min":1}]},
-    {"id":"III.6","section":"III","title":"Language understanding is not capped by a regex command table","quote":"\"Make that transition feel cinematic.\"","checks":[{"kind":"forbidden","pattern":"action: 'UNKNOWN'","scope":["src/audio/voiceCommands.ts"],"note":"An UNKNOWN terminal state means creative language dies at the parser. Permitted only once a reasoning fallthrough exists (III.5)."}]},
-
-    {"id":"IV.1","section":"IV","title":"The co-creation loop exists as named architecture","quote":"Creator Expression -> Multimodal Musical Interpretation -> Creative Intent Representation -> ...","checks":[{"kind":"symbol","pattern":"PROPOSE|CANDIDATE|AUDITION","scope":["src/lib/intelligence"],"min":2}]},
-    {"id":"IV.2","section":"IV","title":"Creator evaluation is a mandatory stage — nothing auto-commits","quote":"Creator Evaluation","checks":[{"kind":"wired","pattern":"CandidateGovernanceState|creatorDecision|COMMITTED|REJECTED","scope":["src"],"minFiles":3}]},
-    {"id":"IV.3","section":"IV","title":"The Interpretation stage is a distinct, addressable representation","quote":"Multimodal Musical Interpretation","checks":[{"kind":"symbol","pattern":"InterpretationCandidate|MusicalInterpretation|RoleHypothesis","scope":["src"],"min":1}]},
-    {"id":"IV.4","section":"IV","title":"Creative Intent is a distinct, addressable representation","quote":"Creative Intent Representation","checks":[{"kind":"symbol","pattern":"CreativeIntent","scope":["src"],"min":1}]},
-
-    {"id":"V.1","section":"V","title":"Emotion is a multidimensional state, not a classification","quote":"multidimensional rather than a simple happy/sad classification","checks":[{"kind":"symbol","pattern":"ExpressionState|EmotionalState","scope":["src/types"],"min":1}]},
-    {"id":"V.2","section":"V","title":"All seven named affective dimensions are represented","quote":"valence / arousal / tension / confidence / intimacy / darkness / movement","checks":[{"kind":"symbol","pattern":"valence","scope":["src"],"min":1},{"kind":"symbol","pattern":"arousal","scope":["src"],"min":1},{"kind":"symbol","pattern":"tension","scope":["src/types"],"min":1},{"kind":"symbol","pattern":"confidence","scope":["src/types"],"min":1},{"kind":"symbol","pattern":"intimacy","scope":["src/types"],"min":1},{"kind":"symbol","pattern":"darkness","scope":["src"],"min":1},{"kind":"symbol","pattern":"movement","scope":["src"],"min":1}]},
-    {"id":"V.3","section":"V","title":"Emotion is derived from measured vocal features, not only creator-typed","quote":"vocal pitch; pitch variability; speaking or singing rate; intensity; spectral characteristics","checks":[{"kind":"symbol","pattern":"deriveExpression|analyzeProsody|extractAffect","scope":["src/audio"],"min":1}]},
-    {"id":"V.4","section":"V","title":"Emotional state reaches realization as a control variable","quote":"uses those characteristics as compositional control variables across multiple musical dimensions","checks":[{"kind":"wired","pattern":"expressionState|ExpressionState","scope":["src/lib"],"minFiles":2}]},
-    {"id":"V.5","section":"V","title":"Emotion is never reduced to mode selection","quote":"detect emotion -> select C major or A minor. That is nowhere near the conceptual capacity","checks":[{"kind":"attest"}]},
-
-    {"id":"VI.1","section":"VI","title":"Mode A — transcription-preserving lyric formation exists","quote":"It then cleans or structures the material while preserving the creator's intent.","checks":[{"kind":"symbol","pattern":"syllable|Syllable","scope":["src"],"min":1}]},
-    {"id":"VI.2","section":"VI","title":"Mode B — phonetic/semantic lyric inference from non-lexical singing exists","quote":"Instead of treating the input as failed speech recognition, SoulSonus can treat the performance as a lyric seed.","checks":[{"kind":"symbol","pattern":"LyricSeed|phoneticSeed|PhoneticFragment|lyricInference","scope":["src"],"min":1}]},
-    {"id":"VI.3","section":"VI","title":"Proposed lyrics are constrained by the performed cadence","quote":"propose coherent language that fits the existing performance","checks":[{"kind":"symbol","pattern":"stressPattern|syllableMap|rhymePosition|cadenceLock","scope":["src"],"min":1}]},
-    {"id":"VI.4","section":"VI","title":"Words recognized, phonetic fragments, syllable positions and semantic intent are distinguished","quote":"It should distinguish: Words recognized / from phonetic fragments / from melodic syllable positions / from semantic intent.","amendment":"A.11","checks":[{"kind":"symbol","pattern":"LyricSourceKind|lyricProvenance|WORD_RECOGNIZED","scope":["src"],"min":1}]},
-
-    {"id":"VII.1","section":"VII","title":"The ten-stage beatbox pipeline is present","quote":"acoustic feature extraction ... editable rhythm generation","checks":[{"kind":"wired","pattern":"extractFeatures|classifyOnset|rmsToVelocity","scope":["src/audio"],"minFiles":2}]},
-    {"id":"VII.2","section":"VII","title":"Four interpretation modes exist: literal, assisted, groove, reinterpretation","quote":"literal mode / assisted mode / groove mode / reinterpretation mode","checks":[{"kind":"symbol","pattern":"InterpretationMode|LITERAL|REINTERPRET","scope":["src/types"],"min":1}]},
-    {"id":"VII.3","section":"VII","title":"Microtiming is preserved as measured data, not discarded on quantize","quote":"Critically, the user should retain the feel of their performance.","checks":[{"kind":"symbol","pattern":"microtiming|microTiming|meanOffsetMs|pocket","scope":["src"],"min":1}]},
-
-    {"id":"VIII.1","section":"VIII","title":"One captured performance is renderable to multiple instrument families","quote":"The same vocal input could be rendered into: bass; guitar; strings; synthesizer; percussion; brass","checks":[{"kind":"wired","pattern":"RealizationRoute","scope":["src"],"minFiles":3}]},
-    {"id":"VIII.2","section":"VIII","title":"The system proposes ranked role hypotheses rather than requiring instrument declaration first","quote":"Instead of requiring the creator to identify the instrument first, the platform could infer...","amendment":"A.9","checks":[{"kind":"symbol","pattern":"RoleHypothesis|roleCandidates|inferRole","scope":["src"],"min":1}]},
-    {"id":"VIII.3","section":"VIII","title":"Role hypotheses carry explicit confidence","quote":"Bass line - 82% / Low synth - 68% / Kick/bass hybrid - 41%","amendment":"A.9","checks":[{"kind":"symbol","pattern":"roleConfidence|RoleHypothesis","scope":["src"],"min":1}]},
-    {"id":"VIII.4","section":"VIII","title":"The stored object is musical intention (symbolic), not only waveform","quote":"The important object is the musical intention, not the waveform itself.","checks":[{"kind":"wired","pattern":"NoteEvent","scope":["src"],"minFiles":5}]},
-
-    {"id":"IX.1","section":"IX","title":"Vocal synthesis is conditioned by named creator parameters","quote":"A generative vocal synthesis subsystem conditioned by creator-defined musical and expressive parameters.","checks":[{"kind":"wired","pattern":"formant|breathiness|register","scope":["src"],"minFiles":3}]},
-    {"id":"IX.2","section":"IX","title":"The invention is not bound to one model family","quote":"the functional invention should not unnecessarily depend on one model family","checks":[{"kind":"wired","pattern":"ReasoningProvider|RealizerBackend","scope":["src"],"minFiles":3}]},
-    {"id":"IX.3","section":"IX","title":"Voice identity requires a consent proof","quote":"accent or stylistic characteristics where authorized","checks":[{"kind":"wired","pattern":"consent|Consent|PROOF_","scope":["src"],"minFiles":2}]},
-
-    {"id":"X.1","section":"X","title":"Instructions are interpreted against current session state","quote":"The system interprets the instruction against the current session state. That is crucial.","checks":[{"kind":"symbol","pattern":"StudioContextCompiler","scope":["src/lib"],"min":1}]},
-    {"id":"X.2","section":"X","title":"Transformations are non-destructive","quote":"Then it creates a non-destructive transformation.","checks":[{"kind":"wired","pattern":"non-destructive|nonDestructive|candidate","scope":["src/lib"],"minFiles":3}]},
-    {"id":"X.3","section":"X","title":"Named preservation is enforceable as an invariant, not a prompt request","quote":"\"Keep the vocals exactly where they are.\"","checks":[{"kind":"wired","pattern":"IntentViolation|preservedProperties|ThresholdPolicy","scope":["src"],"minFiles":3}]},
-    {"id":"X.4","section":"X","title":"Plural alternates can be requested and held simultaneously","quote":"\"Give me three alternate basslines.\"","checks":[{"kind":"symbol","pattern":"GenerationCandidate\\[\\]|candidates:","scope":["src"],"min":1}]},
-
-    {"id":"XI.1","section":"XI","title":"Persistent project state exists","quote":"The system therefore requires persistent project state.","checks":[{"kind":"symbol","pattern":"projectPersistence|StudioSessionContext","scope":["src"],"min":1}]},
-    {"id":"XI.2","section":"XI","title":"Undo/redo exists","quote":"undo/redo","checks":[{"kind":"symbol","pattern":"undoLabel|redoLabel","scope":["src/app"],"min":1}]},
-    {"id":"XI.3","section":"XI","title":"Revision history exists and is addressable","quote":"revision history","checks":[{"kind":"wired","pattern":"projectVersionId|ProjectVersion","scope":["src"],"minFiles":2}]},
-    {"id":"XI.4","section":"XI","title":"Versions are branchable, not linear","quote":"branchable versions","checks":[{"kind":"symbol","pattern":"RevisionTree|branchFrom|parentRevisionId","scope":["src"],"min":1}]},
-    {"id":"XI.5","section":"XI","title":"Provenance is recorded per operation","quote":"provenance","checks":[{"kind":"wired","pattern":"SeedSignature|seedSignature","scope":["src"],"minFiles":3}]},
-    {"id":"XI.6","section":"XI","title":"Edits are region-scoped — \"only change bar eight\" is executable","quote":"\"Only change bar eight.\"","checks":[{"kind":"symbol","pattern":"repaintStartSeconds","scope":["src/lib"],"min":1},{"kind":"forbidden","pattern":"not yet implemented","scope":["src/lib/realizationRouter.ts"],"note":"ACE_REPAINT and ACE_GENERATIVE_EXTENSION are declared but self-documented as unimplemented."}]},
-    {"id":"XI.7","section":"XI","title":"Material can be recombined across revisions","quote":"\"Give me the drums from version 12 with the bass from version 16.\"","amendment":"A.14","checks":[{"kind":"symbol","pattern":"recombineRevisions|crossRevisionPick|adoptFromRevision","scope":["src"],"min":1}]},
-
-    {"id":"XII.1","section":"XII","title":"Full conventional DAW surfaces remain present","quote":"tracks; mixer; timeline; instruments; plugins; effects; automation; stems; recording; editing","checks":[{"kind":"wired","pattern":"automation|Automation","scope":["src"],"minFiles":4}]},
-    {"id":"XII.2","section":"XII","title":"Intelligence operates on the same state as the DAW, not a side application","quote":"It becomes intelligence-mediated.","checks":[{"kind":"symbol","pattern":"StudioContextCompiler","scope":["src/lib/intelligence"],"min":1}]},
-    {"id":"XII.3","section":"XII","title":"Professional controls are never removed to simplify","quote":"We should not turn SoulSonus into six giant buttons... That would destroy much of what you've already built.","amendment":"A.16","checks":[{"kind":"attest"}]},
-
-    {"id":"XIII.1","section":"XIII","title":"The intelligence can read the whole session state","quote":"This intelligence should understand the entire DAW session state.","checks":[{"kind":"symbol","pattern":"StudioContextCompiler","scope":["src/lib"],"min":1}]},
-    {"id":"XIII.2","section":"XIII","title":"Diagnostic reasoning about the mix exists","quote":"\"Why does the vocal sound buried?\"","checks":[{"kind":"symbol","pattern":"maskingAnalysis|masking","scope":["src"],"min":1}]},
-    {"id":"XIII.3","section":"XIII","title":"Actions remain non-destructive and inspectable","quote":"actions should remain non-destructive and inspectable","checks":[{"kind":"symbol","pattern":"DawActionProposal","scope":["src/lib"],"min":1}]},
-    {"id":"XIII.4","section":"XIII","title":"Studio Intelligence is persistent and session-aware, not a per-question widget","quote":"When opened, Studio Intelligence should become the session-aware co-producer/engineer","amendment":"A.12","checks":[{"kind":"symbol","pattern":"StudioEmphasis","scope":["src/lib"],"min":1}]},
-    {"id":"XIII.5","section":"XIII","title":"Proposals declare what will NOT change","quote":"Will NOT change: Lead vocal / Melody / Beatbox timing / Lyrics","amendment":"A.13","checks":[{"kind":"symbol","pattern":"willNotChange|preserveDeclaration","scope":["src"],"min":1}]},
-    {"id":"XIII.6","section":"XIII","title":"Every proposal offers Preview | Apply | Alternative | Reject","quote":"Then: Preview | Apply | Alternative | Reject","amendment":"A.13","checks":[{"kind":"symbol","pattern":"Alternative|requestAlternative","scope":["src/components"],"min":1}]},
-
-    {"id":"XIV.1","section":"XIV","title":"Genre is a conditioning parameter reaching realization, not an output label","quote":"The system can therefore use genre as a parameter rather than an output label.","checks":[{"kind":"wired","pattern":"genre|Genre","scope":["src/lib"],"minFiles":2}]},
-    {"id":"XIV.2","section":"XIV","title":"Re-interpretation preserves creative identity while changing production grammar","quote":"The underlying creative identity remains while production grammar changes.","checks":[{"kind":"attest"}]},
-
-    {"id":"XV.1","section":"XV","title":"A real shared collaborative state model exists","quote":"A serious implementation requires more than Socket.io. It needs a collaborative state model.","checks":[{"kind":"symbol","pattern":"CollaborativeState|sharedSession|syncTransport|CollaborationStore","scope":["src"],"min":1}]},
-    {"id":"XV.2","section":"XV","title":"Roles and permissions govern contribution","quote":"control permissions","checks":[{"kind":"wired","pattern":"CollaboratorRole","scope":["src"],"minFiles":2}]},
-    {"id":"XV.3","section":"XV","title":"Attribution is preserved per contribution","quote":"what creative contribution belongs to whom","checks":[{"kind":"wired","pattern":"Contribution","scope":["src"],"minFiles":2}]},
-    {"id":"XV.4","section":"XV","title":"No hardcoded demonstration collaborators are presented as functioning collaboration","quote":"It should therefore not be relegated to a speculative roadmap.","checks":[{"kind":"forbidden","pattern":"Aria Vocalist","scope":["src"],"note":"Hardcoded demo data standing in for the collaborative state model."}]},
-
-    {"id":"XVI.1","section":"XVI","title":"Creative analytics exist","quote":"iteration frequency; sections repeatedly revised; abandoned ideas; preferred sounds","checks":[{"kind":"symbol","pattern":"CreativeAnalytics|iterationFrequency|abandonedIdeas","scope":["src"],"min":1}]},
-    {"id":"XVI.2","section":"XVI","title":"Musical analytics exist","quote":"tempo; key; dynamic range; spectral balance; harmonic density","checks":[{"kind":"wired","pattern":"spectral|dynamicRange|loudness","scope":["src/audio"],"minFiles":3}]},
-    {"id":"XVI.3","section":"XVI","title":"Audience analytics exist once content is published","quote":"listens; completion; replay; skip points; shares","checks":[{"kind":"symbol","pattern":"AudienceAnalytics|replayRate|skipPoint","scope":["src"],"min":1}]},
-    {"id":"XVI.4","section":"XVI","title":"Analytics translate into creative feedback","quote":"\"You consistently reject brighter synth sounds; should I prioritize warmer timbres?\"","checks":[{"kind":"symbol","pattern":"CreativeRecommendation|preferenceFeedback","scope":["src"],"min":1}]},
-
-    {"id":"XVII.1","section":"XVII","title":"A creator who has never used a DAW has a complete path to a finished track","quote":"SoulSonus should support users ranging from someone who has never used a DAW to a professional producer.","checks":[{"kind":"attest"}]},
-    {"id":"XVII.2","section":"XVII","title":"Expression entry is always present as a first-class surface","quote":"Talk | Sing | Hum | Beatbox | Mimic | Upload — \"Tell me or perform what you hear.\"","amendment":"A.18","checks":[{"kind":"symbol","pattern":"ExpressionEngine|LiveExpressionEngine","scope":["src/components"],"min":1}]},
-    {"id":"XVII.3","section":"XVII","title":"Progressive disclosure: four declared levels, not simultaneous exposure","quote":"It is too simultaneous... Level 1 Creative context / Level 2 Current creative activity / Level 3 Production workspace / Level 4 Specialist utilities","amendment":"A.17","checks":[{"kind":"symbol","pattern":"DisclosureLevel|SurfaceLevel","scope":["src"],"min":1}]},
-    {"id":"XVII.4","section":"XVII","title":"Novice and professional surfaces share one engine and one state","quote":"Same engine. Different operational surface.","checks":[{"kind":"attest"}]},
-
-    {"id":"XVIII.1","section":"XVIII","title":"Voice cloning requires recorded consent","quote":"voice cloning consent","checks":[{"kind":"wired","pattern":"consent|Consent","scope":["src"],"minFiles":2}]},
-    {"id":"XVIII.2","section":"XVIII","title":"Provenance ledger is immutable and per-operation","quote":"provenance","checks":[{"kind":"symbol","pattern":"createSeedSignatureRecord","scope":["src/lib"],"min":1}]},
-    {"id":"XVIII.3","section":"XVIII","title":"AI-generated and human-generated material are distinguishable in state","quote":"AI-generated material / human-generated material","amendment":"A.12","checks":[{"kind":"symbol","pattern":"origin|Origin|isGenerated|humanAuthored","scope":["src/types"],"min":1}]},
-    {"id":"XVIII.4","section":"XVIII","title":"Synthetic media disclosure reaches the release manifest","quote":"synthetic media disclosure where appropriate","checks":[{"kind":"symbol","pattern":"disclosure|syntheticDisclosure","scope":["src/audio/deliveryPackage.ts","src/components/finish"],"min":1}]},
-    {"id":"XVIII.5","section":"XVIII","title":"Creator ownership is never transferred to the platform by generation","quote":"AI augments the creator rather than replacing creative ownership.","checks":[{"kind":"attest"}]},
-
-    {"id":"XIX.1","section":"XIX","title":"Creator-side monetization surfaces exist","quote":"A creator could monetize: songs; beats; stems; remixes...","checks":[{"kind":"symbol","pattern":"Monetization|licenseOffer|Marketplace","scope":["src"],"min":1}]},
-    {"id":"XIX.2","section":"XIX","title":"Platform-side economics are represented separately from creator economics","quote":"These should be separated into creator revenue and platform revenue.","checks":[{"kind":"attest"}]},
-    {"id":"XIX.3","section":"XIX","title":"Revenue figures are never stated as established performance","quote":"Those should be treated as scenario assumptions, not established financial performance.","checks":[{"kind":"attest"}]},
-
-    {"id":"XX.1","section":"XX","title":"SoulSonus scope is CREATION — conception through prepared asset","quote":"It helps creators conceive, compose, produce, engineer, edit, collaborate on, and prepare music.","checks":[{"kind":"attest"}]},
-    {"id":"XX.2","section":"XX","title":"No distribution/streaming-platform functionality inside this repository","quote":"A major source of drift in this thread was repeated blending of the two platforms.","checks":[{"kind":"forbidden","pattern":"streamingPlatform|distributeToStores|AtmosphereClient","scope":["src"]}]},
-    {"id":"XX.3","section":"XX","title":"OPEN — Atmosphere's counterpart definition was not transmitted","quote":"[source text ends]","checks":[{"kind":"attest","blocked":true,"note":"Cannot be closed until the original section XX text is supplied. Recorded, not invented."}]},
-
-    {"id":"A.1","section":"A","title":"The five-stage lifecycle is preserved","quote":"Create -> Write & Record -> Mix -> Master -> Release. I would absolutely preserve that.","checks":[{"kind":"wired","pattern":"RELEASE|MASTER|MIX","scope":["src/components"],"minFiles":3}]},
-    {"id":"A.2","section":"A","title":"Real-time per-hit channel separation during performance is preserved","quote":"Hits split onto isolated channels in real-time as you perform.","checks":[{"kind":"symbol","pattern":"onCaptureEvent","scope":["src/audio"],"min":1}]},
-    {"id":"A.3","section":"A","title":"All existing specialist workstations survive reorganization","quote":"These aren't random buttons. Several appear to represent distinct production subsystems.","checks":[{"kind":"wired","pattern":"Drawer|Modal","scope":["src/components"],"minFiles":10}]},
-    {"id":"A.4","section":"A","title":"Sections carry semantic identity, enabling \"make the chorus bigger\"","quote":"Those section objects provide the semantic structure necessary for conversational production.","checks":[{"kind":"wired","pattern":"SectionBuilder|sections","scope":["src"],"minFiles":3}]},
-    {"id":"A.5","section":"A","title":"Manual manipulation and AI realization remain co-equal","quote":"The user can either manually manipulate music or ask SoulSonus to realize an intention. That duality should stay.","checks":[{"kind":"attest"}]},
-    {"id":"A.6","section":"A","title":"Conventional inputs remain first-class alongside expression","quote":"MIDI keyboards, hardware controllers, microphones, audio files, instruments and conventional DAW interaction all remain legitimate first-class inputs.","checks":[{"kind":"wired","pattern":"midi|MIDI","scope":["src"],"minFiles":4}]},
-    {"id":"A.7","section":"A","title":"The Creative Intent panel exposes the system's understanding to the creator","quote":"But SoulSonus needs somewhere to expose its understanding. Otherwise the intelligence remains invisible.","checks":[{"kind":"symbol","pattern":"CreativeIntentPanel|CreativeIntent","scope":["src/components"],"min":1}]},
-    {"id":"A.8","section":"A","title":"The interpretation step is visible to the creator before realization","quote":"Your current screen does Performance -> Realization extremely well visually. We need to expose the middle.","checks":[{"kind":"symbol","pattern":"InterpretationPanel|RoleHypothesis","scope":["src/components"],"min":1}]},
-    {"id":"A.9","section":"A","title":"Live Expression Engine carries all seven modalities","quote":"Beatbox | Hum | Sing | Mimic | Clap/Tap | Speak | MIDI","checks":[{"kind":"symbol","pattern":"ExpressionModality","scope":["src"],"min":1}]},
-    {"id":"A.10","section":"A","title":"Modality context changes what the engine shows and offers","quote":"Then context changes depending on what you're doing.","checks":[{"kind":"symbol","pattern":"ExpressionModality","scope":["src/components"],"min":1}]},
-    {"id":"A.11","section":"A","title":"Applying a change creates a new revision rather than overwriting","quote":"Applying creates: Revision 19 rather than overwriting Revision 18.","checks":[{"kind":"symbol","pattern":"parentRevisionId|createRevision","scope":["src"],"min":1}]},
-    {"id":"A.12","section":"A","title":"Studio Intelligence can explain its musical reasoning in creator terms","quote":"\"I preserved that lift by widening the harmony and increasing rhythmic density rather than increasing tempo.\"","checks":[{"kind":"symbol","pattern":"rationale|explanation|reasoningText","scope":["src/lib"],"min":1}]},
-    {"id":"A.13","section":"A","title":"No new specialist workstations until existing ones are reconciled","quote":"I would resist adding more miscellaneous workstations until we've reconciled the ones already present.","checks":[{"kind":"attest","note":"A moratorium clause. Signing this means: this change added no new top-level workstation."}]}
+    {
+      "id": "I.1",
+      "section": "I",
+      "title": "Creator intent is a first-class object distinct from audio",
+      "quote": "SoulSonus translates the human.",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "CreatorMusicSignature",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "I.2",
+      "section": "I",
+      "title": "Realization carries creator identity, not only a target role",
+      "quote": "the interpretive bridge between that internal creative conception and an executable musical production",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "creatorSignature",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 2
+        }
+      ]
+    },
+    {
+      "id": "I.3",
+      "section": "I",
+      "title": "Non-musical expression is treated as creative information, not raw audio",
+      "quote": "interpret those different signals as creative information, not merely as raw audio",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "II.1",
+      "section": "II",
+      "title": "BPM is derived by the system, never required from the creator",
+      "quote": "A creator may know exactly what a song should sound like while lacking the technical vocabulary",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "detectBpm|inferTempo|estimateTempo|analyzeBpm|trueBpm|detectedBpm",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "II.2",
+      "section": "II",
+      "title": "Key/scale is derived by the system",
+      "quote": "key; chord progression",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "detectKey|keyDetect|detectedKey|keySignature|estimateKey",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "II.3",
+      "section": "II",
+      "title": "A complete path exists from untrained input to finished deliverable with zero parameter entry",
+      "quote": "What if the musician did not have to learn the machine's language before the machine could understand the musician?",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "III.1",
+      "section": "III",
+      "title": "Vocal mimicry is a named capture modality",
+      "quote": "The creator imitates an instrument, rhythm, bassline, melody... with their voice",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "'MIMIC'|\"MIMIC\"|MIMIC",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "III.2",
+      "section": "III",
+      "title": "Humming resolves to a pitch trajectory and note candidates",
+      "quote": "audio waveform -> pitch trajectory -> note candidates -> timing grid",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "autoCorrelate|basicPitch|pitchHz",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "III.3",
+      "section": "III",
+      "title": "Beatboxing is classified into percussive families, not looped",
+      "quote": "Beatboxing is not merely recorded and looped. The original concept was to interpret it.",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "PERCUSSIVE_CLASSES|classifyOnset",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 2
+        }
+      ]
+    },
+    {
+      "id": "III.4",
+      "section": "III",
+      "title": "One sung performance feeds several processors simultaneously",
+      "quote": "SoulSonus should not unnecessarily destroy the multidimensional character of the input. A single performance can feed several processors.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "MultiProcessorFanout|fanOutPerformance|ExpressionFanout",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "III.5",
+      "section": "III",
+      "title": "Spoken creative direction reaches the reasoning layer, not a fixed command table",
+      "quote": "The intelligence layer interprets the creative request and maps it to executable musical operations.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "reasoningFallthrough|toReasoningProvider|REASONING_FALLTHROUGH",
+          "scope": [
+            "src/audio/voiceCommands.ts",
+            "src/lib"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "III.6",
+      "section": "III",
+      "title": "Language understanding is not capped by a regex command table",
+      "quote": "\"Make that transition feel cinematic.\"",
+      "checks": [
+        {
+          "kind": "forbidden",
+          "pattern": "action: 'UNKNOWN'",
+          "scope": [
+            "src/audio/voiceCommands.ts"
+          ],
+          "note": "An UNKNOWN terminal state means creative language dies at the parser. Permitted only once a reasoning fallthrough exists (III.5)."
+        }
+      ]
+    },
+    {
+      "id": "IV.1",
+      "section": "IV",
+      "title": "The co-creation loop exists as named architecture",
+      "quote": "Creator Expression -> Multimodal Musical Interpretation -> Creative Intent Representation -> ...",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "PROPOSE|CANDIDATE|AUDITION",
+          "scope": [
+            "src/lib/intelligence"
+          ],
+          "min": 2
+        }
+      ]
+    },
+    {
+      "id": "IV.2",
+      "section": "IV",
+      "title": "Creator evaluation is a mandatory stage — nothing auto-commits",
+      "quote": "Creator Evaluation",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "CandidateGovernanceState|creatorDecision|COMMITTED|REJECTED",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "IV.3",
+      "section": "IV",
+      "title": "The Interpretation stage is a distinct, addressable representation",
+      "quote": "Multimodal Musical Interpretation",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "InterpretationCandidate|MusicalInterpretation|RoleHypothesis",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "IV.4",
+      "section": "IV",
+      "title": "Creative Intent is a distinct, addressable representation",
+      "quote": "Creative Intent Representation",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "CreativeIntent",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "V.1",
+      "section": "V",
+      "title": "Emotion is a multidimensional state, not a classification",
+      "quote": "multidimensional rather than a simple happy/sad classification",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "ExpressionState|EmotionalState",
+          "scope": [
+            "src/types"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "V.2",
+      "section": "V",
+      "title": "All seven named affective dimensions are represented",
+      "quote": "valence / arousal / tension / confidence / intimacy / darkness / movement",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "valence",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        },
+        {
+          "kind": "symbol",
+          "pattern": "arousal",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        },
+        {
+          "kind": "symbol",
+          "pattern": "tension",
+          "scope": [
+            "src/types"
+          ],
+          "min": 1
+        },
+        {
+          "kind": "symbol",
+          "pattern": "confidence",
+          "scope": [
+            "src/types"
+          ],
+          "min": 1
+        },
+        {
+          "kind": "symbol",
+          "pattern": "intimacy",
+          "scope": [
+            "src/types"
+          ],
+          "min": 1
+        },
+        {
+          "kind": "symbol",
+          "pattern": "darkness",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        },
+        {
+          "kind": "symbol",
+          "pattern": "movement",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "V.3",
+      "section": "V",
+      "title": "Emotion is derived from measured vocal features, not only creator-typed",
+      "quote": "vocal pitch; pitch variability; speaking or singing rate; intensity; spectral characteristics",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "deriveExpression|analyzeProsody|extractAffect",
+          "scope": [
+            "src/audio"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "V.4",
+      "section": "V",
+      "title": "Emotional state reaches realization as a control variable",
+      "quote": "uses those characteristics as compositional control variables across multiple musical dimensions",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "expressionState|ExpressionState",
+          "scope": [
+            "src/lib"
+          ],
+          "minFiles": 2
+        }
+      ]
+    },
+    {
+      "id": "V.5",
+      "section": "V",
+      "title": "Emotion is never reduced to mode selection",
+      "quote": "detect emotion -> select C major or A minor. That is nowhere near the conceptual capacity",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "VI.1",
+      "section": "VI",
+      "title": "Mode A — transcription-preserving lyric formation exists",
+      "quote": "It then cleans or structures the material while preserving the creator's intent.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "syllable|Syllable",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "VI.2",
+      "section": "VI",
+      "title": "Mode B — phonetic/semantic lyric inference from non-lexical singing exists",
+      "quote": "Instead of treating the input as failed speech recognition, SoulSonus can treat the performance as a lyric seed.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "LyricSeed|phoneticSeed|PhoneticFragment|lyricInference",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "VI.3",
+      "section": "VI",
+      "title": "Proposed lyrics are constrained by the performed cadence",
+      "quote": "propose coherent language that fits the existing performance",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "stressPattern|syllableMap|rhymePosition|cadenceLock",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "VI.4",
+      "section": "VI",
+      "title": "Words recognized, phonetic fragments, syllable positions and semantic intent are distinguished",
+      "quote": "It should distinguish: Words recognized / from phonetic fragments / from melodic syllable positions / from semantic intent.",
+      "amendment": "A.11",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "LyricSourceKind|lyricProvenance|WORD_RECOGNIZED",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "VII.1",
+      "section": "VII",
+      "title": "The ten-stage beatbox pipeline is present",
+      "quote": "acoustic feature extraction ... editable rhythm generation",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "extractFeatures|classifyOnset|rmsToVelocity",
+          "scope": [
+            "src/audio"
+          ],
+          "minFiles": 2
+        }
+      ]
+    },
+    {
+      "id": "VII.2",
+      "section": "VII",
+      "title": "Four interpretation modes exist: literal, assisted, groove, reinterpretation",
+      "quote": "literal mode / assisted mode / groove mode / reinterpretation mode",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "InterpretationMode|LITERAL|REINTERPRET",
+          "scope": [
+            "src/types"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "VII.3",
+      "section": "VII",
+      "title": "Microtiming is preserved as measured data, not discarded on quantize",
+      "quote": "Critically, the user should retain the feel of their performance.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "microtiming|microTiming|meanOffsetMs|pocket",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "VIII.1",
+      "section": "VIII",
+      "title": "One captured performance is renderable to multiple instrument families",
+      "quote": "The same vocal input could be rendered into: bass; guitar; strings; synthesizer; percussion; brass",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "RealizationRoute",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "VIII.2",
+      "section": "VIII",
+      "title": "The system proposes ranked role hypotheses rather than requiring instrument declaration first",
+      "quote": "Instead of requiring the creator to identify the instrument first, the platform could infer...",
+      "amendment": "A.9",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "RoleHypothesis|roleCandidates|inferRole",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "VIII.3",
+      "section": "VIII",
+      "title": "Role hypotheses carry explicit confidence",
+      "quote": "Bass line - 82% / Low synth - 68% / Kick/bass hybrid - 41%",
+      "amendment": "A.9",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "roleConfidence|RoleHypothesis",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "VIII.4",
+      "section": "VIII",
+      "title": "The stored object is musical intention (symbolic), not only waveform",
+      "quote": "The important object is the musical intention, not the waveform itself.",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "NoteEvent",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 5
+        }
+      ]
+    },
+    {
+      "id": "IX.1",
+      "section": "IX",
+      "title": "Vocal synthesis is conditioned by named creator parameters",
+      "quote": "A generative vocal synthesis subsystem conditioned by creator-defined musical and expressive parameters.",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "formant|breathiness|register",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "IX.2",
+      "section": "IX",
+      "title": "The invention is not bound to one model family",
+      "quote": "the functional invention should not unnecessarily depend on one model family",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "ReasoningProvider|RealizerBackend",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "IX.3",
+      "section": "IX",
+      "title": "Voice identity requires a consent proof",
+      "quote": "accent or stylistic characteristics where authorized",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "consent|Consent|PROOF_",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 2
+        }
+      ]
+    },
+    {
+      "id": "X.1",
+      "section": "X",
+      "title": "Instructions are interpreted against current session state",
+      "quote": "The system interprets the instruction against the current session state. That is crucial.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "StudioContextCompiler",
+          "scope": [
+            "src/lib"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "X.2",
+      "section": "X",
+      "title": "Transformations are non-destructive",
+      "quote": "Then it creates a non-destructive transformation.",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "non-destructive|nonDestructive|candidate",
+          "scope": [
+            "src/lib"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "X.3",
+      "section": "X",
+      "title": "Named preservation is enforceable as an invariant, not a prompt request",
+      "quote": "\"Keep the vocals exactly where they are.\"",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "IntentViolation|preservedProperties|ThresholdPolicy",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "X.4",
+      "section": "X",
+      "title": "Plural alternates can be requested and held simultaneously",
+      "quote": "\"Give me three alternate basslines.\"",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "GenerationCandidate\\[\\]|candidates:",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XI.1",
+      "section": "XI",
+      "title": "Persistent project state exists",
+      "quote": "The system therefore requires persistent project state.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "projectPersistence|StudioSessionContext",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XI.2",
+      "section": "XI",
+      "title": "Undo/redo exists",
+      "quote": "undo/redo",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "undoLabel|redoLabel",
+          "scope": [
+            "src/app"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XI.3",
+      "section": "XI",
+      "title": "Revision history exists and is addressable",
+      "quote": "revision history",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "projectVersionId|ProjectVersion",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 2
+        }
+      ]
+    },
+    {
+      "id": "XI.4",
+      "section": "XI",
+      "title": "Versions are branchable, not linear",
+      "quote": "branchable versions",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "RevisionTree|branchFrom|parentRevisionId",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XI.5",
+      "section": "XI",
+      "title": "Provenance is recorded per operation",
+      "quote": "provenance",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "SeedSignature|seedSignature",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "XI.6",
+      "section": "XI",
+      "title": "Edits are region-scoped — \"only change bar eight\" is executable",
+      "quote": "\"Only change bar eight.\"",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "repaintStartSeconds",
+          "scope": [
+            "src/lib"
+          ],
+          "min": 1
+        },
+        {
+          "kind": "forbidden",
+          "pattern": "not yet implemented",
+          "scope": [
+            "src/lib/realizationRouter.ts"
+          ],
+          "note": "ACE_REPAINT and ACE_GENERATIVE_EXTENSION are declared but self-documented as unimplemented."
+        }
+      ]
+    },
+    {
+      "id": "XI.7",
+      "section": "XI",
+      "title": "Material can be recombined across revisions",
+      "quote": "\"Give me the drums from version 12 with the bass from version 16.\"",
+      "amendment": "A.14",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "recombineRevisions|crossRevisionPick|adoptFromRevision",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XII.1",
+      "section": "XII",
+      "title": "Full conventional DAW surfaces remain present",
+      "quote": "tracks; mixer; timeline; instruments; plugins; effects; automation; stems; recording; editing",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "automation|Automation",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 4
+        }
+      ]
+    },
+    {
+      "id": "XII.2",
+      "section": "XII",
+      "title": "Intelligence operates on the same state as the DAW, not a side application",
+      "quote": "It becomes intelligence-mediated.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "StudioContextCompiler",
+          "scope": [
+            "src/lib/intelligence"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XII.3",
+      "section": "XII",
+      "title": "Professional controls are never removed to simplify",
+      "quote": "We should not turn SoulSonus into six giant buttons... That would destroy much of what you've already built.",
+      "amendment": "A.16",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "XIII.1",
+      "section": "XIII",
+      "title": "The intelligence can read the whole session state",
+      "quote": "This intelligence should understand the entire DAW session state.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "StudioContextCompiler",
+          "scope": [
+            "src/lib"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XIII.2",
+      "section": "XIII",
+      "title": "Diagnostic reasoning about the mix exists",
+      "quote": "\"Why does the vocal sound buried?\"",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "maskingAnalysis|masking",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XIII.3",
+      "section": "XIII",
+      "title": "Actions remain non-destructive and inspectable",
+      "quote": "actions should remain non-destructive and inspectable",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "DawActionProposal",
+          "scope": [
+            "src/lib"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XIII.4",
+      "section": "XIII",
+      "title": "Studio Intelligence is persistent and session-aware, not a per-question widget",
+      "quote": "When opened, Studio Intelligence should become the session-aware co-producer/engineer",
+      "amendment": "A.12",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "StudioEmphasis",
+          "scope": [
+            "src/lib"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XIII.5",
+      "section": "XIII",
+      "title": "Proposals declare what will NOT change",
+      "quote": "Will NOT change: Lead vocal / Melody / Beatbox timing / Lyrics",
+      "amendment": "A.13",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "willNotChange|preserveDeclaration",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XIII.6",
+      "section": "XIII",
+      "title": "Every proposal offers Preview | Apply | Alternative | Reject",
+      "quote": "Then: Preview | Apply | Alternative | Reject",
+      "amendment": "A.13",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "Alternative|requestAlternative",
+          "scope": [
+            "src/components"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XIV.1",
+      "section": "XIV",
+      "title": "Genre is a conditioning parameter reaching realization, not an output label",
+      "quote": "The system can therefore use genre as a parameter rather than an output label.",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "genre|Genre",
+          "scope": [
+            "src/lib"
+          ],
+          "minFiles": 2
+        }
+      ]
+    },
+    {
+      "id": "XIV.2",
+      "section": "XIV",
+      "title": "Re-interpretation preserves creative identity while changing production grammar",
+      "quote": "The underlying creative identity remains while production grammar changes.",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "XV.1",
+      "section": "XV",
+      "title": "A real shared collaborative state model exists",
+      "quote": "A serious implementation requires more than Socket.io. It needs a collaborative state model.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "CollaborativeState|sharedSession|syncTransport|CollaborationStore",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XV.2",
+      "section": "XV",
+      "title": "Roles and permissions govern contribution",
+      "quote": "control permissions",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "CollaboratorRole",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 2
+        }
+      ]
+    },
+    {
+      "id": "XV.3",
+      "section": "XV",
+      "title": "Attribution is preserved per contribution",
+      "quote": "what creative contribution belongs to whom",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "Contribution",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 2
+        }
+      ]
+    },
+    {
+      "id": "XV.4",
+      "section": "XV",
+      "title": "No hardcoded demonstration collaborators are presented as functioning collaboration",
+      "quote": "It should therefore not be relegated to a speculative roadmap.",
+      "checks": [
+        {
+          "kind": "forbidden",
+          "pattern": "Aria Vocalist",
+          "scope": [
+            "src"
+          ],
+          "note": "Hardcoded demo data standing in for the collaborative state model."
+        }
+      ]
+    },
+    {
+      "id": "XVI.1",
+      "section": "XVI",
+      "title": "Creative analytics exist",
+      "quote": "iteration frequency; sections repeatedly revised; abandoned ideas; preferred sounds",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "CreativeAnalytics|iterationFrequency|abandonedIdeas",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XVI.2",
+      "section": "XVI",
+      "title": "Musical analytics exist",
+      "quote": "tempo; key; dynamic range; spectral balance; harmonic density",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "spectral|dynamicRange|loudness",
+          "scope": [
+            "src/audio"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "XVI.3",
+      "section": "XVI",
+      "title": "Audience analytics exist once content is published",
+      "quote": "listens; completion; replay; skip points; shares",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "AudienceAnalytics|replayRate|skipPoint",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XVI.4",
+      "section": "XVI",
+      "title": "Analytics translate into creative feedback",
+      "quote": "\"You consistently reject brighter synth sounds; should I prioritize warmer timbres?\"",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "CreativeRecommendation|preferenceFeedback",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XVII.1",
+      "section": "XVII",
+      "title": "A creator who has never used a DAW has a complete path to a finished track",
+      "quote": "SoulSonus should support users ranging from someone who has never used a DAW to a professional producer.",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "XVII.2",
+      "section": "XVII",
+      "title": "Expression entry is always present as a first-class surface",
+      "quote": "Talk | Sing | Hum | Beatbox | Mimic | Upload — \"Tell me or perform what you hear.\"",
+      "amendment": "A.18",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "ExpressionEngine|LiveExpressionEngine",
+          "scope": [
+            "src/components"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XVII.3",
+      "section": "XVII",
+      "title": "Progressive disclosure: four declared levels, not simultaneous exposure",
+      "quote": "It is too simultaneous... Level 1 Creative context / Level 2 Current creative activity / Level 3 Production workspace / Level 4 Specialist utilities",
+      "amendment": "A.17",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "DisclosureLevel|SurfaceLevel",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XVII.4",
+      "section": "XVII",
+      "title": "Novice and professional surfaces share one engine and one state",
+      "quote": "Same engine. Different operational surface.",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "XVIII.1",
+      "section": "XVIII",
+      "title": "Voice cloning requires recorded consent",
+      "quote": "voice cloning consent",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "consent|Consent",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 2
+        }
+      ]
+    },
+    {
+      "id": "XVIII.2",
+      "section": "XVIII",
+      "title": "Provenance ledger is immutable and per-operation",
+      "quote": "provenance",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "createSeedSignatureRecord",
+          "scope": [
+            "src/lib"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XVIII.3",
+      "section": "XVIII",
+      "title": "AI-generated and human-generated material are distinguishable in state",
+      "quote": "AI-generated material / human-generated material",
+      "amendment": "A.12",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "origin|Origin|isGenerated|humanAuthored",
+          "scope": [
+            "src/types"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XVIII.4",
+      "section": "XVIII",
+      "title": "Synthetic media disclosure reaches the release manifest",
+      "quote": "synthetic media disclosure where appropriate",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "disclosure|syntheticDisclosure",
+          "scope": [
+            "src/audio/deliveryPackage.ts",
+            "src/components/finish"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XVIII.5",
+      "section": "XVIII",
+      "title": "Creator ownership is never transferred to the platform by generation",
+      "quote": "AI augments the creator rather than replacing creative ownership.",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "XIX.1",
+      "section": "XIX",
+      "title": "Creator-side monetization surfaces exist",
+      "quote": "A creator could monetize: songs; beats; stems; remixes...",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "Monetization|licenseOffer|Marketplace",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "XIX.2",
+      "section": "XIX",
+      "title": "Platform-side economics are represented separately from creator economics",
+      "quote": "These should be separated into creator revenue and platform revenue.",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "XIX.3",
+      "section": "XIX",
+      "title": "Revenue figures are never stated as established performance",
+      "quote": "Those should be treated as scenario assumptions, not established financial performance.",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "XX.1",
+      "section": "XX",
+      "title": "SoulSonus scope is CREATION — conception through prepared asset",
+      "quote": "It helps creators conceive, compose, produce, engineer, edit, collaborate on, and prepare music.",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "XX.2",
+      "section": "XX",
+      "title": "No distribution/streaming-platform functionality inside this repository",
+      "quote": "A major source of drift in this thread was repeated blending of the two platforms.",
+      "checks": [
+        {
+          "kind": "forbidden",
+          "pattern": "streamingPlatform|distributeToStores|AtmosphereClient",
+          "scope": [
+            "src"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "XX.3",
+      "section": "XX",
+      "title": "OPEN — Atmosphere's counterpart definition was not transmitted",
+      "quote": "[source text ends]",
+      "checks": [
+        {
+          "kind": "attest",
+          "blocked": true,
+          "note": "Cannot be closed until the original section XX text is supplied. Recorded, not invented."
+        }
+      ]
+    },
+    {
+      "id": "A.1",
+      "section": "A",
+      "title": "The five-stage lifecycle is preserved",
+      "quote": "Create -> Write & Record -> Mix -> Master -> Release. I would absolutely preserve that.",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "RELEASE|MASTER|MIX",
+          "scope": [
+            "src/components"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "A.2",
+      "section": "A",
+      "title": "Real-time per-hit channel separation during performance is preserved",
+      "quote": "Hits split onto isolated channels in real-time as you perform.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "onCaptureEvent",
+          "scope": [
+            "src/audio"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "A.3",
+      "section": "A",
+      "title": "All existing specialist workstations survive reorganization",
+      "quote": "These aren't random buttons. Several appear to represent distinct production subsystems.",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "Drawer|Modal",
+          "scope": [
+            "src/components"
+          ],
+          "minFiles": 10
+        }
+      ]
+    },
+    {
+      "id": "A.4",
+      "section": "A",
+      "title": "Sections carry semantic identity, enabling \"make the chorus bigger\"",
+      "quote": "Those section objects provide the semantic structure necessary for conversational production.",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "SectionBuilder|sections",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "A.5",
+      "section": "A",
+      "title": "Manual manipulation and AI realization remain co-equal",
+      "quote": "The user can either manually manipulate music or ask SoulSonus to realize an intention. That duality should stay.",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "A.6",
+      "section": "A",
+      "title": "Conventional inputs remain first-class alongside expression",
+      "quote": "MIDI keyboards, hardware controllers, microphones, audio files, instruments and conventional DAW interaction all remain legitimate first-class inputs.",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "midi|MIDI",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 4
+        }
+      ]
+    },
+    {
+      "id": "A.7",
+      "section": "A",
+      "title": "The Creative Intent panel exposes the system's understanding to the creator",
+      "quote": "But SoulSonus needs somewhere to expose its understanding. Otherwise the intelligence remains invisible.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "CreativeIntentPanel|CreativeIntent",
+          "scope": [
+            "src/components"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "A.8",
+      "section": "A",
+      "title": "The interpretation step is visible to the creator before realization",
+      "quote": "Your current screen does Performance -> Realization extremely well visually. We need to expose the middle.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "InterpretationPanel|RoleHypothesis",
+          "scope": [
+            "src/components"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "A.9",
+      "section": "A",
+      "title": "Live Expression Engine carries all seven modalities",
+      "quote": "Beatbox | Hum | Sing | Mimic | Clap/Tap | Speak | MIDI",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "ExpressionModality",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "A.10",
+      "section": "A",
+      "title": "Modality context changes what the engine shows and offers",
+      "quote": "Then context changes depending on what you're doing.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "ExpressionModality",
+          "scope": [
+            "src/components"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "A.11",
+      "section": "A",
+      "title": "Applying a change creates a new revision rather than overwriting",
+      "quote": "Applying creates: Revision 19 rather than overwriting Revision 18.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "parentRevisionId|createRevision",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "A.12",
+      "section": "A",
+      "title": "Studio Intelligence can explain its musical reasoning in creator terms",
+      "quote": "\"I preserved that lift by widening the harmony and increasing rhythmic density rather than increasing tempo.\"",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "rationale|explanation|reasoningText",
+          "scope": [
+            "src/lib"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "A.13",
+      "section": "A",
+      "title": "No new specialist workstations until existing ones are reconciled",
+      "quote": "I would resist adding more miscellaneous workstations until we've reconciled the ones already present.",
+      "checks": [
+        {
+          "kind": "attest",
+          "note": "A moratorium clause. Signing this means: this change added no new top-level workstation."
+        }
+      ]
+    },
+    {
+      "id": "B.1",
+      "section": "B",
+      "title": "\"That is not what I heard\" is recordable in the creator's own words",
+      "quote": "And I say that's not what I heard.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "relayGap|creatorHeard|feltGap|creatorNote",
+          "scope": [
+            "src/types"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "B.2",
+      "section": "B",
+      "title": "Rejection is not stored as a single bit",
+      "quote": "It is not a reject button.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "RelayGapRecord|rejectionReason",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "B.3",
+      "section": "B",
+      "title": "The gap is a retained conversation, not a one-shot verdict",
+      "quote": "be able to have that conversation with the co-producer or the engineer... and going back and forth",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "RelayExchange|candidateThread|gapConversation",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "B.4",
+      "section": "B",
+      "title": "The creator's felt verdict is attributable and survives the session",
+      "quote": "A system built to relay what you're creating inside yourself.",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "relayGap|RelayGap",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 2
+        }
+      ]
+    },
+    {
+      "id": "B.5",
+      "section": "B",
+      "title": "Relay fidelity outranks every self-referential machine metric",
+      "quote": "The only measurement that settles whether SoulSonus worked is whether what came out matches what the creator carried inside.",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "B.6",
+      "section": "B",
+      "title": "Unformalized human knowing is never treated as deficient data",
+      "quote": "The problem with FEELING is you can't act on... But me, I can act on, and I can tell that it's fixed.",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "C.1",
+      "section": "C",
+      "title": "Four declared disclosure levels govern the Create surface",
+      "quote": "persistent creative context; context-specific creative activity; the main production canvas; and specialist utilities",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "DisclosureLevel|SurfaceLevel",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "C.2",
+      "section": "C",
+      "title": "Beatbox does not visually define the creator-origin system",
+      "quote": "rather than allowing Beatbox to visually define the entire creator-origin system",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "ExpressionModality",
+          "scope": [
+            "src/components"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "C.3",
+      "section": "C",
+      "title": "The Interpretation layer is visible before realization",
+      "quote": "an Interpretation layer that exposes what SoulSonus believes the performance means",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "InterpretationPanel|RoleHypothesis",
+          "scope": [
+            "src/components"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "C.4",
+      "section": "C",
+      "title": "Creative Intent Model is a collapsible panel carrying six declared fields",
+      "quote": "showing emotion, preservation constraints, transformation permissions, groove, genre grammar and arrangement trajectory",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "CreativeIntent",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "C.5",
+      "section": "C",
+      "title": "No second AI interface is added beside Studio Intelligence",
+      "quote": "the existing Studio Intelligence becoming the persistent session-aware co-producer rather than adding another AI interface",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "C.6",
+      "section": "C",
+      "title": "ChangeSet contract declares changes, guarantees, and four actions",
+      "quote": "what it proposes to change, what it guarantees it will not change, Preview, Apply, Alternative and Reject",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "ChangeSet",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "C.7",
+      "section": "C",
+      "title": "Applying creates a revision instead of overwriting the creator's work",
+      "quote": "Applying a change creates another revision instead of overwriting the creator's work.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "createRevision|parentRevisionId",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "C.8",
+      "section": "C",
+      "title": "Creative History supports branching and cross-revision recombination",
+      "quote": "give me the drums from version 12 with the bass from version 16",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "RevisionTree|CreativeHistory",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "C.9",
+      "section": "C",
+      "title": "The professional DAW is not removed to achieve accessibility",
+      "quote": "Tracks, MIDI, mixer, effects, automation, routing, stems, hardware, timing, mastering and conventional editing remain available.",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "C.10",
+      "section": "C",
+      "title": "The creator commands technical mechanisms without understanding them",
+      "quote": "The breakthrough is that the creator no longer has to understand those technical mechanisms in order to command them.",
+      "checks": [
+        {
+          "kind": "attest"
+        }
+      ]
+    }
   ]
 }

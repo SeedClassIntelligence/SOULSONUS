@@ -856,3 +856,10 @@ It helps creators conceive, compose, produce, engineer, edit, collaborate on, an
 
 > **Amendment A** (2026-08-31) is recorded in `seed/SRT-1-A.md` and is
 > constitutional text of equal standing with the sections above.
+
+> **Amendment B** (2026-08-31) — The Relay Principle — is recorded in
+> `seed/SRT-1-B.md`. It states the assumption sections I-XX stand on and
+> controls over any clause that can be satisfied in a way that violates it.
+>
+> **Amendment C** (2026-08-31) — UI Reconciliation Specification — is recorded
+> in `seed/SRT-1-C.md`.

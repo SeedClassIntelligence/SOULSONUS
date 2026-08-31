@@ -1,0 +1,564 @@
+<title>SoulSonus Create Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+:root{
+  --ink-900:#0b0d12; --ink-850:#0e1117; --ink-800:#12151d; --ink-750:#161a23;
+  --ink-700:#1b202b; --ink-600:#232936; --line:#2a313f; --line-soft:#1f2532;
+  --text:#e7eaf0; --dim:#98a1b1; --faint:#5f6a7c;
+  --amber:#f59e0b; --amber-lo:rgba(245,158,11,.13); --amber-mid:rgba(245,158,11,.35);
+  --good:#34d399; --warn:#fbbf24; --crit:#f43f5e;
+  --t-kick:#f59e0b; --t-snare:#06b6d4; --t-hat:#10b981; --t-bass:#f43f5e;
+  --t-synth:#a855f7; --t-strings:#3b82f6; --t-vocal:#2dd4bf; --t-harm:#8b5cf6;
+  --sans:'Archivo',system-ui,-apple-system,sans-serif;
+  --cond:'Barlow Condensed','Archivo Narrow',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink-900);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;font-weight:600;text-wrap:balance}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer;font-size:inherit}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:3px}
+
+/* ── shell ─────────────────────────────────────────── */
+.shell{max-width:1560px;margin:0 auto;padding:0 0 64px}
+.lvl{display:grid;grid-template-columns:52px 1fr;align-items:stretch;border-bottom:1px solid var(--line-soft)}
+.rail{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:14px 0;gap:6px;background:var(--ink-850);border-right:1px solid var(--line-soft)}
+.rail b{font-family:var(--cond);font-size:19px;font-weight:700;letter-spacing:.04em;color:var(--faint);line-height:1}
+.rail span{font-family:var(--cond);font-size:9px;letter-spacing:.14em;color:#3d4552;writing-mode:vertical-rl;text-transform:uppercase;margin-top:2px}
+.lvl-body{min-width:0;padding:12px 18px 16px}
+
+/* ── shared bits ───────────────────────────────────── */
+.eyebrow{font-family:var(--cond);font-size:11px;font-weight:600;letter-spacing:.17em;text-transform:uppercase;color:var(--faint)}
+.chip{font-family:var(--cond);font-size:11.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:5px 10px;border:1px solid var(--line);border-radius:3px;background:var(--ink-750);color:var(--dim);white-space:nowrap;transition:.14s}
+.chip:hover{border-color:var(--faint);color:var(--text)}
+.chip.on{background:var(--amber-lo);border-color:var(--amber-mid);color:var(--amber)}
+.tag{font-family:var(--cond);font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:2px 5px;border-radius:2px;vertical-align:middle}
+.tag.held{color:var(--faint);border:1px solid var(--line)}
+.tag.new{color:var(--amber);border:1px solid var(--amber-mid);background:var(--amber-lo)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.panel{background:var(--ink-800);border:1px solid var(--line-soft);border-radius:4px}
+.panel-hd{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line-soft)}
+.scroll-x{overflow-x:auto}
+
+/* ── L1 context bar ────────────────────────────────── */
+.l1{background:var(--ink-850);display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:0}
+.mark{font-family:var(--cond);font-size:20px;font-weight:700;letter-spacing:.15em;color:var(--text)}
+.mark i{color:var(--amber);font-style:normal}
+.proj{display:flex;flex-direction:column;gap:1px;padding-left:14px;border-left:1px solid var(--line)}
+.proj b{font-size:12.5px;font-weight:600}
+.proj span{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.transport{display:flex;align-items:center;gap:7px}
+.tbtn{width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line);border-radius:3px;background:var(--ink-700);color:var(--dim)}
+.tbtn:hover{color:var(--text);border-color:var(--faint)}
+.tbtn.rec{color:var(--crit)}
+.readout{display:flex;gap:14px;padding:0 12px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.readout div{display:flex;flex-direction:column;gap:1px}
+.readout small{font-family:var(--cond);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+.readout b{font-family:var(--mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.lifecycle{display:flex;gap:2px}
+.life{font-family:var(--cond);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:7px 12px;color:var(--faint);border-bottom:2px solid transparent}
+.life.on{color:var(--text);border-bottom-color:var(--amber)}
+.life:hover{color:var(--dim)}
+.si-btn{display:flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid var(--amber-mid);border-radius:3px;background:var(--amber-lo);color:var(--amber);font-family:var(--cond);font-size:12.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.si-btn:hover{background:rgba(245,158,11,.2)}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--amber);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@media(prefers-reduced-motion:reduce){.pulse{animation:none}}
+
+/* ── L2 expression engine ──────────────────────────── */
+.mods{display:flex;gap:3px;flex-wrap:wrap;margin:8px 0 12px}
+.mod{font-family:var(--cond);font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:8px 15px;border:1px solid var(--line);border-radius:3px;background:var(--ink-750);color:var(--dim)}
+.mod:hover{border-color:var(--faint);color:var(--text)}
+.mod[aria-selected="true"]{background:var(--amber);border-color:var(--amber);color:#161003}
+.expr-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:14px}
+@media(max-width:1080px){.expr-grid{grid-template-columns:1fr}}
+.scope{position:relative;background:var(--ink-850);border:1px solid var(--line-soft);border-radius:4px;overflow:hidden}
+canvas{display:block;width:100%;height:112px}
+.scope-lbl{position:absolute;top:9px;left:11px;font-family:var(--cond);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--faint)}
+.scope-live{position:absolute;top:9px;right:11px;display:flex;align-items:center;gap:6px;font-family:var(--cond);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--crit)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--crit);animation:pulse 1.3s infinite}
+.xctl{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.read-list{display:flex;flex-direction:column;gap:0}
+.read-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line-soft)}
+.read-row:last-child{border-bottom:none}
+.read-row dt{font-family:var(--cond);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.read-row dd{margin:0;font-size:12.5px;color:var(--text);text-align:right}
+
+/* ── interpretation ────────────────────────────────── */
+.hyp{padding:10px 12px;border-bottom:1px solid var(--line-soft)}
+.hyp:last-of-type{border-bottom:none}
+.hyp-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
+.hyp-name{font-size:13px;font-weight:600}
+.hyp-pct{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;color:var(--dim)}
+.meter{height:4px;background:var(--ink-600);border-radius:2px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--amber);border-radius:2px}
+.hyp.lead .meter i{background:var(--amber)}
+.hyp:not(.lead) .meter i{background:var(--faint)}
+.hyp-act{display:flex;gap:5px;margin-top:8px}
+
+/* ── L3 canvas ─────────────────────────────────────── */
+.sections{display:flex;gap:3px;margin-bottom:9px;min-width:660px}
+.sec{flex:1;padding:7px 10px;border:1px solid var(--line);border-top:2px solid var(--faint);border-radius:0 0 3px 3px;background:var(--ink-750)}
+.sec.on{border-top-color:var(--amber);background:var(--ink-700)}
+.sec b{display:block;font-family:var(--cond);font-size:12.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.sec span{font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+.tools{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:10px}
+.lanes{display:flex;flex-direction:column;gap:2px;min-width:660px}
+.lane{display:grid;grid-template-columns:172px 1fr;gap:8px;align-items:center}
+.lane-hd{display:flex;align-items:center;gap:7px;padding:5px 8px;background:var(--ink-750);border:1px solid var(--line-soft);border-radius:3px;border-left:3px solid var(--c)}
+.lane-hd b{font-size:11.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lane-hd em{margin-left:auto;font-family:var(--mono);font-size:9.5px;font-style:normal;color:var(--faint)}
+.grid{display:grid;grid-template-columns:repeat(32,1fr);gap:1px;height:26px}
+.cell{background:var(--ink-800);border-radius:1px}
+.cell.hit{background:var(--c)}
+.cell.sus{background:color-mix(in srgb,var(--c) 42%,transparent)}
+.cell.b4{box-shadow:inset 1px 0 0 var(--line)}
+
+/* ── right column ──────────────────────────────────── */
+.stage{display:grid;grid-template-columns:1fr 372px;gap:14px}
+@media(max-width:1180px){.stage{grid-template-columns:1fr}}
+.intent-body{padding:2px 12px 10px}
+.intent-row{display:grid;grid-template-columns:104px 1fr;gap:10px;padding:7px 0;border-bottom:1px solid var(--line-soft);align-items:baseline}
+.intent-row:last-child{border-bottom:none}
+.intent-row dt{font-family:var(--cond);font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)}
+.intent-row dd{margin:0;font-size:12.5px}
+.lock{color:var(--good)}
+.free{color:var(--warn)}
+.traj{display:flex;align-items:center;gap:7px;font-size:12.5px}
+.traj i{flex:1;height:3px;background:linear-gradient(90deg,var(--t-harm),var(--amber));border-radius:2px}
+
+.msg{padding:10px 12px;font-size:12.5px;line-height:1.55;border-bottom:1px solid var(--line-soft)}
+.msg.creator{background:var(--ink-750)}
+.msg .who{font-family:var(--cond);font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:4px}
+.msg.creator .who{color:var(--t-vocal)}
+.msg.si .who{color:var(--amber)}
+.changeset{margin:10px 12px;border:1px solid var(--amber-mid);border-radius:4px;background:linear-gradient(180deg,var(--amber-lo),transparent 60%)}
+.cs-hd{padding:8px 11px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:8px}
+.cs-hd b{font-family:var(--cond);font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--amber)}
+.cs-sec{padding:9px 11px;border-bottom:1px solid var(--line-soft)}
+.cs-sec > .eyebrow{display:block;margin-bottom:6px}
+.cs-sec ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+.cs-sec li{font-size:12.5px;padding-left:15px;position:relative}
+.cs-sec li::before{position:absolute;left:0;top:0}
+.cs-change li::before{content:'›';color:var(--amber)}
+.cs-keep li::before{content:'✓';color:var(--good);font-size:11px}
+.cs-act{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:9px 11px}
+.cs-act .chip{text-align:center;padding:7px 4px}
+.cs-act .apply{border-color:var(--amber-mid);background:var(--amber);color:#161003}
+.cs-act .apply:hover{filter:brightness(1.1)}
+
+/* ── relay gap (Amendment B) ───────────────────────── */
+.relay{margin:0 12px 12px;border:1px solid var(--t-vocal);border-radius:4px;background:rgba(45,212,191,.07)}
+.relay[hidden]{display:none!important}
+.relay-hd{padding:9px 11px;border-bottom:1px solid var(--line-soft)}
+.relay-hd b{font-family:var(--cond);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--t-vocal)}
+.relay-hd p{margin:5px 0 0;font-size:12px;color:var(--dim);line-height:1.5}
+.relay-body{padding:10px 11px}
+textarea{width:100%;min-height:64px;resize:vertical;background:var(--ink-850);border:1px solid var(--line);border-radius:3px;color:var(--text);font-family:var(--sans);font-size:12.5px;padding:8px 9px;line-height:1.5}
+textarea:focus{outline:none;border-color:var(--t-vocal)}
+textarea::placeholder{color:var(--faint)}
+.relay-act{display:flex;gap:5px;margin-top:8px}
+.relay-act .send{border-color:var(--t-vocal);color:var(--t-vocal);background:rgba(45,212,191,.12)}
+
+/* ── L4 utilities ──────────────────────────────────── */
+.utils{display:flex;gap:4px;flex-wrap:wrap}
+
+/* ── history + status ──────────────────────────────── */
+.hist{display:flex;flex-direction:column;gap:0;padding:4px 12px 10px;font-family:var(--mono);font-size:11.5px}
+.hnode{display:flex;align-items:center;gap:8px;padding:4px 0;color:var(--dim)}
+.hnode .rail-g{color:var(--faint);white-space:pre}
+.hnode.cur{color:var(--amber)}
+.hnode em{font-style:normal;color:var(--faint);margin-left:auto;font-size:10.5px}
+.statusbar{display:flex;align-items:center;gap:0;flex-wrap:wrap;background:var(--ink-850);border-top:1px solid var(--line)}
+.stat{display:flex;align-items:center;gap:7px;padding:9px 15px;border-right:1px solid var(--line-soft)}
+.stat small{font-family:var(--cond);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.stat b{font-family:var(--mono);font-size:11.5px;font-weight:500}
+.legend{margin-left:auto;display:flex;gap:12px;padding:9px 16px;align-items:center}
+
+.note{max-width:70ch;margin:26px auto 0;padding:0 20px;color:var(--dim);font-size:12.5px;line-height:1.65}
+.note h2{font-family:var(--cond);font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.note code{font-family:var(--mono);font-size:11.5px;color:var(--amber)}
+</style>
+
+<div class="shell">
+
+<!-- ══ LEVEL 1 ══ -->
+<div class="lvl">
+  <div class="rail"><b>1</b><span>Context</span></div>
+  <div class="lvl-body l1" style="padding:0 18px">
+    <div class="mark">SOUL<i>SONUS</i></div>
+    <div class="proj"><b>Made It Through — Master</b><span>rev 18 · 100% creator-owned</span></div>
+    <div class="transport">
+      <button class="tbtn" aria-label="Play">▶</button>
+      <button class="tbtn rec" aria-label="Record">●</button>
+      <button class="tbtn" aria-label="Loop">↻</button>
+    </div>
+    <div class="readout">
+      <div><small>Tempo</small><b>94.00</b></div>
+      <div><small>Key</small><b>C♯m</b></div>
+      <div><small>Bar</small><b>17.2</b></div>
+      <div><small>Meter</small><b>4/4</b></div>
+    </div>
+    <nav class="lifecycle" aria-label="Production lifecycle">
+      <button class="life on">1 · Create</button>
+      <button class="life">2 · Write &amp; Record</button>
+      <button class="life">3 · Mix</button>
+      <button class="life">4 · Master</button>
+      <button class="life">5 · Release</button>
+    </nav>
+    <button class="si-btn" style="margin-left:auto"><span class="pulse"></span> Studio Intelligence</button>
+    <button class="chip" style="margin-right:4px">Export</button>
+  </div>
+</div>
+
+<!-- ══ LEVEL 2 ══ -->
+<div class="lvl">
+  <div class="rail"><b>2</b><span>Activity</span></div>
+  <div class="lvl-body">
+    <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
+      <h2 class="eyebrow" style="font-size:12.5px;color:var(--text)">Live Expression Engine</h2>
+      <span class="tag new">New</span>
+      <span style="color:var(--faint);font-size:12px">— was “Live Seed &amp; Beatbox Engine”; beatbox is now one modality of seven, not the whole system</span>
+    </div>
+
+    <div class="mods" role="tablist" aria-label="Expression modality">
+      <button class="mod" role="tab" data-mod="beatbox" aria-selected="false">Beatbox</button>
+      <button class="mod" role="tab" data-mod="hum" aria-selected="false">Hum</button>
+      <button class="mod" role="tab" data-mod="sing" aria-selected="false">Sing</button>
+      <button class="mod" role="tab" data-mod="mimic" aria-selected="true">Mimic</button>
+      <button class="mod" role="tab" data-mod="clap" aria-selected="false">Clap / Tap</button>
+      <button class="mod" role="tab" data-mod="speak" aria-selected="false">Speak</button>
+      <button class="mod" role="tab" data-mod="midi" aria-selected="false">MIDI</button>
+    </div>
+
+    <div class="expr-grid">
+      <div>
+        <div class="scope">
+          <canvas id="scope" width="900" height="112" aria-label="Live input waveform"></canvas>
+          <span class="scope-lbl" id="scopeLbl">Mimic — pitched contour</span>
+          <span class="scope-live"><span class="dot"></span>Listening</span>
+        </div>
+        <div class="xctl">
+          <button class="chip on">Record Loop</button>
+          <button class="chip">Stack Overdub</button>
+          <button class="chip">Undo Last Pass</button>
+          <button class="chip">Metronome</button>
+          <button class="chip">Count-In 1 Bar</button>
+          <button class="chip">Pass 3 / 4</button>
+          <span class="chip" style="cursor:default;border-style:dashed">Hits split to isolated channels in real time <span class="tag held">Held</span></span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hd"><span class="eyebrow">What was captured</span><span class="tag held" style="margin-left:auto">Held</span></div>
+        <dl class="read-list" id="readout" style="padding:2px 12px 8px"></dl>
+      </div>
+    </div>
+
+    <!-- interpretation -->
+    <div class="panel" style="margin-top:14px">
+      <div class="panel-hd">
+        <span class="eyebrow" style="color:var(--text)">Interpretation — what SoulSonus believes this means</span>
+        <span class="tag new">New</span>
+        <span style="margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--faint)">nothing is realized until you choose</span>
+      </div>
+      <div id="hyps" style="display:grid;grid-template-columns:repeat(3,1fr)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LEVEL 3 ══ -->
+<div class="lvl">
+  <div class="rail"><b>3</b><span>Canvas</span></div>
+  <div class="lvl-body">
+    <div class="stage">
+      <div style="min-width:0">
+        <div class="scroll-x">
+          <div class="sections">
+            <div class="sec"><b>Intro Beat</b><span>bars 1–8</span></div>
+            <div class="sec on"><b>Verse Pocket</b><span>bars 9–24</span></div>
+            <div class="sec"><b>Chorus Lead Hook</b><span>bars 25–40</span></div>
+            <div class="sec"><b>Outro Resolving Tail</b><span>bars 41–48</span></div>
+          </div>
+        </div>
+        <div class="tools">
+          <button class="chip on">Select</button><button class="chip">Draw</button>
+          <button class="chip">Stretch</button><button class="chip">Split</button>
+          <button class="chip">Erase</button><button class="chip">Notes</button>
+          <button class="chip">Add Track</button>
+          <button class="chip" style="border-color:var(--amber-mid);color:var(--amber)">AI Realization</button>
+          <button class="chip">Edit Sections</button><button class="chip">4 / 8 / 16 / 32 / 64 bars</button>
+        </div>
+        <div class="scroll-x"><div class="lanes" id="lanes"></div></div>
+      </div>
+
+      <!-- right column: intent + intelligence -->
+      <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+        <div class="panel">
+          <div class="panel-hd">
+            <span class="eyebrow" style="color:var(--text)">Creative Intent</span>
+            <span class="tag new">New</span>
+            <button class="chip" id="intentToggle" style="margin-left:auto;padding:3px 8px" aria-expanded="true">Collapse</button>
+          </div>
+          <dl class="intent-body" id="intentBody">
+            <div class="intent-row"><dt>Emotion</dt><dd><span class="traj">Intimate <i></i> Resolute</span></dd></div>
+            <div class="intent-row"><dt>Genre grammar</dt><dd>Neo-soul / gospel</dd></div>
+            <div class="intent-row"><dt>Groove</dt><dd>Behind the beat — human <span class="num" style="color:var(--faint)">(−14 ms)</span></dd></div>
+            <div class="intent-row"><dt>Preserve</dt><dd class="lock">Lead melody · vocal cadence · beatbox timing</dd></div>
+            <div class="intent-row"><dt>Transform</dt><dd class="free">Harmony · instrumentation · texture</dd></div>
+            <div class="intent-row"><dt>Energy</dt><dd>Controlled lift</dd></div>
+            <div class="intent-row"><dt>Arrangement</dt><dd>Sparse verse → expansive hook</dd></div>
+          </dl>
+        </div>
+
+        <div class="panel" style="border-color:var(--amber-mid)">
+          <div class="panel-hd">
+            <span class="eyebrow" style="color:var(--amber)">✣ Studio Intelligence</span>
+            <span class="tag held">Held</span>
+            <span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--faint)">reading 8 tracks · 4 sections · rev 18</span>
+          </div>
+
+          <div class="msg creator"><span class="who">You</span>Make the second chorus feel like I’ve finally made it through something. Don’t touch my vocal.</div>
+          <div class="msg si"><span class="who">Co-Producer</span>Your performance lifted in the last phrase. I’d hold that with harmonic width and rhythmic density rather than tempo — pushing BPM would break the pocket you played.</div>
+
+          <div class="changeset" id="changeset">
+            <div class="cs-hd"><b>Proposed Change</b><span class="tag new" style="margin-left:auto">New</span></div>
+            <div class="cs-sec cs-change">
+              <span class="eyebrow">Harmony Stem — will change</span>
+              <ul><li>Widen voicing across the hook</li><li>Raise upper harmony +3 semitones</li><li>Reduce density in verse</li><li>Introduce response vocal in chorus</li></ul>
+            </div>
+            <div class="cs-sec cs-keep">
+              <span class="eyebrow">Guaranteed unchanged</span>
+              <ul><li>Lead vocal</li><li>Melody</li><li>Beatbox timing</li><li>Lyrics</li></ul>
+            </div>
+            <div class="cs-act">
+              <button class="chip">Preview</button>
+              <button class="chip apply" id="applyBtn">Apply</button>
+              <button class="chip">Alternative</button>
+              <button class="chip" id="rejectBtn">Reject</button>
+            </div>
+          </div>
+
+          <!-- Amendment B: the relay gap -->
+          <div class="relay" id="relay" hidden>
+            <div class="relay-hd">
+              <b>That’s not what I heard <span class="tag new">Amdt. B</span></b>
+              <p>Say it however it comes out. This is kept in your words, attached to this candidate, and the conversation continues from here — it is not a discard.</p>
+            </div>
+            <div class="relay-body">
+              <textarea id="relayText" placeholder="The lift is there but it went polite on me. I heard it get heavier, not prettier…"></textarea>
+              <div class="relay-act">
+                <button class="chip send" id="relaySend">Send to Co-Producer</button>
+                <button class="chip" id="relayCancel">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-hd"><span class="eyebrow" style="color:var(--text)">Creative History</span><span class="tag new">New</span>
+            <span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--faint)">branching · not undo</span></div>
+          <div class="hist">
+            <div class="hnode"><span class="rail-g">●</span>Original Seed<em>mimic · 3 passes</em></div>
+            <div class="hnode"><span class="rail-g">├─</span>Beatbox Interpretation 01<em>rev 04</em></div>
+            <div class="hnode"><span class="rail-g">├─</span>Bass Realization 03<em>rev 12</em></div>
+            <div class="hnode"><span class="rail-g">└─</span>Arrangement v4<em>rev 15</em></div>
+            <div class="hnode"><span class="rail-g">&nbsp;&nbsp;├─</span>Dark Version<em>rev 16</em></div>
+            <div class="hnode"><span class="rail-g">&nbsp;&nbsp;└─</span>Hopeful Version<em>rev 17</em></div>
+            <div class="hnode cur"><span class="rail-g">&nbsp;&nbsp;&nbsp;&nbsp;└─</span>Current<em id="revLabel">rev 18</em></div>
+          </div>
+          <div style="padding:0 12px 11px"><button class="chip" style="width:100%">Take the drums from rev 12 with the bass from rev 16</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LEVEL 4 ══ -->
+<div class="lvl">
+  <div class="rail"><b>4</b><span>Utilities</span></div>
+  <div class="lvl-body">
+    <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:9px">
+      <span class="eyebrow">Specialist Workstations</span><span class="tag held">All held</span>
+      <span style="color:var(--faint);font-size:12px">— one keystroke away, never occupying attention</span>
+    </div>
+    <div class="utils">
+      <button class="chip">Piano</button><button class="chip">Instrument</button>
+      <button class="chip">Signature</button><button class="chip">Sourcing</button>
+      <button class="chip">Collab</button><button class="chip">Native Brain</button>
+      <button class="chip">Workstation</button><button class="chip">Songwriting</button>
+      <button class="chip">MIDI Hardware</button><button class="chip">Inspector</button>
+      <button class="chip">Calibration</button><button class="chip">Radial Radar</button>
+      <button class="chip">Import Audio</button><button class="chip">Pipeline</button>
+      <button class="chip">Vocal Booth</button><button class="chip">Stem Decompose</button>
+    </div>
+  </div>
+</div>
+
+<!-- status -->
+<div class="statusbar">
+  <div class="stat"><small>SeedSignature</small><b style="color:var(--good)">Ready to sign</b></div>
+  <div class="stat"><small>Rights</small><b>100% Master Creator</b></div>
+  <div class="stat"><small>Collab</small><b>1 active</b></div>
+  <div class="stat"><small>Revision</small><b id="revStat">18</b></div>
+  <div class="stat"><small>Relay gaps logged</small><b id="gapStat">0</b></div>
+  <div class="legend">
+    <span><span class="tag held">Held</span> <span style="color:var(--faint);font-size:11.5px">already in the build</span></span>
+    <span><span class="tag new">New</span> <span style="color:var(--faint);font-size:11.5px">connective intelligence</span></span>
+  </div>
+</div>
+
+<div class="note">
+  <h2>What this screen is</h2>
+  <p>The reconciliation specified in <code>seed/SRT-1-A.md</code> and <code>seed/SRT-1-C.md</code>: the existing build supplies the functional body, the reclamation supplies the cognitive nervous system. Nothing was removed to achieve calm — every workstation, tool, section control and professional surface is still on this screen. What changed is that they now sit at a declared disclosure level instead of all competing for attention at once.</p>
+  <p>The four things that are genuinely new: the <strong>Live Expression Engine</strong> (beatbox demoted from defining the system to being one of seven modalities), the <strong>Interpretation</strong> layer that shows what SoulSonus believes a performance means before anything is realized, the <strong>Creative Intent</strong> model that makes preservation and permission visible, and the <strong>ChangeSet</strong> contract that declares what will not change and writes a new revision rather than overwriting your work.</p>
+  <p>The fifth is the one underneath all of it. Reject the proposal and the system does not discard a candidate — it asks what you heard, in your words, and keeps going. <em>Soul</em> is what you carry inside; <em>Sonus</em> is its accurate realization; the product is the passage between them, and the only measurement that settles whether it worked is yours.</p>
+</div>
+</div>
+
+<script>
+const MODES = {
+  beatbox:{lbl:'Beatbox — transient stream',wave:'perc',
+    read:[['Events detected','23 onsets'],['Classified','kick 9 · snare 6 · hat 8'],['Tempo inferred','94.02 BPM'],['Pocket','−14 ms behind grid'],['Velocity range','58 – 118'],['Interpretation mode','Groove — microtiming kept']],
+    hyps:[['Studio drum kit',91],['Trap kit / 808 hats',74],['Live room percussion',38]]},
+  hum:{lbl:'Hum — melodic contour',wave:'tonal',
+    read:[['Melody detected','7-note phrase'],['Key','D minor'],['Range','A3 – F4'],['Expressive timing','preserved'],['Contour','rising, resolving down'],['Quantize','offered, not applied']],
+    hyps:[['Lead vocal line',86],['Rhodes / keys motif',69],['String counter-melody',44]]},
+  sing:{lbl:'Sing — full performance',wave:'tonal',
+    read:[['Melody','locked'],['Cadence','preserved'],['Syllable pattern','4 / 6 / 5'],['Rhyme position','bar 4'],['Words recognised','“I been wai— … calling me home”'],['Phonetic fragments','2 retained as lyric seed']],
+    hyps:[['Lead vocal — keep as performed',94],['Double + harmony stack',71],['Lyric seed for rewrite',52]]},
+  mimic:{lbl:'Mimic — pitched contour',wave:'tonal',
+    read:[['Heard','“Bummm-bum-ba-bumm”'],['Pitch contour','detected — F1 to C2'],['Groove','detected, behind beat'],['Articulation','muted / plucked'],['Onsets','4 across 1 bar'],['Register','low — sub-bass range']],
+    hyps:[['Bass line',82],['Low synth',68],['Kick / bass hybrid',41]]},
+  clap:{lbl:'Clap / Tap — body percussion',wave:'perc',
+    read:[['Events detected','16 onsets'],['Classified','clap 8 · rim 8'],['Tempo inferred','93.88 BPM'],['Pocket','+3 ms ahead'],['Velocity range','71 – 104'],['Interpretation mode','Assisted']],
+    hyps:[['Handclap layer',88],['Rim / cross-stick',63],['Snare replacement',35]]},
+  speak:{lbl:'Speak — creative direction',wave:'speech',
+    read:[['Heard','“make the chorus feel like I made it through”'],['Intent','emotional trajectory change'],['Scope','Chorus Lead Hook, bars 25–40'],['Emotion read','resolute · rising confidence'],['Constraint heard','“don’t touch my vocal”'],['Routed to','Studio Intelligence — not a command table']],
+    hyps:[['Arrangement change',79],['Harmonic re-voicing',72],['Mix / dynamics change',46]]},
+  midi:{lbl:'MIDI — hardware controller',wave:'perc',
+    read:[['Device','Keystation 61 — connected'],['Notes captured','31'],['Channel','1'],['Velocity curve','linear'],['Pocket','quantised at capture'],['Status','first-class input, equal to voice']],
+    hyps:[['Rhodes / electric piano',90],['Pad / warm synth',66],['Plucked bass',29]]}
+};
+
+const TRACKS = [
+  ['Kick (Thump)','--t-kick','kick',[0,6,8,16,22,24,30]],
+  ['Snare (Clap/Pop)','--t-snare','snare',[4,12,20,28]],
+  ['Hi-Hat (Tss)','--t-hat','hihat',[0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30]],
+  ['808 / Sub Bass','--t-bass','bass',[0,7,10,16,23,26]],
+  ['Lead Synth / Keys','--t-synth','melody',[2,3,10,11,18,19,26,27]],
+  ['Strings Ensemble','--t-strings','melody',[8,9,10,11,12,24,25,26,27,28,29]],
+  ['Lead Vocal Track','--t-vocal','vocal',[1,2,3,4,5,13,14,15,16,17,18,25,26,27,28]],
+  ['Harmony Stems','--t-harm','vocal_synth',[13,14,15,25,26,27,28,29]]
+];
+
+/* lanes */
+const lanes = document.getElementById('lanes');
+TRACKS.forEach(([name,cvar,inst,hits])=>{
+  const row=document.createElement('div'); row.className='lane'; row.style.setProperty('--c',`var(${cvar})`);
+  const hd=document.createElement('div'); hd.className='lane-hd';
+  hd.innerHTML=`<b>${name}</b><em>${inst}</em>`;
+  const g=document.createElement('div'); g.className='grid';
+  const sustained = inst==='melody'||inst==='vocal'||inst==='vocal_synth';
+  for(let i=0;i<32;i++){
+    const c=document.createElement('div');
+    c.className='cell'+(hits.includes(i)?(sustained?' sus':' hit'):'')+(i%4===0?' b4':'');
+    g.appendChild(c);
+  }
+  row.append(hd,g); lanes.appendChild(row);
+});
+
+/* modality */
+const readout=document.getElementById('readout'), hyps=document.getElementById('hyps'),
+      scopeLbl=document.getElementById('scopeLbl');
+let current='mimic';
+
+function render(mod){
+  const m=MODES[mod]; current=mod;
+  scopeLbl.textContent=m.lbl;
+  readout.innerHTML=m.read.map(([k,v])=>`<div class="read-row"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+  hyps.innerHTML=m.hyps.map(([n,p],i)=>`
+    <div class="hyp${i===0?' lead':''}">
+      <div class="hyp-top"><span class="hyp-name">${n}</span><span class="hyp-pct">${p}%</span></div>
+      <div class="meter"><i style="width:${p}%"></i></div>
+      <div class="hyp-act">
+        <button class="chip" style="padding:4px 8px">Realize</button>
+        <button class="chip" style="padding:4px 8px">Preserve my timing</button>
+      </div>
+    </div>`).join('');
+}
+document.querySelectorAll('.mod').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.mod').forEach(x=>x.setAttribute('aria-selected','false'));
+    b.setAttribute('aria-selected','true');
+    render(b.dataset.mod);
+  });
+});
+render('mimic');
+
+/* intent collapse */
+const it=document.getElementById('intentToggle'), ib=document.getElementById('intentBody');
+it.addEventListener('click',()=>{
+  const open=it.getAttribute('aria-expanded')==='true';
+  it.setAttribute('aria-expanded',String(!open));
+  ib.hidden=open; it.textContent=open?'Expand':'Collapse';
+});
+
+/* changeset + relay gap */
+let rev=18, gaps=0;
+const relay=document.getElementById('relay');
+document.getElementById('rejectBtn').addEventListener('click',()=>{
+  relay.hidden=false; document.getElementById('relayText').focus();
+});
+document.getElementById('relayCancel').addEventListener('click',()=>{relay.hidden=true;});
+document.getElementById('relaySend').addEventListener('click',()=>{
+  const t=document.getElementById('relayText');
+  const said=t.value.trim(); if(!said) {t.focus(); return;}
+  const box=document.getElementById('changeset');
+  const you=document.createElement('div'); you.className='msg creator';
+  you.innerHTML=`<span class="who">You — relay gap</span>${said.replace(/</g,'&lt;')}`;
+  const si=document.createElement('div'); si.className='msg si';
+  si.innerHTML=`<span class="who">Co-Producer</span>Heard. “Heavier, not prettier” reads as darkness up and brightness down — so I’ll thicken the low harmony and pull the upper voicing back instead of widening it. Kept: lead vocal, melody, beatbox timing. Logged against candidate <span class="num">c-0417</span>.`;
+  box.parentNode.insertBefore(you,box); box.parentNode.insertBefore(si,box);
+  t.value=''; relay.hidden=true;
+  gaps++; document.getElementById('gapStat').textContent=gaps;
+});
+document.getElementById('applyBtn').addEventListener('click',()=>{
+  rev++;
+  document.getElementById('revStat').textContent=rev;
+  document.getElementById('revLabel').textContent='rev '+rev;
+});
+
+/* scope */
+const cv=document.getElementById('scope'), cx=cv.getContext('2d');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let t=0;
+function draw(){
+  const w=cv.width,h=cv.height,mid=h/2;
+  cx.clearRect(0,0,w,h);
+  cx.strokeStyle='#1f2532'; cx.lineWidth=1;
+  for(let x=0;x<w;x+=w/32){cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,h);cx.stroke();}
+  const kind=MODES[current].wave;
+  cx.beginPath();
+  for(let x=0;x<w;x++){
+    const p=x/w; let a;
+    if(kind==='perc'){
+      const env=Math.max(0,1-((p*8)%1)*6);
+      a=env*Math.sin(p*260+t)*0.9;
+    } else if(kind==='speech'){
+      a=Math.sin(p*40+t)*0.35*(0.5+0.5*Math.sin(p*7+t*0.4));
+    } else {
+      a=Math.sin(p*26+t)*0.55*(0.55+0.45*Math.sin(p*3.1+t*0.3));
+    }
+    const y=mid+a*mid*0.82;
+    x?cx.lineTo(x,y):cx.moveTo(x,y);
+  }
+  cx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--amber').trim();
+  cx.lineWidth=1.6; cx.stroke();
+  cx.strokeStyle='rgba(245,158,11,.18)'; cx.lineWidth=5; cx.stroke();
+  if(!reduce){t+=0.05; requestAnimationFrame(draw);}
+}
+draw();
+</script>
