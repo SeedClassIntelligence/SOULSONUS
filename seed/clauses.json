@@ -6,7 +6,8 @@
     "seed/SRT-1-B.md",
     "seed/SRT-1-C.md",
     "seed/SRT-1-D.md",
-    "seed/SRT-1-E.md"
+    "seed/SRT-1-E.md",
+    "seed/SRT-1-F.md"
   ],
   "checkKinds": {
     "symbol": "Identifier/pattern must occur at least `min` times within `scope`.",
@@ -1927,6 +1928,82 @@
       "checks": [
         {
           "kind": "attest"
+        }
+      ]
+    },
+    {
+      "id": "F.1",
+      "section": "F",
+      "title": "No capture path discards a performed event",
+      "quote": "The goal is to always try to maintain what the system hears.",
+      "checks": [
+        {
+          "kind": "forbidden",
+          "pattern": "kind: 'drop'",
+          "scope": [
+            "src/audio/captureRouting.ts"
+          ],
+          "note": "resolveCaptureTarget returns drop on all_tracks_muted, and commitCaptureEvents skips the event. A performance played with every track muted is silently lost."
+        }
+      ]
+    },
+    {
+      "id": "F.2",
+      "section": "F",
+      "title": "A sound type with no host gets a channel created for it",
+      "quote": "still distribute it to its respective tracks",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "kind: 'create'",
+          "scope": [
+            "src/audio/captureRouting.ts"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "F.3",
+      "section": "F",
+      "title": "Re-interpretation is available on all captured material, not only new modalities",
+      "quote": "give it the ability to edit it, alter it, work with it, enhance it, expand it",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "reinterpretCapture|RoleHypothesis",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "F.4",
+      "section": "F",
+      "title": "Interpretation never blocks or holds a take",
+      "quote": "we are to capture that, still distribute it",
+      "checks": [
+        {
+          "kind": "attest",
+          "note": "Sign when commitCaptureEvents runs before any interpretation UI is offered."
+        }
+      ]
+    },
+    {
+      "id": "F.5",
+      "section": "F",
+      "title": "Captured events retain what the system heard, so a correction can be reversed",
+      "quote": "if the system hears a boom cat this time and the third",
+      "checks": [
+        {
+          "kind": "wired",
+          "pattern": "confidence|klass",
+          "scope": [
+            "src/audio"
+          ],
+          "minFiles": 3
         }
       ]
     }

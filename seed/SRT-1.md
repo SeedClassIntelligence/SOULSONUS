@@ -871,3 +871,7 @@ It helps creators conceive, compose, produce, engineer, edit, collaborate on, an
 > **Amendment E** (2026-09-01) - Engineering Judgment Outranks the Rule -
 > is recorded in `seed/SRT-1-E.md`. It governs how every other clause here is
 > applied.
+
+> **Amendment F** (2026-09-01) - Capture Is Sacred, Interpretation Is
+> Revisable - is recorded in `seed/SRT-1-F.md`. It governs the entire capture
+> path.

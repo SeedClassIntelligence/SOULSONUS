@@ -51,6 +51,41 @@ additions -- not a rebuild.
 
 ---
 
+## Step 0 -- Close the one path that loses a performance
+
+**Serves** Amendment F.i, clause F.1. **Risk: lowest. One condition.**
+**Recommended first, ahead of everything else in this plan.**
+
+`captureRouting.ts:65`:
+
+    const audible = tracks.filter((t) => !t.mute);
+    if (!audible.length) return { kind: 'drop', reason: 'all_tracks_muted' };
+
+and `StudioSessionContext.tsx:1622`:
+
+    if (decision.kind === 'drop') continue;
+
+If every track is muted and the creator performs, every event is discarded.
+No channel is created, nothing is written, and nothing tells them. The take
+is gone.
+
+The routing is otherwise exactly right -- step 4 of `resolveCaptureTarget`
+already creates a dedicated channel when no existing track can host a sound
+type, which is Amendment F.ii working as intended. This one branch is the
+exception.
+
+The fix follows from what mute means. Mute is a monitoring decision: do not
+play this back to me. It has never meant do not record me. So the muted case
+should fall through to the same channel creation every other unhosted sound
+gets, and the created channel can be muted to respect the monitoring
+intent -- the performance is kept either way.
+
+**Proof of non-breakage.** Every non-muted path through `resolveCaptureTarget`
+is unchanged; a diff shows only the `all_tracks_muted` branch differing. The
+`RouteDecision` union keeps `drop` so no consumer breaks.
+
+---
+
 ## Step 1 -- Live Expression Engine: four modalities become seven
 
 **Serves** Amendment A.10, clause C.2. **Risk: lowest.** One file, additive.
@@ -146,9 +181,18 @@ whichever instrument renders them, so there is nothing to wait for.
 `monitorCaptureEvent` -> `commitCaptureEvents` runs exactly as today for
 every modality. The notes land the instant the loop closes.
 
-What is added is a panel offered *after* the commit, on the modalities where
-the question is real -- `MIMIC`, `SING`, `SPEAK`. It does not block, and
-ignoring it leaves the pass exactly as recorded.
+What is added is a panel offered *after* the commit. Revised again
+2026-09-01 under Amendment F: it is **not** scoped to `MIMIC`, `SING` and
+`SPEAK`. Scoping it to the new modalities was wrong. The system can mishear
+the third hit of a beatbox pass exactly as easily as it can misread a mimic,
+and F.iv makes re-interpretation a permanent affordance on all captured
+material from every modality and every input -- not a prompt shown once at
+capture time.
+
+So: any captured material can be re-read, at any time, from its track. The
+panel surfaces itself after a pass on the modalities where the question is
+most open, but it is reachable on every take. It does not block, and ignoring
+it leaves the pass exactly as recorded.
 
 The question it asks is not "what did you play". It is **"what should this
 sound like"** -- a decision the system already makes silently by routing a
@@ -185,8 +229,9 @@ the invented-score failure this codebase already corrected once, in
 `realizationRouter.describeCreatorFeel`.
 
 **Proof of non-breakage.** `commitCaptureEvents` and `monitorCaptureEvent`
-are untouched. The four existing modalities never render the panel. Deleting
-the panel returns the app to current behaviour exactly.
+are untouched -- capture runs first and identically for every modality, which
+is clause F.4. Deleting the panel returns the app to current behaviour
+exactly.
 
 ## Step 5 -- Relay gap, then revision branching
 
@@ -270,15 +315,16 @@ Placement: a rail entry beside the other workstations, opened by the same
 
 ## Sequencing and why
 
-1. **Step 1** -- one file, additive, visible immediately. Proves the method.
-2. **Step 2** -- presentation of data that already exists. No pipeline risk.
-3. **Step 3a** -- new type, read-only panel. Nothing wired.
-4. **Step 5a** -- relay gap. Small, and it is the amendment that matters most.
-5. **Step 4** -- interpretation. Now additive and non-blocking, so it can move
+1. **Step 0** -- one condition. Stops the capture path losing a take. First.
+2. **Step 1** -- one file, additive, visible immediately. Proves the method.
+3. **Step 2** -- presentation of data that already exists. No pipeline risk.
+4. **Step 3a** -- new type, read-only panel. Nothing wired.
+5. **Step 5a** -- relay gap. Small, and it is the amendment that matters most.
+6. **Step 4** -- interpretation. Now additive and non-blocking, so it can move
    earlier than originally planned.
-6. **Step 7** -- Vocal-to-Lyric workstation. Largest single piece; benefits from
+7. **Step 7** -- Vocal-to-Lyric workstation. Largest single piece; benefits from
    Creative Intent existing first, since theme and emotion feed lyric proposals.
-7. **Step 3b, 5b, 6** -- wiring intent into realization, branching, emotion.
+8. **Step 3b, 5b, 6** -- wiring intent into realization, branching, emotion.
 
 Steps 1, 2, 3a, 4 and 5a change no audio path and no commit path at all.
 
