@@ -347,3 +347,45 @@ Steps 1, 2, 3a, 4 and 5a change no audio path and no commit path at all.
 4. Mobile. The rail, the Creative Intent panel and the interpretation panel
    all need a phone layout, and that is a distinct design pass with its own
    constraints. Raised, not yet planned, at the owner's direction.
+
+---
+
+## Measured findings - Basic Pitch on mouth material (2026-09-01)
+
+Read-only measurement, no source changed. Ran `public/models/basic_pitch.onnx`
+headless over the three seeds in `public/audio/test/`, decoded with the app's
+own `decodeNotes` and the app's own named heads
+(`StatefulPartitionedCall:1` = frame, `:2` = onset).
+
+| seed | peak onset | peak frame | notes at default 0.50/0.30 |
+|---|---|---|---|
+| `test_kick_seed.wav` | 0.416 | 0.323 | 0 |
+| `test_mouth_seed.wav` | 0.484 | **0.818** | 0 |
+| `test_bass_seed.wav` | 0.512 | 0.691 | 1 (C2) |
+
+Threshold sweep, onset 0.50 down to 0.25:
+
+- **Kick stays silent at every threshold.** It never produced a note, all the
+  way down to onset >= 0.25. Basic Pitch does not hallucinate pitch on
+  percussion. **This is the discriminator the spectral classifier lacks** --
+  the two can run in parallel over one take with no risk of the transcriber
+  stealing percussive hits.
+- **Mouth material is heard but rejected by the onset gate.** Peak frame
+  activation 0.818 says the model is tracking strong sustained pitch. Peak
+  onset 0.484 sits just under the 0.50 default, so nothing decodes. It fires
+  at onset >= 0.30. A mouth attack is softer than a plucked string, and the
+  default is tuned for instruments.
+- **A single lower global threshold is not the fix.** The bass seed produced a
+  note at 0.50, 0.45 and 0.40, then went *silent* at 0.35 and 0.30.
+  `decodeNotes` requires a rising edge -- `onset[f] >= t && onset[f-1] < t` --
+  so dropping the threshold below the preceding frame's value destroys the
+  edge. Thresholds have to be chosen per material, not lowered globally.
+
+**Limits of this evidence, stated plainly.** Three 2-second seeds, one
+inference window each, one note each. This is directional, not a tuned
+parameter set. Nothing here has been tested on a full multi-layer take.
+
+**What it supports.** Running the spectral classifier and Basic Pitch in
+parallel over the same take is sound: percussion goes to the classifier, pitch
+to the transcriber, and neither has to make the discrimination the classifier
+is documented as bad at. It does not yet support any specific threshold value.
