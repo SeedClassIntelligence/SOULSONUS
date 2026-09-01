@@ -1,21 +1,6 @@
 import React from 'react';
 
-/**
- * The SoulSonus logo. One lockup, used everywhere.
- *
- * The platform had drifted into three: the landing nav (gradient ring, amber S
- * on a slate core, gradient wordmark), the studio header (a rose third stop,
- * solid fill, inverted S, flat wordmark) and the footer (a two-stop mark). A
- * logo that changes between the page that sells the platform and the room the
- * creator works in is not one brand -- and the room is where the creator spends
- * their time, so the divergence was doing its damage where it mattered most.
- *
- * The landing lockup is canonical. This is it, and nothing else renders a mark.
- *
- * The gradient is not decoration: amber is the creator's own signal throughout
- * the studio, cyan is the machine's, and the mark runs one into the other. That
- * passage is the product.
- */
+/** Single source for the SoulSonus logo lockup. */
 
 export type LogoSize = 'sm' | 'md' | 'lg' | 'xl';
 
@@ -45,7 +30,7 @@ interface SoulSonusMarkProps {
   className?: string;
 }
 
-/** The mark alone — the gradient ring and the S. */
+/** Mark only. */
 export const SoulSonusMark: React.FC<SoulSonusMarkProps> = ({ size = 'md', className = '' }) => (
   <div
     className={`${MARK[size]} bg-gradient-to-tr from-amber-500 via-orange-500 to-cyan-400 p-0.5 shadow-lg shadow-amber-500/20 flex items-center justify-center shrink-0 ${className}`}
@@ -59,7 +44,7 @@ export const SoulSonusMark: React.FC<SoulSonusMarkProps> = ({ size = 'md', class
   </div>
 );
 
-/** The wordmark alone — amber into cyan, the creator's signal into the machine's. */
+/** Wordmark only. */
 export const SoulSonusWordmark: React.FC<SoulSonusMarkProps> = ({ size = 'md', className = '' }) => (
   <span
     className={`font-mono font-black tracking-widest bg-gradient-to-r from-amber-300 via-slate-100 to-cyan-300 bg-clip-text text-transparent ${WORD[size]} ${className}`}
@@ -70,9 +55,9 @@ export const SoulSonusWordmark: React.FC<SoulSonusMarkProps> = ({ size = 'md', c
 
 interface SoulSonusLogoProps {
   size?: LogoSize;
-  /** Sub-label under the wordmark. Pass null for none. */
+  /** Sub-label under the wordmark; null for none. */
   sublabel?: string | null;
-  /** Mark only, no wordmark. */
+  /** Render the mark without the wordmark. */
   markOnly?: boolean;
   className?: string;
 }

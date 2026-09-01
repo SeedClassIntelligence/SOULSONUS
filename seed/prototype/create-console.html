@@ -257,7 +257,7 @@ textarea:focus{outline:none;border-color:var(--c500)}
 </style>
 
 <div class="mockbar">
-  <b>MOCKUP — NOT THE APPLICATION</b>
+  <b>MOCKUP -- NOT THE APPLICATION</b>
   <span>This is a layout drawing in <code>seed/prototype/</code>. It imports none of your components. Your real Studio Intelligence (607 lines), SeedSignature modal, toolbox and all 8 inspector drawers are untouched in <code>src/</code>. Panels here are sketches unless marked as built tools.</span>
 </div>
 <div class="app">
@@ -283,7 +283,7 @@ textarea:focus{outline:none;border-color:var(--c500)}
     <button class="pill mini">−8ve</button><button class="pill mini">+8ve</button>
     <span class="ro">SIG: <b>4/4</b></span><span class="sep"></span>
     <span class="ro">🔊</span><input type="range" value="72" style="width:96px">
-    <select><option>Choose Preset…</option><option>Dubler Beatbox Seed</option><option>Neo-Soul Pocket</option></select>
+    <select><option>Choose Preset...</option><option>Dubler Beatbox Seed</option><option>Neo-Soul Pocket</option></select>
   </div>
   <div class="band">
     <nav class="rooms" id="rooms">
@@ -359,8 +359,8 @@ textarea:focus{outline:none;border-color:var(--c500)}
         <div id="a-si">
           <div style="padding:4px 9px;font-family:var(--mono);font-size:8px;color:var(--s600)">reading 8 tracks · 4 sections · rev <span id="rB">18</span></div>
           <div id="thread">
-            <div class="msg you"><span class="w">You</span>Make the second chorus feel like I’ve finally made it through something. Don’t touch my vocal.</div>
-            <div class="msg si"><span class="w">Co-Producer</span>Your performance lifted in the last phrase. I’d hold that with harmonic width and rhythmic density rather than tempo — pushing BPM would break the pocket you played.</div>
+            <div class="msg you"><span class="w">You</span>Make the second chorus feel like I've finally made it through something. Don't touch my vocal.</div>
+            <div class="msg si"><span class="w">Co-Producer</span>Your performance lifted in the last phrase. I'd hold that with harmonic width and rhythmic density rather than tempo -- pushing BPM would break the pocket you played.</div>
           </div>
           <div class="cs">
             <div class="csh">Proposed Change · Harmony Stems</div>
@@ -370,10 +370,10 @@ textarea:focus{outline:none;border-color:var(--c500)}
           </div>
           <div class="relay" id="relay" hidden>
             <div style="padding:8px 9px;border-bottom:1px solid var(--s800)">
-              <b style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--c300)">That’s not what I heard</b>
-              <p style="margin:4px 0 0;font-size:11px;color:var(--s400)">Your words, kept against this candidate. The conversation continues — this is not a discard.</p></div>
+              <b style="font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--c300)">That's not what I heard</b>
+              <p style="margin:4px 0 0;font-size:11px;color:var(--s400)">Your words, kept against this candidate. The conversation continues -- this is not a discard.</p></div>
             <div style="padding:8px 9px">
-              <textarea id="rTx" placeholder="The lift is there but it went polite on me. I heard it get heavier, not prettier…"></textarea>
+              <textarea id="rTx" placeholder="The lift is there but it went polite on me. I heard it get heavier, not prettier..."></textarea>
               <div style="display:flex;gap:4px;margin-top:6px"><button class="b cy" id="rSend" style="flex:1">Send to Co-Producer</button><button class="b" id="rCan">Cancel</button></div></div>
           </div>
         </div>
@@ -452,7 +452,7 @@ function engine(){const m=MODES[mod];return `
  <div class="mon">${Array.from({length:16},()=>'<i></i>').join('')}<span>Live transient monitor ready</span></div>
  <div class="mods">${Object.entries(MODES).map(([k,v])=>`<button class="mtab${v.new?' newm':''}" data-m="${k}" aria-selected="${k===mod}">${v.n}</button>`).join('')}
  <span class="ro" style="margin-left:auto;color:var(--s600);font-size:10px">Hits split onto isolated channels in real-time as you perform.</span></div>
- <div class="pads">${[1,2,3,4,5].map(i=>`<div class="pad"><small>${m.pad}</small><b>${i===1?m.pad+' — Seed Take':'Pad 0'+i}</b>
+ <div class="pads">${[1,2,3,4,5].map(i=>`<div class="pad"><small>${m.pad}</small><b>${i===1?m.pad+' -- Seed Take':'Pad 0'+i}</b>
  <div class="r"><span>${i===1?'23':'0'} events</span><em>Ready</em></div></div>`).join('')}
  <div class="pad add">+ Add Pad</div></div>
 </div></div>`;}
@@ -476,21 +476,21 @@ function tools(){return `<div class="chips" style="margin-bottom:9px"><span clas
 
 const ROOMS={
 CREATE:()=>engine()+scope()+tools()+lanes(),
-WRITE:()=>`<div class="pan"><button class="ph" data-a="w1"><b>🎤 Four-Layer Vocal Architecture</b><span class="tag held">Held — full room</span><span class="cv" style="margin-left:auto">▾</span></button>
+WRITE:()=>`<div class="pan"><button class="ph" data-a="w1"><b>🎤 Four-Layer Vocal Architecture</b><span class="tag held">Held -- full room</span><span class="cv" style="margin-left:auto">▾</span></button>
 <div id="a-w1" class="pb"><div class="grid3">
-<div class="card"><div class="ch"><b>L1 · Take Stack &amp; Comp</b></div>${[1,2,3,4].map(i=>`<div class="kv"><dt>Take 0${i}</dt><dd>${i===2?'<span class="ok">comped · bars 9–24</span>':'held'}</dd></div>`).join('')}</div>
+<div class="card"><div class="ch"><b>L1 · Take Stack &amp; Comp</b></div>${[1,2,3,4].map(i=>`<div class="kv"><dt>Take 0${i}</dt><dd>${i===2?'<span class="ok">comped · bars 9-24</span>':'held'}</dd></div>`).join('')}</div>
 <div class="card"><div class="ch"><b>L2 · Vocal Character</b></div>${[['Palette','Warm'],['Alt','Airy · Raspy · Intimate'],['','Powerful · Breathy · Falsetto'],['','Gritty · Smooth · Choir']].map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</div>
 <div class="card"><div class="ch"><b>L3 · Voice Identity</b></div><div class="kv"><dt>Session vocalist</dt><dd>Baritone 88</dd></div>
 <div class="kv"><dt>Consent proof</dt><dd class="ok">#PROOF_LIC_BARI_88</dd></div><div class="kv"><dt>E16 status</dt><dd class="ok">verified</dd></div></div></div>
 <div class="grid2" style="margin-top:9px">
 <div class="card"><div class="ch"><b>L4 · Vocal DSP Chain</b></div>
 ${[['Formant','−2 st'],['Scale snap','C minor diatonic'],['1176 FET','4:1 · −6 dB GR'],['Plate reverb','−18 dB send']].map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</div>
-<div class="card" style="border-color:rgba(34,211,238,.3)"><div class="ch"><b style="color:var(--c300)">Lyric Cadence — Mode B seed</b><span class="tag new" style="margin-left:auto">New</span></div>
-<div class="kv"><dt>Phonetic</dt><dd>“I been wai— … calling me home”</dd></div><div class="kv"><dt>Syllables</dt><dd>4 / 6 / 5</dd></div>
+<div class="card" style="border-color:rgba(34,211,238,.3)"><div class="ch"><b style="color:var(--c300)">Lyric Cadence -- Mode B seed</b><span class="tag new" style="margin-left:auto">New</span></div>
+<div class="kv"><dt>Phonetic</dt><dd>"I been wai-- ... calling me home"</dd></div><div class="kv"><dt>Syllables</dt><dd>4 / 6 / 5</dd></div>
 <div class="kv"><dt>Rhyme</dt><dd>bar 4 · bar 8</dd></div><div class="kv"><dt>Melody</dt><dd class="ok">locked</dd></div>
 <div style="padding:7px"><button class="b" style="width:100%">Propose lyrics that fit this cadence</button></div></div></div></div></div>`+lanes(),
 
-MIX:()=>`<div class="pan"><button class="ph" data-a="m1"><b>⇅ Mixing Console Desk</b><span class="tag held">Held — full room</span>
+MIX:()=>`<div class="pan"><button class="ph" data-a="m1"><b>⇅ Mixing Console Desk</b><span class="tag held">Held -- full room</span>
 <span class="ro" style="margin-left:auto;font-size:10px;color:var(--s600)">MixingConsoleDesk.tsx · 442 lines</span><span class="cv">▾</span></button>
 <div id="a-m1" class="pb">
 <div class="chips" style="margin-bottom:9px"><button class="chip on">Tracks</button><button class="chip">Buses</button>
@@ -503,7 +503,7 @@ ${TR.map(([n,c],i)=>`<div class="strip" style="--k:${c}"><div class="nm">${n}</d
 <div class="btns"><button>M</button><button>S</button><button>Ø</button></div></div>`).join('')}</div></div></div>
 
 <div class="grid2">
-<div class="pan"><button class="ph" data-a="m2"><b>Selected Channel — Lead Vocal</b><span class="tag held">Held</span><span class="cv" style="margin-left:auto">▾</span></button>
+<div class="pan"><button class="ph" data-a="m2"><b>Selected Channel -- Lead Vocal</b><span class="tag held">Held</span><span class="cv" style="margin-left:auto">▾</span></button>
 <div id="a-m2" class="pb">
 ${[['Highpass','88 Hz',30],['Low shelf','−1.5 dB',44],['Peaking','+1.8 dB @ 3k',62],['High shelf','+2.2 dB',66],
 ['Comp thresh','−18 dB',36],['Comp ratio','4:1',50],['Reverb send','−18 dB',30],['Delay send','−24 dB',22]]
@@ -517,11 +517,11 @@ ${[['Highpass','88 Hz',30],['Low shelf','−1.5 dB',44],['Peaking','+1.8 dB @ 3k
 <button class="chip">Replace</button><button class="chip">Recall</button></div>
 <div class="chips" style="margin-bottom:9px"><button class="chip">Hear Reference (A)</button><button class="chip on">Active Mix (B)</button></div>
 ${[['Reference','No reference loaded'],['Mono compat','<span class="ok">Mono Compatible</span>'],['Correlation','+0.72'],
-['Spectral tilt','−3.1 dB/oct'],['Vocal LUFS','−17.4'],['Masking','<span class="bad">Strings vs vocal · 1.2–3 kHz</span>'],
+['Spectral tilt','−3.1 dB/oct'],['Vocal LUFS','−17.4'],['Masking','<span class="bad">Strings vs vocal · 1.2-3 kHz</span>'],
 ['Measured','<span class="warn">Not measured since last change</span>']].map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}
 <div style="padding:8px 0 0"><button class="b cy" style="width:100%">Ask the Co-Engineer why the vocal sounds buried</button></div></div></div></div>`,
 
-MASTER:()=>`<div class="pan"><button class="ph" data-a="k1"><b>∿ Master Stereo Waveform Console</b><span class="tag held">Held — full room</span>
+MASTER:()=>`<div class="pan"><button class="ph" data-a="k1"><b>∿ Master Stereo Waveform Console</b><span class="tag held">Held -- full room</span>
 <span class="ro" style="margin-left:auto;font-size:10px;color:var(--s600)">MasterStereoWaveformConsole.tsx · 437 lines</span><span class="cv">▾</span></button>
 <div id="a-k1" class="pb"><div class="chips" style="margin-bottom:10px">
 <button class="chip on">Streaming Balanced (−14.0 LUFS)</button><button class="chip">Warm Analog Master (−13.0 LUFS)</button>
@@ -549,7 +549,7 @@ ${[['LINEAGE: Root Seed Present',1],['PROVENANCE: SHA-256 Verified Per Asset',1]
 <button class="b big2" style="width:100%;margin-top:9px" disabled>⛨ Lock &amp; Sign E14 SeedSignature</button>
 <p style="font-size:11px;color:var(--s500);margin:7px 0 0">One split-sheet signature outstanding. The gate blocks release rather than warning about it.</p></div></div></div></div>`,
 
-RELEASE:()=>`<div class="pan"><button class="ph" data-a="x1"><b>⛨ Delivery &amp; Rights Governance</b><span class="tag held">Held — full room</span><span class="cv" style="margin-left:auto">▾</span></button>
+RELEASE:()=>`<div class="pan"><button class="ph" data-a="x1"><b>⛨ Delivery &amp; Rights Governance</b><span class="tag held">Held -- full room</span><span class="cv" style="margin-left:auto">▾</span></button>
 <div id="a-x1" class="pb"><div class="grid3">
 <div class="card"><div class="ch"><b>Formats</b></div>${[['Master','24-bit / 48 kHz WAV'],['Streaming','24-bit / 44.1 kHz'],['Lossless','FLAC'],['Stems','8 isolated'],['MIDI','480 PPQ']].map(([k,v])=>`<div class="kv"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</div>
 <div class="card"><div class="ch"><b>Rights</b></div><div class="kv"><dt>Voice identity</dt><dd class="ok">#PROOF_LIC_BARI_88</dd></div>
@@ -565,7 +565,7 @@ ${i?'':'<div style="display:flex;gap:4px;margin-top:6px"><button class="b" style
 
 let room='CREATE';
 function render(){document.getElementById('stage').innerHTML=ROOMS[room]();document.getElementById('a-int').innerHTML=interp();
- document.getElementById('benchNote').textContent=room==='CREATE'?'Hits split onto isolated channels in real-time as you perform.':'Full workspace — organizing layer never enters the room.';}
+ document.getElementById('benchNote').textContent=room==='CREATE'?'Hits split onto isolated channels in real-time as you perform.':'Full workspace -- organizing layer never enters the room.';}
 document.getElementById('rooms').addEventListener('click',e=>{const b=e.target.closest('.room');if(!b)return;
  room=b.dataset.r;syncRoom();render();});
 document.getElementById('stage').addEventListener('click',e=>{const m=e.target.closest('.mtab');if(m){mod=m.dataset.m;render();}});
@@ -581,9 +581,9 @@ document.addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(!a
  const c=a.querySelector('.cv');if(c)c.textContent=o?'▾':'▸';});
 
 /* overlays */
-const PAN={inspector:['Inspector — Kick (Thump)','var(--s400)',`<div class="g"><h4>Signal</h4><p>16 events · velocity 58–118 · pocket −14 ms behind grid.</p></div>
-<div class="g"><h4>Performance — untouched</h4><p style="color:var(--e400)">Micro-timing and phrasing are locked by Creative Intent. The DSP chain runs after the performance, never over it.</p></div>
-<div class="g"><h4>Provenance</h4><p style="font-family:var(--mono);font-size:11px">seed_take_01 · SHA-256 8f2a93b…e412 · human-authored · rev 15</p></div>`],
+const PAN={inspector:['Inspector -- Kick (Thump)','var(--s400)',`<div class="g"><h4>Signal</h4><p>16 events · velocity 58-118 · pocket −14 ms behind grid.</p></div>
+<div class="g"><h4>Performance -- untouched</h4><p style="color:var(--e400)">Micro-timing and phrasing are locked by Creative Intent. The DSP chain runs after the performance, never over it.</p></div>
+<div class="g"><h4>Provenance</h4><p style="font-family:var(--mono);font-size:11px">seed_take_01 · SHA-256 8f2a93b...e412 · human-authored · rev 15</p></div>`],
 workstation:['Track Workstation','var(--c400)',`<div class="g"><h4>Note events</h4><p>480 PPQ. Pitch, micro-timing, duration envelope, velocity stalk, inline syllable lyric per event.</p></div>
 <div class="g"><h4>Realization route</h4><p>ORIGINAL · SAMPLE · INSTRUMENT · SYNTH · ACE performance transfer.</p></div>
 <div class="g"><h4>Invariant locks</h4><p class="ok" style="color:var(--e400)">BPM 110.00 exact · ±6 ms drums · ±12 ms bass · melody locked · vocal phrasing locked</p></div>`],
@@ -593,9 +593,9 @@ sourcing:['Sound Sourcing','var(--e400)',`<div class="g"><h4>Retrieval</h4><p>LA
 <div class="g"><h4>Your bias</h4><p>You have rejected brighter synth timbres 7 times this project. Warmer results rank first.</p></div>`],
 songwriting:['Songwriting Suite','var(--pk500)',`<div class="g"><h4>Cadence</h4><p>16th-note syllable meter · rhyme scheme AABA · density 62%</p></div>
 <div class="g"><h4>Influence ledger</h4><p>Narrative perspective, rhyme density and melodic cadence recorded independently of any voice-replica right.</p></div>`],
-brain:['✣ Studio Intelligence — Native Brain','var(--v500)',`<div class="g"><h4>Session context compiled</h4><p>8 tracks · 4 sections · 110 BPM · C min · rev 18 · 1 collaborator · 3 locked properties · 1 pending ChangeSet</p></div>
+brain:['✣ Studio Intelligence -- Native Brain','var(--v500)',`<div class="g"><h4>Session context compiled</h4><p>8 tracks · 4 sections · 110 BPM · C min · rev 18 · 1 collaborator · 3 locked properties · 1 pending ChangeSet</p></div>
 <div class="g"><h4>Provider</h4><p>Local brain, on-device. Ollama · Gemini · OpenAI configurable.</p></div>
-<div class="g"><h4>Emphasis</h4><p>Co-Producer · Audio Engineer · Studio Manager · Tutor · Platform Guide — one persistent intelligence, five emphases, never five assistants.</p></div>`],
+<div class="g"><h4>Emphasis</h4><p>Co-Producer · Audio Engineer · Studio Manager · Tutor · Platform Guide -- one persistent intelligence, five emphases, never five assistants.</p></div>`],
 radar:['Radial Radar','var(--s400)',`<div class="g"><h4>Session awareness</h4><p>Spectral balance, arrangement density and section energy across the whole timeline at once.</p></div>
 <div class="g"><h4>Current read</h4><p>Verse sparse (0.31) → Chorus expansive (0.78). Matches declared arrangement trajectory.</p></div>`],
 pipeline:['Pipeline','var(--e400)',`<div class="g"><h4>Flow</h4><p style="font-family:var(--mono);font-size:11px;line-height:1.9">Expression → Interpretation → Intent → Representation → Realization → Project state → Intelligence → ChangeSet → Your approval → Revision</p></div>
@@ -604,27 +604,27 @@ intent:['Creative Intent','var(--c400)',`<div class="g"><h4>What SoulSonus belie
 <p>Emotion: Intimate → Resolute · Genre: Neo-soul / gospel · Groove: behind the beat, −14 ms</p></div>
 <div class="g"><h4>Preserve</h4><p class="ok" style="color:var(--e400)">Lead melody · vocal cadence · beatbox timing</p></div>
 <div class="g"><h4>Transform</h4><p style="color:var(--a400)">Harmony · instrumentation · texture</p></div>
-<div class="g"><h4>Why this panel exists</h4><p>Without it the intelligence is invisible — you can see what it made but never what it understood.</p></div>`],
-midi:['MIDI Hardware','var(--b500)',`<div class="g"><h4>Detected</h4><p>Keystation 61 — WebMIDI, no mapping required.</p></div>
+<div class="g"><h4>Why this panel exists</h4><p>Without it the intelligence is invisible -- you can see what it made but never what it understood.</p></div>`],
+midi:['MIDI Hardware','var(--b500)',`<div class="g"><h4>Detected</h4><p>Keystation 61 -- WebMIDI, no mapping required.</p></div>
 <div class="g"><h4>Standing</h4><p>MIDI is a first-class input, equal to voice. Natural expression was added as a modality; it never replaced the conventional interfaces.</p></div>`],
 calibration:['Calibration','var(--s400)',`
 <div class="g"><h4>Input</h4><div class="kv"><dt>Interface</dt><dd>Default · 48 kHz</dd></div>
  <div class="kv"><dt>Noise floor</dt><dd id="calFloor">−62 dBFS</dd></div></div>
 <div class="g"><h4>Live band meter</h4>
  <div class="calm" id="calMeter"></div>
- <p style="font-family:var(--mono);font-size:9.5px;color:var(--s600);margin:6px 0 0">SUB · LOW · LOW-MID · MID · HIGH · AIR — the six bands the classifier scores against</p></div>
-<div class="g"><h4>Onset thresholds — a hit registers above the line</h4>
- <div class="sl"><label>Kick</label><input type="range" id="cK" value="40"><b id="cKv">0.40</b><span class="bdg p" id="cKh" style="margin:0">—</span></div>
- <div class="sl"><label>Snare</label><input type="range" id="cS" value="40"><b id="cSv">0.40</b><span class="bdg p" id="cSh" style="margin:0">—</span></div>
- <div class="sl"><label>Hi-hat</label><input type="range" id="cH" value="34"><b id="cHv">0.34</b><span class="bdg p" id="cHh" style="margin:0">—</span></div>
+ <p style="font-family:var(--mono);font-size:9.5px;color:var(--s600);margin:6px 0 0">SUB · LOW · LOW-MID · MID · HIGH · AIR -- the six bands the classifier scores against</p></div>
+<div class="g"><h4>Onset thresholds -- a hit registers above the line</h4>
+ <div class="sl"><label>Kick</label><input type="range" id="cK" value="40"><b id="cKv">0.40</b><span class="bdg p" id="cKh" style="margin:0">--</span></div>
+ <div class="sl"><label>Snare</label><input type="range" id="cS" value="40"><b id="cSv">0.40</b><span class="bdg p" id="cSh" style="margin:0">--</span></div>
+ <div class="sl"><label>Hi-hat</label><input type="range" id="cH" value="34"><b id="cHv">0.34</b><span class="bdg p" id="cHh" style="margin:0">--</span></div>
  <p style="font-size:11px;color:var(--s500);margin:9px 0 0">Raise a threshold if the wrong channel is firing on your voice. Lower it if soft hits are being missed.</p></div>`]};
 const MOD={signature:['SeedSignature','var(--a400)',`<div class="g"><h4>Provenance chain</h4><p style="font-family:var(--mono);font-size:11px">18 revisions · 41 takes · 6 realization candidates · unbroken SHA-256</p></div>
-<div class="g"><h4>Authorship</h4><p>Every take, note sequence and mix decision hashed with WebCrypto as it happened — proving you are the original human author before any orchestration ran.</p></div>
+<div class="g"><h4>Authorship</h4><p>Every take, note sequence and mix decision hashed with WebCrypto as it happened -- proving you are the original human author before any orchestration ran.</p></div>
 <button class="b pri big2" style="width:100%">Sign revision 18</button>`],
-collab:['Collaboration','var(--p500)',`<div class="g"><h4>Participants</h4><p>You — owner, 100% master creator<br>1 vocalist — pending contribution</p></div>
+collab:['Collaboration','var(--p500)',`<div class="g"><h4>Participants</h4><p>You -- owner, 100% master creator<br>1 vocalist -- pending contribution</p></div>
 <div class="g"><h4>Split sheet</h4><p>Attribution recorded per contribution and carried into the release manifest.</p></div>
 <div class="g"><p style="color:var(--a400)">Clause SRT-1.XV.4: this panel currently holds demonstration data rather than a shared collaborative state model. Flagged as a violation, not a gap.</p></div>`],
-import:['Import Audio','var(--b500)',`<div class="g"><h4>Accepted</h4><p>.wav · .mp3 · .flac · .aif · .m4a — analysed on drop for true BPM, key, meter, transient count, SHA-256 lineage.</p></div>
+import:['Import Audio','var(--b500)',`<div class="g"><h4>Accepted</h4><p>.wav · .mp3 · .flac · .aif · .m4a -- analysed on drop for true BPM, key, meter, transient count, SHA-256 lineage.</p></div>
 <div class="g"><h4>Decomposition</h4><p>Quick 4-stem (Demucs v4) or deep 12-class extract, populated directly into editable lanes.</p></div>`],
 piano:['Virtual Piano','var(--c400)',`
 <div class="g"><h4>Route capture to</h4>
@@ -635,14 +635,14 @@ piano:['Virtual Piano','var(--c400)',`
  <div class="pk" id="pk"></div>
  <p style="font-family:var(--mono);font-size:10px;color:var(--s600);margin:8px 0 0">Play with the mouse, or type <b style="color:var(--s300)">A W S E D F T G Y H U J K</b> · Z / X shift octave</p></div>
 <div class="g"><h4>Capture</h4>
- <div class="kv"><dt>Pad</dt><dd id="pkPad">MIDI — Pad 06</dd></div>
+ <div class="kv"><dt>Pad</dt><dd id="pkPad">MIDI -- Pad 06</dd></div>
  <div class="kv"><dt>Events captured</dt><dd id="pkN">0</dd></div>
- <div class="kv"><dt>Last note</dt><dd id="pkLast">—</dd></div>
+ <div class="kv"><dt>Last note</dt><dd id="pkLast">--</dd></div>
  <div class="kv"><dt>Quantize</dt><dd>1/16 · as set in transport</dd></div>
  <div style="display:flex;gap:5px;margin-top:9px">
   <button class="b cy" id="pkArm" style="flex:1">● Arm &amp; Capture</button>
   <button class="b" id="pkClr">Clear</button></div>
- <p style="font-size:11px;color:var(--s500);margin:9px 0 0">Every note lands on the same NoteEvent model as beatbox, hum and hardware MIDI. One performance model — this is just another way in.</p></div>`],
+ <p style="font-size:11px;color:var(--s500);margin:9px 0 0">Every note lands on the same NoteEvent model as beatbox, hum and hardware MIDI. One performance model -- this is just another way in.</p></div>`],
 export:['Export','var(--a400)',`<div class="g"><h4>Deliverables</h4><p>24-bit/48 kHz WAV · lossless FLAC · 8 isolated stems · 480 PPQ MIDI · master manifest with provenance metadata.</p></div>`]};
 const scrim=document.getElementById('scrim'),dr=document.getElementById('dr'),md=document.getElementById('md');
 function shut(){scrim.classList.remove('on');dr.classList.remove('on');md.classList.remove('on');
@@ -665,12 +665,12 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{if(e.key==='Escape')shut();});
 
 /* ── built-out tools. A panel absent from INIT is understanding, not a
-      tool, and says so — clause SRT-1.D.iii. ── */
+      tool, and says so -- clause SRT-1.D.iii. ── */
 const INIT={piano:initPiano,calibration:initCal};
 function markScaffold(key,box){
   if(INIT[key])return;
   box.insertAdjacentHTML('afterbegin',
-   `<div class="scafbar"><b>Scaffold — not the tool</b>The understanding is recorded here; the working control is not built yet. This panel describes what belongs in it.</div>`);
+   `<div class="scafbar"><b>Scaffold -- not the tool</b>The understanding is recorded here; the working control is not built yet. This panel describes what belongs in it.</div>`);
 }
 let AC=null;const ac=()=>AC||(AC=new(window.AudioContext||window.webkitAudioContext)());
 function tone(hz,ms=380){const c=ac(),o=c.createOscillator(),g=c.createGain();
@@ -725,7 +725,7 @@ function initPiano(){
     this.classList.toggle('cy',pkArmed);});
   document.getElementById('pkClr').addEventListener('click',()=>{pkN=0;document.getElementById('pkN').textContent='0';});
   document.getElementById('pkRoute').addEventListener('change',e=>{
-    document.getElementById('pkPad').textContent='MIDI — routed to '+e.target.selectedOptions[0].text;});
+    document.getElementById('pkPad').textContent='MIDI -- routed to '+e.target.selectedOptions[0].text;});
 }
 let calRaf=null;
 function initCal(){
@@ -742,7 +742,7 @@ function initCal(){
       bars[i].style.height=(6+v*50)+'%';}
     pair.forEach(([id,,hid,band])=>{
       const th=+document.getElementById(id).value/100, hit=lv[band]>th;
-      const b=document.getElementById(hid);b.textContent=hit?'HIT':'—';
+      const b=document.getElementById(hid);b.textContent=hit?'HIT':'--';
       b.className='bdg '+(hit?'p':'b');b.style.margin='0';b.style.opacity=hit?1:.4;});
     calRaf=requestAnimationFrame(loop);
   })();
@@ -758,8 +758,8 @@ document.addEventListener('click',e=>{
  if(e.target.id==='apply'){rev++;['rB','rD'].forEach(i=>document.getElementById(i).textContent=rev);document.getElementById('rC').textContent='rev '+rev;}
  if(e.target.id==='rSend'){const t=document.getElementById('rTx'),v=t.value.trim();if(!v){t.focus();return;}
   document.getElementById('thread').insertAdjacentHTML('beforeend',
-   `<div class="msg you"><span class="w">You — relay gap</span>${v.replace(/</g,'&lt;')}</div>
-    <div class="msg si"><span class="w">Co-Producer</span>Heard. “Heavier, not prettier” reads as darkness up, brightness down — so I’ll thicken the low harmony and pull the upper voicing back instead of widening it. Still untouched: lead vocal, melody, beatbox timing. Logged against candidate c-0417.</div>`);
+   `<div class="msg you"><span class="w">You -- relay gap</span>${v.replace(/</g,'&lt;')}</div>
+    <div class="msg si"><span class="w">Co-Producer</span>Heard. "Heavier, not prettier" reads as darkness up, brightness down -- so I'll thicken the low harmony and pull the upper voicing back instead of widening it. Still untouched: lead vocal, melody, beatbox timing. Logged against candidate c-0417.</div>`);
   t.value='';document.getElementById('relay').hidden=true;gaps++;document.getElementById('gN').textContent=gaps;}});
 syncRoom();render();
 </script>

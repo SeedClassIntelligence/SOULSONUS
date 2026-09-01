@@ -216,7 +216,7 @@
     {
       "id": "IV.2",
       "section": "IV",
-      "title": "Creator evaluation is a mandatory stage — nothing auto-commits",
+      "title": "Creator evaluation is a mandatory stage -- nothing auto-commits",
       "quote": "Creator Evaluation",
       "checks": [
         {
@@ -387,7 +387,7 @@
     {
       "id": "VI.1",
       "section": "VI",
-      "title": "Mode A — transcription-preserving lyric formation exists",
+      "title": "Mode A -- transcription-preserving lyric formation exists",
       "quote": "It then cleans or structures the material while preserving the creator's intent.",
       "checks": [
         {
@@ -403,7 +403,7 @@
     {
       "id": "VI.2",
       "section": "VI",
-      "title": "Mode B — phonetic/semantic lyric inference from non-lexical singing exists",
+      "title": "Mode B -- phonetic/semantic lyric inference from non-lexical singing exists",
       "quote": "Instead of treating the input as failed speech recognition, SoulSonus can treat the performance as a lyric seed.",
       "checks": [
         {
@@ -758,7 +758,7 @@
     {
       "id": "XI.6",
       "section": "XI",
-      "title": "Edits are region-scoped — \"only change bar eight\" is executable",
+      "title": "Edits are region-scoped -- \"only change bar eight\" is executable",
       "quote": "\"Only change bar eight.\"",
       "checks": [
         {
@@ -1109,7 +1109,7 @@
       "id": "XVII.2",
       "section": "XVII",
       "title": "Expression entry is always present as a first-class surface",
-      "quote": "Talk | Sing | Hum | Beatbox | Mimic | Upload — \"Tell me or perform what you hear.\"",
+      "quote": "Talk | Sing | Hum | Beatbox | Mimic | Upload -- \"Tell me or perform what you hear.\"",
       "amendment": "A.18",
       "checks": [
         {
@@ -1268,7 +1268,7 @@
     {
       "id": "XX.1",
       "section": "XX",
-      "title": "SoulSonus scope is CREATION — conception through prepared asset",
+      "title": "SoulSonus scope is CREATION -- conception through prepared asset",
       "quote": "It helps creators conceive, compose, produce, engineer, edit, collaborate on, and prepare music.",
       "checks": [
         {
@@ -1294,7 +1294,7 @@
     {
       "id": "XX.3",
       "section": "XX",
-      "title": "OPEN — Atmosphere's counterpart definition was not transmitted",
+      "title": "OPEN -- Atmosphere's counterpart definition was not transmitted",
       "quote": "[source text ends]",
       "checks": [
         {

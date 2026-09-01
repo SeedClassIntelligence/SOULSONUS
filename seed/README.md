@@ -1,4 +1,4 @@
-# `seed/` — SoulSonus Constitutional Layer
+# `seed/` -- SoulSonus Constitutional Layer
 
 This directory holds the original intent of SoulSonus and the machinery that
 enforces it. It is not documentation. It is the standard the build is measured
@@ -15,7 +15,7 @@ time.
 
 The audit protocol already names the fix:
 
-> The fix isn't "look harder" or "be more thorough" — those are instructions an
+> The fix isn't "look harder" or "be more thorough" -- those are instructions an
 > agent can't actually execute against, because they don't define a stopping
 > point. The fix is removing the agent's discretion over *what counts as checked
 > in the first place.*
@@ -26,11 +26,11 @@ This directory does that for the seed.
 
 | File | Role |
 |---|---|
-| `SRT-1.md` | **Constitutional text.** The original seed, sections I–XX, verbatim. Immutable. |
+| `SRT-1.md` | **Constitutional text.** The original seed, sections I-XX, verbatim. Immutable. |
 | `SRT-1-A.md` | **Amendment A.** Reconciliation of build and reclamation. Equal standing. |
 | `clauses.json` | The seed compiled into 93 numbered clauses, each with a check that can fail. |
 | `attestations.json` | Signed, dated, evidenced sign-offs for clauses no machine can measure. |
-| `waivers.json` | Explicit, reasoned exceptions. Drift is permitted here — never silently. |
+| `waivers.json` | Explicit, reasoned exceptions. Drift is permitted here -- never silently. |
 | `baseline.json` | Last recorded conformance. Regression from it fails the gate. |
 
 ## The three rules
@@ -43,7 +43,7 @@ from being quietly rewritten into whatever was built.
 **2. Existence is not wiring.** A clause with a `wired` check requires the
 concept to appear in N distinct files. A type declared once and referenced
 nowhere reports `DECLARED_NOT_WIRED`, not honored. This closes the exact failure
-the audit protocol names — both halves existing and never meeting in the middle.
+the audit protocol names -- both halves existing and never meeting in the middle.
 
 **3. Unmeasurable is not assumed honored.** A clause that no grep can settle
 reports `UNVERIFIED` until someone signs it in `attestations.json` with a date
@@ -69,7 +69,7 @@ npm run seed:gate               # CI: exit 1 on violation or unwaived regression
 | `UNVERIFIED` | Not mechanically checkable, not yet attested. |
 
 `VIOLATION` outranks `ABSENT` deliberately. A missing feature is work not yet
-done. A violation is the build asserting something the seed forbids — a
+done. A violation is the build asserting something the seed forbids -- a
 hardcoded demo collaborator presented as collaboration, a parser that terminates
 creative language at `UNKNOWN`.
 

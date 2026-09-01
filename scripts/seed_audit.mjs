@@ -79,8 +79,8 @@ function countMatches(text, re) {
 function runCheck(check, attestations) {
   if (check.kind === 'attest') {
     const a = attestations[check.clauseId];
-    if (!a) return { pass: false, state: 'UNVERIFIED', detail: check.blocked ? 'blocked — awaiting source text' : 'no signed attestation' };
-    return { pass: true, state: 'ATTESTED', detail: `signed ${a.date} — ${a.evidence}` };
+    if (!a) return { pass: false, state: 'UNVERIFIED', detail: check.blocked ? 'blocked -- awaiting source text' : 'no signed attestation' };
+    return { pass: true, state: 'ATTESTED', detail: `signed ${a.date} -- ${a.evidence}` };
   }
 
   const scope = check.scope || ['src'];
@@ -106,7 +106,7 @@ function runCheck(check, attestations) {
     const need = check.minFiles ?? 2;
     return hits.length >= need
       ? { pass: true, state: 'WIRED', detail: `${hits.length} files (need ${need})` }
-      : { pass: false, state: hits.length === 0 ? 'ABSENT' : 'DECLARED_NOT_WIRED', detail: `${hits.length} file(s), need ${need}${hits.length ? ` — only ${hits.slice(0, 2).join(', ')}` : ''}` };
+      : { pass: false, state: hits.length === 0 ? 'ABSENT' : 'DECLARED_NOT_WIRED', detail: `${hits.length} file(s), need ${need}${hits.length ? ` -- only ${hits.slice(0, 2).join(', ')}` : ''}` };
   }
 
   // symbol
@@ -165,7 +165,7 @@ if (want('--json')) {
 const fidelity = ((overall.HONORED / results.length) * 100).toFixed(1);
 
 console.log('');
-console.log('  SRT-1 SEED CONFORMANCE — SoulSonus');
+console.log('  SRT-1 SEED CONFORMANCE -- SoulSonus');
 console.log('  ' + '─'.repeat(66));
 console.log(`  ${results.length} clauses across ${sections.length} sections of constitutional text`);
 console.log(`  ✓ ${overall.HONORED} honored   ◐ ${overall.PARTIAL} partial   ✗ ${overall.ABSENT} absent   ⚠ ${overall.VIOLATION} violation   ? ${overall.UNVERIFIED} unverified`);
@@ -200,7 +200,7 @@ for (const s of sections) {
 const violations = results.filter((r) => r.status === 'VIOLATION' && !r.waiver);
 if (violations.length) {
   console.log('  ' + '─'.repeat(66));
-  console.log('  VIOLATIONS — these contradict the seed rather than merely lag it:');
+  console.log('  VIOLATIONS -- these contradict the seed rather than merely lag it:');
   for (const v of violations) {
     console.log(`    ⚠ SRT-1.${v.id}  ${v.title}`);
     const note = v.checks.find((c) => c.note)?.note;
@@ -219,7 +219,7 @@ if (want('--gate')) {
   const rank = { VIOLATION: 0, ABSENT: 1, UNVERIFIED: 2, PARTIAL: 3, HONORED: 4 };
   const regressions = results.filter((r) => base[r.id] && rank[r.status] < rank[base[r.id]] && !r.waiver);
   if (regressions.length) {
-    console.log('  REGRESSION — a clause moved backwards without a waiver:');
+    console.log('  REGRESSION -- a clause moved backwards without a waiver:');
     regressions.forEach((r) => console.log(`    SRT-1.${r.id}  ${base[r.id]} → ${r.status}  ${r.title}`));
     console.log('');
     console.log('  Add a dated entry to seed/waivers.json naming the clause and the reason,');
