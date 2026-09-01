@@ -21,6 +21,26 @@ import {
 } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 
+/**
+ * The ways a creator can put a performance into the session.
+ *
+ * Beatbox, clap/tap and MIDI keys were here first. Mimic, sing and speak are
+ * the rest of what a mouth does: the seed was never only percussion, and a
+ * single performance can carry melody, rhythm and phrasing at once.
+ *
+ * All of the vocal modalities capture through MOUTH -- the engine's taxonomy
+ * is unchanged by this type. What differs is the pass label and the pad's
+ * instrument, so the creator can tell their takes apart.
+ */
+export type ExpressionModality =
+  | 'BEATBOX'
+  | 'CLAP_TAP'
+  | 'HUM_VOICE'
+  | 'MIMIC'
+  | 'SING'
+  | 'SPEAK'
+  | 'INSTRUMENT';
+
 export const UnifiedDeckBench: React.FC = () => {
   const {
     dawState,
@@ -43,7 +63,7 @@ export const UnifiedDeckBench: React.FC = () => {
     canRedo,
   } = useStudioSession();
 
-  const [activeModalityTab, setActiveModalityTab] = useState<'INSTRUMENT' | 'BEATBOX' | 'CLAP_TAP' | 'HUM_VOICE'>('BEATBOX');
+  const [activeModalityTab, setActiveModalityTab] = useState<ExpressionModality>('BEATBOX');
   const [isPatternControlsOpen, setIsPatternControlsOpen] = useState(false);
   const [overdubPassCount, setOverdubPassCount] = useState(0);
   const [overdubPassLabels, setOverdubPassLabels] = useState<string[]>([]);
@@ -133,6 +153,12 @@ export const UnifiedDeckBench: React.FC = () => {
         ? 'Pass: Clap & Hats'
         : tab === 'HUM_VOICE'
         ? 'Pass: Hummed Bass / Vocal Synth'
+        : tab === 'MIMIC'
+        ? 'Pass: Vocal Mimicry'
+        : tab === 'SING'
+        ? 'Pass: Sung Take'
+        : tab === 'SPEAK'
+        ? 'Pass: Spoken Direction'
         : 'Pass: MIDI Keys Layer';
     setOverdubPassLabels((prev) => [...prev, label]);
   };
@@ -156,6 +182,8 @@ export const UnifiedDeckBench: React.FC = () => {
     let modality: 'MOUTH' | 'BODY' | 'KEYS' = 'MOUTH';
     if (activeModalityTab === 'CLAP_TAP') { inst = 'body_percussion'; modality = 'BODY'; }
     if (activeModalityTab === 'HUM_VOICE') { inst = 'vocal_hum'; modality = 'MOUTH'; }
+    if (activeModalityTab === 'MIMIC') { inst = 'vocal_mimic'; modality = 'MOUTH'; }
+    if (activeModalityTab === 'SING') { inst = 'vocal_sing'; modality = 'MOUTH'; }
     if (activeModalityTab === 'INSTRUMENT') { inst = 'vocal_synth'; modality = 'KEYS'; }
 
     const newPadTrack: any = {
@@ -190,7 +218,7 @@ export const UnifiedDeckBench: React.FC = () => {
         >
           <Mic className="w-4.5 h-4.5 text-cyan-400" />
           <span className="text-xs font-black uppercase text-slate-100 tracking-wider">
-            LIVE SEED & BEATBOX ENGINE
+            LIVE EXPRESSION ENGINE
           </span>
           <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
           {isDeckExpanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
@@ -382,19 +410,30 @@ export const UnifiedDeckBench: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
         <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-[11px]">
           {[
-            { id: 'BEATBOX' as const, label: 'Oral Beatbox' },
-            { id: 'CLAP_TAP' as const, label: 'Clap / Tap' },
-            { id: 'HUM_VOICE' as const, label: 'Hum / Voice' },
-            { id: 'INSTRUMENT' as const, label: 'MIDI Keys' },
+            { id: 'BEATBOX' as const, label: 'Oral Beatbox', pending: false },
+            { id: 'CLAP_TAP' as const, label: 'Clap / Tap', pending: false },
+            { id: 'HUM_VOICE' as const, label: 'Hum / Voice', pending: false },
+            { id: 'MIMIC' as const, label: 'Mimic', pending: false },
+            { id: 'SING' as const, label: 'Sing', pending: false },
+            // Spoken direction is captured audio, not a percussion performance.
+            // Routing it through the mouth classifier would turn "make the
+            // chorus bigger" into kick and snare hits, so the tab stays present
+            // and inert until language reaches the reasoning layer.
+            { id: 'SPEAK' as const, label: 'Speak', pending: true },
+            { id: 'INSTRUMENT' as const, label: 'MIDI Keys', pending: false },
           ].map((t) => (
             <button
               key={t.id}
               type="button"
-              onClick={() => setActiveModalityTab(t.id)}
-              className={`px-3 py-1 rounded-lg font-bold transition cursor-pointer ${
-                activeModalityTab === t.id
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-black'
-                  : 'text-slate-400 hover:text-slate-200'
+              disabled={t.pending}
+              onClick={() => { if (!t.pending) setActiveModalityTab(t.id); }}
+              title={t.pending ? 'Spoken direction lands when language routing is built' : undefined}
+              className={`px-3 py-1 rounded-lg font-bold transition ${
+                t.pending
+                  ? 'text-slate-600 border border-dashed border-slate-700 cursor-not-allowed'
+                  : activeModalityTab === t.id
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-black cursor-pointer'
+                  : 'text-slate-400 hover:text-slate-200 cursor-pointer'
               }`}
             >
               {t.label}
