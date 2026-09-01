@@ -61,12 +61,17 @@ function calibratedScore(track: Track, event: CaptureEvent): number {
 }
 
 export function resolveCaptureTarget(tracks: Track[], event: CaptureEvent): RouteDecision {
+  // Mute is a monitoring decision -- do not play this back to me. It has never
+  // meant do not record me. Routing used to drop every event when all tracks
+  // were muted, so a creator who muted the session and performed lost the take
+  // outright: no channel created, no notes written, and nothing said. A
+  // performance that reached the microphone reaches a track.
   const audible = tracks.filter((t) => !t.mute);
-  if (!audible.length) return { kind: 'drop', reason: 'all_tracks_muted' };
+  const pool = audible.length ? audible : tracks;
 
   // 1. A track the creator personally calibrated wins over any default mapping.
   let bestCalibrated: { track: Track; score: number } | null = null;
-  for (const track of audible) {
+  for (const track of pool) {
     const score = calibratedScore(track, event);
     if (score > 0 && (!bestCalibrated || score > bestCalibrated.score)) {
       bestCalibrated = { track, score };
@@ -89,7 +94,7 @@ export function resolveCaptureTarget(tracks: Track[], event: CaptureEvent): Rout
   //    the performance itself: the recorded take is attached to it as a clip,
   //    which is what makes it the record of what was played and what lets it be
   //    extracted again later by better analysis.
-  const modalitySource = audible.find(
+  const modalitySource = pool.find(
     (t) =>
       t.isSourceTrack &&
       t.sourceModality === (event.modality as SourceModality | null) &&
@@ -99,7 +104,7 @@ export function resolveCaptureTarget(tracks: Track[], event: CaptureEvent): Rout
 
   // 3. Otherwise the project's channel for that instrument.
   for (const instrument of instruments) {
-    const match = audible.find((t) => t.instrument === instrument);
+    const match = pool.find((t) => t.instrument === instrument);
     if (match) return { kind: 'track', trackId: match.id, reason: 'instrument' };
   }
 

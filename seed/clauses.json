@@ -1939,11 +1939,11 @@
       "checks": [
         {
           "kind": "forbidden",
-          "pattern": "kind: 'drop'",
+          "pattern": "return \\{ kind: 'drop'",
           "scope": [
             "src/audio/captureRouting.ts"
           ],
-          "note": "resolveCaptureTarget returns drop on all_tracks_muted, and commitCaptureEvents skips the event. A performance played with every track muted is silently lost."
+          "note": "The RouteDecision union may declare a drop variant so consumers keep exhaustive handling. No routing path may RETURN one -- that is a performance discarded."
         }
       ]
     },
