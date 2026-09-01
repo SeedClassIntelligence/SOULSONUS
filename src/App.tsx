@@ -492,13 +492,14 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         soulFlowStageLabel={dawState.soulFlowState}
       />
 
-      {/* Sleek Collapsible Studio Utilities Bar */}
-      <div className="pt-2">
+      {/* Consolidated workstations rail beside the studio canvas. The rail
+          holds the same 14 launchers the horizontal bar held, firing the same
+          events, so every drawer and modal opens exactly as before. */}
+      <div className="flex-1 flex w-full max-w-[1440px] mx-auto gap-3 px-3 md:px-4 pt-2 items-start">
         <StudioUtilityBar />
-      </div>
 
-      {/* Main Studio Canvas & 6-Workspace Room Switching */}
-      <main className="flex-1 p-3 md:p-4 max-w-[1440px] w-full mx-auto space-y-3">
+        {/* Main Studio Canvas & 6-Workspace Room Switching */}
+        <main className="flex-1 min-w-0 py-1 space-y-3">
         {focusTrackId ? (
           <FocusModeView />
         ) : isInstrumentFull ? (
@@ -525,7 +526,8 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
           // resolves somewhere real instead of a blank room.
           <StudioCanvas />
         )}
-      </main>
+        </main>
+      </div>
 
       {/* Bottom Master Studio Telemetry & Status Bar */}
       <StudioMasterStatusBar />
