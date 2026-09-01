@@ -136,38 +136,57 @@ enforced. Nothing is wired until 3a is proven on screen.
 
 ## Step 4 -- The Interpretation layer
 
-**Serves** Amendment A.9, clauses IV.3, VIII.2, VIII.3. **Risk: highest.
-Sits in the live capture path, so it is opt-in and non-blocking.**
+**Serves** Amendment A.9, clauses IV.3, VIII.2, VIII.3. **Risk: low.**
+Revised 2026-09-01: commit first, offer after. The earlier version held the
+pass to ask a question. The owner challenged that and was right -- a held
+performance is a performance that can be lost, and the notes are identical
+whichever instrument renders them, so there is nothing to wait for.
 
-Today, `StudioSessionContext.tsx:2036` calls `onCaptureEvent` ->
-`monitorCaptureEvent` (`:1724`) -> `commitCaptureEvents` (`:1593`), and a
-classified event lands on a track immediately. That immediacy is correct for
-beatbox: thump is a kick, and the creator wants it there now.
+**The capture path does not change at all.** `onCaptureEvent` ->
+`monitorCaptureEvent` -> `commitCaptureEvents` runs exactly as today for
+every modality. The notes land the instant the loop closes.
 
-It is wrong for Mimic. "Bummm-bum-ba-bumm" is not self-evidently a bass line.
+What is added is a panel offered *after* the commit, on the modalities where
+the question is real -- `MIMIC`, `SING`, `SPEAK`. It does not block, and
+ignoring it leaves the pass exactly as recorded.
 
-So interpretation is scoped to the modalities where the question is real:
+The question it asks is not "what did you play". It is **"what should this
+sound like"** -- a decision the system already makes silently by routing a
+class to a default track.
 
-- `BEATBOX`, `CLAP_TAP`, `INSTRUMENT`, `HUM_VOICE` -- unchanged, commit
-  straight through as today;
-- `MIMIC`, `SING`, `SPEAK` -- the pass is held after the loop closes and
-  `RoleHypothesis[]` is offered, ranked, before anything is committed.
+What the creator sees after mimicking a bassline:
+
+    That pass read as low-register pitched material.
+    4 onsets - F1 to C2 - 14 ms behind the grid - muted articulation
+
+      Bass line          82%   sub-band energy 0.46, pitch F1-C2, 4 onsets/bar
+      Low synth          68%   same contour, brighter centroid also fits
+      Kick/bass hybrid   41%   onsets 1 and 3 read percussive as well as pitched
+
+    Realize as  [808] [Electric Bass] [Upright] [Synth Bass] [Cello] [Keep as recorded]
+    Timing      (o) Keep my timing  ( ) Fix obvious errors  ( ) Snap to 1/16
+
+Every element already exists. The routes are `RealizationRoute`
+(`types/daw.ts:958`). The target roles are `RealizationRequest.targetRole`
+(`realizationRouter.ts`). The percentages come from
+`performanceClassifier.classifyOnset`, which already returns a real
+confidence margin and a per-class score map. The timing options are the
+quantize modes SRT-1 VII already names. Nothing new is inferred; the panel
+shows a decision that is currently invisible.
 
     interface RoleHypothesis {
       role: string;          // 'bass_line', 'low_synth', 'kick_bass_hybrid'
-      confidence: number;    // 0..1, from the classifier's real margin
-      basis: string[];       // which measurements produced it
+      confidence: number;    // 0..1, the classifier's real margin
+      basis: string[];       // the measurements that produced it
     }
 
-`performanceClassifier.classifyOnset` already returns a `confidence` margin
-and a `scores` map. The hypotheses are aggregated from what it already
-computes -- no new model, no new inference call.
+`basis` is required, not decorative: a percentage with no stated reason is
+the invented-score failure this codebase already corrected once, in
+`realizationRouter.describeCreatorFeel`.
 
-**Proof of non-breakage.** The four existing modalities never enter the new
-branch; their code path is byte-identical. If interpretation returns nothing,
-the pass commits as it does today.
-
----
+**Proof of non-breakage.** `commitCaptureEvents` and `monitorCaptureEvent`
+are untouched. The four existing modalities never render the panel. Deleting
+the panel returns the app to current behaviour exactly.
 
 ## Step 5 -- Relay gap, then revision branching
 
@@ -213,17 +232,55 @@ to justify is a number in a struct.
 
 ---
 
+## Step 7 -- Vocal-to-Lyric Workstation
+
+**Serves** Amendment A.11, SRT-1 VI, clauses E.1-E.3, VI.2, VI.4.
+**Risk: medium. Adjudicated under Amendment E.**
+
+Owner agreed 2026-09-01 that this warrants its own workstation. The
+moratorium on new workstations does not apply to it.
+
+Why it is not a panel: it carries state nothing else carries, and it runs its
+own loop. A panel borrows a host's state; this owns
+
+- recognised words, distinguished from
+- phonetic fragments that carry cadence but no lexical content, distinguished from
+- melodic syllable positions, distinguished from
+- inferred semantic theme;
+
+plus a syllable map, a rhyme position map, and a melody lock.
+
+What exists to build on: `LyricCadenceStudio.tsx` (466 lines) is the E08
+16th-note syllable meter and rhyme engine -- Mode A, transcription-preserving.
+The workstation is Mode B around it: treat a performance that is not clean
+speech as a *lyric seed* rather than a failed transcription, and propose
+language that fits the cadence already performed.
+
+The loop:
+
+    vocal seed -> phonetic extraction -> semantic clues -> syllable map
+    -> song context -> lyric alternatives -> creator approval
+
+The binding constraint is clause E.3: a proposal that changes the syllable
+count, the stress pattern or the rhyme position is rejected before it is
+shown. The creator performed the cadence; language fits it, not the reverse.
+
+Placement: a rail entry beside the other workstations, opened by the same
+`soulsonus:openDrawer` event every other one uses. No new mechanism.
+
 ## Sequencing and why
 
 1. **Step 1** -- one file, additive, visible immediately. Proves the method.
 2. **Step 2** -- presentation of data that already exists. No pipeline risk.
 3. **Step 3a** -- new type, read-only panel. Nothing wired.
 4. **Step 5a** -- relay gap. Small, and it is the amendment that matters most.
-5. **Step 4** -- interpretation. Touches live capture; go here only once the
-   pattern is trusted.
-6. **Step 3b, 5b, 6** -- wiring intent into realization, branching, emotion.
+5. **Step 4** -- interpretation. Now additive and non-blocking, so it can move
+   earlier than originally planned.
+6. **Step 7** -- Vocal-to-Lyric workstation. Largest single piece; benefits from
+   Creative Intent existing first, since theme and emotion feed lyric proposals.
+7. **Step 3b, 5b, 6** -- wiring intent into realization, branching, emotion.
 
-Steps 1, 2, 3a and 5a change no audio path and no commit path at all.
+Steps 1, 2, 3a, 4 and 5a change no audio path and no commit path at all.
 
 ## Standing verification, every step
 
@@ -237,9 +294,10 @@ Steps 1, 2, 3a and 5a change no audio path and no commit path at all.
 
 1. Where should the Creative Intent panel live -- collapsible under the
    Expression Engine, in the Studio Intelligence drawer, or its own rail entry?
-2. Vocal-to-Lyric (Amendment A.11) is not in this plan. It is the one item
-   that may deserve a workstation, which the moratorium currently forbids.
-   Confirm before it is planned.
-3. Step 4 changes what happens after a Mimic pass. Confirm that holding the
-   pass for a role choice is wanted, rather than committing and offering
-   re-interpretation afterwards.
+2. RESOLVED 2026-09-01. Vocal-to-Lyric gets its own workstation, Step 7,
+   adjudicated under Amendment E.
+3. RESOLVED 2026-09-01. Step 4 commits first and offers the interpretation
+   after, non-blocking. Holding a pass risks losing a performance.
+4. Mobile. The rail, the Creative Intent panel and the interpretation panel
+   all need a phone layout, and that is a distinct design pass with its own
+   constraints. Raised, not yet planned, at the owner's direction.

@@ -867,3 +867,7 @@ It helps creators conceive, compose, produce, engineer, edit, collaborate on, an
 > **Amendment D** (2026-08-31) — The Non-Reduction Clause — is recorded in
 > `seed/SRT-1-D.md`. It controls over every reorganization proposal in this
 > corpus, Amendment C included.
+
+> **Amendment E** (2026-09-01) - Engineering Judgment Outranks the Rule -
+> is recorded in `seed/SRT-1-E.md`. It governs how every other clause here is
+> applied.

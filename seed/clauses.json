@@ -5,7 +5,8 @@
     "seed/SRT-1-A.md",
     "seed/SRT-1-B.md",
     "seed/SRT-1-C.md",
-    "seed/SRT-1-D.md"
+    "seed/SRT-1-D.md",
+    "seed/SRT-1-E.md"
   ],
   "checkKinds": {
     "symbol": "Identifier/pattern must occur at least `min` times within `scope`.",
@@ -1855,6 +1856,77 @@
         {
           "kind": "attest",
           "note": "Sign only when the change added navigation without removing any control."
+        }
+      ]
+    },
+    {
+      "id": "E.1",
+      "section": "E",
+      "title": "Vocal-to-Lyric has its own workstation, not a panel",
+      "quote": "I believe that it genuinely should have its own workstation.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "VocalToLyricWorkstation|LyricWorkstation",
+          "scope": [
+            "src/components"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "E.2",
+      "section": "E",
+      "title": "The lyric workstation distinguishes words, phonetic fragments, syllable positions and semantic intent",
+      "quote": "Words recognized / from phonetic fragments / from melodic syllable positions / from semantic intent.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "LyricSourceKind|PhoneticFragment",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "E.3",
+      "section": "E",
+      "title": "Proposed lyrics never destroy the performed cadence",
+      "quote": "propose lyric alternatives without destroying the performed cadence",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "cadenceLock|preserveCadence",
+          "scope": [
+            "src"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "E.4",
+      "section": "E",
+      "title": "A better engineering answer is stated even when a standing rule forbids it",
+      "quote": "then you must make those adjustments. And I expect that over my moratorium.",
+      "checks": [
+        {
+          "kind": "attest",
+          "note": "Sign when a rule was challenged on the record rather than silently obeyed."
+        }
+      ]
+    },
+    {
+      "id": "E.5",
+      "section": "E",
+      "title": "Judgment is stated; the decision stays with the owner",
+      "quote": "That doesn't give you the right to just go and do something.",
+      "checks": [
+        {
+          "kind": "attest"
         }
       ]
     }
