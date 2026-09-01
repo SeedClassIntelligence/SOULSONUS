@@ -79,6 +79,8 @@ import { CallOutcome, SessionRoom, callSessionPlayer, installDefaultBand, regist
 import { installAcePlayers } from '../lib/acePlayer';
 import { resolveCaptureTarget } from '../audio/captureRouting';
 import { midiNoteToCaptureEvent } from '../audio/midiCapture';
+import { vocalRecorder } from '../audio/vocalRecorder';
+import { measurePitchResponse } from '../audio/basicPitch';
 import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
 import { toMono } from '../audio/fft';
 import { renderMasterBounce } from '../audio/masterRender';
@@ -606,6 +608,14 @@ export interface StudioSessionState {
   setCalibratingTrackId: (id: string | null) => void;
   /** Listens 2s, learns this track's center frequency and threshold, stores it as its detectionProfile. */
   handleCalibrateTrack: (trackId: string) => Promise<void>;
+  /**
+   * How high this creator's own pitched material drives the transcriber.
+   * Null until they perform a calibration take. Never defaulted.
+   */
+  pitchResponse: { onsetPeak: number; framePeak: number } | null;
+  isCalibratingPitch: boolean;
+  /** Records a sung or hummed take and measures what it does to the model. */
+  handleCalibratePitch: (durationMs?: number) => Promise<void>;
 
   // Creator Info
   creatorName: string;
@@ -2067,6 +2077,46 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setTracks((prev) => prev.map((t) => (t.id === trackId ? { ...t, detectionProfile: profile } : t)));
     }
     setCalibratingTrackId(null);
+  }, []);
+
+  // The pitch counterpart of the track calibration above.
+  const [pitchResponse, setPitchResponse] = useState<{ onsetPeak: number; framePeak: number } | null>(null);
+  const [isCalibratingPitch, setIsCalibratingPitch] = useState(false);
+
+  /**
+   * Measures what this creator's pitched voice does to the transcriber.
+   *
+   * Recorded through the vocal recorder rather than by polling the analyser.
+   * The analyser hands back snapshots with gaps between them, which is fine
+   * for measuring band energy and wrong for a model that reads a continuous
+   * signal -- a stitched buffer would produce a number that describes the
+   * stitching rather than the person.
+   *
+   * Three seconds because Basic Pitch's window is 43844 samples at 22050 Hz,
+   * just under two, and a take that only just fills one window measures the
+   * edge of the buffer as much as the voice.
+   */
+  const handleCalibratePitch = useCallback(async (durationMs = 3000) => {
+    setIsCalibratingPitch(true);
+    try {
+      const started = await vocalRecorder.startRecording();
+      if (!started) return;
+      await new Promise((r) => setTimeout(r, durationMs));
+      const take = await vocalRecorder.stopRecording();
+      const measured = await measurePitchResponse(
+        take.buffer.getChannelData(0),
+        take.buffer.sampleRate
+      );
+      // A silent take drives neither head. Recording nothing is not a
+      // measurement of a person, so it is not stored as one.
+      if (measured.onsetPeak > 0 || measured.framePeak > 0) {
+        setPitchResponse({ onsetPeak: measured.onsetPeak, framePeak: measured.framePeak });
+      }
+    } catch {
+      // Leave the previous measurement, or none, rather than write a wrong one.
+    } finally {
+      setIsCalibratingPitch(false);
+    }
   }, []);
 
   // Seed Records
@@ -5026,6 +5076,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       calibratingTrackId,
       setCalibratingTrackId,
       handleCalibrateTrack,
+      pitchResponse,
+      isCalibratingPitch,
+      handleCalibratePitch,
       creatorName,
       coproducerContext,
       editorPrefs,
@@ -5217,6 +5270,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       handleCommitCandidateTransaction,
       calibratingTrackId,
       handleCalibrateTrack,
+      pitchResponse,
+      isCalibratingPitch,
+      handleCalibratePitch,
       creatorName,
       coproducerContext,
       editorPrefs,

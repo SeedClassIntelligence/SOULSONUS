@@ -74,12 +74,29 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
   onSaveSignature,
   initialTab = 'TRAINING_PILLARS',
 }) => {
-  const { tracks, handleAddVocalTake, dawState, detectionSettings, decisionRecords } = useStudioSession();
+  const {
+    tracks,
+    handleAddVocalTake,
+    dawState,
+    detectionSettings,
+    decisionRecords,
+    pitchResponse,
+    isCalibratingPitch,
+    handleCalibratePitch,
+  } = useStudioSession();
 
   /** What is known right now, so the creator reads it before sealing it. */
   const livingProfile = useMemo(
-    () => computeStyleProfile({ creatorName, tracks, bpm: dawState.bpm || 110, detectionSettings, decisionRecords }),
-    [creatorName, tracks, dawState.bpm, detectionSettings, decisionRecords]
+    () =>
+      computeStyleProfile({
+        creatorName,
+        tracks,
+        bpm: dawState.bpm || 110,
+        detectionSettings,
+        decisionRecords,
+        pitchResponse,
+      }),
+    [creatorName, tracks, dawState.bpm, detectionSettings, decisionRecords, pitchResponse]
   );
   const vocalTrack = tracks.find((t) => t.instrument === 'vocal_synth' || t.id === 't-vocal') || tracks[0];
 
@@ -354,6 +371,7 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
       bpm: dawState.bpm || 110,
       detectionSettings,
       decisionRecords,
+      pitchResponse,
     });
 
     const rawSig: CreatorMusicSignature = {
@@ -817,6 +835,29 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                       <span>calibrated channels</span><span className="text-slate-200">{livingProfile.calibration.fingerprints.length}</span>
                       <span>sounds chosen</span><span className="text-slate-200">{livingProfile.choices.sounds.length || 'none yet'}</span>
                       <span>accepted / rejected</span><span className="text-slate-200">{livingProfile.decisions.accepted} / {livingProfile.decisions.rejected}</span>
+                    </div>
+
+                    {/* The pitch counterpart of calibrating a channel. Hum or sing
+                        for three seconds and the transcriber is measured against
+                        this voice, not against a plucked string. */}
+                    <div className="pt-2 border-t border-slate-800 space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCalibratePitch()}
+                        disabled={isCalibratingPitch}
+                        className={`w-full px-3 py-2 rounded-xl text-[11px] font-mono font-bold uppercase tracking-wider border transition ${
+                          isCalibratingPitch
+                            ? 'bg-rose-500/15 border-rose-500/50 text-rose-300 cursor-wait'
+                            : 'bg-cyan-500/15 hover:bg-cyan-500/25 border-cyan-500/40 text-cyan-300 cursor-pointer active:scale-95'
+                        }`}
+                      >
+                        {isCalibratingPitch ? 'Listening — hum or sing…' : 'Calibrate my pitch (3s)'}
+                      </button>
+                      <p className="text-[10px] text-slate-500 leading-relaxed">
+                        {pitchResponse
+                          ? `Measured: your pitched voice drives the onset head to ${pitchResponse.onsetPeak.toFixed(3)} and the frame head to ${pitchResponse.framePeak.toFixed(3)}. The transcriber's gate can now be set to you rather than to the instrument default.`
+                          : 'Not measured yet. Until a take is measured, the transcriber uses a gate tuned for instruments — a mouth attack is softer than a plucked string, so pitched material can be heard and still discarded.'}
+                      </p>
                     </div>
                     {livingProfile.gaps.length > 0 && (
                       <div className="space-y-1 pt-2 border-t border-slate-800">
