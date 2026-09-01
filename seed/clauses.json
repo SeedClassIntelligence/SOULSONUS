@@ -7,7 +7,8 @@
     "seed/SRT-1-C.md",
     "seed/SRT-1-D.md",
     "seed/SRT-1-E.md",
-    "seed/SRT-1-F.md"
+    "seed/SRT-1-F.md",
+    "seed/SRT-1-G.md"
   ],
   "checkKinds": {
     "symbol": "Identifier/pattern must occur at least `min` times within `scope`.",
@@ -2004,6 +2005,61 @@
             "src/audio"
           ],
           "minFiles": 3
+        }
+      ]
+    },
+    {
+      "id": "G.1",
+      "section": "G",
+      "title": "Text prompting remains available as a way in",
+      "quote": "Text box of voice. You use either one of them.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "text2music",
+          "scope": [
+            "src/lib/inference"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "G.2",
+      "section": "G",
+      "title": "Unanchored generation is offered where there is nothing yet, not over a performance",
+      "quote": "I just wanna put them in a proper place.",
+      "checks": [
+        {
+          "kind": "attest",
+          "note": "Sign when text2music is reachable from an empty session and is not offered as a transform of existing captured material."
+        }
+      ]
+    },
+    {
+      "id": "G.3",
+      "section": "G",
+      "title": "AI-originated material is labelled as such in provenance",
+      "quote": "Placement is not hierarchy of worth, it is hierarchy of anchoring.",
+      "checks": [
+        {
+          "kind": "symbol",
+          "pattern": "origin|isGenerated|humanAuthored",
+          "scope": [
+            "src/types"
+          ],
+          "min": 1
+        }
+      ]
+    },
+    {
+      "id": "G.4",
+      "section": "G",
+      "title": "No capability is removed because it is not the owner's own way of working",
+      "quote": "Although I'm building it for my creative understanding, I still have to keep in mind that people are utilizing these platforms in the manner that they're using.",
+      "checks": [
+        {
+          "kind": "attest"
         }
       ]
     }

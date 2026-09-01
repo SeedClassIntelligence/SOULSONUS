@@ -875,3 +875,6 @@ It helps creators conceive, compose, produce, engineer, edit, collaborate on, an
 > **Amendment F** (2026-09-01) - Capture Is Sacred, Interpretation Is
 > Revisable - is recorded in `seed/SRT-1-F.md`. It governs the entire capture
 > path.
+
+> **Amendment G** (2026-09-01) - Versatility, and the Proper Place - is
+> recorded in `seed/SRT-1-G.md`.

@@ -389,3 +389,28 @@ parameter set. Nothing here has been tested on a full multi-layer take.
 parallel over the same take is sound: percussion goes to the classifier, pitch
 to the transcriber, and neither has to make the discrimination the classifier
 is documented as bad at. It does not yet support any specific threshold value.
+
+
+---
+
+## Correction - text2music has a place (2026-09-01)
+
+An earlier note in this session called `text2music` "never used." That was
+wrong, and Amendment G corrects it. The owner's instruction was to place
+capabilities, not to remove them.
+
+The placement follows from the contract, not from taste. `text2music` is the
+only one of the six E05 tasks that appears in neither `SOURCE_AUDIO_TASKS` nor
+`DURATION_LOCKED_TASKS`. It needs no performance to work from and invents its
+own length. Every other task is anchored to the creator's audio.
+
+So:
+
+| Reached from | Offer |
+|---|---|
+| An empty session, nothing captured | `text2music` -- a way to start when there is nothing to start from |
+| A session with a performance in it | the five anchored tasks, which preserve what was played |
+
+Anything `text2music` produces enters labelled as AI-originated (clause
+XVIII.3), so the creator can always tell which parts of a project came from
+them. That labelling is what makes the offer honest instead of dilutive.
