@@ -374,6 +374,12 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
       thresholds: {
         kickSensitivity: style.calibration.kickThreshold,
         snareSensitivity: style.calibration.snareThreshold,
+        // The pitch side of the same idea. Null until this creator performs a
+        // calibration take through measurePitchResponse -- the same rule the
+        // two above already follow, rather than a number that describes
+        // nobody.
+        pitchOnsetPeak: null,
+        pitchFramePeak: null,
       },
       soundPreferences: style.choices.sounds,
       style,

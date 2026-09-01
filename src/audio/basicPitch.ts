@@ -244,6 +244,51 @@ export function decodeNotes(
 }
 
 /** The whole path: audio in, notes out, nothing invented in between. */
+/**
+ * What this creator's voice actually reaches, measured from one calibration
+ * take.
+ *
+ * A global threshold cannot serve two people. One creator's hum peaks the
+ * onset head at 0.48, another's at 0.62, a third's at 0.35 -- and the
+ * instrument-tuned default of 0.50 silently discards two of the three. This
+ * returns their measured peaks so a gate can be set relative to the person
+ * performing, the same way `rmsToVelocity` already normalises velocity against
+ * a running peak rather than an absolute.
+ *
+ * Returns peaks only. It deliberately does not choose a threshold: that is a
+ * decision about a person, and it belongs in their signature where it can be
+ * seen, not buried in a constant.
+ */
+export async function measurePitchResponse(
+  samples: Float32Array,
+  sampleRate: number,
+  modelUrl?: string
+): Promise<{ onsetPeak: number; framePeak: number; windows: number }> {
+  const session = await loadBasicPitch(modelUrl);
+  const mono = resampleTo22050(samples, sampleRate);
+  const stride = BP_WINDOW - 2 * BP_OVERLAP_SAMPLES;
+
+  let onsetPeak = 0;
+  let framePeak = 0;
+  let windows = 0;
+
+  for (let start = 0; start < Math.max(1, mono.length); start += stride) {
+    const win = new Float32Array(BP_WINDOW);
+    win.set(mono.subarray(start, Math.min(start + BP_WINDOW, mono.length)));
+    const out = await session.run({
+      [INPUT_NAME]: new ort.Tensor('float32', win, [1, BP_WINDOW, 1]),
+    });
+    const onset = out[HEAD_ONSET].data as Float32Array;
+    const frame = out[HEAD_FRAME].data as Float32Array;
+    for (let i = 0; i < onset.length; i++) if (onset[i] > onsetPeak) onsetPeak = onset[i];
+    for (let i = 0; i < frame.length; i++) if (frame[i] > framePeak) framePeak = frame[i];
+    windows++;
+    if (start + BP_WINDOW >= mono.length) break;
+  }
+
+  return { onsetPeak, framePeak, windows };
+}
+
 export async function transcribe(
   audio: Float32Array,
   sampleRate: number,

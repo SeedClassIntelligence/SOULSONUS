@@ -533,6 +533,24 @@ export interface CreatorMusicSignature {
   thresholds: {
     kickSensitivity: number | null;
     snareSensitivity: number | null;
+    /**
+     * Where this creator's pitched material actually sits, measured from a
+     * calibration take rather than assumed.
+     *
+     * Basic Pitch ships thresholds tuned for instruments -- 0.50 onset, 0.30
+     * frame. Measured against a mouth performance, the onset head peaked at
+     * 0.484 and the frame head at 0.818: the pitch was plainly there and the
+     * instrument-tuned gate rejected all of it, because a mouth attack is
+     * softer than a plucked string. A percussive take, by contrast, peaked at
+     * 0.416 onset and 0.323 frame and produced no notes at any threshold
+     * down to 0.25, which is what makes a per-creator gate safe to lower.
+     *
+     * These are the creator's own measured peaks, so a threshold can be set
+     * relative to their voice instead of to an absolute that fits nobody.
+     * Null until they calibrate. Never defaulted.
+     */
+    pitchOnsetPeak: number | null;
+    pitchFramePeak: number | null;
   };
   /** Sounds this creator actually reached for. Empty until they reach for one. */
   soundPreferences: string[];
