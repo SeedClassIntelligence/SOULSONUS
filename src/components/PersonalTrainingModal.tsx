@@ -374,12 +374,11 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
       thresholds: {
         kickSensitivity: style.calibration.kickThreshold,
         snareSensitivity: style.calibration.snareThreshold,
-        // The pitch side of the same idea. Null until this creator performs a
-        // calibration take through measurePitchResponse -- the same rule the
-        // two above already follow, rather than a number that describes
-        // nobody.
-        pitchOnsetPeak: null,
-        pitchFramePeak: null,
+        // The pitch side of the same idea, read from the measured profile
+        // exactly as the two above are. Null while no calibration take has
+        // been run through the transcriber.
+        pitchOnsetPeak: style.calibration.pitchOnsetPeak,
+        pitchFramePeak: style.calibration.pitchFramePeak,
       },
       soundPreferences: style.choices.sounds,
       style,
@@ -813,6 +812,8 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                       <span>performed onsets</span><span className="text-slate-200">{livingProfile.performance.performedNotes}</span>
                       <span>kick threshold</span><span className="text-slate-200">{livingProfile.calibration.kickThreshold ?? 'not tuned'}</span>
                       <span>snare threshold</span><span className="text-slate-200">{livingProfile.calibration.snareThreshold ?? 'not tuned'}</span>
+                      <span>pitch onset peak</span><span className="text-slate-200">{livingProfile.calibration.pitchOnsetPeak ?? 'not measured'}</span>
+                      <span>pitch frame peak</span><span className="text-slate-200">{livingProfile.calibration.pitchFramePeak ?? 'not measured'}</span>
                       <span>calibrated channels</span><span className="text-slate-200">{livingProfile.calibration.fingerprints.length}</span>
                       <span>sounds chosen</span><span className="text-slate-200">{livingProfile.choices.sounds.length || 'none yet'}</span>
                       <span>accepted / rejected</span><span className="text-slate-200">{livingProfile.decisions.accepted} / {livingProfile.decisions.rejected}</span>

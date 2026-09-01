@@ -65,6 +65,24 @@ export interface StyleProfile {
     kickThreshold: number | null;
     snareThreshold: number | null;
     inputGain: number | null;
+    /**
+     * How high this creator's own pitched material drives the transcriber,
+     * measured from a calibration take by `measurePitchResponse`.
+     *
+     * Basic Pitch's shipped gate is tuned for instruments. A mouth attack is
+     * softer than a plucked string, so a hum that peaks the onset head at 0.48
+     * is discarded by a 0.50 default while the frame head is reading 0.82 --
+     * the pitch is plainly there and the gate throws it away. Percussion, by
+     * contrast, does not drive either head: a kick measured 0.416 onset and
+     * 0.323 frame and produced no note at any threshold down to 0.25, which is
+     * what makes a lower per-creator gate safe rather than reckless.
+     *
+     * Null until they perform a calibration take. Never defaulted -- one
+     * creator peaks at 0.48, another at 0.62, and a shared number is a claim
+     * about neither of them.
+     */
+    pitchOnsetPeak: number | null;
+    pitchFramePeak: number | null;
     /** One entry per channel the creator actually calibrated against their own sound. */
     fingerprints: { trackId: string; name: string; centerFreq: number; q: number; threshold: number }[];
   };
@@ -105,6 +123,8 @@ export interface StyleProfileInput {
   bpm: number;
   detectionSettings?: DetectionSettings | null;
   decisionRecords?: GenerationDecisionRecord[];
+  /** Result of `measurePitchResponse` over a calibration take, when one exists. */
+  pitchResponse?: { onsetPeak: number; framePeak: number } | null;
 }
 
 /** Enough onsets that a mean is a measurement rather than an anecdote. */
@@ -259,6 +279,12 @@ export function computeStyleProfile(input: StyleProfileInput): StyleProfile {
     gaps.push('The detector is still on its shipped settings, so nothing here reflects how sensitive this creator needs it to be.');
   }
 
+  if (!input.pitchResponse) {
+    gaps.push(
+      'No calibration take has been measured through the transcriber, so how loudly this creator\'s pitched material reads is unknown and the shipped instrument gate is being used for them.'
+    );
+  }
+
   // --- what they chose ------------------------------------------------
   const instrumentCounts: Record<string, number> = {};
   for (const t of tracks) instrumentCounts[t.instrument] = (instrumentCounts[t.instrument] || 0) + 1;
@@ -285,6 +311,8 @@ export function computeStyleProfile(input: StyleProfileInput): StyleProfile {
       kickThreshold,
       snareThreshold,
       inputGain,
+      pitchOnsetPeak: input.pitchResponse ? input.pitchResponse.onsetPeak : null,
+      pitchFramePeak: input.pitchResponse ? input.pitchResponse.framePeak : null,
       fingerprints,
     },
     performance: {
