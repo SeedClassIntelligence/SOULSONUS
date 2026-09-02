@@ -18,7 +18,7 @@ import { AudioEncoders } from '../src/lib/audioEncoders';
 import { signatureService } from '../src/lib/seedSignature';
 import { SoulFlowGovernor, SOULFLOW_STAGE_ORDER } from '../src/lib/soulFlowGovernor';
 import { SoundVaultSemanticMatcher } from '../src/lib/soundVaultSearch';
-import { newRevision, capTree, childrenOf, isBranchPoint, pathToRoot, depthOf, MAX_REVISIONS } from '../src/lib/revisionTree';
+import { adoptFromRevision, newRevision, capTree, childrenOf, isBranchPoint, pathToRoot, depthOf, MAX_REVISIONS } from '../src/lib/revisionTree';
 import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../src/lib/relayGap';
 import * as relayGapModule from '../src/lib/relayGap';
 import { interpretPass } from '../src/lib/interpretation';
@@ -481,6 +481,70 @@ async function runComprehensiveVerification() {
       capped.every((r) => r.parentRevisionId === null || ids.has(r.parentRevisionId)),
       'REVISION',
       'Trimming re-roots orphans rather than leaving a parent id that resolves to nothing'
+    );
+  }
+
+  console.log('\n--- 12. Cross-revision recombination (XI.7: drums from 12, bass from 16) ---');
+  {
+    const trk = (id: string, notes: number, vol: number, extra: any = {}): any =>
+      ({ id, name: id, instrument: id, steps: [true], noteEvents: new Array(notes).fill({ midiNote: 60 }),
+         mute: false, solo: false, volume: vol, pitch: 'C3', ...extra });
+
+    // Version 12 had the drums you want. Version 16 had the bass. Since then
+    // you have mixed: the drum fader has moved.
+    const v12 = newRevision(null, 'version 12', 'capture', [trk('drums', 8, -3), trk('bass', 2, -6)], []);
+    const v16 = newRevision(v12.revisionId, 'version 16', 'capture', [trk('drums', 1, -3), trk('bass', 9, -6)], []);
+    const now = [trk('drums', 1, +2), trk('bass', 9, +1)];
+
+    const a = adoptFromRevision(now, v12, ['drums']);
+    check(a.tracks.find((t) => t.id === 'drums')!.noteEvents.length === 8, 'RECOMBINE',
+      'XI.7: the drums from an older revision replace the drums here');
+    check(a.tracks.find((t) => t.id === 'bass')!.noteEvents.length === 9, 'RECOMBINE',
+      'Only the named track changes; everything else is left exactly as it is');
+    check(a.tracks.find((t) => t.id === 'drums')!.volume === 2, 'RECOMBINE',
+      'Taking a performance does not silently drag back the mix you have done since');
+    check(a.adopted.join() === 'drums' && a.notFound.length === 0, 'RECOMBINE',
+      'The result reports what was taken');
+
+    const whole = adoptFromRevision(now, v12, ['drums'], 'whole_track');
+    check(whole.tracks.find((t) => t.id === 'drums')!.volume === -3, 'RECOMBINE',
+      'whole_track brings the old setup back, and is asked for by name rather than implied');
+
+    // The sentence from the seed, both halves at once.
+    const both = adoptFromRevision(adoptFromRevision(now, v12, ['drums']).tracks, v16, ['bass']);
+    const d = both.tracks.find((t) => t.id === 'drums')!;
+    const bs = both.tracks.find((t) => t.id === 'bass')!;
+    check(d.noteEvents.length === 8 && bs.noteEvents.length === 9, 'RECOMBINE',
+      'XI.7: drums from one revision and bass from another, in one arrangement');
+
+    const missing = adoptFromRevision(now, v12, ['drums', 'strings']);
+    check(missing.notFound.join() === 'strings' && missing.adopted.join() === 'drums', 'RECOMBINE',
+      'A track the source revision does not have is reported, not silently skipped');
+
+    const deletedHere = adoptFromRevision([trk('bass', 9, 0)], v12, ['drums']);
+    check(
+      deletedHere.added.join() === 'drums' && deletedHere.tracks.length === 2,
+      'RECOMBINE',
+      'A track deleted since comes back rather than being dropped as unmatched'
+    );
+
+    const untouched = adoptFromRevision(now, v12, ['drums']);
+    check(now.find((t) => t.id === 'drums')!.noteEvents.length === 1, 'RECOMBINE',
+      'The current arrangement is not mutated; a new one is returned', String(untouched.adopted));
+
+    // Adopting something already identical is not a success.
+    const same = adoptFromRevision(v12.tracks, v12, ['drums']);
+    check(same.adopted.join() === 'drums' && same.changed.length === 0, 'RECOMBINE',
+      'A track that already matches the source is reported as unchanged, not as taken');
+    check(/already matched/.test(same.summary) && !/^Took/.test(same.summary), 'RECOMBINE',
+      'The summary of a no-op does not claim material was taken', same.summary);
+    check(/^Took drums performance/.test(a.summary), 'RECOMBINE',
+      'The summary of a real adoption names what actually changed', a.summary);
+
+    const noClips = adoptFromRevision([trk('drums', 1, 0, { audioClips: [{ id: 'c1' }] })], v12, ['drums']);
+    check(
+      (noClips.tracks[0].audioClips || []).length === 1, 'RECOMBINE',
+      'A field the source revision never had does not erase the one here'
     );
   }
 

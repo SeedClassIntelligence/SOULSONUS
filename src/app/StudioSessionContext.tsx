@@ -88,6 +88,9 @@ import {
   newRevision,
   capTree,
   revisionById,
+  adoptFromRevision,
+  type AdoptResult,
+  type AdoptScope,
   type Revision,
   type RevisionOrigin,
 } from '../lib/revisionTree';
@@ -561,6 +564,12 @@ export interface StudioSessionState {
   revisions: Revision[];
   currentRevisionId: string | null;
   handleJumpToRevision: (revisionId: string) => boolean;
+  /** Clause XI.7. Takes named tracks from another revision into this one. */
+  handleAdoptFromRevision: (
+    revisionId: string,
+    trackIds: string[],
+    scope?: AdoptScope
+  ) => AdoptResult | null;
   labelNextRevisionOrigin: (origin: RevisionOrigin) => void;
   handleRejectCandidate: (candidate: GenerationCandidate, inCreatorWords?: string) => void;
   handleAddGapWords: (gapId: string, words: string) => void;
@@ -1525,6 +1534,34 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     sectionsRef.current = target.sections;
     return true;
   }, []);
+
+  /**
+   * "Give me the drums from version 12 with the bass from version 16."
+   *
+   * Clause XI.7, and the reason the tree was worth building. It goes through
+   * the ordinary history writer, so the recombination is one undoable step and
+   * writes its own revision rather than overwriting either source -- both the
+   * revision taken from and the arrangement taken into are still there
+   * afterwards.
+   *
+   * Returns what actually happened, including what it could not find, so a
+   * caller can say so instead of reporting a success that was partial.
+   */
+  const handleAdoptFromRevision = useCallback(
+    (revisionId: string, trackIds: string[], scope: AdoptScope = 'performance'): AdoptResult | null => {
+      const source = revisionById(revisionsRef.current, revisionId);
+      if (!source || !trackIds.length) return null;
+
+      const result = adoptFromRevision(tracksRef.current, source, trackIds, scope);
+      if (!result.adopted.length) return result;
+
+      pendingLabelRef.current = result.summary;
+      historyGroupRef.current = null;
+      updateTracksWithHistory(result.tracks);
+      return result;
+    },
+    [updateTracksWithHistory]
+  );
 
   const canUndo = past.length > 0;
   const canRedo = future.length > 0;
@@ -5315,6 +5352,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       revisions,
       currentRevisionId,
       handleJumpToRevision,
+      handleAdoptFromRevision,
       labelNextRevisionOrigin,
       handleRejectCandidate,
       handleAddGapWords,
@@ -5522,6 +5560,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       revisions,
       currentRevisionId,
       handleJumpToRevision,
+      handleAdoptFromRevision,
       labelNextRevisionOrigin,
       handleRejectCandidate,
       handleAddGapWords,

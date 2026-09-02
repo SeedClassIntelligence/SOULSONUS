@@ -121,3 +121,138 @@ export function pathToRoot(revisions: Revision[], id: string | null): Revision[]
 /** How deep a revision sits. Used only for laying the tree out. */
 export const depthOf = (revisions: Revision[], id: string): number =>
   Math.max(0, pathToRoot(revisions, id).length - 1);
+
+/**
+ * What "give me the drums from version 12" actually takes.
+ *
+ * A track holds two different kinds of thing, and conflating them loses work
+ * either way round:
+ *
+ *   the performance -- noteEvents, steps, notes, velocities, audio clips.
+ *                      What was played.
+ *   the treatment   -- volume, mute, solo, DSP, instrument params,
+ *                      automation, name, colour. How it is set up now.
+ *
+ * The sentence in the seed is about the drums, not about where the drum fader
+ * was sitting eleven revisions ago. So 'performance' is the default: it brings
+ * back what was played and leaves the mix you have built since alone.
+ * 'whole_track' is there for when the older setup is the point, and it is named
+ * rather than implied.
+ */
+export type AdoptScope = 'performance' | 'whole_track';
+
+export interface AdoptResult {
+  tracks: Track[];
+  /** Ids that came across. */
+  adopted: string[];
+  /**
+   * Ids asked for that the source revision does not have. Reported rather than
+   * skipped: a recombination that quietly takes three of the four things you
+   * named is worse than one that says which it could not find.
+   */
+  notFound: string[];
+  /** Adopted tracks that did not exist in the current state at all. */
+  added: string[];
+  /**
+   * Of the adopted ids, the ones whose content actually differs from what was
+   * already here.
+   *
+   * Adopting a track that is already identical is a real outcome and it is not
+   * a success. Without this the summary said "Took the drums from version 12"
+   * over a state that had not moved, which is the kind of confident report
+   * this project keeps having to take back out.
+   */
+  changed: string[];
+  /** Plain description of what happened, for the history label. */
+  summary: string;
+}
+
+/** The fields that are the performance. Everything else is treatment. */
+const PERFORMANCE_FIELDS = [
+  'noteEvents',
+  'steps',
+  'notes',
+  'velocities',
+  'audioClips',
+] as const;
+
+/**
+ * Takes named tracks from another revision into the current state.
+ *
+ * The current state is never mutated and never wholesale replaced -- only the
+ * named tracks change, in place, keeping their position. A track present in the
+ * source but absent here is appended rather than dropped, because asking for
+ * the drums from a revision that had a drum track you have since deleted is a
+ * request to have it back.
+ */
+export function adoptFromRevision(
+  current: Track[],
+  source: Revision,
+  trackIds: string[],
+  scope: AdoptScope = 'performance'
+): AdoptResult {
+  const wanted = new Set(trackIds);
+  const sourceById = new Map(source.tracks.map((t) => [t.id, t]));
+
+  const notFound = trackIds.filter((id) => !sourceById.has(id));
+  const presentHere = new Set(current.map((t) => t.id));
+  const adopted: string[] = [];
+  const added: string[] = [];
+
+  const tracks = current.map((track) => {
+    if (!wanted.has(track.id)) return track;
+    const from = sourceById.get(track.id);
+    if (!from) return track;
+    adopted.push(track.id);
+    if (scope === 'whole_track') return { ...from };
+    // Each field is taken only when the source carries it, so adopting a
+    // performance from a revision that had no clips does not erase the clips
+    // that are here now.
+    const next: Track = { ...track };
+    for (const field of PERFORMANCE_FIELDS) {
+      if (from[field] === undefined) continue;
+      switch (field) {
+        case 'noteEvents': next.noteEvents = from.noteEvents; break;
+        case 'steps': next.steps = from.steps; break;
+        case 'notes': next.notes = from.notes; break;
+        case 'velocities': next.velocities = from.velocities; break;
+        case 'audioClips': next.audioClips = from.audioClips; break;
+      }
+    }
+    return next;
+  });
+
+  for (const id of trackIds) {
+    const from = sourceById.get(id);
+    if (from && !presentHere.has(id)) {
+      tracks.push({ ...from });
+      adopted.push(id);
+      added.push(id);
+    }
+  }
+
+  // What is different now, rather than what was asked for.
+  const beforeById = new Map(current.map((t) => [t.id, t]));
+  const afterById = new Map(tracks.map((t) => [t.id, t]));
+  const changed = adopted.filter((id) => {
+    const before = beforeById.get(id);
+    const after = afterById.get(id);
+    if (!before) return true;
+    return JSON.stringify(before) !== JSON.stringify(after);
+  });
+
+  const nameOf = (id: string) => sourceById.get(id)?.name || id;
+  const what = scope === 'whole_track' ? '' : ' performance';
+  const missing = notFound.length ? ` (${notFound.length} not in that revision)` : '';
+
+  let summary: string;
+  if (!adopted.length) {
+    summary = `Nothing to take from "${source.label}"${missing}`;
+  } else if (!changed.length) {
+    summary = `${adopted.map(nameOf).join(', ')} already matched "${source.label}" -- nothing changed${missing}`;
+  } else {
+    summary = `Took ${changed.map(nameOf).join(', ')}${what} from "${source.label}"${missing}`;
+  }
+
+  return { tracks, adopted, notFound, added, changed, summary };
+}

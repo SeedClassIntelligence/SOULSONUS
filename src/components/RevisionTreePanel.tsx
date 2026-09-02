@@ -1,7 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { GitBranch, Mic, Sparkles, Pencil, Home, CornerDownRight } from 'lucide-react';
+import { GitBranch, Mic, Sparkles, Pencil, Home, CornerDownRight, Download } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
-import { childrenOf, isBranchPoint, type Revision, type RevisionOrigin } from '../lib/revisionTree';
+import {
+  childrenOf,
+  isBranchPoint,
+  type AdoptScope,
+  type Revision,
+  type RevisionOrigin,
+} from '../lib/revisionTree';
 
 /**
  * The shape of the session, and a way back into any part of it.
@@ -39,9 +45,23 @@ function flatten(revisions: Revision[], parentId: string | null, depth = 0): { r
 }
 
 export const RevisionTreePanel: React.FC = () => {
-  const { revisions, currentRevisionId, handleJumpToRevision } = useStudioSession();
+  const { revisions, currentRevisionId, handleJumpToRevision, handleAdoptFromRevision } =
+    useStudioSession();
   const [isOpen, setIsOpen] = useState(false);
+  /** Which revision's track list is open for picking. Only ever one at a time. */
+  const [takingFrom, setTakingFrom] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [scope, setScope] = useState<AdoptScope>('performance');
+  const [tookNote, setTookNote] = useState<string | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  const togglePick = (id: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -104,16 +124,19 @@ export const RevisionTreePanel: React.FC = () => {
               rows.map(({ rev, depth }) => {
                 const isCurrent = rev.revisionId === currentRevisionId;
                 const branches = isBranchPoint(revisions, rev.revisionId);
+                const isTaking = takingFrom === rev.revisionId;
                 return (
-                  <button
+                  <div
                     key={rev.revisionId}
+                    className={`border-b border-slate-800/70 last:border-b-0 ${isCurrent ? 'bg-violet-500/10' : ''}`}
+                  >
+                  <div className="flex items-stretch">
+                  <button
                     type="button"
                     onClick={() => { handleJumpToRevision(rev.revisionId); setIsOpen(false); }}
                     disabled={isCurrent}
-                    className={`w-full text-left px-3 py-2 border-b border-slate-800/70 last:border-b-0 transition ${
-                      isCurrent
-                        ? 'bg-violet-500/10 cursor-default'
-                        : 'hover:bg-slate-900 cursor-pointer'
+                    className={`flex-1 min-w-0 text-left px-3 py-2 transition ${
+                      isCurrent ? 'cursor-default' : 'hover:bg-slate-900 cursor-pointer'
                     }`}
                     title={isCurrent ? 'You are here' : `Stand in "${rev.label}" again`}
                   >
@@ -147,6 +170,88 @@ export const RevisionTreePanel: React.FC = () => {
                       </span>
                     </div>
                   </button>
+
+                  {/* XI.7 -- take material from this revision without leaving
+                      where you are. "Give me the drums from version 12." */}
+                  {!isCurrent && rev.tracks.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTookNote(null);
+                        setPicked(new Set());
+                        setTakingFrom(isTaking ? null : rev.revisionId);
+                      }}
+                      className={`px-2.5 shrink-0 border-l border-slate-800/70 transition cursor-pointer ${
+                        isTaking ? 'bg-cyan-500/15 text-cyan-300' : 'text-slate-600 hover:text-cyan-300 hover:bg-slate-900'
+                      }`}
+                      title={`Take tracks from "${rev.label}" into what you have now, without moving off it`}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  </div>
+
+                  {isTaking && (
+                    <div className="px-3 pb-2.5 pt-1 bg-slate-950 space-y-2">
+                      <p className="text-[9px] font-mono text-slate-500">
+                        Take from "{rev.label}" into what you have now. This does not move you
+                        off where you are, and it makes its own revision.
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {rev.tracks.map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => togglePick(t.id)}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition cursor-pointer ${
+                              picked.has(t.id)
+                                ? 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
+                            }`}
+                          >
+                            {t.name}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {(['performance', 'whole_track'] as AdoptScope[]).map((sc) => (
+                          <button
+                            key={sc}
+                            type="button"
+                            onClick={() => setScope(sc)}
+                            className={`px-2 py-1 rounded-lg text-[9px] font-mono font-bold border transition cursor-pointer ${
+                              scope === sc
+                                ? 'bg-slate-800 text-slate-100 border-slate-600'
+                                : 'bg-slate-950 text-slate-500 border-slate-800'
+                            }`}
+                            title={
+                              sc === 'performance'
+                                ? 'What was played. Leaves the mix you have built since alone.'
+                                : 'The whole track, including how it was set up then.'
+                            }
+                          >
+                            {sc === 'performance' ? 'what was played' : 'whole track'}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          disabled={picked.size === 0}
+                          onClick={() => {
+                            const res = handleAdoptFromRevision(rev.revisionId, [...picked], scope);
+                            setTookNote(res ? res.summary : 'Nothing was taken.');
+                            setPicked(new Set());
+                          }}
+                          className="ml-auto px-2.5 py-1 rounded-lg bg-cyan-500 text-slate-950 text-[9px] font-mono font-black hover:bg-cyan-400 transition cursor-pointer disabled:opacity-30 disabled:cursor-default"
+                        >
+                          TAKE {picked.size > 0 ? `(${picked.size})` : ''}
+                        </button>
+                      </div>
+                      {tookNote && (
+                        <p className="text-[9px] font-mono text-cyan-300 leading-relaxed">{tookNote}</p>
+                      )}
+                    </div>
+                  )}
+                  </div>
                 );
               })
             )}
