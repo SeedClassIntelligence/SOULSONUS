@@ -12,7 +12,12 @@ interface RealizationCandidateDrawerProps {
   rawSourceAudioUrl?: string;
   targetTrackName?: string;
   onCommitCandidate: (candidate: GenerationCandidate, overrideReason?: string) => void;
-  onRejectCandidate: (candidate: GenerationCandidate) => void;
+  /**
+   * `inCreatorWords` is optional. Requiring a reason before a rejection can be
+   * registered would make it contingent on the creator having language ready,
+   * which is what B.6 says never to demand.
+   */
+  onRejectCandidate: (candidate: GenerationCandidate, inCreatorWords?: string) => void;
 }
 
 export const RealizationCandidateDrawer: React.FC<RealizationCandidateDrawerProps> = ({
@@ -31,6 +36,8 @@ export const RealizationCandidateDrawer: React.FC<RealizationCandidateDrawerProp
   const [selectedSoundAsset, setSelectedSoundAsset] = useState<SoundAsset | null>(SOUND_CATALOG[0]);
   const [overrideReason, setOverrideReason] = useState('');
   const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [showGapField, setShowGapField] = useState(false);
+  const [gapWords, setGapWords] = useState('');
 
   const handleAuditionToggle = async (mode: 'source' | 'proposal') => {
     setActiveAuditionMode(mode);
@@ -365,12 +372,56 @@ export const RealizationCandidateDrawer: React.FC<RealizationCandidateDrawerProp
           </button>
         )}
 
-        <button
-          onClick={() => onRejectCandidate(candidate)}
-          className="w-full py-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 font-semibold text-xs transition-colors cursor-pointer"
-        >
-          REJECT PROPOSAL (RETAIN SOURCE AUDIO)
-        </button>
+        {/* THE RELAY GAP.
+            Amendment B calls this the highest-value signal in a session. It
+            used to be nothing at all: rejecting closed the drawer and wrote no
+            record, so `REJECTED` was a value in CreatorDecision that no path
+            produced. What the creator heard is now asked for here, kept in
+            their words, and never required. */}
+        {!showGapField ? (
+          <button
+            onClick={() => setShowGapField(true)}
+            className="w-full py-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 font-semibold text-xs transition-colors cursor-pointer"
+          >
+            REJECT PROPOSAL (RETAIN SOURCE AUDIO)
+          </button>
+        ) : (
+          <div className="rounded-xl bg-slate-950 border border-cyan-500/30 p-3 space-y-2">
+            <label className="block text-[11px] font-bold text-cyan-300">
+              That's not what you heard. What did you hear?
+            </label>
+            <textarea
+              autoFocus
+              rows={3}
+              value={gapWords}
+              onChange={(e) => setGapWords(e.target.value)}
+              placeholder="In your words. However it comes out."
+              className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none resize-none leading-relaxed"
+            />
+            <p className="text-[9px] font-mono text-slate-500 leading-relaxed">
+              Kept exactly as you type it, attached to this candidate, and it stays open until
+              you close it. Nothing here is scored or matched against a list.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  onRejectCandidate(candidate, gapWords.trim() || undefined);
+                  setGapWords('');
+                  setShowGapField(false);
+                }}
+                className="flex-1 py-2 rounded-lg bg-cyan-500 text-slate-950 font-bold text-xs hover:bg-cyan-400 cursor-pointer"
+              >
+                {gapWords.trim() ? 'REJECT & KEEP WHAT I HEARD' : 'REJECT WITHOUT SAYING'}
+              </button>
+              <button
+                onClick={() => { setGapWords(''); setShowGapField(false); }}
+                className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 font-medium text-xs hover:bg-slate-700 cursor-pointer"
+              >
+                CANCEL
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Explicit Creator Override Confirmation Modal */}
         {showOverrideModal && (

@@ -83,6 +83,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     selectionContext,
     setSelectionContext,
     handleCommitCandidateTransaction,
+    handleRejectCandidate,
     handleUndo,
     handleRedo,
     handleUpdateTrack,
@@ -609,7 +610,10 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         candidate={activeCandidate}
         targetTrackName={tracks.find((t) => t.id === selectionContext.selectedTrackId)?.name || 'Kick (Thump)'}
         onCommitCandidate={handleCommitCandidate}
-        onRejectCandidate={() => setIsCandidateDrawerOpen(false)}
+        onRejectCandidate={(candidate, inCreatorWords) => {
+          handleRejectCandidate(candidate, inCreatorWords);
+          setIsCandidateDrawerOpen(false);
+        }}
       />
 
       {isRealizationPending && (

@@ -18,6 +18,8 @@ import { AudioEncoders } from '../src/lib/audioEncoders';
 import { signatureService } from '../src/lib/seedSignature';
 import { SoulFlowGovernor, SOULFLOW_STAGE_ORDER } from '../src/lib/soulFlowGovernor';
 import { SoundVaultSemanticMatcher } from '../src/lib/soundVaultSearch';
+import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../src/lib/relayGap';
+import * as relayGapModule from '../src/lib/relayGap';
 import { interpretPass } from '../src/lib/interpretation';
 import { MIMICRY_TARGETS } from '../src/lib/mimicryTarget';
 import { SoulSonusServiceProvider } from '../src/lib/inference/e05Provider';
@@ -367,6 +369,60 @@ async function runComprehensiveVerification() {
       interpretPass(trumpetish, 'trumpet').disagreement === null,
       'MIMICRY',
       'A take that agrees with the declaration reports no disagreement'
+    );
+  }
+
+  console.log('\n--- 10. The Relay Gap (Amendment B: what the creator heard) ---');
+  {
+    const words = "it's too clean, i heard it dirtier and behind the beat";
+    const gap = openRelayGap('cand_1', words, 'Creator');
+    check(!!gap && gap.inCreatorWords === words, 'RELAY',
+      "B.1: the creator's statement is stored verbatim, not parsed or normalized");
+    check(!!gap && gap.exchange.length === 1 && gap.exchange[0].from === 'creator', 'RELAY',
+      'B.2: a rejection is a record with a thread, not a single bit');
+    check(!!gap && gap.attributedTo === 'Creator' && gap.openedAt > 0, 'RELAY',
+      'B.4: the verdict is attributable and timestamped');
+    check(openRelayGap('cand_1', '   ', 'Creator') === null, 'RELAY',
+      'An empty statement is refused rather than stored as a blank gap');
+
+    const withTurns = addExchange(
+      addExchange(gap!, { from: 'studio', words: 'what was done', basis: ['route: x'] }),
+      { from: 'creator', words: 'still not it' }
+    );
+    check(withTurns.exchange.length === 3, 'RELAY',
+      'B.3: the gap holds a conversation across turns, not one verdict');
+    check(gap!.exchange.length === 1, 'RELAY',
+      'Adding a turn does not mutate the stored record');
+
+    check(!withTurns.resolvedByCreator, 'RELAY',
+      'B.5: a gap stays open through any number of exchanges');
+    const settled = resolveByCreator(withTurns);
+    check(settled.resolvedByCreator && !!settled.resolvedAt, 'RELAY',
+      'B.5: the creator, and only the creator, closes a gap');
+
+    // The clause that is easiest to break later: nothing in the module may
+    // offer a way for a score to settle what someone heard.
+    const relayExports = Object.keys(relayGapModule);
+    check(
+      !relayExports.some((k) => /resolveBy(?!Creator)|autoResolve|closeGap|settleByScore/i.test(k)),
+      'RELAY',
+      'B.5: no export exists that could close a gap on a metric rather than the creator',
+      relayExports.join(', ')
+    );
+
+    const noScores = studioAccountOf({
+      candidateId: 'c', audioAssetId: 'a', preservedProperties: [], modifiedProperties: [],
+      preservationScores: null, scoreBasis: 'NOT_MEASURED', sourceProjectVersionId: 'v',
+    } as any);
+    check(
+      !!noScores && noScores.basis!.some((b) => /no preservation scores were taken/.test(b)),
+      'RELAY',
+      'The studio says when nothing was measured instead of filling the space'
+    );
+    check(
+      !!noScores && !/sorry|understand|apolog/i.test(noScores.words),
+      'RELAY',
+      "B.6: the studio reports what it did rather than simulating comprehension"
     );
   }
 

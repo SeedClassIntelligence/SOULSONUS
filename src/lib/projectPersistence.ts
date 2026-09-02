@@ -58,6 +58,12 @@ export interface ProjectSnapshot {
   seedRecords: unknown[];
   lineageRecords: unknown[];
   decisionRecords: unknown[];
+  /**
+   * Gaps between what the creator heard and what came back. Added after v1
+   * shipped, so an older snapshot simply lacks them and loads with none --
+   * which is correct: it has none, rather than having lost some.
+   */
+  relayGaps?: unknown[];
   detectionSettings: unknown;
   activeWorkspace: string;
   /** Added after v1 shipped; older snapshots simply lack them. */

@@ -116,7 +116,11 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
     sections,
     creatorName,
     handleCallSessionPlayer,
+    relayGaps,
+    handleAddGapWords,
+    handleResolveGap,
   } = useStudioSession();
+  const [gapReply, setGapReply] = useState<Record<string, string>>({});
 
   const [config, setConfig] = useState<StudioIntelligenceConfig>(loadAiConfig());
   const [promptInput, setPromptInput] = useState('');
@@ -521,6 +525,76 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
 
         {/* 3. SESSION DIALOGUE & CANDIDATE ACTION PROPOSALS */}
         <div className="flex-1 p-3.5 overflow-y-auto custom-scrollbar space-y-3 bg-slate-950/80">
+
+          {/* WHAT YOU HEARD, AND STILL DO NOT.
+              Amendment B: this is a retained conversation, not a verdict. It
+              sits above the session dialogue because an unclosed gap outranks
+              whatever else is being discussed -- B.5 puts relay fidelity above
+              every machine metric, and burying it under scores would be that
+              inversion in layout form. */}
+          {relayGaps.filter((g) => !g.resolvedByCreator).map((gap) => (
+            <div key={gap.gapId} className="rounded-2xl border border-cyan-500/40 bg-slate-950 overflow-hidden">
+              <div className="px-3 py-2 border-b border-slate-800 flex items-center gap-2">
+                <span className="text-[9px] font-mono font-black tracking-widest text-cyan-300">
+                  THAT'S NOT WHAT I HEARD
+                </span>
+                <span className="text-[9px] font-mono text-slate-500 truncate">
+                  {gap.attributedTo} · {new Date(gap.openedAt).toLocaleString()}
+                </span>
+                <span className="ml-auto text-[9px] font-mono text-amber-300 shrink-0">OPEN</span>
+              </div>
+
+              <div className="p-3 space-y-2">
+                {gap.exchange.map((turn) => (
+                  <div key={turn.exchangeId} className={turn.from === 'creator' ? 'text-right' : ''}>
+                    <p className="text-[9px] font-mono text-slate-500 mb-0.5">
+                      {turn.from === 'creator' ? gap.attributedTo : 'THE STUDIO'}
+                    </p>
+                    <div
+                      className={`inline-block text-left p-2.5 rounded-xl text-[11px] leading-relaxed max-w-lg ${
+                        turn.from === 'creator'
+                          ? 'bg-cyan-500/15 text-cyan-100 border border-cyan-500/30'
+                          : 'bg-slate-900 text-slate-300 border border-slate-800'
+                      }`}
+                    >
+                      {turn.words}
+                      {turn.basis && turn.basis.length > 0 && (
+                        <ul className="mt-1.5 space-y-0.5 border-t border-slate-800 pt-1.5">
+                          {turn.basis.map((b, i) => (
+                            <li key={i} className="text-[9px] font-mono text-slate-500">{b}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                <div className="flex gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={gapReply[gap.gapId] ?? ''}
+                    onChange={(e) => setGapReply((prev) => ({ ...prev, [gap.gapId]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (gapReply[gap.gapId] ?? '').trim()) {
+                        handleAddGapWords(gap.gapId, gapReply[gap.gapId]);
+                        setGapReply((prev) => ({ ...prev, [gap.gapId]: '' }));
+                      }
+                    }}
+                    placeholder="Add to this. However it comes out."
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-200 focus:border-cyan-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={() => handleResolveGap(gap.gapId)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-emerald-500/40 text-[10px] font-mono font-bold text-slate-400 hover:text-emerald-300 transition cursor-pointer shrink-0"
+                    title="Only you can close this. No score and no later candidate closes it for you."
+                  >
+                    THIS IS SETTLED
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+
           {messages.map((msg, idx) => {
             const isUser = msg.sender === 'creator';
             return (

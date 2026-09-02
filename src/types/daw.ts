@@ -1016,6 +1016,66 @@ export interface AssetLineageRecord {
   timestamp: number;
 }
 
+/**
+ * One turn in the conversation about a gap.
+ *
+ * The creator's turns are stored as typed, verbatim. They are never parsed
+ * into a category, scored, matched against a vocabulary, or required to be
+ * structured before they count. Amendment B.6: unformalized human knowing is
+ * not deficient data waiting to be cleaned up. It is the data.
+ */
+export interface RelayExchange {
+  exchangeId: string;
+  at: number;
+  /**
+   * Who spoke. The studio may only answer with things it actually measured --
+   * there is no language model on this path, and inventing a co-producer's
+   * reply would be worse than leaving the thread open.
+   */
+  from: 'creator' | 'studio';
+  /** Said as it was said. */
+  words: string;
+  /** For a studio turn: the measurements the words came from. Empty for a creator turn. */
+  basis?: string[];
+}
+
+/**
+ * What the creator heard, when it was not what came back.
+ *
+ * Amendment B calls this the highest-value signal in a session. Before this
+ * record existed, rejecting a candidate called `setIsCandidateDrawerOpen(false)`
+ * and nothing else: the drawer shut, no decision was written, and the fact that
+ * a creator had rejected something left no trace at all. `REJECTED` was a value
+ * in `CreatorDecision` that no code path ever produced. The retrofit plan said
+ * the gap was stored as one bit; it was stored as none.
+ *
+ * B.2 forbids a single bit, so this is a record. B.3 forbids a one-shot
+ * verdict, so it carries a thread. B.4 requires it to be attributable and to
+ * survive the session, so it is signed and rides in the project snapshot with
+ * the decision records that already persist.
+ */
+export interface RelayGapRecord {
+  gapId: string;
+  candidateId: string;
+  openedAt: number;
+  /** Who felt it. B.4: the verdict is attributable, not anonymous telemetry. */
+  attributedTo: string;
+  /** The first statement, verbatim and unparsed. B.1. */
+  inCreatorWords: string;
+  /** Everything said since, oldest first. B.3. */
+  exchange: RelayExchange[];
+  /**
+   * Closed only when the creator says it is closed.
+   *
+   * Nothing in the system may resolve this on their behalf -- not a passing
+   * score, not a later accept, not a new candidate that measures better.
+   * B.5: relay fidelity outranks every self-referential machine metric, and a
+   * metric closing this record would be exactly that inversion.
+   */
+  resolvedByCreator: boolean;
+  resolvedAt?: number;
+}
+
 export interface GenerationDecisionRecord {
   decisionId: string;
   commitTransactionId: string;
@@ -1023,6 +1083,12 @@ export interface GenerationDecisionRecord {
   decision: CreatorDecision;
   overrideIntentContract: boolean;
   overrideReason?: string;
+  /**
+   * What the creator heard instead. Present on a rejection they spoke to, and
+   * on an acceptance they still had something to say about -- accepting a
+   * take does not mean it landed.
+   */
+  relayGap?: RelayGapRecord;
   timestamp: number;
 }
 

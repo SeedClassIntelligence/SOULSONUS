@@ -17,7 +17,9 @@ import {
   CreatorMusicSignature,
   CommitTransactionResult,
   AssetLineageRecord,
+  GenerationCandidate,
   GenerationDecisionRecord,
+  RelayGapRecord,
   SourceModality,
   TrackLayer,
   ProductionScope,
@@ -81,6 +83,7 @@ import { resolveCaptureTarget } from '../audio/captureRouting';
 import { midiNoteToCaptureEvent } from '../audio/midiCapture';
 import { vocalRecorder } from '../audio/vocalRecorder';
 import { interpretPass, type Interpretation } from '../lib/interpretation';
+import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../lib/relayGap';
 import { measurePitchResponse, type PitchResponse } from '../audio/basicPitch';
 import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
 import { toMono } from '../audio/fft';
@@ -545,6 +548,11 @@ export interface StudioSessionState {
   seedRecords: SeedSignatureRecord[];
   lineageRecords: AssetLineageRecord[];
   decisionRecords: GenerationDecisionRecord[];
+  /** What the creator heard, when it was not what came back. Amendment B. */
+  relayGaps: RelayGapRecord[];
+  handleRejectCandidate: (candidate: GenerationCandidate, inCreatorWords?: string) => void;
+  handleAddGapWords: (gapId: string, words: string) => void;
+  handleResolveGap: (gapId: string) => void;
 
   /**
    * The sealed creator signature, once there is one.
@@ -2621,6 +2629,84 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const [lineageRecords, setLineageRecords] = useState<AssetLineageRecord[]>([]);
   const [decisionRecords, setDecisionRecords] = useState<GenerationDecisionRecord[]>([]);
+
+  /**
+   * Gaps between what the creator heard and what came back.
+   *
+   * Kept beside the decision records rather than inside them, because a gap
+   * outlives the decision that prompted it: it stays open across later
+   * candidates, later accepts and later sessions until the creator closes it.
+   * Amendment B.4.
+   */
+  const [relayGaps, setRelayGaps] = useState<RelayGapRecord[]>([]);
+
+  /**
+   * Records that a candidate was rejected, and what the creator heard instead.
+   *
+   * Rejecting used to run `setIsCandidateDrawerOpen(false)` and nothing else --
+   * the drawer closed and no trace remained that anyone had turned anything
+   * down. `REJECTED` was a value in CreatorDecision that no code path produced.
+   *
+   * The creator's words are optional here on purpose. Requiring an explanation
+   * before a rejection can be registered would make the rejection contingent on
+   * the creator having language ready for it, which is the thing B.6 says never
+   * to demand. Reject with nothing said, and the rejection is still recorded.
+   */
+  const handleRejectCandidate = useCallback(
+    (candidate: GenerationCandidate, inCreatorWords?: string) => {
+      const gap = inCreatorWords
+        ? openRelayGap(candidate.candidateId, inCreatorWords, creatorName)
+        : null;
+
+      if (gap) {
+        // The studio's side is measurement, not consolation, and only when
+        // there is measurement to give.
+        const account = studioAccountOf(candidate);
+        const withAccount = account
+          ? { ...gap, exchange: [...gap.exchange, account] }
+          : gap;
+        setRelayGaps((prev) => [withAccount, ...prev]);
+        setDecisionRecords((prev) => [
+          {
+            decisionId: `dec_${Date.now().toString(36)}`,
+            commitTransactionId: '',
+            candidateId: candidate.candidateId,
+            decision: 'REJECTED',
+            overrideIntentContract: false,
+            relayGap: withAccount,
+            timestamp: Date.now(),
+          },
+          ...prev,
+        ]);
+        return;
+      }
+
+      setDecisionRecords((prev) => [
+        {
+          decisionId: `dec_${Date.now().toString(36)}`,
+          commitTransactionId: '',
+          candidateId: candidate.candidateId,
+          decision: 'REJECTED',
+          overrideIntentContract: false,
+          timestamp: Date.now(),
+        },
+        ...prev,
+      ]);
+    },
+    [creatorName]
+  );
+
+  /** Adds a creator turn to an open gap. Their words, unchanged. */
+  const handleAddGapWords = useCallback((gapId: string, words: string) => {
+    setRelayGaps((prev) =>
+      prev.map((g) => (g.gapId === gapId ? addExchange(g, { from: 'creator', words }) : g))
+    );
+  }, []);
+
+  /** Closes a gap. Only ever called from the creator pressing the control. */
+  const handleResolveGap = useCallback((gapId: string) => {
+    setRelayGaps((prev) => prev.map((g) => (g.gapId === gapId ? resolveByCreator(g) : g)));
+  }, []);
   const [creatorSignature, setCreatorSignature] = useState<CreatorMusicSignature | null>(null);
   const [isInstrumentOpen, setIsInstrumentOpen] = useState(false);
   const [isInstrumentFull, setIsInstrumentFull] = useState(false);
@@ -4518,6 +4604,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       seedRecords,
       lineageRecords,
       decisionRecords,
+      relayGaps,
       detectionSettings,
       activeWorkspace,
       editorPrefs,
@@ -4552,7 +4639,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     [
       dawState, tracks, sections, lyricSections, masteringChain, masterCandidates,
       activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
-      seedRecords, lineageRecords, decisionRecords, detectionSettings, activeWorkspace,
+      seedRecords, lineageRecords, decisionRecords, relayGaps, detectionSettings, activeWorkspace,
       editorPrefs, writeRoomDraft, audioAssets,
       vocalState.audioBlob, vocalState.duration, vocalState.waveformData,
     ]
@@ -4611,6 +4698,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     setSeedRecords(snap.seedRecords as SeedSignatureRecord[]);
     setLineageRecords(snap.lineageRecords as AssetLineageRecord[]);
     setDecisionRecords(snap.decisionRecords as GenerationDecisionRecord[]);
+    // Absent on a snapshot saved before gaps existed. That project has none,
+    // which is different from having lost some, so it loads as empty.
+    setRelayGaps((snap.relayGaps as RelayGapRecord[] | undefined) ?? []);
     setDetectionSettings((prev) => ({ ...prev, ...(snap.detectionSettings as object), enabled: false, micConnected: false }));
     setActiveWorkspace(snap.activeWorkspace as WorkspaceTab);
     // Older snapshots predate these, so fall back rather than clobber defaults.
@@ -4686,7 +4776,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [
     isHydrating, tracks, sections, lyricSections, masteringChain, masterCandidates,
     activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
-    seedRecords, lineageRecords, decisionRecords, detectionSettings, activeWorkspace,
+    seedRecords, lineageRecords, decisionRecords, relayGaps, detectionSettings, activeWorkspace,
     editorPrefs, writeRoomDraft, dawState, vocalState.audioBlob,
   ]);
 
@@ -4747,6 +4837,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     setSeedRecords([]);
     setLineageRecords([]);
     setDecisionRecords([]);
+    setRelayGaps([]);
     setMixSnapshots([]);
     setVocalState((prev) => ({ ...prev, audioBlob: null, audioBuffer: null, waveformData: [], duration: 0 }));
     audioEngine.setVocalBuffer(null);
@@ -5083,6 +5174,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       seedRecords,
       lineageRecords,
       decisionRecords,
+      relayGaps,
+      handleRejectCandidate,
+      handleAddGapWords,
+      handleResolveGap,
       creatorSignature,
       handleSaveCreatorSignature,
       isInstrumentOpen,
@@ -5282,6 +5377,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       seedRecords,
       lineageRecords,
       decisionRecords,
+      relayGaps,
+      handleRejectCandidate,
+      handleAddGapWords,
+      handleResolveGap,
       creatorSignature,
       handleSaveCreatorSignature,
       isInstrumentOpen,
