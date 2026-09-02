@@ -617,6 +617,9 @@ export interface StudioSessionState {
   /** What the last committed pass appears to be. Never blocks capture. */
   lastInterpretation: Interpretation | null;
   clearLastInterpretation: () => void;
+  /** What the creator declared they are imitating. null when they declared nothing. */
+  mimicryTargetId: string | null;
+  setMimicryTargetId: (id: string | null) => void;
   isCalibratingPitch: boolean;
   /** Records a sung or hummed take and measures what it does to the model. */
   handleCalibratePitch: (durationMs?: number) => Promise<void>;
@@ -1610,6 +1613,20 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    */
   const [lastInterpretation, setLastInterpretation] = useState<Interpretation | null>(null);
 
+  /**
+   * What the creator said they were imitating before performing, if anything.
+   *
+   * Optional by constitution: VIII.2 forbids requiring an instrument up front,
+   * so null is a first-class value here and the reading works without it. The
+   * ref exists because the commit path reads this at the moment a pass lands
+   * and must not be rebuilt every time the creator changes the picker.
+   */
+  const [mimicryTargetId, setMimicryTargetId] = useState<string | null>(null);
+  const mimicryTargetIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    mimicryTargetIdRef.current = mimicryTargetId;
+  }, [mimicryTargetId]);
+
   const commitCaptureEvents = useCallback((events: CaptureEvent[]) => {
     if (!events.length) return;
 
@@ -1743,7 +1760,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     // material is safe on its tracks first, and this is offered afterwards.
     // Placed here rather than in a modality branch so it covers every source
     // the router serves -- mic, file and hardware MIDI alike (F.iv).
-    setLastInterpretation(interpretPass(events));
+    setLastInterpretation(interpretPass(events, mimicryTargetIdRef.current));
   }, [updateTracksWithHistory]);
 
   /** Live monitoring for a single event. Kept out of state updaters, which must stay pure. */
@@ -5108,6 +5125,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       pitchResponse,
       lastInterpretation,
       clearLastInterpretation,
+      mimicryTargetId,
+      setMimicryTargetId,
       isCalibratingPitch,
       handleCalibratePitch,
       creatorName,
@@ -5304,6 +5323,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       pitchResponse,
       lastInterpretation,
       clearLastInterpretation,
+      mimicryTargetId,
+      setMimicryTargetId,
       isCalibratingPitch,
       handleCalibratePitch,
       creatorName,

@@ -18,6 +18,8 @@ import { AudioEncoders } from '../src/lib/audioEncoders';
 import { signatureService } from '../src/lib/seedSignature';
 import { SoulFlowGovernor, SOULFLOW_STAGE_ORDER } from '../src/lib/soulFlowGovernor';
 import { SoundVaultSemanticMatcher } from '../src/lib/soundVaultSearch';
+import { interpretPass } from '../src/lib/interpretation';
+import { MIMICRY_TARGETS } from '../src/lib/mimicryTarget';
 import { SoulSonusServiceProvider } from '../src/lib/inference/e05Provider';
 import { DemucsClient } from '../src/lib/inference/demucsClient';
 import { autocorrelationPitchTrajectory } from '../src/lib/inference/audioPreservationScoring';
@@ -309,6 +311,64 @@ async function runComprehensiveVerification() {
     'INFERENCE_CLIENT',
     'E05 provider reports unavailable with a reason when the service route is down'
   );
+
+  console.log('\n--- 9. Declared Mimicry Target (VIII.2: never required, never obeyed) ---');
+  {
+    const ev = (klass: string, pitchHz: number, atSeconds: number): any => ({
+      klass, pitchHz, atSeconds, atMs: atSeconds * 1000, confidence: 0.8, velocity: 90,
+    });
+    const trumpetish = [ev('tonal_high', 330, 0), ev('tonal_high', 440, 0.5), ev('tonal_high', 660, 1), ev('tonal_high', 880, 1.5)];
+    const subbish = [ev('tonal_low', 41, 0), ev('tonal_low', 55, 0.5), ev('tonal_low', 73, 1), ev('tonal_low', 98, 1.5)];
+    const beatbox = [ev('kick', 0, 0), ev('snare', 0, 0.5), ev('kick', 0, 1), ev('hihat', 0, 1.25)];
+    const takes = [trumpetish, subbish, beatbox];
+
+    check(
+      interpretPass(trumpetish).hypotheses.length >= 3 && interpretPass(trumpetish).disagreement === null,
+      'MIMICRY',
+      'A pass with no declared target is still read and ranked (VIII.2 forbids requiring one)'
+    );
+
+    let suppressed = '';
+    let overreached = '';
+    let doubled = '';
+    let basisless = '';
+    for (const t of MIMICRY_TARGETS) {
+      for (const take of takes) {
+        const base = interpretPass(take);
+        const withT = interpretPass(take, t.id);
+        for (const b of base.hypotheses) {
+          if (!withT.hypotheses.some((h) => h.targetRole === b.targetRole)) suppressed = `${t.id}/${b.role}`;
+        }
+        const ceiling = Math.max(0, ...base.hypotheses.map((h) => h.confidence));
+        if (Math.max(0, ...withT.hypotheses.map((h) => h.confidence)) > ceiling + 1e-9) overreached = t.id;
+        const roles = withT.hypotheses.map((h) => h.targetRole);
+        if (new Set(roles).size !== roles.length) doubled = t.id;
+        for (const h of withT.hypotheses) if (!h.basis.length) basisless = `${t.id}/${h.role}`;
+      }
+    }
+    check(!suppressed, 'MIMICRY', 'A declaration never removes a reading the measurements made', suppressed);
+    check(!overreached, 'MIMICRY', 'A declaration never raises confidence above the evidence for the pass', overreached);
+    check(!doubled, 'MIMICRY', 'A declaration never doubles a reading the measurements already made', doubled);
+    check(!basisless, 'MIMICRY', 'Every hypothesis states what produced it, declared rows included', basisless);
+
+    const wrongRegister = interpretPass(subbish, 'trumpet');
+    check(
+      !!wrongRegister.disagreement && wrongRegister.hypotheses[0].targetRole !== 'brass_trumpet',
+      'MIMICRY',
+      'A take in the wrong register for the declared target is reported, not obeyed'
+    );
+    const wrongKind = interpretPass(beatbox, 'trumpet');
+    check(
+      !!wrongKind.disagreement && wrongKind.hypotheses[0].targetRole !== 'brass_trumpet',
+      'MIMICRY',
+      'An unpitched take declared as a pitched instrument is reported, not obeyed'
+    );
+    check(
+      interpretPass(trumpetish, 'trumpet').disagreement === null,
+      'MIMICRY',
+      'A take that agrees with the declaration reports no disagreement'
+    );
+  }
 
   console.log('\n========================================================================');
   console.log(`  COMPREHENSIVE PLATFORM VERIFICATION COMPLETE: ${passed} PASSED, ${failed} FAILED`);

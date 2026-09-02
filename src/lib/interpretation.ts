@@ -24,10 +24,13 @@
 import { CaptureEvent } from '../audio/detectionEngine';
 import { PERCUSSIVE_CLASSES, TONAL_SPLIT_HZ } from '../audio/performanceClassifier';
 import { InstrumentType } from '../types/daw';
+import { agreementWith, targetById, type MimicryTarget } from './mimicryTarget';
 
 export interface RoleHypothesis {
   /** What to call this to the creator. */
   role: string;
+  /** True when this reading exists because the creator declared the target. */
+  declared?: boolean;
   /** The channel kind it would become. */
   instrument: InstrumentType;
   /** What `RealizationRequest.targetRole` would carry if they choose it. */
@@ -41,6 +44,15 @@ export interface RoleHypothesis {
 export interface Interpretation {
   /** Ranked, most likely first. Empty when the pass carried nothing to read. */
   hypotheses: RoleHypothesis[];
+  /** The target the creator declared before performing, when they declared one. */
+  declaredTarget?: MimicryTarget | null;
+  /**
+   * Set when the take measurably contradicts what the creator said they were
+   * imitating. Never suppresses anything -- it is said alongside the readings,
+   * because a declaration the audio disagrees with is worth knowing about at
+   * the moment it happens rather than three mixes later.
+   */
+  disagreement?: string | null;
   /** Plain description of what was captured, in the creator's terms. */
   summary: string;
   /** What was measured, so the reading can be checked rather than trusted. */
@@ -107,9 +119,19 @@ const noteName = (hz: number) => {
  * read. A pass of one onset does not support a statement about what a creator
  * was playing, and saying so is more useful than a confident number.
  */
-export function interpretPass(events: CaptureEvent[]): Interpretation {
+export function interpretPass(
+  events: CaptureEvent[],
+  /**
+   * Optional. Section VIII.2 forbids requiring an instrument up front, so this
+   * only ever reweights a ranking the measurements produce anyway.
+   */
+  declaredTargetId?: string | null
+): Interpretation {
+  const declaredTarget = targetById(declaredTargetId);
   const empty: Interpretation = {
     hypotheses: [],
+    declaredTarget,
+    disagreement: null,
     summary: 'Nothing was captured in this pass.',
     measured: {
       onsets: 0,
@@ -146,6 +168,7 @@ export function interpretPass(events: CaptureEvent[]): Interpretation {
   if (events.length < 2) {
     return {
       ...empty,
+      declaredTarget,
       measured,
       summary: 'One onset. Too little to read a musical role from -- perform a phrase and it can be.',
     };
@@ -244,7 +267,56 @@ export function interpretPass(events: CaptureEvent[]): Interpretation {
     }
   }
 
-  hypotheses.sort((a, b) => b.confidence - a.confidence);
+  // --- the declared target ----------------------------------------------
+  // Added last, on the same terms as every reading above it: a confidence
+  // derived from the same strength numbers, scaled by how far the take agrees
+  // with what the target should measure like. It is appended to the list and
+  // then sorted with the rest -- it does not displace anything, and it does not
+  // win by being declared. Where the evidence for it is thin it sorts low,
+  // which is the honest outcome and the one VIII.2 asks for.
+  let disagreement: string | null = null;
+  if (declaredTarget) {
+    const agreement = agreementWith(declaredTarget, measured);
+    disagreement = agreement.contradicts;
+    const base = declaredTarget.expects.pitched ? pitchStrength : percStrength;
+    const confidence = round(base * agreement.score, 3);
+
+    const declaredBasis = [
+      `you said you were imitating a ${declaredTarget.label.toLowerCase()}`,
+      ...agreement.reasons,
+      ...(agreement.contradicts ? ['which the take does not support'] : []),
+    ];
+
+    // The measurements may already have found this exact reading. Listing it
+    // twice -- once measured, once declared, same words, same number -- reads as
+    // a fault in the studio, so the existing row is marked instead of doubled.
+    const already = hypotheses.find((h) => h.targetRole === declaredTarget.targetRole);
+    if (already) {
+      // Both numbers come from the same evidence, by different routes; neither
+      // can exceed the strength of the pass. Taking the higher lets a
+      // declaration lift a reading the measurement ranked conservatively,
+      // without inventing confidence that the take does not carry.
+      already.confidence = Math.max(already.confidence, confidence);
+      already.declared = true;
+      already.basis = [...already.basis, ...declaredBasis];
+    } else {
+      hypotheses.push({
+        role: declaredTarget.label,
+        instrument: declaredTarget.instrument,
+        targetRole: declaredTarget.targetRole,
+        confidence,
+        declared: true,
+        basis: declaredBasis,
+      });
+    }
+  }
+
+  // Ranked on confidence. Where two readings are equally supported, the one the
+  // creator declared goes first -- that is the entire job of a prior, and it
+  // still never outranks better evidence.
+  hypotheses.sort(
+    (a, b) => b.confidence - a.confidence || Number(!!b.declared) - Number(!!a.declared)
+  );
 
   const parts: string[] = [`${events.length} onsets`];
   if (measured.spanSeconds) parts.push(`over ${measured.spanSeconds}s`);
@@ -253,6 +325,8 @@ export function interpretPass(events: CaptureEvent[]): Interpretation {
 
   return {
     hypotheses,
+    declaredTarget,
+    disagreement,
     summary: hypotheses.length
       ? `${parts.join(', ')}.`
       : `${parts.join(', ')}. Nothing in this pass reads as a musical role yet.`,

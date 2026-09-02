@@ -20,6 +20,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
+import { MIMICRY_TARGETS, TARGET_FAMILIES, targetById } from '../lib/mimicryTarget';
 
 /**
  * The ways a creator can put a performance into the session.
@@ -62,10 +63,13 @@ export const UnifiedDeckBench: React.FC = () => {
     canUndo,
     canRedo,
     lastInterpretation,
+    mimicryTargetId,
+    setMimicryTargetId,
     clearLastInterpretation,
   } = useStudioSession();
 
   const [activeModalityTab, setActiveModalityTab] = useState<ExpressionModality>('BEATBOX');
+  const activeMimicryTarget = targetById(mimicryTargetId);
   const [isPatternControlsOpen, setIsPatternControlsOpen] = useState(false);
   const [overdubPassCount, setOverdubPassCount] = useState(0);
   const [overdubPassLabels, setOverdubPassLabels] = useState<string[]>([]);
@@ -448,6 +452,44 @@ export const UnifiedDeckBench: React.FC = () => {
         </span>
       </div>
 
+      {/* WHAT YOU ARE IMITATING -- optional, and only where it makes sense.
+          VIII.2 forbids requiring an instrument before performing, so this is
+          a prior and not a switch: it reweights a ranking the measurements
+          still produce on their own, and when the take contradicts it the
+          studio says so instead of obeying. */}
+      {activeModalityTab === 'MIMIC' && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2">
+          <span className="text-[10px] font-mono font-black uppercase tracking-widest text-amber-300 shrink-0">
+            Imitating
+          </span>
+          <select
+            value={mimicryTargetId ?? ''}
+            onChange={(e) => setMimicryTargetId(e.target.value || null)}
+            className="bg-slate-900 border border-slate-800 focus:border-amber-500 text-[11px] text-slate-100 font-mono rounded-lg px-2 py-1 outline-none cursor-pointer"
+            title="Optional. Tells the studio what you are going for, so an ambiguous take ranks toward what you meant. It never overrides what was measured."
+          >
+            <option value="">Don't say -- let it listen</option>
+            {TARGET_FAMILIES.map((fam) => (
+              <option key={fam} disabled className="text-slate-500">
+                {`-- ${fam} --`}
+              </option>
+            )).flatMap((header, i) => [
+              header,
+              ...MIMICRY_TARGETS.filter((t) => t.family === TARGET_FAMILIES[i]).map((t) => (
+                <option key={t.id} value={t.id} className="bg-slate-900 text-slate-100">
+                  {t.label}
+                </option>
+              )),
+            ])}
+          </select>
+          <span className="text-[10px] text-slate-500 font-mono truncate">
+            {activeMimicryTarget
+              ? activeMimicryTarget.note
+              : 'Optional. Say it and an ambiguous take leans your way; say nothing and it is read purely on what was heard.'}
+          </span>
+        </div>
+      )}
+
       {/* INTERPRETATION -- what the last pass appears to be.
           Shown after the material is already committed to its tracks, so
           ignoring it entirely leaves the take exactly as performed. */}
@@ -468,12 +510,37 @@ export const UnifiedDeckBench: React.FC = () => {
             </button>
           </div>
 
+          {/* When the take contradicts what the creator declared, say it here
+              rather than quietly ranking the declaration anyway. Amendment B
+              gives the creator "that's not what I heard"; this is the studio
+              saying the same thing back, and it is the reason declaring a
+              target is worth anything. */}
+          {lastInterpretation.disagreement && (
+            <div className="px-3 py-2 border-b border-slate-800 bg-amber-500/5">
+              <p className="text-[10px] font-mono text-amber-300 leading-relaxed">
+                {lastInterpretation.disagreement}
+              </p>
+              <p className="text-[9px] font-mono text-slate-500 mt-0.5">
+                Your take was kept exactly as performed. The readings below are what was
+                actually measured.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-slate-800">
             {lastInterpretation.hypotheses.slice(0, 6).map((h, i) => (
               <div key={h.role} className="bg-slate-950 px-3 py-2 space-y-1.5">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className={`text-[11px] font-bold ${i === 0 ? 'text-cyan-300' : 'text-slate-300'}`}>
                     {h.role}
+                    {h.declared && (
+                      <span
+                        className="ml-1.5 px-1 py-0.2 rounded bg-amber-500/15 text-amber-300 text-[8px] font-black border border-amber-500/30 align-middle"
+                        title="You said this is what you were imitating. It is ranked on the evidence for it, the same as every other reading here."
+                      >
+                        YOURS
+                      </span>
+                    )}
                   </span>
                   <span className="text-[10px] font-mono text-slate-400 tabular-nums">
                     {Math.round(h.confidence * 100)}%
