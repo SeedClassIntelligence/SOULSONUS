@@ -80,7 +80,7 @@ import { installAcePlayers } from '../lib/acePlayer';
 import { resolveCaptureTarget } from '../audio/captureRouting';
 import { midiNoteToCaptureEvent } from '../audio/midiCapture';
 import { vocalRecorder } from '../audio/vocalRecorder';
-import { measurePitchResponse } from '../audio/basicPitch';
+import { measurePitchResponse, type PitchResponse } from '../audio/basicPitch';
 import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
 import { toMono } from '../audio/fft';
 import { renderMasterBounce } from '../audio/masterRender';
@@ -612,7 +612,7 @@ export interface StudioSessionState {
    * How high this creator's own pitched material drives the transcriber.
    * Null until they perform a calibration take. Never defaulted.
    */
-  pitchResponse: { onsetPeak: number; framePeak: number } | null;
+  pitchResponse: PitchResponse | null;
   isCalibratingPitch: boolean;
   /** Records a sung or hummed take and measures what it does to the model. */
   handleCalibratePitch: (durationMs?: number) => Promise<void>;
@@ -1847,7 +1847,11 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         // discarded the result anyway while reporting itself as neural.
         const buffer = await decodeAudioFile(file);
         const channel = buffer.getChannelData(0);
-        const result = await transcribe(channel, buffer.sampleRate);
+        // The gate is this creator's when they have calibrated, and the
+        // shipped instrument default when they have not.
+        const result = await transcribe(channel, buffer.sampleRate, {
+          creatorPeaks: pitchResponseRef.current,
+        });
 
         if (!result.notes.length) {
           // Nothing heard is reported as nothing heard. The model returns no
@@ -1857,7 +1861,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
             mode,
             message:
               'No pitched notes were heard in this file. Basic Pitch follows sung, hummed or played ' +
-              'lines; percussion has no pitch to follow, so import that as a performance instead.',
+              'lines; percussion has no pitch to follow, so import that as a performance instead.' +
+              (result.gateSource === 'default'
+                ? ' This was measured against the shipped instrument gate -- calibrating your pitch in the training room sets it to your own voice, which a soft attack often needs.'
+                : ''),
           };
         }
 
@@ -2080,7 +2087,11 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   // The pitch counterpart of the track calibration above.
-  const [pitchResponse, setPitchResponse] = useState<{ onsetPeak: number; framePeak: number } | null>(null);
+  const [pitchResponse, setPitchResponse] = useState<PitchResponse | null>(null);
+  const pitchResponseRef = useRef<PitchResponse | null>(null);
+  useEffect(() => {
+    pitchResponseRef.current = pitchResponse;
+  }, [pitchResponse]);
   const [isCalibratingPitch, setIsCalibratingPitch] = useState(false);
 
   /**
@@ -2110,7 +2121,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       // A silent take drives neither head. Recording nothing is not a
       // measurement of a person, so it is not stored as one.
       if (measured.onsetPeak > 0 || measured.framePeak > 0) {
-        setPitchResponse({ onsetPeak: measured.onsetPeak, framePeak: measured.framePeak });
+        setPitchResponse(measured);
       }
     } catch {
       // Leave the previous measurement, or none, rather than write a wrong one.

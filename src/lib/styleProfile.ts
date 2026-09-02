@@ -83,6 +83,13 @@ export interface StyleProfile {
      */
     pitchOnsetPeak: number | null;
     pitchFramePeak: number | null;
+    /**
+     * The onset gate this creator's own calibration take was shown to clear.
+     * Verified by decoding at that value, not calculated from the peak -- the
+     * note count is not monotonic in the threshold, so a computed gate can
+     * land in a hole where the take returns nothing.
+     */
+    pitchGate: number | null;
     /** One entry per channel the creator actually calibrated against their own sound. */
     fingerprints: { trackId: string; name: string; centerFreq: number; q: number; threshold: number }[];
   };
@@ -124,7 +131,7 @@ export interface StyleProfileInput {
   detectionSettings?: DetectionSettings | null;
   decisionRecords?: GenerationDecisionRecord[];
   /** Result of `measurePitchResponse` over a calibration take, when one exists. */
-  pitchResponse?: { onsetPeak: number; framePeak: number } | null;
+  pitchResponse?: { onsetPeak: number; framePeak: number; verifiedGate: number | null; notesAtGate: number } | null;
 }
 
 /** Enough onsets that a mean is a measurement rather than an anecdote. */
@@ -313,6 +320,7 @@ export function computeStyleProfile(input: StyleProfileInput): StyleProfile {
       inputGain,
       pitchOnsetPeak: input.pitchResponse ? input.pitchResponse.onsetPeak : null,
       pitchFramePeak: input.pitchResponse ? input.pitchResponse.framePeak : null,
+      pitchGate: input.pitchResponse ? input.pitchResponse.verifiedGate : null,
       fingerprints,
     },
     performance: {

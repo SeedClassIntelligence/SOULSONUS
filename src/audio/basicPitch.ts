@@ -71,6 +71,12 @@ export interface TranscriptionOptions {
   frameThreshold?: number;
   /** Notes shorter than this are dropped as detection noise. */
   minNoteMs?: number;
+  /**
+   * This creator's measured response, from `measurePitchResponse`. When it
+   * carries a verified gate, that gate is used instead of the shipped
+   * instrument default. An explicit threshold above still wins over it.
+   */
+  creatorPeaks?: { verifiedGate?: number | null } | null;
 }
 
 export interface Transcription {
@@ -81,6 +87,12 @@ export interface Transcription {
   /** Where the notes came from. There is exactly one possible value, on purpose. */
   engine: 'BASIC_PITCH_ONNX';
   thresholds: { onset: number; frame: number; minNoteMs: number };
+  /**
+   * Where the gate came from. A creator reading a disappointing transcription
+   * deserves to know whether it was measured against them or against a
+   * plucked string.
+   */
+  gateSource: 'creator' | 'default' | 'explicit';
 }
 
 /** Linear resample to Basic Pitch's rate. The model has no opinion about ours. */
@@ -263,30 +275,116 @@ export async function measurePitchResponse(
   samples: Float32Array,
   sampleRate: number,
   modelUrl?: string
-): Promise<{ onsetPeak: number; framePeak: number; windows: number }> {
+): Promise<PitchResponse> {
   const session = await loadBasicPitch(modelUrl);
   const mono = resampleTo22050(samples, sampleRate);
-  const stride = BP_WINDOW - 2 * BP_OVERLAP_SAMPLES;
+  const { frame, onset, windows } = await activations(mono, session);
 
   let onsetPeak = 0;
   let framePeak = 0;
-  let windows = 0;
+  for (const row of onset) for (const v of row) if (v > onsetPeak) onsetPeak = v;
+  for (const row of frame) for (const v of row) if (v > framePeak) framePeak = v;
 
-  for (let start = 0; start < Math.max(1, mono.length); start += stride) {
-    const win = new Float32Array(BP_WINDOW);
-    win.set(mono.subarray(start, Math.min(start + BP_WINDOW, mono.length)));
-    const out = await session.run({
-      [INPUT_NAME]: new ort.Tensor('float32', win, [1, BP_WINDOW, 1]),
+  // Search downward from just under their peak, keeping the first threshold
+  // that actually returns notes. Highest-that-works is deliberate: it is the
+  // strictest gate this voice clears, so it admits their playing without
+  // opening the door any wider than their playing needs.
+  let verifiedGate: number | null = null;
+  let notesAtGate = 0;
+  for (let t = Math.min(BP_DEFAULT_ONSET, onsetPeak); t >= GATE_FLOOR; t -= GATE_SEARCH_STEP) {
+    const found = decodeNotes(frame, onset, {
+      onsetThreshold: t,
+      frameThreshold: BP_DEFAULT_FRAME,
+      minNoteMs: 58,
     });
-    const onset = out[HEAD_ONSET].data as Float32Array;
-    const frame = out[HEAD_FRAME].data as Float32Array;
-    for (let i = 0; i < onset.length; i++) if (onset[i] > onsetPeak) onsetPeak = onset[i];
-    for (let i = 0; i < frame.length; i++) if (frame[i] > framePeak) framePeak = frame[i];
-    windows++;
-    if (start + BP_WINDOW >= mono.length) break;
+    if (found.length > 0) {
+      // Floor, never round. Rounding a working threshold upward makes the
+      // stored gate marginally stricter than the one just verified, and a peak
+      // sitting exactly on the boundary then fails `onset[f] >= t` -- the
+      // search reports a gate that returns nothing when it is used. Flooring
+      // can only ever loosen by less than a thousandth.
+      verifiedGate = Math.floor(t * 1000) / 1000;
+      notesAtGate = found.length;
+      break;
+    }
   }
 
-  return { onsetPeak, framePeak, windows };
+  return { onsetPeak, framePeak, verifiedGate, notesAtGate, windows };
+}
+
+/** Basic Pitch's own shipped gate, tuned for instruments. */
+export const BP_DEFAULT_ONSET = 0.5;
+export const BP_DEFAULT_FRAME = 0.3;
+
+/**
+ * Below this the transcriber stops measuring and starts inventing.
+ *
+ * A one-note bass seed returns one note from 0.50 down to 0.30, then three at
+ * 0.25 and six at 0.20. Nothing below this is offered to a creator as their
+ * own playing.
+ */
+export const GATE_FLOOR = 0.28;
+
+/**
+ * Why the gate is searched for rather than calculated.
+ *
+ * The obvious design is a fraction of the creator's measured peak. It does not
+ * work, and the reason is in `decodeNotes`: a note is found on a rising edge,
+ * `onset[f] >= t && onset[f - 1] < t`. Lower the threshold past the value of
+ * the frame *before* the peak and that edge disappears, so the note vanishes
+ * -- until the threshold drops far enough that an earlier frame becomes the
+ * edge and it reappears. The count is not monotonic in the threshold.
+ *
+ * Measured on one mouth take, frame held at 0.30:
+ *
+ *     onset 0.450 -> 1 note
+ *     onset 0.420 -> 0 notes
+ *     onset 0.411 -> 0 notes
+ *     onset 0.400 -> 1 note
+ *
+ * A computed 0.85 x 0.484 = 0.411 lands squarely in that hole. Where the hole
+ * sits depends on the shape of that creator's activations, so no ratio is safe
+ * for everyone. The gate is therefore found by trying real values against the
+ * creator's own calibration take and keeping the highest one that actually
+ * yields notes -- an outcome that was observed rather than predicted.
+ */
+export const GATE_SEARCH_STEP = 0.01;
+
+export interface PitchResponse {
+  /** Highest activation this creator's voice produced on each head. */
+  onsetPeak: number;
+  framePeak: number;
+  /**
+   * The highest onset threshold that actually returned notes on their
+   * calibration take. Null when no threshold above the floor did -- which is
+   * the honest answer for a take with no pitched material in it.
+   */
+  verifiedGate: number | null;
+  /** How many notes that gate found. Zero whenever `verifiedGate` is null. */
+  notesAtGate: number;
+  windows: number;
+}
+
+/**
+ * The transcription gate for one creator.
+ *
+ * A verified gate is used when one was found. Otherwise the shipped instrument
+ * defaults, unchanged -- a creator who has not calibrated is transcribed
+ * exactly as before. The gate is never raised above the default: the point is
+ * to stop discarding soft attacks, not to raise the bar on loud ones.
+ */
+export function gateForCreator(
+  measured?: { verifiedGate?: number | null } | null
+): { onsetThreshold: number; frameThreshold: number; measured: boolean } {
+  const gate = measured?.verifiedGate;
+  if (typeof gate !== 'number' || !(gate >= GATE_FLOOR)) {
+    return { onsetThreshold: BP_DEFAULT_ONSET, frameThreshold: BP_DEFAULT_FRAME, measured: false };
+  }
+  return {
+    onsetThreshold: Math.min(BP_DEFAULT_ONSET, gate),
+    frameThreshold: BP_DEFAULT_FRAME,
+    measured: true,
+  };
 }
 
 export async function transcribe(
@@ -294,8 +392,10 @@ export async function transcribe(
   sampleRate: number,
   options: TranscriptionOptions = {}
 ): Promise<Transcription> {
-  const onsetThreshold = options.onsetThreshold ?? 0.5;
-  const frameThreshold = options.frameThreshold ?? 0.3;
+  // An explicit threshold still wins -- this is a default, not an override.
+  const gate = gateForCreator(options.creatorPeaks);
+  const onsetThreshold = options.onsetThreshold ?? gate.onsetThreshold;
+  const frameThreshold = options.frameThreshold ?? gate.frameThreshold;
   const minNoteMs = options.minNoteMs ?? 58; // five frames
   const sess = await loadBasicPitch(options.modelUrl);
   const resampled = resampleTo22050(audio, sampleRate);
@@ -307,5 +407,6 @@ export async function transcribe(
     windows,
     engine: 'BASIC_PITCH_ONNX',
     thresholds: { onset: onsetThreshold, frame: frameThreshold, minNoteMs },
+    gateSource: options.onsetThreshold !== undefined ? 'explicit' : gate.measured ? 'creator' : 'default',
   };
 }

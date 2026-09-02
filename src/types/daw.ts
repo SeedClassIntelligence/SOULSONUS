@@ -551,6 +551,8 @@ export interface CreatorMusicSignature {
      */
     pitchOnsetPeak: number | null;
     pitchFramePeak: number | null;
+    /** The onset gate their calibration take was verified to clear. */
+    pitchGate: number | null;
   };
   /** Sounds this creator actually reached for. Empty until they reach for one. */
   soundPreferences: string[];

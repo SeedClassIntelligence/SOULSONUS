@@ -397,6 +397,7 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
         // been run through the transcriber.
         pitchOnsetPeak: style.calibration.pitchOnsetPeak,
         pitchFramePeak: style.calibration.pitchFramePeak,
+        pitchGate: style.calibration.pitchGate,
       },
       soundPreferences: style.choices.sounds,
       style,
@@ -832,6 +833,7 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                       <span>snare threshold</span><span className="text-slate-200">{livingProfile.calibration.snareThreshold ?? 'not tuned'}</span>
                       <span>pitch onset peak</span><span className="text-slate-200">{livingProfile.calibration.pitchOnsetPeak ?? 'not measured'}</span>
                       <span>pitch frame peak</span><span className="text-slate-200">{livingProfile.calibration.pitchFramePeak ?? 'not measured'}</span>
+                      <span>pitch gate</span><span className="text-slate-200">{livingProfile.calibration.pitchGate ?? 'shipped default'}</span>
                       <span>calibrated channels</span><span className="text-slate-200">{livingProfile.calibration.fingerprints.length}</span>
                       <span>sounds chosen</span><span className="text-slate-200">{livingProfile.choices.sounds.length || 'none yet'}</span>
                       <span>accepted / rejected</span><span className="text-slate-200">{livingProfile.decisions.accepted} / {livingProfile.decisions.rejected}</span>
