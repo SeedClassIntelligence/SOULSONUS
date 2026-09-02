@@ -80,6 +80,7 @@ import { installAcePlayers } from '../lib/acePlayer';
 import { resolveCaptureTarget } from '../audio/captureRouting';
 import { midiNoteToCaptureEvent } from '../audio/midiCapture';
 import { vocalRecorder } from '../audio/vocalRecorder';
+import { interpretPass, type Interpretation } from '../lib/interpretation';
 import { measurePitchResponse, type PitchResponse } from '../audio/basicPitch';
 import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
 import { toMono } from '../audio/fft';
@@ -613,6 +614,9 @@ export interface StudioSessionState {
    * Null until they perform a calibration take. Never defaulted.
    */
   pitchResponse: PitchResponse | null;
+  /** What the last committed pass appears to be. Never blocks capture. */
+  lastInterpretation: Interpretation | null;
+  clearLastInterpretation: () => void;
   isCalibratingPitch: boolean;
   /** Records a sung or hummed take and measures what it does to the model. */
   handleCalibratePitch: (durationMs?: number) => Promise<void>;
@@ -1600,6 +1604,12 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    * in one state update so a channel created for a newly-heard sound type is
    * visible to the events that follow it in the same batch.
    */
+  /**
+   * What the last committed pass appears to be. Read-only: nothing in the
+   * capture or commit path waits on it, and clearing it changes no audio.
+   */
+  const [lastInterpretation, setLastInterpretation] = useState<Interpretation | null>(null);
+
   const commitCaptureEvents = useCallback((events: CaptureEvent[]) => {
     if (!events.length) return;
 
@@ -1728,6 +1738,12 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
 
       return next;
     }, { group: 'capture' });
+
+    // Read the pass after it is committed, never before. Amendment F.v: the
+    // material is safe on its tracks first, and this is offered afterwards.
+    // Placed here rather than in a modality branch so it covers every source
+    // the router serves -- mic, file and hardware MIDI alike (F.iv).
+    setLastInterpretation(interpretPass(events));
   }, [updateTracksWithHistory]);
 
   /** Live monitoring for a single event. Kept out of state updaters, which must stay pure. */
@@ -2107,6 +2123,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    * just under two, and a take that only just fills one window measures the
    * edge of the buffer as much as the voice.
    */
+  const clearLastInterpretation = useCallback(() => setLastInterpretation(null), []);
+
   const handleCalibratePitch = useCallback(async (durationMs = 3000) => {
     setIsCalibratingPitch(true);
     try {
@@ -5088,6 +5106,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setCalibratingTrackId,
       handleCalibrateTrack,
       pitchResponse,
+      lastInterpretation,
+      clearLastInterpretation,
       isCalibratingPitch,
       handleCalibratePitch,
       creatorName,
@@ -5282,6 +5302,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       calibratingTrackId,
       handleCalibrateTrack,
       pitchResponse,
+      lastInterpretation,
+      clearLastInterpretation,
       isCalibratingPitch,
       handleCalibratePitch,
       creatorName,

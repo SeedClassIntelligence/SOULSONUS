@@ -61,6 +61,8 @@ export const UnifiedDeckBench: React.FC = () => {
     handleRedo,
     canUndo,
     canRedo,
+    lastInterpretation,
+    clearLastInterpretation,
   } = useStudioSession();
 
   const [activeModalityTab, setActiveModalityTab] = useState<ExpressionModality>('BEATBOX');
@@ -445,6 +447,55 @@ export const UnifiedDeckBench: React.FC = () => {
           Hits split onto isolated channels in real-time as you perform.
         </span>
       </div>
+
+      {/* INTERPRETATION -- what the last pass appears to be.
+          Shown after the material is already committed to its tracks, so
+          ignoring it entirely leaves the take exactly as performed. */}
+      {lastInterpretation && lastInterpretation.hypotheses.length > 0 && (
+        <div className="mt-2 rounded-xl border border-cyan-500/30 bg-slate-950/70 overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-800">
+            <span className="text-[10px] font-mono font-black uppercase tracking-widest text-cyan-300">
+              What SoulSonus heard
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono truncate">{lastInterpretation.summary}</span>
+            <button
+              type="button"
+              onClick={clearLastInterpretation}
+              className="ml-auto text-[10px] font-mono text-slate-500 hover:text-slate-200 cursor-pointer shrink-0"
+              title="Dismiss. The take is already on its tracks either way."
+            >
+              dismiss
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-slate-800">
+            {lastInterpretation.hypotheses.slice(0, 6).map((h, i) => (
+              <div key={h.role} className="bg-slate-950 px-3 py-2 space-y-1.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className={`text-[11px] font-bold ${i === 0 ? 'text-cyan-300' : 'text-slate-300'}`}>
+                    {h.role}
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400 tabular-nums">
+                    {Math.round(h.confidence * 100)}%
+                  </span>
+                </div>
+                <div className="h-[3px] rounded-full bg-slate-800 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${i === 0 ? 'bg-cyan-400' : 'bg-slate-600'}`}
+                    style={{ width: `${Math.round(h.confidence * 100)}%` }}
+                  />
+                </div>
+                {/* Never a bare percentage. The reason it holds is stated. */}
+                <p className="text-[9px] leading-relaxed text-slate-500 font-mono">{h.basis[0]}</p>
+              </div>
+            ))}
+          </div>
+
+          <p className="px-3 py-1.5 text-[9px] font-mono text-slate-600 border-t border-slate-800">
+            Your take is already on its tracks. This is a reading of it, not a decision about it.
+          </p>
+        </div>
+      )}
 
       {/* PERFORMANCE PAD GRID */}
       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 pt-1">

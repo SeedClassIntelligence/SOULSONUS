@@ -13,7 +13,7 @@
   "III.6": "VIOLATION",
   "IV.1": "HONORED",
   "IV.2": "HONORED",
-  "IV.3": "ABSENT",
+  "IV.3": "HONORED",
   "IV.4": "ABSENT",
   "V.1": "ABSENT",
   "V.2": "PARTIAL",
@@ -28,8 +28,8 @@
   "VII.2": "ABSENT",
   "VII.3": "HONORED",
   "VIII.1": "HONORED",
-  "VIII.2": "ABSENT",
-  "VIII.3": "ABSENT",
+  "VIII.2": "HONORED",
+  "VIII.3": "HONORED",
   "VIII.4": "HONORED",
   "IX.1": "HONORED",
   "IX.2": "HONORED",
@@ -104,5 +104,6 @@
   "F.2": "HONORED",
   "F.5": "HONORED",
   "G.1": "HONORED",
-  "G.3": "HONORED"
+  "G.3": "HONORED",
+  "F.3": "HONORED"
 }
