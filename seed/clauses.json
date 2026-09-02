@@ -1711,7 +1711,17 @@
           "scope": [
             "src"
           ],
-          "min": 1
+          "min": 1,
+          "note": "Branching. Satisfied by the revision tree."
+        },
+        {
+          "kind": "symbol",
+          "pattern": "recombineRevisions|crossRevisionPick|adoptFromRevision",
+          "scope": [
+            "src"
+          ],
+          "min": 1,
+          "note": "Cross-revision recombination. The clause says branching AND recombination; a name match on the tree alone passed it while only half was built, which is the false green this audit exists to prevent."
         }
       ]
     },

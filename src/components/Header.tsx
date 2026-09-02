@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { DAWState, Preset } from '../types/daw';
 import { EngineStatusBadge } from './EngineStatusBadge';
+import { RevisionTreePanel } from './RevisionTreePanel';
 import { PRESETS } from '../data/presets';
 import { useStudioSession } from '../app/StudioSessionContext';
 
@@ -208,6 +209,11 @@ export const Header: React.FC<HeaderProps> = ({
           {/* What is actually answering. Sits next to Studio Intelligence
               because that is the button whose behaviour changes when one of
               these stops responding. */}
+          {/* The shape of the session. Beside the engine badge because both
+              answer "what is actually true right now" rather than offering an
+              action. */}
+          <RevisionTreePanel />
+
           <EngineStatusBadge />
 
           {/* Studio Intelligence (Co-Producer & Autonomous Engineer Hub) */}

@@ -18,6 +18,7 @@ import { AudioEncoders } from '../src/lib/audioEncoders';
 import { signatureService } from '../src/lib/seedSignature';
 import { SoulFlowGovernor, SOULFLOW_STAGE_ORDER } from '../src/lib/soulFlowGovernor';
 import { SoundVaultSemanticMatcher } from '../src/lib/soundVaultSearch';
+import { newRevision, capTree, childrenOf, isBranchPoint, pathToRoot, depthOf, MAX_REVISIONS } from '../src/lib/revisionTree';
 import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../src/lib/relayGap';
 import * as relayGapModule from '../src/lib/relayGap';
 import { interpretPass } from '../src/lib/interpretation';
@@ -423,6 +424,63 @@ async function runComprehensiveVerification() {
       !!noScores && !/sorry|understand|apolog/i.test(noScores.words),
       'RELAY',
       "B.6: the studio reports what it did rather than simulating comprehension"
+    );
+  }
+
+  console.log('\n--- 11. The Revision Tree (XI.4: branchable, not linear) ---');
+  {
+    const T = (n: string): any[] => [{ id: n, name: n, noteEvents: [] }];
+    const S: any[] = [];
+
+    const root = newRevision(null, 'Session start', 'root', T('a'), S);
+    const r1 = newRevision(root.revisionId, 'take 1', 'capture', T('b'), S);
+    const r2 = newRevision(r1.revisionId, 'take 2', 'capture', T('c'), S);
+    // The creator undoes back to r1 and goes a different way. In a linear
+    // stack r2 is destroyed here; in a tree it is a sibling.
+    const r3 = newRevision(r1.revisionId, 'take 2, other way', 'capture', T('d'), S);
+    const tree = [root, r1, r2, r3];
+
+    check(r1.parentRevisionId === root.revisionId, 'REVISION',
+      'XI.4: a revision names the revision it came from');
+    check(root.parentRevisionId === null, 'REVISION',
+      'Only a root has no parent');
+    check(childrenOf(tree, r1.revisionId).length === 2, 'REVISION',
+      'XI.4: the path abandoned by an undo survives as a sibling branch');
+    check(isBranchPoint(tree, r1.revisionId) && !isBranchPoint(tree, root.revisionId), 'REVISION',
+      'A branch point is where the creator took a different route');
+    check(
+      tree.find((r) => r.revisionId === r2.revisionId)?.tracks[0].id === 'c',
+      'REVISION',
+      'The abandoned branch still holds its own material, not a reference to the survivor'
+    );
+
+    const path = pathToRoot(tree, r3.revisionId).map((r) => r.label);
+    check(
+      path.length === 3 && path[0] === 'Session start' && path[2] === 'take 2, other way',
+      'REVISION', 'A revision resolves to its full line of descent', path.join(' -> ')
+    );
+    check(depthOf(tree, r3.revisionId) === 2 && depthOf(tree, root.revisionId) === 0,
+      'REVISION', 'Depth is measured from the root');
+
+    // A cycle must not hang the walk. Nothing should create one, which is
+    // exactly why it is worth asserting.
+    const cyclic: any[] = [
+      { ...root, parentRevisionId: r1.revisionId },
+      { ...r1, parentRevisionId: root.revisionId },
+    ];
+    check(pathToRoot(cyclic, r1.revisionId).length === 2, 'REVISION',
+      'A malformed parent chain terminates instead of looping forever');
+
+    const big = Array.from({ length: MAX_REVISIONS + 10 }, (_, i) =>
+      newRevision(i === 0 ? null : `rev_fake_${i - 1}`, `e${i}`, 'edit', T('x'), S));
+    const capped = capTree(big);
+    check(capped.length === MAX_REVISIONS, 'REVISION',
+      `The tree is bounded at ${MAX_REVISIONS} revisions, because each holds a full copy of the tracks`);
+    const ids = new Set(capped.map((r) => r.revisionId));
+    check(
+      capped.every((r) => r.parentRevisionId === null || ids.has(r.parentRevisionId)),
+      'REVISION',
+      'Trimming re-roots orphans rather than leaving a parent id that resolves to nothing'
     );
   }
 

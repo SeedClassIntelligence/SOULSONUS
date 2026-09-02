@@ -84,6 +84,13 @@ import { midiNoteToCaptureEvent } from '../audio/midiCapture';
 import { vocalRecorder } from '../audio/vocalRecorder';
 import { interpretPass, type Interpretation } from '../lib/interpretation';
 import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../lib/relayGap';
+import {
+  newRevision,
+  capTree,
+  revisionById,
+  type Revision,
+  type RevisionOrigin,
+} from '../lib/revisionTree';
 import { measurePitchResponse, type PitchResponse } from '../audio/basicPitch';
 import { analyzePerformanceBuffer, ContentAnalysis } from '../audio/offlinePerformanceAnalysis';
 import { toMono } from '../audio/fft';
@@ -550,6 +557,11 @@ export interface StudioSessionState {
   decisionRecords: GenerationDecisionRecord[];
   /** What the creator heard, when it was not what came back. Amendment B. */
   relayGaps: RelayGapRecord[];
+  /** Every committed state, each naming the one it came from. Clause XI.4. */
+  revisions: Revision[];
+  currentRevisionId: string | null;
+  handleJumpToRevision: (revisionId: string) => boolean;
+  labelNextRevisionOrigin: (origin: RevisionOrigin) => void;
   handleRejectCandidate: (candidate: GenerationCandidate, inCreatorWords?: string) => void;
   handleAddGapWords: (gapId: string, words: string) => void;
   handleResolveGap: (gapId: string) => void;
@@ -935,6 +947,12 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   interface HistoryEntry {
     tracks: Track[];
     sections: ArrangementSection[];
+    /**
+     * Where this state sits in the revision tree. Stamped when a state is
+     * pushed onto the redo stack, so redo can put the session back on the
+     * branch it came from rather than guessing at a child.
+     */
+    revisionId?: string | null;
   }
   const [past, setPast] = useState<HistoryEntry[]>([]);
   const [future, setFuture] = useState<HistoryEntry[]>([]);
@@ -980,6 +998,35 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const pendingLabelRef = useRef<string | null>(null);
   const [pastLabels, setPastLabels] = useState<string[]>([]);
   const [futureLabels, setFutureLabels] = useState<string[]>([]);
+
+  /**
+   * The revision tree, and where the session currently stands in it.
+   *
+   * This runs alongside the undo stack rather than replacing it. Undo and redo
+   * behave exactly as before -- they walk the current path -- but every state
+   * they pass through is now a node with a parent, so the redo path that
+   * `setFuture([])` discards on the next edit survives as a branch instead of
+   * being destroyed. Clause XI.4.
+   */
+  const [revisions, setRevisions] = useState<Revision[]>([]);
+  const revisionsRef = useRef<Revision[]>([]);
+  useEffect(() => {
+    revisionsRef.current = revisions;
+  }, [revisions]);
+  const [currentRevisionId, setCurrentRevisionId] = useState<string | null>(null);
+  const currentRevisionIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    currentRevisionIdRef.current = currentRevisionId;
+  }, [currentRevisionId]);
+
+  /**
+   * What kind of thing the next committed revision was. Set by the caller that
+   * knows -- a capture, an accepted realization -- and otherwise an edit.
+   */
+  const pendingOriginRef = useRef<RevisionOrigin | null>(null);
+  const labelNextRevisionOrigin = useCallback((origin: RevisionOrigin) => {
+    pendingOriginRef.current = origin;
+  }, []);
 
   /** Names the next history entry. Called before the edit that creates it. */
   const labelNextEdit = useCallback((label: string) => {
@@ -1413,6 +1460,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     pendingUndoRef.current = null;
     const label = pendingLabelRef.current || 'Edit';
     pendingLabelRef.current = null;
+    const origin = pendingOriginRef.current || 'edit';
+    pendingOriginRef.current = null;
     setPast((prevPast) => {
       const updated = [...prevPast, snapshot];
       return updated.length > 50 ? updated.slice(1) : updated;
@@ -1421,9 +1470,61 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       const updated = [...prev, label];
       return updated.length > 50 ? updated.slice(1) : updated;
     });
+
+    // The state now committed becomes a revision hanging off wherever the
+    // session stood. This is written before the two lines below, and it is the
+    // whole of clause XI.4: those lines drop the redo path, and this one has
+    // already kept it as a branch. Nothing about undo or redo changes; what
+    // changes is that the road not taken still exists.
+    setRevisions((prev) => {
+      const parentId = currentRevisionIdRef.current;
+      // The first edit of a session has nothing above it, so the state it
+      // started from is recorded as the root rather than lost by being the
+      // thing that came before the first record.
+      const withRoot =
+        prev.length === 0 && parentId === null
+          ? [newRevision(null, 'Session start', 'root', snapshot.tracks, snapshot.sections)]
+          : prev;
+      const rootParent = prev.length === 0 && parentId === null
+        ? withRoot[0].revisionId
+        : parentId;
+      const rev = newRevision(rootParent, label, origin, tracksRef.current, sectionsRef.current);
+      currentRevisionIdRef.current = rev.revisionId;
+      setCurrentRevisionId(rev.revisionId);
+      return capTree([...withRoot, rev]);
+    });
+
     setFuture([]);
     setFutureLabels([]);
   }, [tracks, sections]);
+
+  /**
+   * Moves the session to any revision in the tree.
+   *
+   * This is what makes a branch reachable rather than merely recorded. It goes
+   * through the ordinary history writer, so the jump is itself undoable and the
+   * state you left is not lost by leaving it -- arriving somewhere else in the
+   * tree is an edit like any other, and gets its own node.
+   */
+  const handleJumpToRevision = useCallback((revisionId: string) => {
+    const target = revisionById(revisionsRef.current, revisionId);
+    if (!target) return false;
+    if (target.revisionId === currentRevisionIdRef.current) return false;
+
+    pendingLabelRef.current = `Went back to "${target.label}"`;
+    historyGroupRef.current = null;
+    if (pendingUndoRef.current === null) {
+      pendingUndoRef.current = { tracks: tracksRef.current, sections: sectionsRef.current };
+    }
+    // The new node hangs off the revision being revisited, so the tree records
+    // that the creator went there -- not that the state teleported.
+    currentRevisionIdRef.current = target.revisionId;
+    setCurrentRevisionId(target.revisionId);
+    setTracks(target.tracks);
+    setSections(target.sections);
+    sectionsRef.current = target.sections;
+    return true;
+  }, []);
 
   const canUndo = past.length > 0;
   const canRedo = future.length > 0;
@@ -1448,13 +1549,24 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     const prevPast = pastRef.current;
     if (prevPast.length === 0) return null;
     const previousState = prevPast[prevPast.length - 1];
-    const current: HistoryEntry = { tracks: tracksRef.current, sections: sectionsRef.current };
+    const current: HistoryEntry = {
+      tracks: tracksRef.current,
+      sections: sectionsRef.current,
+      // Stamped so redo can return to this exact node.
+      revisionId: currentRevisionIdRef.current,
+    };
     const labels = labelsRef.current;
     const label = labels.past[labels.past.length - 1] || 'Edit';
 
     // Whatever run of edits was open ends here, so the next edit starts a new
     // history entry rather than joining the one just undone.
     historyGroupRef.current = null;
+
+    // Move up the tree. An edit made from here hangs off the parent, which is
+    // what makes the path just left a branch rather than something overwritten.
+    const here = revisionById(revisionsRef.current, currentRevisionIdRef.current);
+    currentRevisionIdRef.current = here ? here.parentRevisionId : null;
+    setCurrentRevisionId(currentRevisionIdRef.current);
 
     pastRef.current = prevPast.slice(0, prevPast.length - 1);
     futureRef.current = [current, ...futureRef.current];
@@ -1476,11 +1588,19 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     const prevFuture = futureRef.current;
     if (prevFuture.length === 0) return null;
     const nextState = prevFuture[0];
-    const current: HistoryEntry = { tracks: tracksRef.current, sections: sectionsRef.current };
+    const current: HistoryEntry = {
+      tracks: tracksRef.current,
+      sections: sectionsRef.current,
+      revisionId: currentRevisionIdRef.current,
+    };
     const labels = labelsRef.current;
     const label = labels.future[0] || 'Edit';
 
     historyGroupRef.current = null;
+
+    // Back down the branch this state came from, by the id stamped on it.
+    currentRevisionIdRef.current = nextState.revisionId ?? currentRevisionIdRef.current;
+    setCurrentRevisionId(currentRevisionIdRef.current);
 
     futureRef.current = prevFuture.slice(1);
     pastRef.current = [...pastRef.current, current];
@@ -1636,6 +1756,14 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [mimicryTargetId]);
 
   const commitCaptureEvents = useCallback((events: CaptureEvent[]) => {
+    // A performance landing is not an edit, and the tree says which it was.
+    // It is named by what arrived, so the history reads as a session rather
+    // than as a column of the word "Edit".
+    pendingOriginRef.current = 'capture';
+    if (events.length) {
+      const kinds = [...new Set(events.map((e) => e.klass))];
+      pendingLabelRef.current = `Take: ${events.length} hit${events.length === 1 ? '' : 's'} (${kinds.join(', ')})`;
+    }
     if (!events.length) return;
 
     const playheadStep = currentStepRef.current;
@@ -2768,6 +2896,12 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     if (decisionRecord) {
       setDecisionRecords((prev) => [decisionRecord, ...prev]);
     }
+
+    // An accepted candidate writes its own node rather than overwriting what
+    // it replaced, so the take as performed stays reachable beside the
+    // realization of it. The second half of what Step 5b is for.
+    pendingOriginRef.current = 'realization';
+    pendingLabelRef.current = `Realized: ${candidate.targetRole || candidate.candidateId}`;
 
     if (committedProjectVersionId) {
       setDawState((prev) => ({
@@ -4838,6 +4972,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     setLineageRecords([]);
     setDecisionRecords([]);
     setRelayGaps([]);
+    setRevisions([]);
+    setCurrentRevisionId(null);
+    currentRevisionIdRef.current = null;
     setMixSnapshots([]);
     setVocalState((prev) => ({ ...prev, audioBlob: null, audioBuffer: null, waveformData: [], duration: 0 }));
     audioEngine.setVocalBuffer(null);
@@ -5175,6 +5312,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       lineageRecords,
       decisionRecords,
       relayGaps,
+      revisions,
+      currentRevisionId,
+      handleJumpToRevision,
+      labelNextRevisionOrigin,
       handleRejectCandidate,
       handleAddGapWords,
       handleResolveGap,
@@ -5378,6 +5519,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       lineageRecords,
       decisionRecords,
       relayGaps,
+      revisions,
+      currentRevisionId,
+      handleJumpToRevision,
+      labelNextRevisionOrigin,
       handleRejectCandidate,
       handleAddGapWords,
       handleResolveGap,
