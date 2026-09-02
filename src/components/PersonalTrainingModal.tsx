@@ -42,13 +42,28 @@ interface PersonalTrainingModalProps {
   initialTab?: 'TRAINING_PILLARS' | 'VOICE_CLONING_LAB' | 'SOUND_VAULT';
 }
 
+import {
+  STARTER_VOICES,
+  auditionStarterVoice,
+  type StarterVoiceId,
+} from '../audio/starterVoices';
+
 interface SoundVaultItem {
   id: string;
   name: string;
   category: 'vocal_percussion' | 'body_sound' | 'voice_sample' | 'keys_instrument' | 'found_audio';
   tags: string[];
   freqHz: number;
+  /** Where the audio comes from when it is a file. Empty for a studio voice. */
   sampleUrl: string;
+  /**
+   * Set when this entry is one of the studio's own instrument voices, rendered
+   * live from the same Tone.js definitions the tracks play. Nothing to fetch,
+   * so nothing to go missing.
+   */
+  synthVoice?: StarterVoiceId;
+  /** How it is described to the creator, e.g. "Tone.MembraneSynth · MIT". */
+  sourceNote?: string;
   associatedGesture?: string;
   isRootSeed: boolean;
   dateAdded: string;
@@ -57,7 +72,7 @@ interface SoundVaultItem {
    * with the build are not the same object, and the vault was presenting
    * both as "ROOT SEED #1" with a date the creator never recorded on.
    */
-  origin: 'demonstration' | 'creator_recorded';
+  origin: 'studio_voice' | 'creator_recorded';
   /**
    * Whether the audio behind sampleUrl is actually being served. Resolved by
    * asking, on open -- not assumed. A dead entry is shown as dead in the list
@@ -223,70 +238,40 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
   // R09 SOUND VAULT & ROOT CREATIVITY SEEDS
   // -------------------------------------------------------------
   const [vaultFilter, setVaultFilter] = useState<'ALL' | 'VOCAL' | 'BODY' | 'KEYS' | 'FOUND'>('ALL');
-  const [vaultSounds, setVaultSounds] = useState<SoundVaultItem[]>([
-    {
-      id: 'vs_01',
-      name: 'Mouth Kick (demonstration)',
-      category: 'vocal_percussion',
-      tags: ['demonstration', 'mouth_kick'],
-      // The file this points at is not in the build. It was removed as a demo
-      // artifact -- the platform's own verification rejects the id
-      // `cand_ace_1` for exactly that reason -- and this reference was left
-      // behind. The preflight below marks it missing so it reads as absent in
-      // the list instead of failing under the creator's finger.
-      freqHz: 0,
-      sampleUrl: '/audio/realization/realization_kick_cand_ace_1.wav',
-      associatedGesture: 'Deep "Boom" Mouth Thump',
+  /**
+   * The vault opens on the studio's own instrument voices.
+   *
+   * It used to open on four fixtures labelled ROOT SEED with a date the
+   * creator never recorded on. One pointed at a file that is not in the build;
+   * two pointed at the same generated 65.5 Hz tone, one of them calling it a
+   * 261 Hz hum. Nothing there was theirs and one of it was nothing at all.
+   *
+   * These are real, they play, they cannot go missing, and they are honestly
+   * the house's rather than the creator's. What the creator records lands
+   * above them and is marked as theirs.
+   */
+  const [vaultSounds, setVaultSounds] = useState<SoundVaultItem[]>(() =>
+    STARTER_VOICES.map((v) => ({
+      id: `vs_studio_${v.id}`,
+      name: v.name,
+      category:
+        v.id === 'bass' || v.id === 'melody'
+          ? ('keys_instrument' as const)
+          : ('vocal_percussion' as const),
+      tags: ['studio_voice', v.id, v.licence.toLowerCase()],
+      freqHz: v.approxHz,
+      sampleUrl: '',
+      synthVoice: v.id,
+      // The note it is triggered at is stated alongside the engine, so the
+      // frequency on the card can be checked against something concrete.
+      sourceNote: v.pitch ? `${v.pitch} · ${v.engine} · ${v.licence}` : `${v.engine} · ${v.licence}`,
+      associatedGesture: v.gesture,
       isRootSeed: false,
-      origin: 'demonstration',
-      dateAdded: '2026-08-15',
-    },
-    {
-      id: 'vs_02',
-      name: 'Lip Snare Crack (demonstration)',
-      category: 'vocal_percussion',
-      tags: ['demonstration', 'lip_pop', 'snare_snap'],
-      // Measured off the file: a transient, peak 0.70 against RMS 0.036, and
-      // unpitched (autocorrelation confidence 0.09). The stated 1240 Hz was
-      // not a measurement of this audio, so it is not stated as one.
-      freqHz: 0,
-      sampleUrl: '/audio/stems/drum_layer_snare_1786815776569.wav',
-      associatedGesture: 'Sharp "Pff" Lip Pop',
-      isRootSeed: false,
-      origin: 'demonstration',
-      dateAdded: '2026-08-15',
-    },
-    {
-      id: 'vs_03',
-      name: 'Sub Tone (demonstration)',
-      category: 'body_sound',
-      // Measured off the file: 65.5 Hz, C2, autocorrelation confidence 1.00 at
-      // RMS 0.657 across 2.18 s -- a generated constant tone, not a recorded
-      // chest thump. It is described as what it is.
-      tags: ['demonstration', 'generated_tone', 'c2'],
-      freqHz: 65.5,
-      sampleUrl: '/audio/realization/realization_bass_cand_ace_1786813844336.wav',
-      isRootSeed: false,
-      origin: 'demonstration',
-      dateAdded: '2026-08-15',
-    },
-    {
-      id: 'vs_04',
-      // Was "Late Night Hum C Minor Lead", 261 Hz, a throat hum C3-G4. It
-      // plays the same file as vs_03: one generated 65.5 Hz tone, two octaves
-      // below the pitch it claimed. Nothing looked broken -- you just heard
-      // the wrong thing, which is the failure Amendment B exists to catch.
-      // Kept, and named for the audio that is actually behind it.
-      name: 'Sub Tone, duplicate reference (demonstration)',
-      category: 'voice_sample',
-      tags: ['demonstration', 'generated_tone', 'duplicate_of_vs_03'],
-      freqHz: 65.5,
-      sampleUrl: '/audio/realization/realization_bass_cand_ace_1786813844336.wav',
-      isRootSeed: false,
-      origin: 'demonstration',
-      dateAdded: '2026-08-15',
-    },
-  ]);
+      origin: 'studio_voice' as const,
+      availability: 'present' as const,
+      dateAdded: 'ships with the studio',
+    }))
+  );
 
   const [isRecording, setIsRecording] = useState(false);
   const [activeRecordingLabel, setActiveRecordingLabel] = useState<string | null>(null);
@@ -365,6 +350,15 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
   const handleAuditionSeed = (snd: SoundVaultItem) => {
     auditionRef.current?.pause();
     setRecordError(null);
+
+    // A studio voice has nothing to fetch. It is built, sounded and disposed
+    // from the same definitions the tracks play.
+    if (snd.synthVoice) {
+      void auditionStarterVoice(snd.synthVoice).catch(() =>
+        setRecordError(`"${snd.name}" could not be sounded -- the audio engine did not start.`)
+      );
+      return;
+    }
 
     if (snd.availability === 'missing') {
       setRecordError(
@@ -1169,12 +1163,12 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                               ROOT SEED
                             </span>
                           )}
-                          {snd.origin === 'demonstration' && (
+                          {snd.origin === 'studio_voice' && (
                             <span
-                              className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 text-[8px] font-bold border border-slate-700"
-                              title="Ships with the build. You did not record this."
+                              className="px-1.5 py-0.2 rounded bg-cyan-500/15 text-cyan-300 text-[8px] font-bold border border-cyan-500/30"
+                              title={`${snd.sourceNote} -- played live by the studio's own engine, not a file. This is the house instrument, not one of your roots.`}
                             >
-                              DEMO
+                              STUDIO VOICE
                             </span>
                           )}
                           {snd.availability === 'missing' && (
@@ -1190,7 +1184,7 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                           <span>{snd.category}</span> •{' '}
                           <span>{snd.freqHz > 0 ? `${snd.freqHz}Hz` : 'unpitched'}</span>
                           {snd.durationSeconds !== undefined && <span> • {snd.durationSeconds}s</span>} •{' '}
-                          <span>{snd.dateAdded}</span>
+                          <span>{snd.sourceNote || snd.dateAdded}</span>
                         </div>
                         {snd.waveform && snd.waveform.length > 0 && (
                           <span className="flex items-end gap-[1px] h-3 w-[128px] mt-1">

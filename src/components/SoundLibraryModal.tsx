@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { InstrumentType, SoundAsset } from '../types/daw';
 import { X, Search, Volume2, Sparkles, Check, Replace } from 'lucide-react';
 import { SOUND_CATALOG, searchSoundCatalog } from '../data/soundLibrary';
-import * as Tone from 'tone';
+import { auditionStarterVoice, type StarterVoiceId } from '../audio/starterVoices';
 
 interface SoundLibraryModalProps {
   isOpen?: boolean;
@@ -25,25 +25,31 @@ export const SoundLibraryModal: React.FC<SoundLibraryModalProps> = ({
     selectedCategory === 'all' ? undefined : selectedCategory
   );
 
+  /**
+   * Auditions through the studio's shared voices.
+   *
+   * This used to build a MembraneSynth on every press and then, for anything
+   * that was not a kick, build a second synth and leave the first one
+   * un-disposed -- so browsing the library left one synth behind per sound
+   * looked at. It also previewed voices the tracks do not play, with defaults
+   * rather than the engine's own options, so what you heard here and what you
+   * got on the timeline were free to drift.
+   *
+   * Both problems are one problem: this screen had its own copy of the
+   * instruments. It no longer has one.
+   */
+  const voiceFor = (asset: SoundAsset): StarterVoiceId => {
+    if (asset.category === 'kick') return 'kick';
+    if (asset.category === 'snare') return 'snare';
+    if (asset.category === 'hihat') return 'hihat';
+    if (asset.category === 'bass') return 'bass';
+    return 'melody';
+  };
+
   const handleAudition = async (asset: SoundAsset) => {
+    setPlayingId(asset.id);
     try {
-      await Tone.start();
-      setPlayingId(asset.id);
-
-      const synth = new Tone.MembraneSynth().toDestination();
-      if (asset.category === 'kick') {
-        synth.triggerAttackRelease('C1', '8n');
-      } else if (asset.category === 'snare') {
-        const noise = new Tone.NoiseSynth().toDestination();
-        noise.triggerAttackRelease('16n');
-      } else if (asset.category === 'hihat') {
-        const metal = new Tone.MetalSynth().toDestination();
-        metal.triggerAttackRelease('C6', '32n');
-      } else {
-        const poly = new Tone.PolySynth().toDestination();
-        poly.triggerAttackRelease(['C3', 'E3', 'G3'], '8n');
-      }
-
+      await auditionStarterVoice(voiceFor(asset));
       setTimeout(() => setPlayingId(null), 600);
     } catch {
       setPlayingId(null);
