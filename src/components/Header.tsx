@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { DAWState, Preset } from '../types/daw';
+import { EngineStatusBadge } from './EngineStatusBadge';
 import { PRESETS } from '../data/presets';
 import { useStudioSession } from '../app/StudioSessionContext';
 
@@ -203,6 +204,11 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div className="h-4 w-px bg-slate-800 hidden md:block" />
+
+          {/* What is actually answering. Sits next to Studio Intelligence
+              because that is the button whose behaviour changes when one of
+              these stops responding. */}
+          <EngineStatusBadge />
 
           {/* Studio Intelligence (Co-Producer & Autonomous Engineer Hub) */}
           <button
