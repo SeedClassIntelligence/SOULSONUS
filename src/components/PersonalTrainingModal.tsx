@@ -52,6 +52,18 @@ interface SoundVaultItem {
   associatedGesture?: string;
   isRootSeed: boolean;
   dateAdded: string;
+  /**
+   * Who this came from. A seed the creator performed and a tone that ships
+   * with the build are not the same object, and the vault was presenting
+   * both as "ROOT SEED #1" with a date the creator never recorded on.
+   */
+  origin: 'demonstration' | 'creator_recorded';
+  /**
+   * Whether the audio behind sampleUrl is actually being served. Resolved by
+   * asking, on open -- not assumed. A dead entry is shown as dead in the list
+   * rather than discovered by the creator when they press play.
+   */
+  availability?: 'unchecked' | 'present' | 'missing';
   /** Peak per slice, taken from the recording. Absent on the shipped presets. */
   waveform?: number[];
   durationSeconds?: number;
@@ -214,46 +226,64 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
   const [vaultSounds, setVaultSounds] = useState<SoundVaultItem[]>([
     {
       id: 'vs_01',
-      name: 'Mouth Kick Root Seed #1',
+      name: 'Mouth Kick (demonstration)',
       category: 'vocal_percussion',
-      tags: ['root_seed', 'mouth_kick', 'raw_wav', '58hz'],
-      freqHz: 58,
+      tags: ['demonstration', 'mouth_kick'],
+      // The file this points at is not in the build. It was removed as a demo
+      // artifact -- the platform's own verification rejects the id
+      // `cand_ace_1` for exactly that reason -- and this reference was left
+      // behind. The preflight below marks it missing so it reads as absent in
+      // the list instead of failing under the creator's finger.
+      freqHz: 0,
       sampleUrl: '/audio/realization/realization_kick_cand_ace_1.wav',
       associatedGesture: 'Deep "Boom" Mouth Thump',
-      isRootSeed: true,
+      isRootSeed: false,
+      origin: 'demonstration',
       dateAdded: '2026-08-15',
     },
     {
       id: 'vs_02',
-      name: 'Lip Snare Crack Root Seed #2',
+      name: 'Lip Snare Crack (demonstration)',
       category: 'vocal_percussion',
-      tags: ['root_seed', 'lip_pop', 'snare_snap'],
-      freqHz: 1240,
+      tags: ['demonstration', 'lip_pop', 'snare_snap'],
+      // Measured off the file: a transient, peak 0.70 against RMS 0.036, and
+      // unpitched (autocorrelation confidence 0.09). The stated 1240 Hz was
+      // not a measurement of this audio, so it is not stated as one.
+      freqHz: 0,
       sampleUrl: '/audio/stems/drum_layer_snare_1786815776569.wav',
       associatedGesture: 'Sharp "Pff" Lip Pop',
-      isRootSeed: true,
+      isRootSeed: false,
+      origin: 'demonstration',
       dateAdded: '2026-08-15',
     },
     {
       id: 'vs_03',
-      name: 'Chest Thump Acoustic Sub #1',
+      name: 'Sub Tone (demonstration)',
       category: 'body_sound',
-      tags: ['body_percussion', 'chest_sub', 'organic'],
-      freqHz: 52,
+      // Measured off the file: 65.5 Hz, C2, autocorrelation confidence 1.00 at
+      // RMS 0.657 across 2.18 s -- a generated constant tone, not a recorded
+      // chest thump. It is described as what it is.
+      tags: ['demonstration', 'generated_tone', 'c2'],
+      freqHz: 65.5,
       sampleUrl: '/audio/realization/realization_bass_cand_ace_1786813844336.wav',
-      associatedGesture: 'Physical Fist-to-Chest Thump',
-      isRootSeed: true,
+      isRootSeed: false,
+      origin: 'demonstration',
       dateAdded: '2026-08-15',
     },
     {
       id: 'vs_04',
-      name: 'Late Night Hum C Minor Lead',
+      // Was "Late Night Hum C Minor Lead", 261 Hz, a throat hum C3-G4. It
+      // plays the same file as vs_03: one generated 65.5 Hz tone, two octaves
+      // below the pitch it claimed. Nothing looked broken -- you just heard
+      // the wrong thing, which is the failure Amendment B exists to catch.
+      // Kept, and named for the audio that is actually behind it.
+      name: 'Sub Tone, duplicate reference (demonstration)',
       category: 'voice_sample',
-      tags: ['hum', 'verse_lead', 'c_minor', 'root_seed'],
-      freqHz: 261,
+      tags: ['demonstration', 'generated_tone', 'duplicate_of_vs_03'],
+      freqHz: 65.5,
       sampleUrl: '/audio/realization/realization_bass_cand_ace_1786813844336.wav',
-      associatedGesture: 'Throat Hum C3-G4',
-      isRootSeed: true,
+      isRootSeed: false,
+      origin: 'demonstration',
       dateAdded: '2026-08-15',
     },
   ]);
@@ -298,6 +328,9 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
         sampleUrl: take.url,
         associatedGesture: label,
         isRootSeed: true,
+        origin: 'creator_recorded',
+        // It is in memory as a blob this tab holds. Nothing to reach for.
+        availability: 'present',
         dateAdded: new Date().toLocaleDateString(),
         waveform: take.waveform,
         durationSeconds: Math.round(take.durationSeconds * 100) / 100,
@@ -321,13 +354,77 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
     }
   };
 
-  /** Plays a vault seed. This used to be a console.log. */
+  /**
+   * Plays a vault seed. This used to be a console.log.
+   *
+   * The error it raised was also never cleared, so one dead entry left the
+   * banner standing over every audition after it -- three sounds that played
+   * correctly read as failures. It clears first, and it says what went wrong
+   * rather than only that something did.
+   */
   const handleAuditionSeed = (snd: SoundVaultItem) => {
     auditionRef.current?.pause();
+    setRecordError(null);
+
+    if (snd.availability === 'missing') {
+      setRecordError(
+        `"${snd.name}" has no audio behind it -- ${snd.sampleUrl} is not being served.`
+      );
+      return;
+    }
+
     const el = new Audio(snd.sampleUrl);
     auditionRef.current = el;
-    void el.play().catch(() => setRecordError(`"${snd.name}" could not be played.`));
+    void el.play().catch((err: unknown) => {
+      const why =
+        err instanceof DOMException && err.name === 'NotAllowedError'
+          ? 'the browser blocked playback until you interact with the page'
+          : 'the file could not be decoded';
+      setRecordError(`"${snd.name}" did not play -- ${why}.`);
+    });
   };
+
+  /**
+   * Asks whether each entry's audio is actually being served, once, when the
+   * vault is opened. A single-page app answers an unknown path with index.html
+   * and a 200, so a plain res.ok would call a deleted file present -- the same
+   * trap the engine probe has to avoid. Blob URLs held by this tab are not
+   * asked about; there is nothing to reach.
+   */
+  React.useEffect(() => {
+    if (!isOpen || studioTab !== 'SOUND_VAULT') return;
+    let cancelled = false;
+
+    const check = async (url: string): Promise<'present' | 'missing'> => {
+      if (!url) return 'missing';
+      if (url.startsWith('blob:') || url.startsWith('data:')) return 'present';
+      try {
+        const res = await fetch(url, { method: 'HEAD' });
+        if (!res.ok) return 'missing';
+        if ((res.headers.get('content-type') || '').includes('text/html')) return 'missing';
+        return 'present';
+      } catch {
+        return 'missing';
+      }
+    };
+
+    void (async () => {
+      const pending = vaultSounds.filter((sd) => sd.availability === undefined);
+      if (!pending.length) return;
+      const resolved = await Promise.all(
+        pending.map(async (sd) => [sd.id, await check(sd.sampleUrl)] as const)
+      );
+      if (cancelled) return;
+      const byId = new Map(resolved);
+      setVaultSounds((prev) =>
+        prev.map((sd) => (byId.has(sd.id) ? { ...sd, availability: byId.get(sd.id) } : sd))
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, studioTab, vaultSounds]);
 
   const handleSynthesizeSingingTake = () => {
     if (!synthesisLyrics.trim()) return;
@@ -1048,10 +1145,20 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                 {filteredVaultSounds.map((snd) => (
                   <div
                     key={snd.id}
-                    className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3 hover:border-slate-700 transition"
+                    className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition ${
+                      snd.availability === 'missing'
+                        ? 'bg-slate-950 border-rose-500/30'
+                        : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                    }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <div
+                        className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
+                          snd.availability === 'missing'
+                            ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                            : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                        }`}
+                      >
                         <Volume2 className="w-4 h-4" />
                       </div>
                       <div>
@@ -1060,6 +1167,22 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                           {snd.isRootSeed && (
                             <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[8px] font-bold border border-amber-500/30">
                               ROOT SEED
+                            </span>
+                          )}
+                          {snd.origin === 'demonstration' && (
+                            <span
+                              className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 text-[8px] font-bold border border-slate-700"
+                              title="Ships with the build. You did not record this."
+                            >
+                              DEMO
+                            </span>
+                          )}
+                          {snd.availability === 'missing' && (
+                            <span
+                              className="px-1.5 py-0.2 rounded bg-rose-500/15 text-rose-300 text-[8px] font-bold border border-rose-500/30"
+                              title={`Nothing is being served at ${snd.sampleUrl}`}
+                            >
+                              NO AUDIO
                             </span>
                           )}
                         </div>
@@ -1085,8 +1208,16 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
 
                     <button
                       onClick={() => handleAuditionSeed(snd)}
-                      className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer"
-                      title="Audition Sound"
+                      className={`p-2 rounded-lg border transition cursor-pointer ${
+                        snd.availability === 'missing'
+                          ? 'bg-slate-950 border-rose-500/30 text-rose-400/70'
+                          : 'bg-slate-900 border-transparent hover:bg-slate-800 text-slate-300 hover:text-white'
+                      }`}
+                      title={
+                        snd.availability === 'missing'
+                          ? `No audio is being served at ${snd.sampleUrl}`
+                          : 'Audition Sound'
+                      }
                     >
                       <Play className="w-3.5 h-3.5 fill-current" />
                     </button>
