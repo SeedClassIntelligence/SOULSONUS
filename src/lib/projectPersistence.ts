@@ -12,8 +12,22 @@
  */
 
 const DB_NAME = 'soulsonus';
-const DB_VERSION = 1;
+/**
+ * 2 adds the root-seed store below. The bump is additive: IndexedDB keeps
+ * every store it already has through an upgrade, and the handler only creates
+ * what is missing, so a creator's saved projects come through untouched.
+ */
+const DB_VERSION = 2;
 const STORE = 'projects';
+/**
+ * A creator's recorded root seeds.
+ *
+ * Separate from projects on purpose. A root seed is not part of one song --
+ * it is the creator's own sound, and it has to be there in the next song and
+ * the one after that. Keeping it in the project snapshot would have tied their
+ * voice to whichever file it happened to be recorded in.
+ */
+const SEED_STORE = 'rootSeeds';
 
 /** Fixed key for the rolling autosave, so a reload always finds the last session. */
 export const AUTOSAVE_ID = '__autosave__';
@@ -84,18 +98,25 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE)) {
         db.createObjectStore(STORE, { keyPath: 'id' });
       }
+      if (!db.objectStoreNames.contains(SEED_STORE)) {
+        db.createObjectStore(SEED_STORE, { keyPath: 'id' });
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error ?? new Error('Could not open the project database.'));
   });
 }
 
-function tx<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+function tx<T>(
+  mode: IDBTransactionMode,
+  run: (store: IDBObjectStore) => IDBRequest<T>,
+  storeName: string = STORE
+): Promise<T> {
   return openDb().then(
     (db) =>
       new Promise<T>((resolve, reject) => {
-        const t = db.transaction(STORE, mode);
-        const req = run(t.objectStore(STORE));
+        const t = db.transaction(storeName, mode);
+        const req = run(t.objectStore(storeName));
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error ?? new Error('Project database request failed.'));
         t.oncomplete = () => db.close();
@@ -148,4 +169,49 @@ export async function estimateUsage(): Promise<{ usageBytes: number; quotaBytes:
   if (typeof navigator === 'undefined' || !navigator.storage?.estimate) return null;
   const est = await navigator.storage.estimate();
   return { usageBytes: est.usage ?? 0, quotaBytes: est.quota ?? 0 };
+}
+
+
+/**
+ * A root seed as it survives a reload.
+ *
+ * The blob is the durable part. The object URL the vault plays from cannot be
+ * stored -- it is only valid for the tab that made it -- so it is dropped on
+ * save and remade on load, the same way takes and timeline assets are handled
+ * above. Storing the URL instead would have written a row that looks like a
+ * recording and plays nothing, which is worse than storing nothing.
+ */
+export interface StoredRootSeed {
+  id: string;
+  name: string;
+  category: string;
+  tags: string[];
+  freqHz: number;
+  associatedGesture?: string;
+  dateAdded: string;
+  waveform?: number[];
+  durationSeconds?: number;
+  /** The audio the creator actually performed. */
+  blob: Blob;
+  savedAt: number;
+}
+
+/** Writes one root seed. Overwrites a seed with the same id. */
+export async function saveRootSeed(seed: StoredRootSeed): Promise<void> {
+  await tx('readwrite', (store) => store.put(seed), SEED_STORE);
+}
+
+/** Every root seed this creator has recorded, newest first. */
+export async function listRootSeeds(): Promise<StoredRootSeed[]> {
+  const all = await tx<StoredRootSeed[]>(
+    'readonly',
+    (store) => store.getAll() as IDBRequest<StoredRootSeed[]>,
+    SEED_STORE
+  );
+  return all.sort((a, b) => b.savedAt - a.savedAt);
+}
+
+/** Removes one root seed permanently. */
+export async function deleteRootSeed(id: string): Promise<void> {
+  await tx('readwrite', (store) => store.delete(id) as unknown as IDBRequest<undefined>, SEED_STORE);
 }

@@ -26,6 +26,7 @@ import {
   Flame,
   Clock,
   VolumeX,
+  Trash2,
 } from 'lucide-react';
 import { signatureService } from '../lib/seedSignature';
 import { computeStyleProfile, describeStyleProfile } from '../lib/styleProfile';
@@ -47,6 +48,12 @@ import {
   auditionStarterVoice,
   type StarterVoiceId,
 } from '../audio/starterVoices';
+import {
+  listRootSeeds,
+  saveRootSeed,
+  deleteRootSeed,
+  type StoredRootSeed,
+} from '../lib/projectPersistence';
 
 interface SoundVaultItem {
   id: string;
@@ -273,6 +280,78 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
     }))
   );
 
+  /**
+   * Object URLs this component minted for stored seeds, so they can be revoked
+   * when it goes away. Each one pins its blob in memory until released.
+   */
+  const restoredUrlsRef = useRef<string[]>([]);
+  const [seedsRestored, setSeedsRestored] = useState(false);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+
+  /**
+   * Brings back what the creator has recorded before.
+   *
+   * Until this existed the vault was plain useState: a root seed survived
+   * closing the modal, because App keeps this component mounted, and died on
+   * reload. The creator performed something, the studio heard it, and then the
+   * browser dropped it -- which is the one thing Amendment F says never
+   * happens. The blob is what was stored; the URL the player needs is remade
+   * from it here.
+   */
+  React.useEffect(() => {
+    if (!isOpen || seedsRestored) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const stored = await listRootSeeds();
+        if (cancelled) return;
+        const restored: SoundVaultItem[] = stored.map((sd: StoredRootSeed) => {
+          const url = URL.createObjectURL(sd.blob);
+          restoredUrlsRef.current.push(url);
+          return {
+            id: sd.id,
+            name: sd.name,
+            category: sd.category as SoundVaultItem['category'],
+            tags: sd.tags,
+            freqHz: sd.freqHz,
+            sampleUrl: url,
+            associatedGesture: sd.associatedGesture,
+            isRootSeed: true,
+            origin: 'creator_recorded',
+            availability: 'present',
+            dateAdded: sd.dateAdded,
+            waveform: sd.waveform,
+            durationSeconds: sd.durationSeconds,
+          };
+        });
+        setVaultSounds((prev) => {
+          const known = new Set(prev.map((v) => v.id));
+          return [...restored.filter((r) => !known.has(r.id)), ...prev];
+        });
+        setSeedsRestored(true);
+      } catch {
+        if (!cancelled) {
+          setRestoreError(
+            'Your recorded seeds could not be read from this browser. Anything you record now will still play, but may not survive a reload.'
+          );
+          setSeedsRestored(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, seedsRestored]);
+
+  // Release the URLs minted above when this component is torn down.
+  React.useEffect(
+    () => () => {
+      restoredUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+      restoredUrlsRef.current = [];
+    },
+    []
+  );
+
   const [isRecording, setIsRecording] = useState(false);
   const [activeRecordingLabel, setActiveRecordingLabel] = useState<string | null>(null);
   const [recordError, setRecordError] = useState<string | null>(null);
@@ -322,6 +401,27 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
       };
 
       setVaultSounds((prev) => [seed, ...prev]);
+
+      // A take that lives only in useState is a take the creator loses on
+      // reload. The blob is written now, while it is in hand -- not on close,
+      // not on some later save the creator has to remember to press.
+      void saveRootSeed({
+        id: seed.id,
+        name: seed.name,
+        category: seed.category,
+        tags: seed.tags,
+        freqHz: seed.freqHz,
+        associatedGesture: seed.associatedGesture,
+        dateAdded: seed.dateAdded,
+        waveform: seed.waveform,
+        durationSeconds: seed.durationSeconds,
+        blob: take.blob,
+        savedAt: Date.now(),
+      }).catch(() =>
+        setRecordError(
+          `"${seed.name}" was captured and is playable now, but could not be written to this browser's storage -- it will not survive a reload.`
+        )
+      );
       setPercussionCategories((prev) =>
         prev.map((p) => (p.name === label ? { ...p, recorded: true, count: p.count + 1 } : p))
       );
@@ -336,6 +436,27 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
     } catch {
       // Denied, or no input device. Say so instead of showing a fake success.
       setRecordError('The microphone is not available. Allow mic access and try again.');
+    }
+  };
+
+  /**
+   * Removes a recorded seed from the vault and from storage.
+   *
+   * Without this a seed could be written and never taken back, so the only way
+   * out of a bad take was to clear the browser's data for the whole studio.
+   * Its object URL is released too -- the blob stays in memory otherwise.
+   */
+  const handleDeleteSeed = async (snd: SoundVaultItem) => {
+    setRecordError(null);
+    try {
+      await deleteRootSeed(snd.id);
+      if (snd.sampleUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(snd.sampleUrl);
+        restoredUrlsRef.current = restoredUrlsRef.current.filter((u) => u !== snd.sampleUrl);
+      }
+      setVaultSounds((prev) => prev.filter((v) => v.id !== snd.id));
+    } catch {
+      setRecordError(`"${snd.name}" could not be deleted from this browser's storage.`);
     }
   };
 
@@ -1200,6 +1321,16 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                       </div>
                     </div>
 
+                    <div className="flex items-center gap-1.5 shrink-0">
+                    {snd.origin === 'creator_recorded' && (
+                      <button
+                        onClick={() => void handleDeleteSeed(snd)}
+                        className="p-2 rounded-lg bg-slate-900 border border-transparent hover:border-rose-500/40 text-slate-500 hover:text-rose-300 transition cursor-pointer"
+                        title={`Delete "${snd.name}" permanently. This cannot be undone.`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleAuditionSeed(snd)}
                       className={`p-2 rounded-lg border transition cursor-pointer ${
@@ -1215,6 +1346,7 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
                     >
                       <Play className="w-3.5 h-3.5 fill-current" />
                     </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1224,15 +1356,18 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
 
         {/* BOTTOM ACTION BAR */}
         <div className="p-3 md:px-6 border-t border-slate-800 bg-slate-950 flex items-center justify-between text-xs font-mono shrink-0">
-          {recordError ? (
+          {recordError || restoreError ? (
             <div className="flex items-center gap-2 text-amber-300">
               <ShieldCheck className="w-4 h-4 text-amber-400" />
-              <span>{recordError}</span>
+              <span>{recordError || restoreError}</span>
             </div>
           ) : (
             <div className="flex items-center gap-2 text-slate-400">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>All recorded root seeds & trained voice models are 100% exclusive to creator.</span>
+              <span>
+                Your recorded root seeds are kept in this browser and are yours alone. They
+                survive a reload.
+              </span>
             </div>
           )}
 
