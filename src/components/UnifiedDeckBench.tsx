@@ -79,6 +79,36 @@ export const UnifiedDeckBench: React.FC = () => {
   const takes = tracks.filter((t) => t.isSourceTrack);
   const selectedTrackId = selectionContext.selectedTrackId;
 
+  /**
+   * Act on a reading, instead of only being shown one.
+   *
+   * The plan's Step 4 mockup ends in a row of choices -- "Realize as [808]
+   * [Electric Bass] ... [Keep as recorded]" -- and the panel I built stopped
+   * at the percentages, with `dismiss` as its only button. It ranked the
+   * options and gave the creator no way to take any of them, which makes it a
+   * readout rather than the decision the plan describes.
+   *
+   * The roles here come from the measurements rather than a fixed list, so
+   * this is that row driven by what was actually heard.
+   */
+  const realizeAs = (h: { role: string; instrument: string; targetRole: string }) => {
+    // The channel this reading is about: the one holding that instrument,
+    // falling back to what the creator has selected.
+    const target =
+      tracks.find((t) => t.instrument === h.instrument) ||
+      tracks.find((t) => t.id === selectedTrackId);
+    if (!target) return;
+    window.dispatchEvent(
+      new CustomEvent('soulsonus:openDrawer', {
+        detail: {
+          type: 'realization',
+          trackId: target.id,
+          prompt: `Realize ${target.name} as ${h.role}`,
+        },
+      })
+    );
+  };
+
   // Real-time live vocal waveform & loop pulse canvas renderer
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -422,19 +452,41 @@ export const UnifiedDeckBench: React.FC = () => {
             { id: 'HUM_VOICE' as const, label: 'Hum / Voice', pending: false },
             { id: 'MIMIC' as const, label: 'Mimic', pending: false },
             { id: 'SING' as const, label: 'Sing', pending: false },
-            // Spoken direction is captured audio, not a percussion performance.
-            // Routing it through the mouth classifier would turn "make the
-            // chorus bigger" into kick and snare hits, so the tab stays present
-            // and inert until language reaches the reasoning layer.
-            { id: 'SPEAK' as const, label: 'Speak', pending: true },
+            // Spoken direction is captured audio, not a percussion
+            // performance. Routing it through the mouth classifier would turn
+            // "make the chorus bigger" into kick and snare hits, so this tab
+            // was inert with the note "until language reaches the reasoning
+            // layer".
+            //
+            // Language reaches it now -- III.5's fallthrough carries anything
+            // that is not a direct command to the co-producer. So this opens
+            // the command bar, which has the microphone and that route behind
+            // it, instead of arming the classifier. The condition I wrote for
+            // enabling this was met two steps ago and I did not come back.
+            { id: 'SPEAK' as const, label: 'Speak', pending: false },
             { id: 'INSTRUMENT' as const, label: 'MIDI Keys', pending: false },
           ].map((t) => (
             <button
               key={t.id}
               type="button"
               disabled={t.pending}
-              onClick={() => { if (!t.pending) setActiveModalityTab(t.id); }}
-              title={t.pending ? 'Spoken direction lands when language routing is built' : undefined}
+              onClick={() => {
+                if (t.pending) return;
+                if (t.id === 'SPEAK') {
+                  // Not a capture modality. It opens the place that can hear a
+                  // sentence, rather than arming a percussion classifier on one.
+                  window.dispatchEvent(
+                    new CustomEvent('soulsonus:openDrawer', { detail: 'voice' })
+                  );
+                  return;
+                }
+                setActiveModalityTab(t.id);
+              }}
+              title={
+                t.id === 'SPEAK'
+                  ? 'Say what you want in your own words — opens the command bar, which carries anything that is not a direct command to the co-producer'
+                  : undefined
+              }
               className={`px-3 py-1 rounded-lg font-bold transition ${
                 t.pending
                   ? 'text-slate-600 border border-dashed border-slate-700 cursor-not-allowed'
@@ -565,12 +617,22 @@ export const UnifiedDeckBench: React.FC = () => {
                 </div>
                 {/* Never a bare percentage. The reason it holds is stated. */}
                 <p className="text-[9px] leading-relaxed text-slate-500 font-mono">{h.basis[0]}</p>
+                <button
+                  type="button"
+                  data-testid={`realize-as-${h.targetRole}`}
+                  onClick={() => realizeAs(h)}
+                  className="w-full mt-0.5 py-1 rounded-lg bg-slate-900 border border-cyan-500/30 text-cyan-300 hover:bg-slate-800 text-[9px] font-mono font-bold transition cursor-pointer"
+                  title={`Propose a realization of this take as ${h.role}. Nothing is committed until you accept the candidate.`}
+                >
+                  REALIZE AS {h.role.toUpperCase()}
+                </button>
               </div>
             ))}
           </div>
 
           <p className="px-3 py-1.5 text-[9px] font-mono text-slate-600 border-t border-slate-800">
-            Your take is already on its tracks. This is a reading of it, not a decision about it.
+            Your take is already on its tracks. Keeping it as recorded is the default — these only
+            propose a candidate, and nothing changes until you accept one.
           </p>
         </div>
       )}

@@ -133,6 +133,9 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
     handleCallSessionPlayer,
     intentPreserve,
     handleRejectCandidate,
+    updateTracksWithHistory,
+    labelNextEdit,
+    labelNextRevisionOrigin,
     relayGaps,
     handleAddGapWords,
     handleResolveGap,
@@ -302,7 +305,19 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
     const previousDsp = target.dspSettings ? { ...target.dspSettings } : undefined;
     const nextDsp = { ...(target.dspSettings || DEFAULT_TRACK_DSP), ...option.apply.dspSettings };
 
-    setTracks((prev) => prev.map((t) => (t.id === target.id ? { ...t, dspSettings: nextDsp } : t)));
+    // Through the history writer, not the raw setter.
+    //
+    // This called setTracks directly, which is React's own dispatch: no undo
+    // entry, and no node in the revision tree. So applying a co-producer's mix
+    // change could not be taken back, and the tree built in Step 5b had a hole
+    // in it exactly where the plan says "Apply on a ChangeSet writes a new
+    // revision rather than overwriting". Found auditing my own work against
+    // the plan, one step after building the tree it bypassed.
+    labelNextEdit(`Applied: ${option.title}`);
+    labelNextRevisionOrigin('realization');
+    updateTracksWithHistory((prev) =>
+      prev.map((t) => (t.id === target.id ? { ...t, dspSettings: nextDsp } : t))
+    );
 
     const op: ProductionOperation = {
       id: `op_${Date.now()}`,

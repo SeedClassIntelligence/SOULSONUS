@@ -233,6 +233,31 @@ are untouched -- capture runs first and identically for every modality, which
 is clause F.4. Deleting the panel returns the app to current behaviour
 exactly.
 
+### Step 4 -- what is actually built, audited 2026-09-03
+
+Audited against this section rather than against the clause checks, because
+IV.3, VIII.2 and VIII.3 read honored while parts of this step were not built.
+A clause passing is not this step passing.
+
+Built and proven: ranked `RoleHypothesis` with confidence and a required
+basis; the panel offered after the commit, never blocking; and, added during
+this audit, a **Realize as** action per reading, which the mockup above ends
+in and which the panel did not have -- it ranked the options and offered no
+way to take any of them.
+
+Still not built, and this step is **not complete** until they are:
+
+- **Timing options.** "Keep my timing / Fix obvious errors / Snap to 1/16"
+  is in the mockup and nothing implements it. The quantize modes exist in
+  SRT-1 VII and in the header's `Q:` control; a per-pass choice that
+  re-quantizes what was just committed does not.
+- **Re-reading from a track.** F.iv makes re-interpretation a permanent
+  affordance on all captured material -- "not a prompt shown once at capture
+  time". It is currently only a prompt shown once at capture time. The
+  per-track SONUS button reaches realization, not re-interpretation.
+
+---
+
 ## Step 5 -- Relay gap, then revision branching
 
 **Serves** Amendment B, Amendment A.14, clauses B.1-B.4, XI.4, XI.7. **Risk: medium.**

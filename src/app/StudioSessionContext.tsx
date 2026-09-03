@@ -570,6 +570,8 @@ export interface StudioSessionState {
   setIntentPreserve: (next: PreservableProperty[]) => void;
   intentStrictness: Strictness;
   setIntentStrictness: (next: Strictness) => void;
+  realizationTransformables: string[] | undefined;
+  setRealizationTransformables: (next: string[] | undefined) => void;
   /** Every committed state, each naming the one it came from. Clause XI.4. */
   revisions: Revision[];
   currentRevisionId: string | null;
@@ -1912,7 +1914,15 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
               instrument: spec.instrument,
               steps,
               noteEvents: [makeNote(midi)],
-              mute: false,
+              // Mute is a monitoring decision, and it is inherited.
+              //
+              // Step 0 stopped a fully muted session from discarding the take.
+              // The channel it creates arrived unmuted and started playing
+              // back immediately, which contradicts the thing the creator had
+              // just said by muting everything. The plan's own sentence -- the
+              // created channel can be muted to respect the monitoring intent
+              // -- was the half I did not do.
+              mute: next.length > 0 && next.every((t) => t.mute),
               solo: false,
               volume: 0,
               pitch: spec.pitch,
@@ -2825,6 +2835,18 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    */
   const [intentPreserve, setIntentPreserve] = useState<PreservableProperty[]>(DEFAULT_PRESERVE);
   const [intentStrictness, setIntentStrictness] = useState<Strictness>('close');
+
+  /**
+   * What the realization candidate currently on offer declares it may change.
+   *
+   * Lives here because the Creative Intent panel needs it and the candidate is
+   * held two components away in App. Without this the panel's Transform row
+   * was structurally unable to fill: nothing ever passed the prop, so a field
+   * clause C.4 names by name could only ever read "no route is selected".
+   */
+  const [realizationTransformables, setRealizationTransformables] = useState<string[] | undefined>(
+    undefined
+  );
 
   /**
    * Records that a candidate was rejected, and what the creator heard instead.
@@ -5383,6 +5405,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setIntentPreserve,
       intentStrictness,
       setIntentStrictness,
+      realizationTransformables,
+      setRealizationTransformables,
       revisions,
       currentRevisionId,
       handleJumpToRevision,
@@ -5595,6 +5619,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setIntentPreserve,
       intentStrictness,
       setIntentStrictness,
+      realizationTransformables,
+      setRealizationTransformables,
       revisions,
       currentRevisionId,
       handleJumpToRevision,

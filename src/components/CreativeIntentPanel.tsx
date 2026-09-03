@@ -60,7 +60,11 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
     setIntentPreserve,
     intentStrictness,
     setIntentStrictness,
+    realizationTransformables,
   } = useStudioSession();
+  // The prop still wins when a caller supplies one; otherwise the session's
+  // active candidate is the answer, and the row can finally fill.
+  const transformableNow = transformable ?? realizationTransformables;
   const [isOpen, setIsOpen] = useState(false);
 
   const intent = useMemo(() => {
@@ -75,7 +79,7 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
     return deriveCreativeIntent({
       style,
       sections,
-      transformable,
+      transformable: transformableNow,
     });
   }, [
     creatorName,
@@ -85,7 +89,7 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
     decisionRecords,
     pitchResponse,
     sections,
-    transformable,
+    transformableNow,
   ]);
 
   const { known, total } = intentCoverage(intent);

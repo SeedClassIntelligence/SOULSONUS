@@ -100,6 +100,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     editorPrefs,
     intentPreserve,
     intentStrictness,
+    setRealizationTransformables,
     handleSaveCreatorSignature,
     isInstrumentOpen,
     setIsInstrumentOpen,
@@ -330,6 +331,8 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
           })
             .then((candidate) => {
               setActiveCandidate(candidate);
+              // The intent panel's Transform row reads this.
+              setRealizationTransformables(candidate.modifiedProperties);
               setIsCandidateDrawerOpen(true);
             })
             .catch((err) => {
@@ -702,6 +705,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         onCommitCandidate={handleCommitCandidate}
         onRejectCandidate={(candidate, inCreatorWords) => {
           handleRejectCandidate(candidate, inCreatorWords);
+          setRealizationTransformables(undefined);
           setIsCandidateDrawerOpen(false);
         }}
       />
