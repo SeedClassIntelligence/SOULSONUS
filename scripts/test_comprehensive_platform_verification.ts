@@ -22,6 +22,7 @@ import { SoundVaultSemanticMatcher } from '../src/lib/soundVaultSearch';
 import { readFileSync } from 'fs';
 import { deriveCreativeIntent, intentCoverage } from '../src/lib/creativeIntent';
 import { buildIntentPolicy, describeUnlocked, roleKeyFor, DEFAULT_PRESERVE } from '../src/lib/intentPolicy';
+import { buildChangeSet } from '../src/lib/changeSet';
 import { parseVoiceCommand, needsReasoning } from '../src/audio/voiceCommands';
 import { barsToSeconds } from '../src/utils/musicMath';
 import { adoptFromRevision, newRevision, capTree, childrenOf, isBranchPoint, pathToRoot, depthOf, MAX_REVISIONS } from '../src/lib/revisionTree';
@@ -785,6 +786,61 @@ async function runComprehensiveVerification() {
     const bb = buildIntentPolicy(['rhythm', 'articulation'], 'close', 'kick');
     check(JSON.stringify(a) === JSON.stringify(bb), 'CONTRACT',
       'Toggle order does not change the resulting contract');
+  }
+
+  console.log('\n--- 18. The ChangeSet contract (C.6, Step 2) ---');
+  {
+    const cs = buildChangeSet({});
+    check(cs.actions.join() === 'PREVIEW,APPLY,ALTERNATIVE,REJECT', 'CHANGESET',
+      'C.6: all four actions, not the two the drawer had', cs.actions.join(', '));
+    check(cs.willNotChange.length === 0 && !!cs.note, 'CHANGESET',
+      'A proposal that guarantees nothing says so, instead of an empty list under a heading',
+      cs.note || '');
+
+    // Measured and promised are different claims and must not render alike.
+    const unrealized: any = {
+      modifiedProperties: ['timbre'],
+      preservedProperties: [],
+      preservationScores: null,
+      scoreBasis: 'NOT_MEASURED',
+    };
+    const promised = buildChangeSet({ candidate: unrealized });
+    check(promised.willNotChange.every((g) => g.basis === 'BY_CONTRACT'), 'CHANGESET',
+      'Before anything is rendered, every guarantee is a promise and is labelled one');
+    check(promised.willNotChange.every((g) => /not a reading|not confirmed/.test(g.detail)), 'CHANGESET',
+      'And each says in words that it has not been checked', promised.willNotChange[0]?.detail);
+
+    const realized: any = {
+      modifiedProperties: ['timbre', 'saturation'],
+      preservedProperties: ['rhythm', 'timing'],
+      preservationScores: { rhythm: 0.99, timing: 0.97, pitchContour: 0.4, articulation: 0.4 },
+      scoreBasis: 'MEASURED',
+    };
+    const mixed = buildChangeSet({ candidate: realized });
+    const measured = mixed.willNotChange.filter((g) => g.basis === 'MEASURED').map((g) => g.property);
+    const unchecked = mixed.willNotChange.filter((g) => g.basis === 'BY_CONTRACT').map((g) => g.property);
+    check(measured.length === 2 && unchecked.length === 2, 'CHANGESET',
+      'Measured and unchecked guarantees are separated, not flattened into one list of ticks',
+      `measured: ${measured.join(', ')} | unchecked: ${unchecked.join(', ')}`);
+    check(/scored 0.99/.test(mixed.willNotChange.find((g) => g.basis === 'MEASURED')?.detail || ''),
+      'CHANGESET', 'A measured guarantee carries the score behind it');
+
+    // Step 3b feeds this: a property the creator unlocked is not promised back.
+    const narrowed = buildChangeSet({ candidate: realized, preserve: ['rhythm'] });
+    check(narrowed.willNotChange.length === 1 && /rhythm/.test(narrowed.willNotChange[0].property),
+      'CHANGESET',
+      'A property the creator took out of the contract is not guaranteed back to them',
+      narrowed.willNotChange.map((g) => g.property).join(', '));
+
+    // A DSP patch guarantees by construction, which is the strongest kind here.
+    const dsp = buildChangeSet({ dspSettings: { lowGain: 3, midQ: 1.2 }, trackName: 'Kick' });
+    check(dsp.willChange.length === 2, 'CHANGESET', 'It names each setting it writes');
+    check(dsp.willNotChange.some((g) => g.basis === 'BY_CONSTRUCTION' && /Kick/.test(g.property)),
+      'CHANGESET',
+      'Everything else on that track is guaranteed by the shape of the operation, not by assurance');
+    check(dsp.willNotChange.some((g) => /performance/.test(g.property)), 'CHANGESET',
+      'And a mix setting promises it does not alter a note that was played');
+    check(dsp.note === null, 'CHANGESET', 'A proposal that does guarantee something renders no note');
   }
 
   console.log('\n========================================================================');

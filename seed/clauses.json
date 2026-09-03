@@ -1707,6 +1707,24 @@
             "src"
           ],
           "min": 1
+        },
+        {
+          "kind": "wired",
+          "pattern": "willNotChange",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 2,
+          "note": "The guarantee is the half of the clause that makes the proposal trustworthy, and it has to be rendered somewhere and not only typed."
+        },
+        {
+          "kind": "symbol",
+          "pattern": "ALTERNATIVE",
+          "scope": [
+            "src/lib/changeSet.ts"
+          ],
+          "min": 1,
+          "note": "The clause names four actions. The drawer had two, and a check on the type name alone could not tell the difference."
         }
       ]
     },

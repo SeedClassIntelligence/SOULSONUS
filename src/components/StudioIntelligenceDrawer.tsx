@@ -33,8 +33,16 @@ import {
   ShieldCheck,
   ChevronDown,
   Gauge,
+  RefreshCw,
 } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
+import type { GenerationCandidate } from '../types/daw';
+import {
+  buildChangeSet,
+  ACTION_MEANING,
+  BASIS_LABEL,
+  type ChangeSet,
+} from '../lib/changeSet';
 import { readAddress } from '../lib/sessionBand';
 import { productionHistory, ProductionOperation } from '../lib/productionOperations';
 import type { Track, TrackDspSettings } from '../types/daw';
@@ -81,6 +89,13 @@ interface ProposalOption {
   lockedInvariants: string[];
   mutableParams: string[];
   /**
+   * The proposal as a contract: what changes, what is guaranteed not to, and
+   * what is behind each guarantee. Clause C.6.
+   */
+  changeSet?: ChangeSet;
+  /** Present when a realization stands behind the proposal, so Reject can open a gap on it. */
+  realizationCandidate?: GenerationCandidate;
+  /**
    * What committing this proposal actually changes. Without it there is
    * nothing to apply, and the commit must say so rather than report success.
    */
@@ -116,6 +131,8 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
     sections,
     creatorName,
     handleCallSessionPlayer,
+    intentPreserve,
+    handleRejectCandidate,
     relayGaps,
     handleAddGapWords,
     handleResolveGap,
@@ -125,6 +142,8 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
   const [config, setConfig] = useState<StudioIntelligenceConfig>(loadAiConfig());
   const [promptInput, setPromptInput] = useState('');
   const [isAuditioning, setIsAuditioning] = useState<string | null>(null);
+  /** What the creator heard instead, per proposal, before they press Reject. */
+  const [rejectWords, setRejectWords] = useState<Record<string, string>>({});
   const [showMasterBus, setShowMasterBus] = useState(true);
   const [masterVolume, setMasterVolume] = useState(0); // dB
   const [isLimiterActive, setIsLimiterActive] = useState(true);
@@ -189,6 +208,62 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
     } catch {
       setIsAuditioning(null);
     }
+  };
+
+  /**
+   * Ask the same question again, without this answer.
+   *
+   * C.6 names Alternative as one of the four, and there was no way to get a
+   * second answer except to retype the question -- which asks it fresh, with
+   * nothing excluded, so the same suggestion could come straight back. The
+   * exclusion is stated in the re-ask rather than filtered afterwards, so the
+   * reasoning layer is the thing avoiding the repeat.
+   */
+  const handleAlternative = (option: ProposalOption) => {
+    const asked = [...messages].reverse().find((m) => m.sender === 'creator')?.text;
+    if (!asked) return;
+    void handleSendPrompt(
+      `${asked}\n\n(Not "${option.title}" — I have already seen that one. Something else.)`
+    );
+  };
+
+  /**
+   * Turn it down, and say what was heard instead.
+   *
+   * Step 5's entry point, as the plan says. When the proposal carries a
+   * realization candidate the rejection opens a relay gap against it, so the
+   * creator's words survive attached to the thing they were said about. When
+   * it does not -- a mix suggestion, an arrangement note -- there is nothing
+   * to attach a gap to, and it is dismissed with that said out loud rather
+   * than silently.
+   */
+  const handleRejectProposal = (option: ProposalOption) => {
+    const candidate = option.realizationCandidate;
+    if (candidate) {
+      handleRejectCandidate(candidate, rejectWords[option.id]?.trim() || undefined);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'intelligence',
+          text: rejectWords[option.id]?.trim()
+            ? `Turned down. What you heard is kept against that candidate, and stays open until you close it.`
+            : `Turned down. The rejection is recorded; nothing was committed.`,
+          timestamp: Date.now(),
+        },
+      ]);
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'intelligence',
+          text:
+            `Turned down "${option.title}". There is no realization candidate behind this one, so there is ` +
+            `nothing for a relay gap to attach to — it is dismissed and nothing was committed.`,
+          timestamp: Date.now(),
+        },
+      ]);
+    }
+    setRejectWords((prev) => ({ ...prev, [option.id]: '' }));
   };
 
   const handleCommit = (option: ProposalOption) => {
@@ -297,6 +372,13 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
                 proposal.proposedChanges.realizationCandidate?.preservedProperties || [],
               mutableParams:
                 proposal.proposedChanges.realizationCandidate?.modifiedProperties || [],
+              realizationCandidate: proposal.proposedChanges.realizationCandidate,
+              changeSet: buildChangeSet({
+                candidate: proposal.proposedChanges.realizationCandidate || null,
+                dspSettings: proposal.proposedChanges.dspSettings || null,
+                preserve: intentPreserve,
+                trackName: proposal.targetTrackName || selectedTrack?.name,
+              }),
               apply: proposal.proposedChanges.dspSettings
                 ? {
                     dspSettings: proposal.proposedChanges.dspSettings,
@@ -631,38 +713,144 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
 
                           <p className="text-[10px] text-slate-400 font-sans">{opt.description}</p>
 
-                          {/* Invariant Scorecard */}
-                          <div className="grid grid-cols-2 gap-1.5 text-[8.5px]">
-                            <div className="p-1.5 rounded bg-slate-900/80 border border-slate-800">
-                              <span className="text-emerald-400 font-bold block mb-0.5">LOCKED INVARIANTS:</span>
-                              <span className="text-slate-300">{opt.lockedInvariants.join(' • ')}</span>
-                            </div>
-                            <div className="p-1.5 rounded bg-slate-900/80 border border-slate-800">
-                              <span className="text-amber-400 font-bold block mb-0.5">MUTABLE ATTRIBUTES:</span>
-                              <span className="text-slate-300">{opt.mutableParams.join(' • ')}</span>
-                            </div>
-                          </div>
+                          {/* THE CHANGESET CONTRACT -- clause C.6.
+                              These were two boxes rendering `array.join(' • ')`,
+                              so an empty list left a heading reading LOCKED
+                              INVARIANTS with nothing under it: a guarantee
+                              about nothing, which is worse than no heading.
+                              The promise is now stated as a promise, and what
+                              is behind each one is stated with it. */}
+                          {opt.changeSet && (
+                            <div data-testid="changeset" className="space-y-1.5 text-[9px]">
+                              {opt.changeSet.willChange.length > 0 && (
+                                <div className="p-2 rounded-lg bg-slate-900/80 border border-amber-500/25">
+                                  <span className="text-amber-400 font-black block mb-1">WILL CHANGE</span>
+                                  <ul className="space-y-0.5">
+                                    {opt.changeSet.willChange.map((c) => (
+                                      <li key={c} className="text-slate-300 flex gap-1.5">
+                                        <span className="text-amber-400/70">→</span>
+                                        <span>{c}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
 
-                          {/* Audition / Commit Action Bar */}
-                          <div className="flex items-center gap-2 pt-1 border-t border-slate-900">
+                              {opt.changeSet.willNotChange.length > 0 && (
+                                <div className="p-2 rounded-lg bg-slate-900/80 border border-emerald-500/25">
+                                  <span className="text-emerald-400 font-black block mb-1">
+                                    WILL NOT CHANGE
+                                  </span>
+                                  <ul className="space-y-1">
+                                    {opt.changeSet.willNotChange.map((g) => (
+                                      <li key={g.property} className="flex gap-1.5">
+                                        {/* The tick belongs only to what was
+                                            actually measured. A promise gets a
+                                            circle and says it is a promise. */}
+                                        <span
+                                          className={
+                                            g.basis === 'MEASURED'
+                                              ? 'text-emerald-400'
+                                              : g.basis === 'BY_CONSTRUCTION'
+                                                ? 'text-cyan-400'
+                                                : 'text-slate-500'
+                                          }
+                                        >
+                                          {g.basis === 'BY_CONTRACT' ? '○' : '✓'}
+                                        </span>
+                                        <span className="min-w-0">
+                                          <span className="text-slate-200">{g.property}</span>
+                                          <span className="text-slate-500"> — {BASIS_LABEL[g.basis]}</span>
+                                          <span className="block text-slate-600 leading-snug">{g.detail}</span>
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {opt.changeSet.note && (
+                                <p
+                                  data-testid="changeset-note"
+                                  className="p-2 rounded-lg bg-slate-900/60 border border-slate-800 text-amber-300/90 leading-snug"
+                                >
+                                  {opt.changeSet.note}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Optional, and next to Reject rather than behind
+                              it: a rejection is registered whether or not the
+                              creator has words ready, and Amendment B.6 says
+                              never to require them.
+                              Shown only when a realization candidate stands
+                              behind the proposal, because that is the only
+                              case where a relay gap has something to attach
+                              to. Offering the field otherwise would invite
+                              words and then drop them, which is the same
+                              defect as a form that simulates success. */}
+                          {opt.realizationCandidate && (
+                            <input
+                              type="text"
+                              data-testid="cs-reject-words"
+                              value={rejectWords[opt.id] ?? ''}
+                              onChange={(e) =>
+                                setRejectWords((prev) => ({ ...prev, [opt.id]: e.target.value }))
+                              }
+                              placeholder="If you reject it: what did you hear instead? (optional)"
+                              className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 text-[10px] text-slate-200 rounded-lg py-1.5 px-2 outline-none transition"
+                            />
+                          )}
+
+                          {/* The four C.6 names. Preview and Apply existed;
+                              Alternative and Reject did not, so the only way
+                              to turn something down was to ignore it, and
+                              wanting a different answer meant retyping the
+                              question. */}
+                          <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-slate-900">
                             <button
+                              data-testid="cs-preview"
                               onClick={() => handleAudition(opt)}
-                              className={`flex-1 py-1 px-2 rounded-lg font-bold text-[10px] flex items-center justify-center space-x-1 transition cursor-pointer ${
+                              title={ACTION_MEANING.PREVIEW}
+                              className={`py-1 px-2 rounded-lg font-bold text-[10px] flex items-center justify-center gap-1 transition cursor-pointer ${
                                 isAuditioning === opt.id
                                   ? 'bg-amber-400 text-slate-950 animate-pulse'
                                   : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-700'
                               }`}
                             >
                               <Play className="w-3 h-3" />
-                              <span>{isAuditioning === opt.id ? 'AUDITIONING...' : 'AUDITION CANDIDATE'}</span>
+                              <span>{isAuditioning === opt.id ? 'PREVIEWING…' : 'PREVIEW'}</span>
                             </button>
 
                             <button
+                              data-testid="cs-apply"
                               onClick={() => handleCommit(opt)}
-                              className="py-1 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10px] flex items-center space-x-1 transition cursor-pointer shadow-md shadow-emerald-500/20"
+                              title={ACTION_MEANING.APPLY}
+                              className="py-1 px-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10px] flex items-center justify-center gap-1 transition cursor-pointer shadow-md shadow-emerald-500/20"
                             >
                               <CheckCircle2 className="w-3 h-3" />
-                              <span>COMMIT TO DAW</span>
+                              <span>APPLY</span>
+                            </button>
+
+                            <button
+                              data-testid="cs-alternative"
+                              onClick={() => handleAlternative(opt)}
+                              title={ACTION_MEANING.ALTERNATIVE}
+                              className="py-1 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/30 font-bold text-[10px] flex items-center justify-center gap-1 transition cursor-pointer"
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                              <span>ALTERNATIVE</span>
+                            </button>
+
+                            <button
+                              data-testid="cs-reject"
+                              onClick={() => handleRejectProposal(opt)}
+                              title={ACTION_MEANING.REJECT}
+                              className="py-1 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-700 font-bold text-[10px] flex items-center justify-center gap-1 transition cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                              <span>REJECT</span>
                             </button>
                           </div>
                         </div>
