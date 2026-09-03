@@ -810,6 +810,16 @@ export interface Collaborator {
   role: CollaboratorRole;
   joinedDate: string;
   avatarUrl?: string;
+  /**
+   * Whether this person is actually in the session.
+   *
+   * 'self' is the creator at this machine. 'invited_not_sent' is someone the
+   * creator entered while there is no shared session to invite them to -- the
+   * intent is kept, the claim that they joined is not. Clause XV.4: an entry
+   * in this list used to be indistinguishable from a person who was really
+   * there.
+   */
+  presence: 'self' | 'invited_not_sent' | 'joined';
 }
 
 export interface Contribution {

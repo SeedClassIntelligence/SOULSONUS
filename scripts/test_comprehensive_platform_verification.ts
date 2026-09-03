@@ -18,6 +18,7 @@ import { AudioEncoders } from '../src/lib/audioEncoders';
 import { signatureService } from '../src/lib/seedSignature';
 import { SoulFlowGovernor, SOULFLOW_STAGE_ORDER } from '../src/lib/soulFlowGovernor';
 import { SoundVaultSemanticMatcher } from '../src/lib/soundVaultSearch';
+import { readFileSync } from 'fs';
 import { parseVoiceCommand, needsReasoning } from '../src/audio/voiceCommands';
 import { barsToSeconds } from '../src/utils/musicMath';
 import { adoptFromRevision, newRevision, capTree, childrenOf, isBranchPoint, pathToRoot, depthOf, MAX_REVISIONS } from '../src/lib/revisionTree';
@@ -631,6 +632,30 @@ async function runComprehensiveVerification() {
       died.join(', '));
     check(creative.every((t) => parseVoiceCommand(t).transcript === t), 'LANGUAGE',
       'The transcript is carried unchanged, so the reasoning layer reads what was said');
+  }
+
+  console.log('\n--- 15. No fabricated collaboration (XV.4) ---');
+  {
+    // The suite is bundled to CJS, so import.meta.url is not available here.
+    // npm test runs from the repo root.
+    const src = readFileSync('src/components/CollaborationModal.tsx', 'utf8');
+
+    check(!/Aria Vocalist/.test(src), 'COLLAB',
+      'XV.4: the fabricated collaborator is gone from the source');
+    check(!/0x[0-9a-f]{6,}\.\.\./i.test(src), 'COLLAB',
+      'No signature hash is written into the source and rendered as "Signed:"');
+    check(!/creator@soulsonus\.ai/.test(src), 'COLLAB',
+      'The creator row is not a hardcoded address while the real name sits in props');
+    check(/creatorName/.test(src), 'COLLAB',
+      'The creator name that was already being passed in is actually used');
+    check(/presence/.test(src), 'COLLAB',
+      'A person in the list carries whether they are actually present');
+    check(/not sent/i.test(src), 'COLLAB',
+      'The invite states that nothing was sent, rather than simulating success');
+    // The accept flow and the roles are capability, not fabrication, and
+    // Amendment D says depth already earned is not renegotiated.
+    check(/handleAcceptContribution/.test(src) && /CollaboratorRole/.test(src), 'COLLAB',
+      'The roles and the accept flow are kept -- only the pretence was removed');
   }
 
   console.log('\n========================================================================');
