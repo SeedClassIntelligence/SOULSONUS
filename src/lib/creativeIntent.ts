@@ -21,7 +21,7 @@
  */
 
 import type { PocketMeasure, StyleProfile } from './styleProfile';
-import type { ArrangementSection, RealizationScoreMap } from '../types/daw';
+import type { ArrangementSection, ExpressionState, RealizationScoreMap } from '../types/daw';
 
 /** Where a value came from, so a reading can be checked rather than trusted. */
 export interface IntentBasis {
@@ -33,11 +33,15 @@ export interface IntentBasis {
 
 export interface CreativeIntent {
   /**
-   * The seven affective dimensions. Null until Step 6 measures them -- there
-   * is no emotion analysis in this build, and a neutral default here would be
-   * a reading of a creator nobody took.
+   * The seven affective dimensions SRT-1 V names.
+   *
+   * Measured in `audio/expressionState` from the pass itself and passed in
+   * here rather than re-derived, for the same reason pocket and velocity are:
+   * two places computing the same answer is how a platform starts disagreeing
+   * with itself. Null when no pass has been read; individual dimensions inside
+   * it are null when the material could not support them.
    */
-  expression: null;
+  expression: ExpressionState | null;
 
   /** How the creator's onsets actually sit against the grid. */
   groove: (IntentBasis & { readsAs: PocketMeasure['reads']; meanOffsetMs: number }) | null;
@@ -87,6 +91,8 @@ export function deriveCreativeIntent(input: {
   sections: ArrangementSection[];
   /** What the active route permits a model to change. Empty when none is chosen. */
   transformable?: string[];
+  /** The affective reading of the last pass, measured elsewhere. */
+  expression?: ExpressionState | null;
 }): CreativeIntent {
   const notMeasured: string[] = [];
 
@@ -149,11 +155,21 @@ export function deriveCreativeIntent(input: {
     : null;
   if (!arrangementTrajectory) notMeasured.push('arrangement trajectory — the song has no sections yet');
 
-  notMeasured.push('emotion — the seven affective dimensions are not measured in this build');
+  // --- expression ------------------------------------------------------
+  //
+  // The state carries its own absences by dimension, so this only reports the
+  // case where there is no reading at all. Anything else would restate what
+  // the state already says, and restating it here is how the two would drift.
+  const expression = input.expression ?? null;
+  if (!expression) {
+    notMeasured.push('emotion — no pass has been read yet, so there is nothing to say about it');
+  } else if (expression.notMeasured.length) {
+    for (const line of expression.notMeasured) notMeasured.push(`emotion: ${line}`);
+  }
   notMeasured.push('genre grammar — nothing measures genre as a rule set yet');
 
   return {
-    expression: null,
+    expression,
     groove,
     energy,
     preserve,
@@ -166,8 +182,22 @@ export function deriveCreativeIntent(input: {
 
 /** How much of the intent is actually known. Stated, never rounded up. */
 export function intentCoverage(intent: CreativeIntent): { known: number; total: number } {
+  // An expression state whose seven dimensions are all null is a field that
+  // exists rather than a field that is known, and counting the object would
+  // report the intent as more complete than it is.
+  const expressionKnown =
+    intent.expression &&
+    (intent.expression.valence ||
+      intent.expression.arousal ||
+      intent.expression.tension ||
+      intent.expression.confidence ||
+      intent.expression.intimacy ||
+      intent.expression.darkness ||
+      intent.expression.movement)
+      ? intent.expression
+      : null;
   const fields = [
-    intent.expression,
+    expressionKnown,
     intent.groove,
     intent.energy,
     intent.preserve,

@@ -62,7 +62,10 @@ export interface OfflineAnalysisResult {
 }
 
 function eligibleFor(modality: CaptureModality | null): PerformanceClass[] {
-  if (modality === 'KEYS') return TONAL_CLASSES;
+  // Kept identical to DetectionEngine.eligibleClasses: an imported file and a
+  // live take must be read by the same taxonomy, or the same performance
+  // separates two different ways depending on how it arrived.
+  if (modality === 'KEYS' || modality === 'VOICE') return TONAL_CLASSES;
   if (modality === 'MOUTH' || modality === 'BODY') return PERCUSSIVE_CLASSES;
   return [...PERFORMANCE_CLASSES];
 }

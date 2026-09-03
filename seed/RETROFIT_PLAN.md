@@ -360,6 +360,60 @@ Last, because it is the only step that needs the others to be useful. An
 emotional reading with no Creative Intent panel to show it and no ChangeSet
 to justify is a number in a struct.
 
+### Step 6 -- closed 2026-09-03
+
+Verified in the browser as well as in the suite:
+`scripts/live-verification/test-52-expression.cjs` hums into the microphone,
+reads the state back out of session state, overrules a dimension and asks the
+intelligence to explain a change -- 22 checks. 39 unit assertions cover the
+derivation and the control mapping.
+
+**The reading.** `audio/expressionState.deriveExpression` takes a whole pass
+and returns the seven dimensions SRT-1 V names, each with the measurement and
+the mapping that produced it. Nothing is invented to fill a dimension out:
+rate, intensity and their spreads come from the onsets; brightness and
+proximity from the spectral centroid and the band energies; contour and spread
+from the tracked fundamental. A dimension with nothing behind it is null and
+named -- a beatbox take has no valence or tension, and a reading rebuilt from
+notes on a track has no darkness or intimacy.
+
+**The creator outranks it.** SRT-1 V lists "user-specified emotional intent"
+among the inputs and Amendment B puts their perception above the machine's, so
+a dimension the creator states replaces the measurement on that dimension,
+carries their attribution, and can be handed back.
+
+**The control variables.** `lib/expressionControls` maps the reading onto the
+musical dimensions the section lists. Timbral brightness, dynamics,
+reverberation and register become real settings on a channel strip; harmonic
+tension and rhythmic density are stated as suggestions because this build
+cannot apply them, and are not offered as something to click. A dimension
+reading near the middle proposes nothing. The tempo is never moved on the
+strength of a feeling, and the explanation says so. The state also rides with
+the realization instruction beside the creator's measured feel -- built, and
+not verifiable end to end here, because E05 does not answer in this
+environment.
+
+**A defect found by verifying it.** A hummed bassline was landing on the snare
+channel with no pitch. `CaptureModality` had only MOUTH, BODY and KEYS, and
+MOUTH restricts the classifier to kick/snare/hi-hat and switches pitch tracking
+off -- so HUM, SING and MIMIC, which all armed MOUTH, could not produce a
+pitched event at all. That is SRT-1 VIII's premise failing silently, and it is
+why valence and tension read as unmeasurable on the material they exist for.
+Added VOICE (tonal, pitch tracked) and MIMIC (the full taxonomy, pitch
+tracked), kept identical between the live engine and the offline analyzer; the
+seed is still recorded as a MOUTH take, because that is what it is.
+
+Step 1 above says the opposite -- "`detectionEngine.ts` is untouched:
+`CaptureModality` stays `MOUTH | BODY | KEYS` and all three new tabs are mouth
+input." That assumption is what produced the defect. It is left standing where
+it was written rather than edited to agree with the code; this is the note
+that corrects it.
+
+The gate test for this, `test-07-channel-separation`, could not run: it and two
+others addressed capture buttons by names the bench no longer uses. They are
+repaired and share one `recordTake` helper now. All five of its cases pass,
+including both hum registers landing on melody and bass.
+
 ---
 
 ## Step 7 -- Vocal-to-Lyric Workstation

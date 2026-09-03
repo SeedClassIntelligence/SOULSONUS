@@ -157,6 +157,82 @@ export type TrackViewMode = 'GRID' | 'PIANO_ROLL';
  */
 export type InterpretationMode = 'literal' | 'assisted' | 'groove' | 'reinterpretation';
 
+/**
+ * The seven dimensions SRT-1 V names, and the poles it names them between:
+ *
+ *   valence     positive <-> negative
+ *   arousal     calm <-> energetic
+ *   tension     relaxed <-> unresolved
+ *   confidence  vulnerable <-> assertive
+ *   intimacy    distant <-> personal
+ *   darkness    bright <-> heavy
+ *   movement    static <-> driving
+ *
+ * The section is explicit that this is the point: "The resulting
+ * representation could be multidimensional rather than a simple happy/sad
+ * classification", and that the innovation is not "AI detects sadness" but a
+ * set of characteristics used as compositional control variables.
+ */
+export type ExpressionDimensionName =
+  | 'valence'
+  | 'arousal'
+  | 'tension'
+  | 'confidence'
+  | 'intimacy'
+  | 'darkness'
+  | 'movement';
+
+export interface ExpressionDimension {
+  /** -1 at the first pole, +1 at the second. 0 is the middle, not an absence. */
+  value: number;
+  /** Which way it reads, in the creator's words. */
+  reads: string;
+  /**
+   * The measurement behind it, and the mapping applied to it. Never empty.
+   *
+   * A number on an affective axis is a reading of a person, so it carries what
+   * it was read from -- a dimension that cannot say what produced it is not
+   * reported at all.
+   */
+  from: string;
+  /**
+   * True when the creator set this themselves rather than the studio measuring
+   * it. SRT-1 V lists "user-specified emotional intent" among the inputs, and
+   * Amendment B makes their perception the higher authority: where they have
+   * said it, theirs is the value and the measurement is not quietly kept.
+   */
+  fromCreator?: boolean;
+}
+
+/**
+ * A performance's affective state, as far as it was actually measured.
+ *
+ * Every dimension is nullable and every absence is named in `notMeasured`. A
+ * percussive take carries no pitch, so valence and tension are not readable
+ * from it, and a full set of seven confident numbers over a beatbox pass would
+ * be the most convincing lie the studio could tell -- it would look exactly
+ * like understanding.
+ */
+export interface ExpressionState {
+  valence: ExpressionDimension | null;
+  arousal: ExpressionDimension | null;
+  tension: ExpressionDimension | null;
+  confidence: ExpressionDimension | null;
+  intimacy: ExpressionDimension | null;
+  darkness: ExpressionDimension | null;
+  movement: ExpressionDimension | null;
+  /** Each dimension with no measurement behind it, named with the reason. */
+  notMeasured: string[];
+  /** What the reading was taken from, so it can be checked. */
+  measuredFrom: {
+    onsets: number;
+    pitchedOnsets: number;
+    spanSeconds: number;
+    /** Onsets carrying spectral data. A reading rebuilt from notes has none. */
+    spectralOnsets: number;
+  };
+}
+
 export interface NoteProvenance {
   origin:
     | 'MOUTH'

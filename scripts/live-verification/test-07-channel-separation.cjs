@@ -5,7 +5,7 @@
  * checks that each type's notes land on its own channel and nowhere else.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, recordTake } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 const PROJ = `s => ({
@@ -19,13 +19,10 @@ const PROJ = `s => ({
   isPlaying: s.dawState.isPlaying,
 })`;
 
-async function capture(button, audio, seconds) {
+async function capture(tab, audio, seconds) {
   const { browser, page } = await launch(playwright, audio);
   await enterStudio(page);
-  await page.getByRole('button', { name: button }).first().click();
-  await page.waitForTimeout(1200);
-  await page.locator('button[title="Play (Space)"]').first().click().catch(() => {});
-  await page.waitForTimeout(seconds * 1000);
+  await recordTake(page, tab, seconds, { play: true });
   const state = await session(page, PROJ);
   await browser.close();
   return state;
@@ -67,23 +64,23 @@ function report(label, clip, state, expected, forbidden) {
   const results = [];
 
   results.push(['MOUTH kick+snare+hat', report('BEATBOX (MOUTH)', 'beatbox_ksh.wav',
-    await capture('🎤 BEATBOX (MOUTH)', `${SP}/beatbox_ksh.wav`, 12),
+    await capture('Oral Beatbox', `${SP}/beatbox_ksh.wav`, 12),
     ['kick', 'snare', 'hihat'], [])]);
 
   results.push(['MOUTH kick+snare only', report('BEATBOX (MOUTH)', 'beatbox_ks.wav — no hi-hat performed',
-    await capture('🎤 BEATBOX (MOUTH)', `${SP}/beatbox_ks.wav`, 12),
+    await capture('Oral Beatbox', `${SP}/beatbox_ks.wav`, 12),
     ['kick', 'snare'], ['hihat'])]);
 
   results.push(['BODY taps', report('CLAP / TAP (BODY)', 'body_taps.wav',
-    await capture('👏 CLAP / TAP (BODY)', `${SP}/body_taps.wav`, 12),
+    await capture('Clap / Tap', `${SP}/body_taps.wav`, 12),
     ['kick', 'snare'], ['hihat'])]);
 
   results.push(['HUM upper register', report('HUM / VOICE (MELODY)', 'hum_melody.wav',
-    await capture('🎹 HUM / VOICE (MELODY)', `${SP}/hum_melody.wav`, 12),
+    await capture('Hum / Voice', `${SP}/hum_melody.wav`, 12),
     ['melody'], ['kick', 'snare', 'hihat'])]);
 
   results.push(['HUM low register', report('HUM / VOICE (MELODY)', 'hum_bass.wav',
-    await capture('🎹 HUM / VOICE (MELODY)', `${SP}/hum_bass.wav`, 12),
+    await capture('Hum / Voice', `${SP}/hum_bass.wav`, 12),
     ['bass'], ['kick', 'snare', 'hihat'])]);
 
   console.log('\n=== SUMMARY ===');

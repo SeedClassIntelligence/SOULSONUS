@@ -6,7 +6,7 @@
  * No reasoning provider communicates directly with canonical project state.
  */
 
-import { DAWState, Track } from '../../types/daw';
+import { DAWState, ExpressionState, Track } from '../../types/daw';
 import { BoundedStudioContext, BoundedTrackContext, StudioEmphasis } from './ReasoningProvider';
 
 export class StudioContextCompiler {
@@ -18,7 +18,9 @@ export class StudioContextCompiler {
     tracks: Track[],
     activeWorkspace: string,
     selectedTrack: Track | null,
-    emphasis: StudioEmphasis = 'CO_PRODUCER'
+    emphasis: StudioEmphasis = 'CO_PRODUCER',
+    /** The affective reading of the last pass. Null when nothing was performed. */
+    expression: ExpressionState | null = null
   ): BoundedStudioContext {
     const boundedTracks: BoundedTrackContext[] = tracks.map((t) => ({
       id: t.id,
@@ -59,6 +61,7 @@ export class StudioContextCompiler {
       focusTrack,
       tracks: boundedTracks,
       emphasis,
+      expression,
     };
   }
 }

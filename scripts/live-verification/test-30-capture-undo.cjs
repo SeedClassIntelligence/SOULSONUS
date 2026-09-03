@@ -8,7 +8,7 @@
  * the real keyboard shortcut.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, recordTake } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -27,21 +27,12 @@ const COUNTS = `s => JSON.stringify({
 
 const counts = async (page) => JSON.parse(await session(page, COUNTS));
 
-// Both ends of a take go through the real UI: the capture-row modality button
-// arms the mic, the calibration drawer's own control stops it. The wait after
-// stopping is longer than the history grouping window, so the next edit cannot
-// join this take's entry.
-async function recordTake(page, seconds) {
-  await page.getByRole('button', { name: '🎤 BEATBOX (MOUTH)' }).first().click({ force: true });
-  await page.waitForTimeout(seconds * 1000);
-
-  await page.getByRole('button', { name: 'CALIBRATION', exact: false }).first().click({ force: true });
-  await page.waitForTimeout(900);
-  await page.getByRole('button', { name: 'Stop Mic', exact: true }).first().click({ force: true });
-  await page.waitForTimeout(600);
-  await page.getByRole('button', { name: 'CALIBRATION', exact: false }).first().click({ force: true });
-  await page.waitForTimeout(2600);
-}
+// Both ends of a take go through the real UI: the modality tab arms the mic
+// and the record control stops it, which is the sequence in lib.cjs. It used
+// to take the long way round -- open the calibration drawer and press its Stop
+// Mic -- because the record button could not stop a take: nothing set
+// `isRecordingMic`, so it never turned into a stop control.
+const takeOf = (page, seconds) => recordTake(page, 'Oral Beatbox', seconds);
 
 (async () => {
   const { browser, page } = await launch(playwright, `${SP}/beatbox_ksh.wav`);
@@ -52,7 +43,7 @@ async function recordTake(page, seconds) {
   const start = await counts(page);
   console.log(`  start: ${start.notes} notes on ${start.tracks} tracks`);
 
-  await recordTake(page, 5);
+  await takeOf(page, 5);
   const afterTake = await counts(page);
   const recorded = afterTake.notes - start.notes;
   console.log(`  after take 1: ${afterTake.notes} notes (+${recorded}), tracks ${afterTake.tracks}`);
@@ -77,7 +68,7 @@ async function recordTake(page, seconds) {
         `${redone.notes} notes vs ${afterTake.notes} after recording`);
 
   // ---- a second take is its own entry ----
-  await recordTake(page, 4);
+  await takeOf(page, 4);
   const afterSecond = await counts(page);
   const secondCount = afterSecond.notes - redone.notes;
   console.log(`  after take 2: ${afterSecond.notes} notes (+${secondCount})`);
@@ -115,7 +106,7 @@ async function recordTake(page, seconds) {
         `${unwound.notes} notes on ${unwound.tracks} tracks`);
 
   // ---- the shortcut must not fire while typing ----
-  await page.getByRole('button', { name: '3. WRITE & RECORD', exact: false }).first().click({ force: true });
+  await page.getByRole('button', { name: '2. WRITE & RECORD', exact: false }).first().click({ force: true });
   await page.waitForTimeout(1500);
   const box = page.locator('textarea').first();
   if (await box.count()) {

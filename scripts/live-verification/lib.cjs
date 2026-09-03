@@ -52,4 +52,29 @@ async function session(page, projector) {
   return page.evaluate(`(() => { const s = ${READ_SESSION}; if (!s) return null; return (${projector})(s); })()`);
 }
 
-module.exports = { CHROME, READ_SESSION, launch, enterStudio, session };
+/**
+ * Arms a modality and records for a while, through the controls a creator uses.
+ *
+ * The capture row used to be one button per modality ("BEATBOX (MOUTH)"); it is
+ * now a row of modality tabs and one record control, and several tests still
+ * addressed the old names and timed out before they measured anything. The
+ * sequence lives here so the next rename is one edit rather than five.
+ *
+ * `tab` is the tab's own label: 'Oral Beatbox', 'Clap / Tap', 'Hum / Voice',
+ * 'Mimic', 'Sing', 'MIDI Keys'.
+ */
+async function recordTake(page, tab, seconds, { play = false } = {}) {
+  await page.getByRole('button', { name: tab }).first().click();
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: '\u25cf RECORD LOOP' }).first().click();
+  if (play) {
+    await page.locator('button[title="Play (Space)"]').first().click().catch(() => {});
+  }
+  await page.waitForTimeout(seconds * 1000);
+  await page.getByRole('button', { name: /STOP RECORDING/ }).first().click();
+  // Longer than the history grouping window, so the next edit cannot join
+  // this take's entry.
+  await page.waitForTimeout(2600);
+}
+
+module.exports = { CHROME, READ_SESSION, launch, enterStudio, session, recordTake };

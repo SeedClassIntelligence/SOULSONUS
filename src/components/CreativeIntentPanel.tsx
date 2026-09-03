@@ -4,6 +4,12 @@ import { useStudioSession } from '../app/StudioSessionContext';
 import { computeStyleProfile } from '../lib/styleProfile';
 import { deriveCreativeIntent, intentCoverage } from '../lib/creativeIntent';
 import {
+  EXPRESSION_DIMENSIONS,
+  EXPRESSION_POLES,
+  expressionCoverage,
+} from '../audio/expressionState';
+import type { ExpressionDimensionName } from '../types/daw';
+import {
   DEFAULT_PRESERVE,
   STRICTNESS_LABEL,
   STRICTNESS_MEANING,
@@ -61,6 +67,9 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
     intentStrictness,
     setIntentStrictness,
     realizationTransformables,
+    expressionState,
+    setExpressionReading,
+    creatorExpressionReadings,
   } = useStudioSession();
   // The prop still wins when a caller supplies one; otherwise the session's
   // active candidate is the answer, and the row can finally fill.
@@ -80,6 +89,7 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
       style,
       sections,
       transformable: transformableNow,
+      expression: expressionState,
     });
   }, [
     creatorName,
@@ -90,9 +100,11 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
     pitchResponse,
     sections,
     transformableNow,
+    expressionState,
   ]);
 
   const { known, total } = intentCoverage(intent);
+  const { known: expressionKnown, total: expressionTotal } = expressionCoverage(expressionState);
   const unlocked = DEFAULT_PRESERVE.filter((p) => !intentPreserve.includes(p));
   const unlockedWarning = describeUnlocked(unlocked);
 
@@ -243,7 +255,116 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
             value={intent.arrangementTrajectory}
             missing={reasonFor('arrangement')}
           />
-          <Row label="Emotion" value={null} missing={reasonFor('emotion')} />
+          {/* EMOTION -- SRT-1 V.
+              Seven dimensions rather than a label, each with the measurement
+              behind it, and each one the creator can overrule. A dimension the
+              take could not support is named as unread rather than shown at
+              zero: seven confident numbers over a pass that supports three
+              would look exactly like understanding. */}
+          <div className="px-3 py-2 border-b border-slate-800/70">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-500">
+                Emotion
+              </span>
+              <span className="text-[9px] font-mono text-slate-500">
+                {expressionState
+                  ? `${expressionKnown} of ${expressionTotal} dimensions read from ${expressionState.measuredFrom.onsets} onsets`
+                  : 'nothing performed yet'}
+              </span>
+            </div>
+
+            {!expressionState && (
+              <p className="text-[10px] font-mono text-amber-300/80 mt-0.5">
+                {reasonFor('emotion') || 'no pass has been read yet'}
+              </p>
+            )}
+
+            {expressionState && (
+              <div className="mt-1.5 space-y-1.5" data-testid="expression-dimensions">
+                {EXPRESSION_DIMENSIONS.map((name) => {
+                  const dim = expressionState[name];
+                  const [low, high] = EXPRESSION_POLES[name];
+                  const said = creatorExpressionReadings[name];
+                  const absent = expressionState.notMeasured.find((n) => n.startsWith(name));
+                  return (
+                    <div key={name} data-testid={`expression-${name}`}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-400 w-[62px] shrink-0">
+                          {name}
+                        </span>
+                        {dim ? (
+                          <>
+                            {/* The axis, with the poles named at its ends.
+                                A bar with no poles on it is a number nobody
+                                can read. */}
+                            <span className="text-[8px] font-mono text-slate-600 w-[52px] text-right shrink-0">
+                              {low}
+                            </span>
+                            <div className="relative h-[3px] flex-1 rounded-full bg-slate-800">
+                              <div className="absolute inset-y-0 left-1/2 w-px bg-slate-700" />
+                              <div
+                                className={`absolute top-[-2px] w-[7px] h-[7px] rounded-full ${
+                                  dim.fromCreator ? 'bg-amber-400' : 'bg-cyan-400'
+                                }`}
+                                style={{ left: `calc(${((dim.value + 1) / 2) * 100}% - 3.5px)` }}
+                              />
+                            </div>
+                            <span className="text-[8px] font-mono text-slate-600 w-[52px] shrink-0">
+                              {high}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-[9px] font-mono text-amber-300/70 flex-1 truncate">
+                            {absent ? absent.split('— ')[1] || 'not measured' : 'not measured'}
+                          </span>
+                        )}
+                      </div>
+
+                      {dim && (
+                        <div className="flex items-center gap-1.5 pl-[62px]">
+                          <p className="text-[9px] font-mono text-slate-500 flex-1 leading-snug">
+                            {dim.fromCreator ? `you: ${dim.reads}` : `${dim.reads} — ${dim.from}`}
+                          </p>
+                          {/* Amendment B: the creator's reading replaces the
+                              studio's on that dimension, and is labelled as
+                              theirs rather than blended into a measurement. */}
+                          <div className="flex gap-0.5 shrink-0">
+                            {([[-0.8, low], [0.8, high]] as [number, string][]).map(([v, label]) => (
+                              <button
+                                key={label}
+                                type="button"
+                                data-testid={`say-${name}-${v < 0 ? 'low' : 'high'}`}
+                                onClick={() => setExpressionReading(name as ExpressionDimensionName, v)}
+                                className={`px-1 py-0.5 rounded text-[8px] font-mono font-bold border transition cursor-pointer ${
+                                  said === v
+                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                                    : 'bg-slate-900 text-slate-600 border-slate-800 hover:text-slate-300'
+                                }`}
+                                title={`Tell the studio this take is ${label}. Your reading replaces what it measured.`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                            {said !== undefined && (
+                              <button
+                                type="button"
+                                data-testid={`clear-${name}`}
+                                onClick={() => setExpressionReading(name as ExpressionDimensionName, null)}
+                                className="px-1 py-0.5 rounded text-[8px] font-mono font-bold border bg-slate-900 text-slate-500 border-slate-800 hover:text-slate-300 cursor-pointer"
+                                title="Hand this dimension back to what was measured."
+                              >
+                                ↺
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           <Row label="Genre grammar" value={null} missing={reasonFor('genre')} />
 
           <p className="px-3 py-2 bg-slate-900/40 border-t border-slate-800 text-[9px] font-mono text-slate-500 leading-snug">

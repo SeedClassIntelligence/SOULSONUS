@@ -4,7 +4,7 @@
  * appear that are derived from the audio (rather than a canned pattern).
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, recordTake } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 const PROJ = `s => ({
@@ -18,22 +18,16 @@ const PROJ = `s => ({
   isPlaying: s.dawState.isPlaying,
 })`;
 
-async function capture(label, button, audio, { play = true, seconds = 8 } = {}) {
+async function capture(label, tab, audio, { play = true, seconds = 8 } = {}) {
   const { browser, page } = await launch(playwright, audio);
   await enterStudio(page);
 
   const baseline = await session(page, PROJ);
 
-  await page.getByRole('button', { name: button }).first().click();
-  await page.waitForTimeout(1500);
+  // The transport runs during the take so the playhead (and therefore
+  // startTick) advances.
+  await recordTake(page, tab, seconds, { play });
 
-  if (play) {
-    // Start the transport so the playhead (and therefore startTick) advances.
-    await page.locator('button[title="Play (Space)"]').first().click().catch(() => {});
-    await page.waitForTimeout(500);
-  }
-
-  await page.waitForTimeout(seconds * 1000);
   const after = await session(page, PROJ);
   await page.screenshot({ path: `${SP}/04_${label}.png` });
   await browser.close();
@@ -59,10 +53,10 @@ function newOrChanged(baseline, after) {
     console.log(`  ${t.id.padEnd(12)} ${String(t.instrument).padEnd(12)} steps=${t.activeSteps} noteEvents=${t.notes} recorded=${t.recorded.length}`));
 
   for (const [label, button, audio] of [
-    ['beatbox', '🎤 BEATBOX (MOUTH)', `${SP}/beatbox_A.wav`],
-    ['clap',    '👏 CLAP / TAP (BODY)', `${SP}/beatbox_B.wav`],
-    ['hum',     '🎹 HUM / VOICE (MELODY)', `${SP}/hum_A4.wav`],
-    ['hum_c3',  '🎹 HUM / VOICE (MELODY)', `${SP}/hum_C3.wav`],
+    ['beatbox', 'Oral Beatbox', `${SP}/beatbox_A.wav`],
+    ['clap',    'Clap / Tap', `${SP}/beatbox_B.wav`],
+    ['hum',     'Hum / Voice', `${SP}/hum_A4.wav`],
+    ['hum_bass', 'Hum / Voice', `${SP}/hum_bass.wav`],
   ]) {
     const r = await capture(label, button, audio);
     console.log(`\n-- ${label.toUpperCase()} (${audio.split('/').pop()}) --`);

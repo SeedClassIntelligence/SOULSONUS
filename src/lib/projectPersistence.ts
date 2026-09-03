@@ -77,6 +77,13 @@ export interface ProjectSnapshot {
    * are all where they were played.
    */
   trackTimingModes?: Record<string, unknown>;
+  /**
+   * The affective reading of the take in this project, and the creator's own
+   * corrections to it. Added with the expression state; a snapshot without
+   * them is a project nobody has read yet.
+   */
+  expressionState?: unknown;
+  creatorExpressionReadings?: Record<string, unknown>;
   detectionSettings: unknown;
   activeWorkspace: string;
   /** Added after v1 shipped; older snapshots simply lack them. */

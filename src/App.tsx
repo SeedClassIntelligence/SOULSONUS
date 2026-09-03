@@ -100,6 +100,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     editorPrefs,
     intentPreserve,
     intentStrictness,
+    expressionState,
     setRealizationTransformables,
     handleSaveCreatorSignature,
     isInstrumentOpen,
@@ -321,6 +322,9 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
             prompt: typeof detail === 'object' ? detail?.prompt : `Realize ${targetTrack.name} with ${route}`,
             projectVersion: dawState.projectVersion || 'v1.0.0',
             creatorSignature,
+            // SRT-1 V: the affective reading is a control variable, so it goes
+            // with the request rather than staying on a panel.
+            expression: expressionState,
             ...(region
               ? {
                   repaintStartSeconds: region.startSeconds,
@@ -370,7 +374,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     // realization sent the whole take with 'all' still closed over -- the
     // scope line in the drawer said "the whole take" no matter what was
     // selected. Every unit test passed; only driving the browser found it.
-  }, [handleOpenProposal, tracks, dawState.projectVersion, dawState.bpm, editorPrefs.activeBarView, intentPreserve, intentStrictness, creatorSignature, setIsInspectorOpen, setIsCalibrationOpen, setIsVisualizationOpen]);
+  }, [handleOpenProposal, tracks, dawState.projectVersion, dawState.bpm, editorPrefs.activeBarView, intentPreserve, intentStrictness, expressionState, creatorSignature, setIsInspectorOpen, setIsCalibrationOpen, setIsVisualizationOpen]);
 
   // Play / Stop / Mic Handlers
   const handleTogglePlay = useCallback(async () => {
@@ -503,7 +507,8 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
               dawState,
               tracks,
               activeWorkspace,
-              target
+              target,
+              expressionState
             );
             return { ok: true, message: answer.content };
           } catch (err) {

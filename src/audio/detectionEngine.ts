@@ -15,7 +15,26 @@ import {
 } from './performanceClassifier';
 
 /** Which capture button armed the mic. Constrains the eligible class taxonomy. */
-export type CaptureModality = 'MOUTH' | 'BODY' | 'KEYS';
+/**
+ * Which capture button armed the microphone.
+ *
+ * MOUTH and BODY are percussive on purpose: a beatbox pass and a clap pass
+ * carry no musical pitch, and restricting the taxonomy removes the hardest
+ * discrimination in the feature space.
+ *
+ * VOICE and MIMIC exist because a mouth is not only a drum kit. SRT-1 VIII is
+ * the whole reason -- "the bass should go brrr-DA" -- and until they existed,
+ * arming HUM / SING / MIMIC armed MOUTH, which switched pitch tracking off and
+ * restricted the classifier to kick, snare and hi-hat. A hummed bassline
+ * landed on the snare channel with no pitch, every time, and nothing in the
+ * platform could read a melody a creator had actually sung.
+ *
+ *   VOICE  hummed or sung: tonal only, and pitch is tracked.
+ *   MIMIC  imitating anything at all: the full taxonomy, and pitch is tracked,
+ *          because "brrr-DA" for a bass is pitched and a mouth hi-hat is not,
+ *          and which one this is is the classifier's question to answer.
+ */
+export type CaptureModality = 'MOUTH' | 'BODY' | 'KEYS' | 'VOICE' | 'MIMIC';
 
 /** One detected, classified performance event. Routed to exactly one channel. */
 export interface CaptureEvent {
@@ -127,8 +146,10 @@ export class DetectionEngine {
 
   /** Classes the armed modality is allowed to produce. */
   private eligibleClasses(): PerformanceClass[] {
-    if (this.captureModality === 'KEYS') return TONAL_CLASSES;
+    if (this.captureModality === 'KEYS' || this.captureModality === 'VOICE') return TONAL_CLASSES;
     if (this.captureModality === 'MOUTH' || this.captureModality === 'BODY') return PERCUSSIVE_CLASSES;
+    // MIMIC keeps the whole taxonomy: what is being imitated is the question.
+    if (this.captureModality === 'MIMIC') return [...PERFORMANCE_CLASSES];
     return [...PERFORMANCE_CLASSES];
   }
 
@@ -382,6 +403,8 @@ export class DetectionEngine {
 
     const tonalMode =
       this.captureModality === 'KEYS' ||
+      this.captureModality === 'VOICE' ||
+      this.captureModality === 'MIMIC' ||
       (this.captureModality === null &&
         this.activeTracks.some(
           (t) => t.instrument === 'melody' || t.instrument === 'vocal_synth' || t.detectionProfile?.isMelodic

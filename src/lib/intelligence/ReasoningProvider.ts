@@ -9,7 +9,13 @@
 
 import { STUDIO_INTELLIGENCE_KNOW_HOW_DOCUMENT } from '../studioIntelligenceKnowHow';
 
-import { NoteEvent, GenerationCandidate, RealizationRoute } from '../../types/daw';
+import { NoteEvent, GenerationCandidate, RealizationRoute, ExpressionState } from '../../types/daw';
+import {
+  controlsFromExpression,
+  dspFromExpression,
+  explainExpressionChange,
+} from '../expressionControls';
+import { EXPRESSION_DIMENSIONS } from '../../audio/expressionState';
 import { proposeRealization } from '../realizationProposal';
 import {
   CALL_ORDER,
@@ -50,6 +56,15 @@ export interface BoundedStudioContext {
   focusTrack: BoundedTrackContext | null;
   tracks: BoundedTrackContext[];
   emphasis: StudioEmphasis;
+  /**
+   * The affective reading of the last pass, as far as it was measured.
+   *
+   * SRT-1 V asks for emotion to be a set of control variables rather than a
+   * label, and this is how the intelligence gets to reason in those terms.
+   * Null when nothing has been performed, which is different from a
+   * performance that read as nothing.
+   */
+  expression?: ExpressionState | null;
 }
 
 export interface ReasoningProposal {
@@ -305,6 +320,54 @@ export class NativeStudioBrainProvider implements ReasoningProvider {
           realizationCandidate: candidate,
         },
       };
+    }
+    // 0b. The affective reading, and a change explained by it.
+    //
+    // SRT-1 V: emotion is not a label to detect, it is a set of control
+    // variables. So this branch does not answer "your take is sad" -- it says
+    // which dimensions were measured, what each was measured from, and which
+    // musical dimension each one moves. What it cannot apply it says it cannot
+    // apply, and the tempo is never moved on the strength of a reading.
+    else if (
+      /\b(feel|feeling|vibe|mood|emotion|emotional|expression|what did you hear|how does (this|it) (sound|read))\b/.test(q)
+    ) {
+      const state = context.expression || null;
+      const controls = controlsFromExpression(state);
+      if (!state) {
+        reply =
+          `**What the studio has heard so far**:\n\n` +
+          `Nothing yet. The seven dimensions in SRT-1 V are read off a performance, and no pass ` +
+          `has been captured or re-read in this session — so there is nothing measured to reason from, ` +
+          `and a reading of a creator nobody took would be worse than this sentence.`;
+      } else {
+        const read = EXPRESSION_DIMENSIONS.map((d) => state[d])
+          .filter((d): d is NonNullable<typeof d> => !!d)
+          .map((d) => `• **${d.reads}**${d.fromCreator ? ' — your reading' : ` — ${d.from}`}`);
+        const unread = state.notMeasured.map((n) => `• ${n}`);
+        reply =
+          `**What the take reads as** (${read.length} of 7 dimensions, from ${state.measuredFrom.onsets} onsets):\n\n` +
+          (read.length ? read.join('\n') : '• nothing was measurable from this pass') +
+          (unread.length ? `\n\n**Not measured**:\n${unread.join('\n')}` : '') +
+          (controls.length ? `\n\n**What that argues for**: ${explainExpressionChange(controls)}` : '');
+
+        const patch = dspFromExpression(controls);
+        if (target && Object.keys(patch).length) {
+          proposal = {
+            type: 'EQ',
+            targetTrackId: target.id,
+            targetTrackName: target.name,
+            title: `Match the reading on ${target.name}`,
+            description: explainExpressionChange(controls),
+            proposedChanges: {
+              dspSettings: patch,
+              actionSummary: `${Object.keys(patch).length} settings on ${target.name}, from ${controls
+                .filter((c) => c.dspSettings)
+                .map((c) => c.driver)
+                .join(', ')}`,
+            },
+          };
+        }
+      }
     }
     // 1. Mud / Frequency Masking
     else if (q.includes('mud') || q.includes('kick') || q.includes('808') || q.includes('clash') || q.includes('low end')) {

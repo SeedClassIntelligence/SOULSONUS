@@ -24,6 +24,18 @@ import { deriveCreativeIntent, intentCoverage } from '../src/lib/creativeIntent'
 import { buildIntentPolicy, describeUnlocked, roleKeyFor, DEFAULT_PRESERVE } from '../src/lib/intentPolicy';
 import { buildChangeSet } from '../src/lib/changeSet';
 import { applyTimingMode } from '../src/lib/timingModes';
+import {
+  deriveExpression,
+  describeExpression,
+  expressionCoverage,
+  withCreatorReading,
+  EXPRESSION_DIMENSIONS,
+} from '../src/audio/expressionState';
+import {
+  controlsFromExpression,
+  dspFromExpression,
+  explainExpressionChange,
+} from '../src/lib/expressionControls';
 import { parseVoiceCommand, needsReasoning } from '../src/audio/voiceCommands';
 import { barsToSeconds } from '../src/utils/musicMath';
 import { adoptFromRevision, newRevision, capTree, childrenOf, isBranchPoint, pathToRoot, depthOf, MAX_REVISIONS } from '../src/lib/revisionTree';
@@ -974,6 +986,186 @@ async function runComprehensiveVerification() {
       check(within(599) < secondsPerStep, 'TIMING',
         'no offset can reach the next step, so ordering is never crossed');
     }
+  }
+
+  console.log('\n--- 20. Emotion as measured dimensions (SRT-1 V) ---');
+  {
+    // A percussive onset: spectrum, no pitch. A sung one: pitch, and a
+    // spectrum when it came through the microphone.
+    const hit = (atSeconds: number, velocity: number, centroidHz: number, bands?: any) =>
+      ({ atSeconds, velocity, centroidHz, pitchHz: -1, bands: bands || { sub: 0.1, low: 0.2, lowMid: 0.3, mid: 0.2, high: 0.1, air: 0.1 } });
+    const sung = (atSeconds: number, velocity: number, pitchHz: number) =>
+      ({ atSeconds, velocity, pitchHz });
+
+    const nothing = deriveExpression([]);
+    check(EXPRESSION_DIMENSIONS.every((d) => nothing[d] === null), 'EXPRESSION',
+      'no onsets reads as no emotional state at all, not a neutral one');
+    check(/is not a performance to read/.test(nothing.notMeasured[0]), 'EXPRESSION',
+      'and says why rather than returning seven zeroes', nothing.notMeasured[0]);
+    check(expressionCoverage(nothing).known === 0 && expressionCoverage(nothing).total === 7,
+      'EXPRESSION', 'coverage counts seven dimensions and claims none of them');
+
+    // A beatbox pass: nothing in it carries a pitch.
+    const beatbox = [0, 0.5, 1.0, 1.5, 2.0, 2.5].map((t, i) => hit(t, 100 + (i % 2) * 4, 900));
+    const drums = deriveExpression(beatbox);
+    check(drums.valence === null && drums.tension === null, 'EXPRESSION',
+      'a percussive take has no valence and no tension -- neither is readable without pitch');
+    check(drums.notMeasured.some((n) => /valence — nothing in this pass carried a pitch/.test(n)),
+      'EXPRESSION', 'and both absences are named with the reason', drums.notMeasured.join(' | '));
+    check(!!drums.arousal && !!drums.movement && !!drums.confidence && !!drums.darkness && !!drums.intimacy,
+      'EXPRESSION', 'the five that pitch is not needed for are read');
+    check(EXPRESSION_DIMENSIONS.every((d) => !drums[d] || drums[d]!.from.length > 0), 'EXPRESSION',
+      'every dimension carries the measurement that produced it');
+
+    // Arousal moves with rate and intensity, in that order of weight.
+    const frantic = [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9].map((t) => hit(t, 120, 900));
+    const still = [0, 2, 4, 6].map((t) => hit(t, 40, 900));
+    check(deriveExpression(frantic).arousal!.value > deriveExpression(still).arousal!.value, 'EXPRESSION',
+      'a fast, hard pass reads more energetic than a slow, soft one',
+      `${deriveExpression(frantic).arousal!.value} vs ${deriveExpression(still).arousal!.value}`);
+    check(deriveExpression(frantic).arousal!.value > 0 && deriveExpression(still).arousal!.value < 0,
+      'EXPRESSION', 'and they land on opposite sides of the axis, not both on one');
+
+    // Movement is regularity, which arousal is not: a fast ragged flurry is
+    // aroused without driving.
+    const steady = [0, 0.5, 1.0, 1.5, 2.0, 2.5].map((t) => hit(t, 100, 900));
+    const ragged = [0, 0.12, 0.9, 1.0, 2.4, 2.5].map((t) => hit(t, 100, 900));
+    check(deriveExpression(steady).movement!.value > deriveExpression(ragged).movement!.value,
+      'EXPRESSION', 'an even pulse reads as driving where a ragged one does not',
+      `${deriveExpression(steady).movement!.value} vs ${deriveExpression(ragged).movement!.value}`);
+
+    // Darkness is spectral, and reverses with the centroid.
+    const dark = [0, 0.5, 1, 1.5].map((t) => hit(t, 100, 160, { sub: 0.5, low: 0.3, lowMid: 0.1, mid: 0.05, high: 0.03, air: 0.02 }));
+    const bright = [0, 0.5, 1, 1.5].map((t) => hit(t, 100, 5200, { sub: 0.02, low: 0.03, lowMid: 0.1, mid: 0.15, high: 0.3, air: 0.4 }));
+    check(deriveExpression(dark).darkness!.value > 0 && deriveExpression(bright).darkness!.value < 0,
+      'EXPRESSION', 'a sub-heavy take reads heavy and an airy one reads bright',
+      `${deriveExpression(dark).darkness!.value} vs ${deriveExpression(bright).darkness!.value}`);
+    check(/spectral centroid 160 Hz/.test(deriveExpression(dark).darkness!.from), 'EXPRESSION',
+      'and the centroid it read is stated in Hz', deriveExpression(dark).darkness!.from);
+
+    // A reading rebuilt from notes on a track carries no spectrum.
+    const fromNotes = [sung(0, 90, 220), sung(0.5, 92, 247), sung(1.0, 95, 262), sung(1.5, 91, 294)];
+    const noSpectrum = deriveExpression(fromNotes);
+    check(noSpectrum.darkness === null && noSpectrum.intimacy === null, 'EXPRESSION',
+      'without a spectrum, darkness and intimacy are not read');
+    check(noSpectrum.notMeasured.some((n) => /darkness — these onsets carry no spectrum/.test(n)),
+      'EXPRESSION', 'and that is said, not left as a zero');
+    check(!!noSpectrum.valence && !!noSpectrum.tension, 'EXPRESSION',
+      'while pitch is there, so valence and tension are');
+    check(noSpectrum.measuredFrom.spectralOnsets === 0 && noSpectrum.measuredFrom.pitchedOnsets === 4,
+      'EXPRESSION', 'and the state says what it was taken from',
+      JSON.stringify(noSpectrum.measuredFrom));
+
+    // Valence follows the contour.
+    const rising = [sung(0, 90, 220), sung(0.5, 90, 262), sung(1, 90, 330), sung(1.5, 90, 392)];
+    const falling = [sung(0, 90, 392), sung(0.5, 90, 330), sung(1, 90, 262), sung(1.5, 90, 220)];
+    check(deriveExpression(rising).valence!.value > deriveExpression(falling).valence!.value, 'EXPRESSION',
+      'a rising line reads more positive than the same line falling',
+      `${deriveExpression(rising).valence!.value} vs ${deriveExpression(falling).valence!.value}`);
+    check(/semitones a second/.test(deriveExpression(rising).valence!.from), 'EXPRESSION',
+      'stated as the contour it measured', deriveExpression(rising).valence!.from);
+
+    // Tension: a wide line that ends away from where it sat.
+    const settled = [sung(0, 90, 262), sung(0.5, 90, 264), sung(1, 90, 262), sung(1.5, 90, 262)];
+    const restless = [sung(0, 90, 262), sung(0.5, 90, 440), sung(1, 90, 233), sung(1.5, 90, 466)];
+    check(deriveExpression(restless).tension!.value > deriveExpression(settled).tension!.value, 'EXPRESSION',
+      'a wide, unsettled line reads more unresolved than one that stays home',
+      `${deriveExpression(restless).tension!.value} vs ${deriveExpression(settled).tension!.value}`);
+
+    // Two pitched onsets are not a contour.
+    const two = deriveExpression([sung(0, 90, 220), sung(0.5, 90, 262), hit(1, 90, 900)]);
+    check(two.valence === null && /only 2 onsets carried a pitch/.test(two.notMeasured.join(' ')),
+      'EXPRESSION', 'two pitched onsets do not make a contour, and it says so',
+      two.notMeasured.join(' | '));
+
+    // The creator's own reading replaces the studio's on that dimension.
+    const measuredState = deriveExpression(beatbox);
+    const said = withCreatorReading(measuredState, 'darkness', -0.8, measuredState);
+    check(said.darkness!.value === -0.8 && said.darkness!.fromCreator === true, 'EXPRESSION',
+      'what the creator says about a dimension is what that dimension says');
+    check(/you said/.test(said.darkness!.from), 'EXPRESSION',
+      'attributed to them rather than presented as a measurement', said.darkness!.from);
+    check(said.arousal!.value === measuredState.arousal!.value, 'EXPRESSION',
+      'and it changes only the dimension they spoke about');
+    const handedBack = withCreatorReading(said, 'darkness', null, measuredState);
+    check(handedBack.darkness!.value === measuredState.darkness!.value && !handedBack.darkness!.fromCreator,
+      'EXPRESSION', 'clearing it hands the dimension back to the measurement');
+
+    // The sentence a realization acts on names only what was read.
+    const sentence = describeExpression(deriveExpression(dark));
+    check(sentence.length > 0 && !/valence|tension/.test(sentence), 'EXPRESSION',
+      'the instruction that rides with a realization names no dimension that was not measured',
+      sentence);
+    check(describeExpression(nothing) === '', 'EXPRESSION',
+      'and an unread performance contributes no instruction at all');
+  }
+
+  console.log('\n--- 21. Emotion as compositional control variables (SRT-1 V) ---');
+  {
+    const hit = (atSeconds: number, velocity: number, centroidHz: number, bands: any) =>
+      ({ atSeconds, velocity, centroidHz, pitchHz: -1, bands });
+    const SUBBY = { sub: 0.5, low: 0.3, lowMid: 0.1, mid: 0.05, high: 0.03, air: 0.02 };
+    const AIRY = { sub: 0.02, low: 0.03, lowMid: 0.1, mid: 0.15, high: 0.3, air: 0.4 };
+    const heavyTake = deriveExpression([0, 0.5, 1, 1.5, 2].map((t) => hit(t, 112, 160, SUBBY)));
+    const brightTake = deriveExpression([0, 0.5, 1, 1.5, 2].map((t) => hit(t, 60, 5200, AIRY)));
+
+    check(controlsFromExpression(null).length === 0, 'EXPRESSION_CONTROL',
+      'no reading controls nothing');
+
+    const heavy = controlsFromExpression(heavyTake);
+    const brightness = heavy.find((c) => c.dimension === 'timbral_brightness')!;
+    check(brightness.dspSettings!.filterFreq === 2200, 'EXPRESSION_CONTROL',
+      'a heavy take rolls the top off, in Hz that reach the channel strip',
+      JSON.stringify(brightness.dspSettings));
+    check(/spectral centroid/.test(brightness.because), 'EXPRESSION_CONTROL',
+      'and the change carries the measurement that argued for it', brightness.because);
+    const brightControl = controlsFromExpression(brightTake).find((c) => c.dimension === 'timbral_brightness')!;
+    check(brightControl.dspSettings!.filterFreq === 9000, 'EXPRESSION_CONTROL',
+      'a bright take opens it instead — the control reverses with the reading',
+      JSON.stringify(brightControl.dspSettings));
+
+    // Several musical dimensions, which is the whole point of the section.
+    const dims = new Set(heavy.map((c) => c.dimension));
+    check(dims.size >= 3, 'EXPRESSION_CONTROL',
+      'one reading moves several musical dimensions, not a mode selection',
+      [...dims].join(', '));
+    check(heavy.every((c) => c.because.length > 0 && c.reads.length > 0), 'EXPRESSION_CONTROL',
+      'every control says what it does and why');
+
+    // A middle reading is a real answer, not a small instruction.
+    const middling = { ...heavyTake, darkness: { value: 0.12, reads: 'between bright and heavy', from: 'measured' } } as any;
+    check(!controlsFromExpression(middling).some((c) => c.driver === 'darkness'), 'EXPRESSION_CONTROL',
+      'a dimension reading near the middle proposes nothing');
+
+    // What the build cannot do, it does not offer as a click.
+    const pitched = deriveExpression([
+      { atSeconds: 0, velocity: 96, pitchHz: 262 },
+      { atSeconds: 0.5, velocity: 96, pitchHz: 440 },
+      { atSeconds: 1.0, velocity: 96, pitchHz: 233 },
+      { atSeconds: 1.5, velocity: 96, pitchHz: 466 },
+    ]);
+    const harmonic = controlsFromExpression(pitched).find((c) => c.dimension === 'harmonic_tension');
+    check(!!harmonic && harmonic.dspSettings === null, 'EXPRESSION_CONTROL',
+      'harmonic tension is stated and not offered as a setting this build can apply');
+    check(Object.keys(dspFromExpression(controlsFromExpression(pitched))).every((k) => k.length > 0),
+      'EXPRESSION_CONTROL', 'and the patch contains only the controls that map to real settings');
+    check(!('harmonicTension' in dspFromExpression(heavy)), 'EXPRESSION_CONTROL',
+      'nothing invents a setting name to carry a suggestion');
+
+    const sentence = explainExpressionChange(heavy);
+    check(/so /.test(sentence) && /tempo is untouched/.test(sentence), 'EXPRESSION_CONTROL',
+      'the explanation is a measurement, a change, and what it refused to move',
+      sentence.slice(0, 140));
+    check(explainExpressionChange([]) === '', 'EXPRESSION_CONTROL',
+      'and nothing measured explains nothing');
+
+    // The creator's own reading drives the control, because it replaced the
+    // measurement on that dimension.
+    const said = withCreatorReading(brightTake, 'darkness', 0.9, brightTake);
+    const fromCreator = controlsFromExpression(said).find((c) => c.dimension === 'timbral_brightness')!;
+    check(fromCreator.dspSettings!.filterFreq === 2200 && /you said/.test(fromCreator.because),
+      'EXPRESSION_CONTROL', 'what the creator says about the take is what the studio acts on',
+      fromCreator.because);
   }
 
   console.log('\n========================================================================');

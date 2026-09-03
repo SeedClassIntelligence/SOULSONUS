@@ -40,8 +40,10 @@ import {
   IntentThresholdPolicy,
   IntentViolation,
   CreatorMusicSignature,
+  ExpressionState,
 } from '../types/daw';
 import { DEFAULT_THRESHOLD_POLICY } from './realizationVerifier';
+import { describeExpression } from '../audio/expressionState';
 import { computePreservationScores } from './inference/audioPreservationScoring';
 import { getE05Provider } from './inference/e05Provider';
 
@@ -89,6 +91,17 @@ export interface RealizationRequest {
    * must still be able to realize.
    */
   creatorSignature?: CreatorMusicSignature | null;
+  /**
+   * The affective reading of the performance, as far as it was measured.
+   *
+   * SRT-1 V's whole point: emotion is not a label to detect but a set of
+   * control variables. This is how it becomes one -- it rides with the
+   * instruction the same way the creator's measured feel does, so a heavy,
+   * driving take is re-rendered as one instead of being described only by its
+   * target role. Optional, and a pass nobody read contributes nothing rather
+   * than a neutral seven.
+   */
+  expression?: ExpressionState | null;
 }
 
 /**
@@ -188,7 +201,12 @@ export class RealizationRouter {
           // what comes back lands where the take already sits.
           const sourceAudio = await fetch(sourceAudioUrl).then((r) => r.blob());
           const baseInstruction = req.prompt || `Perform this as ${req.targetRole.replace(/_/g, ' ')}`;
-          const feel = describeCreatorFeel(req.creatorSignature);
+          // The creator's measured feel, and what the performance was measured
+          // to express. Both are omitted when unmeasured rather than defaulted,
+          // so an instruction never describes a reading nobody took.
+          const feel = [describeCreatorFeel(req.creatorSignature), describeExpression(req.expression)]
+            .filter(Boolean)
+            .join(' ');
           const realization = await getE05Provider().realize(
             {
               task: 'cover',
@@ -297,7 +315,12 @@ export class RealizationRouter {
               // performance, and describing a feel to it would be noise.
               instruction: ((): string => {
                 const base = req.prompt || `Repaint ${req.targetRole.replace(/_/g, ' ')}`;
-                const feel = describeCreatorFeel(req.creatorSignature);
+                const feel = [
+                  describeCreatorFeel(req.creatorSignature),
+                  describeExpression(req.expression),
+                ]
+                  .filter(Boolean)
+                  .join(' ');
                 return feel ? `${base}. ${feel}` : base;
               })(),
               repaintStartSeconds: start,

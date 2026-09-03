@@ -233,9 +233,18 @@ export const UnifiedDeckBench: React.FC = () => {
   }, [dawState.isRecordingMic, dawState.isPlaying]);
 
   const handleStartCaptureForTab = (tab: typeof activeModalityTab) => {
-    let mod: 'MOUTH' | 'BODY' | 'KEYS' = 'MOUTH';
+    // What the microphone is armed to hear.
+    //
+    // Every vocal tab used to arm MOUTH, which restricts the classifier to
+    // kick, snare and hi-hat and switches pitch tracking off -- so a hummed
+    // bassline was read as percussion and landed on the snare channel with no
+    // pitch at all. A mouth is not only a drum kit (SRT-1 VIII), and these are
+    // the taxonomies that say which kind of mouth this pass is.
+    let mod: 'MOUTH' | 'BODY' | 'KEYS' | 'VOICE' | 'MIMIC' = 'MOUTH';
     if (tab === 'CLAP_TAP') mod = 'BODY';
-    if (tab === 'INSTRUMENT') mod = 'KEYS';
+    else if (tab === 'INSTRUMENT') mod = 'KEYS';
+    else if (tab === 'HUM_VOICE' || tab === 'SING') mod = 'VOICE';
+    else if (tab === 'MIMIC') mod = 'MIMIC';
     handleQuickPerformanceCapture(mod);
 
     // Increment overdub pass counter

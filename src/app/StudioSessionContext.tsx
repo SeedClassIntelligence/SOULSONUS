@@ -55,6 +55,8 @@ import {
   AudioClip,
   MasterCandidate,
   FinalizationGateStatus,
+  ExpressionState,
+  ExpressionDimensionName,
 } from '../types/daw';
 import {
   deriveStepArrayFromNoteEvents,
@@ -84,6 +86,7 @@ import { midiNoteToCaptureEvent } from '../audio/midiCapture';
 import { vocalRecorder } from '../audio/vocalRecorder';
 import { interpretPass, eventsFromTrack, type Interpretation } from '../lib/interpretation';
 import { applyTimingMode, TIMING_MODE_LABEL, type TimingMode, type TimingResult } from '../lib/timingModes';
+import { deriveExpression, withCreatorReading, type ExpressionOnset } from '../audio/expressionState';
 import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../lib/relayGap';
 import {
   DEFAULT_PRESERVE,
@@ -676,6 +679,18 @@ export interface StudioSessionState {
    * Null after a capture pass, where the reading is about the pass itself.
    */
   interpretationSubjectId: string | null;
+  /**
+   * The seven affective dimensions of the last pass, as far as they were
+   * measured. Null before anything has been performed.
+   */
+  expressionState: ExpressionState | null;
+  /**
+   * What the creator said about a dimension themselves, which replaces the
+   * measurement on that dimension. SRT-1 V lists their own emotional intent
+   * among the inputs; Amendment B puts it above the machine's reading.
+   */
+  setExpressionReading: (name: ExpressionDimensionName, value: number | null) => void;
+  creatorExpressionReadings: Partial<Record<ExpressionDimensionName, number>>;
   /** Which quantization mode each track is currently sitting in. */
   trackTimingModes: Record<string, TimingMode>;
   /**
@@ -734,7 +749,17 @@ export interface StudioSessionState {
    * this, so arming the mic, seeding the track and keeping the take can't
    * drift into two different behaviors depending on where you clicked.
    */
-  handleQuickPerformanceCapture: (modality: 'MOUTH' | 'BODY' | 'KEYS' | 'AUDIO' | 'LYRICS') => Promise<void>;
+  /**
+   * Arms the microphone for one kind of performance.
+   *
+   * VOICE and MIMIC are capture taxonomies, not new kinds of seed: both are a
+   * mouth, and the take is recorded as a MOUTH seed. What they change is what
+   * the classifier is allowed to hear -- a hum is pitched material and was
+   * being read as percussion.
+   */
+  handleQuickPerformanceCapture: (
+    modality: 'MOUTH' | 'BODY' | 'KEYS' | 'VOICE' | 'MIMIC' | 'AUDIO' | 'LYRICS'
+  ) => Promise<void>;
   /** Loads an instrument that has been admitted to the factory. */
   handleLoadFactoryInstrument: (catalogId: string) => Promise<{ ok: boolean; message: string }>;
   /** Calls a session player. The take lands on its own channel, beside yours. */
@@ -1834,6 +1859,66 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const [interpretationSubjectId, setInterpretationSubjectId] = useState<string | null>(null);
 
   /**
+   * The affective reading of the last pass, and the creator's own corrections
+   * to it.
+   *
+   * Two pieces of state rather than one: the measurement is what the studio
+   * heard and the readings are what the creator says, and merging them into a
+   * single edited object would lose the ability to hand a dimension back. The
+   * merged view is what everything downstream consumes.
+   */
+  const [measuredExpression, setMeasuredExpression] = useState<ExpressionState | null>(null);
+  const [creatorExpressionReadings, setCreatorExpressionReadings] = useState<
+    Partial<Record<ExpressionDimensionName, number>>
+  >({});
+  const expressionState = useMemo(() => {
+    if (!measuredExpression) return null;
+    let merged = measuredExpression;
+    for (const [name, value] of Object.entries(creatorExpressionReadings)) {
+      merged = withCreatorReading(
+        merged,
+        name as ExpressionDimensionName,
+        typeof value === 'number' ? value : null,
+        measuredExpression
+      );
+    }
+    return merged;
+  }, [measuredExpression, creatorExpressionReadings]);
+
+  const setExpressionReading = useCallback(
+    (name: ExpressionDimensionName, value: number | null) => {
+      setCreatorExpressionReadings((prev) => {
+        const next = { ...prev };
+        if (value === null) delete next[name];
+        else next[name] = value;
+        return next;
+      });
+    },
+    []
+  );
+
+  /**
+   * The onsets an affective reading is taken from.
+   *
+   * A pass off the microphone carries a spectrum and a fundamental; a pass
+   * rebuilt from notes on a track carries neither, and `deriveExpression`
+   * reports the dimensions that need them as unmeasured rather than reading
+   * them off nothing.
+   */
+  const expressionOnsetsOf = useCallback(
+    (events: CaptureEvent[]): ExpressionOnset[] =>
+      events.map((e) => ({
+        velocity: e.velocity,
+        atSeconds:
+          typeof e.atSeconds === 'number' ? e.atSeconds : (e.atMs - (events[0]?.atMs ?? 0)) / 1000,
+        centroidHz: e.centroidHz,
+        pitchHz: e.pitchHz,
+        bands: e.bands as unknown as Record<string, number>,
+      })),
+    []
+  );
+
+  /**
    * What the creator said they were imitating before performing, if anything.
    *
    * Optional by constitution: VIII.2 forbids requiring an instrument up front,
@@ -2000,6 +2085,11 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     setInterpretationSubjectId(null);
     passEventsRef.current = [...passEventsRef.current, ...events];
     setLastInterpretation(interpretPass(passEventsRef.current, mimicryTargetIdRef.current));
+    // SRT-1 V, read off the same pass and from the same measurements. A new
+    // performance is a new reading: the creator's own corrections are about
+    // the take they were said over, not about the next one.
+    setMeasuredExpression(deriveExpression(expressionOnsetsOf(passEventsRef.current)));
+    setCreatorExpressionReadings({});
   }, [updateTracksWithHistory]);
 
   /** Live monitoring for a single event. Kept out of state updaters, which must stay pure. */
@@ -2405,6 +2495,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       const events = eventsFromTrack(track, dawStateRef.current.bpm || 110);
       setInterpretationSubjectId(trackId);
       setLastInterpretation(interpretPass(events, mimicryTargetIdRef.current));
+      // Read from the notes on the channel, which carry no spectrum: what
+      // comes back says so by leaving darkness and intimacy unmeasured.
+      setMeasuredExpression(deriveExpression(expressionOnsetsOf(events)));
+      setCreatorExpressionReadings({});
     },
     []
   );
@@ -3347,12 +3441,14 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     return sourceTrackId;
   }, [tracks, updateTracksWithHistory]);
 
-  const handleQuickPerformanceCapture = useCallback(async (modality: 'MOUTH' | 'BODY' | 'KEYS' | 'AUDIO' | 'LYRICS') => {
+  const handleQuickPerformanceCapture = useCallback(async (
+    modality: 'MOUTH' | 'BODY' | 'KEYS' | 'VOICE' | 'MIMIC' | 'AUDIO' | 'LYRICS'
+  ) => {
     if (modality === 'AUDIO') {
       setIsAudioImportModalOpen(true);
       return;
     }
-    if (modality !== 'MOUTH' && modality !== 'BODY' && modality !== 'KEYS') return;
+    if (modality === 'LYRICS') return;
 
     // The microphone first, and only then the track.
     //
@@ -3379,7 +3475,11 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
-    const seedTrackId = handleCreateSourceTrack(modality);
+    // The seed is what the performance was made with, and a hum and a beatbox
+    // are both a mouth. Only the capture taxonomy differs.
+    const seedTrackId = handleCreateSourceTrack(
+      modality === 'VOICE' || modality === 'MIMIC' ? 'MOUTH' : modality
+    );
 
     // Keep the performance itself, not just what was classified out of it.
     // This opens the microphone a second time, for the recorder, and it can
@@ -4945,6 +5045,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       intentPreserve,
       intentStrictness,
       trackTimingModes,
+      expressionState: measuredExpression,
+      creatorExpressionReadings,
       detectionSettings,
       activeWorkspace,
       editorPrefs,
@@ -4979,7 +5081,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     [
       dawState, tracks, sections, lyricSections, masteringChain, masterCandidates,
       activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
-      seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, trackTimingModes, detectionSettings, activeWorkspace,
+      seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, trackTimingModes,
+      measuredExpression, creatorExpressionReadings, detectionSettings, activeWorkspace,
       editorPrefs, writeRoomDraft, audioAssets,
       vocalState.audioBlob, vocalState.duration, vocalState.waveformData,
     ]
@@ -5050,6 +5153,14 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     // note in such a project is where it was played, which is `literal`, and
     // an empty map reads as exactly that.
     setTrackTimingModes((snap.trackTimingModes as Record<string, TimingMode> | undefined) ?? {});
+    // The affective reading describes the take that is in this project, so it
+    // comes back with it. Absent on a snapshot saved before it was measured,
+    // which is a project nobody has read yet rather than one that reads as
+    // nothing.
+    setMeasuredExpression((snap.expressionState as ExpressionState | undefined) ?? null);
+    setCreatorExpressionReadings(
+      (snap.creatorExpressionReadings as Partial<Record<ExpressionDimensionName, number>> | undefined) ?? {}
+    );
     setDetectionSettings((prev) => ({ ...prev, ...(snap.detectionSettings as object), enabled: false, micConnected: false }));
     setActiveWorkspace(snap.activeWorkspace as WorkspaceTab);
     // Older snapshots predate these, so fall back rather than clobber defaults.
@@ -5125,7 +5236,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [
     isHydrating, tracks, sections, lyricSections, masteringChain, masterCandidates,
     activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
-    seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, trackTimingModes, detectionSettings, activeWorkspace,
+    seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, trackTimingModes,
+      measuredExpression, creatorExpressionReadings, detectionSettings, activeWorkspace,
     editorPrefs, writeRoomDraft, dawState, vocalState.audioBlob,
   ]);
 
@@ -5589,6 +5701,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setMimicryTargetId,
       reinterpretTrack,
       interpretationSubjectId,
+      expressionState,
+      setExpressionReading,
+      creatorExpressionReadings,
       trackTimingModes,
       applyTrackTiming,
       isCalibratingPitch,
@@ -5806,6 +5921,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setMimicryTargetId,
       reinterpretTrack,
       interpretationSubjectId,
+      expressionState,
+      setExpressionReading,
+      creatorExpressionReadings,
       trackTimingModes,
       applyTrackTiming,
       isCalibratingPitch,

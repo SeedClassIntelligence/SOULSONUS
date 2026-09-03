@@ -139,6 +139,7 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
     relayGaps,
     handleAddGapWords,
     handleResolveGap,
+    expressionState,
   } = useStudioSession();
   const [gapReply, setGapReply] = useState<Record<string, string>>({});
 
@@ -370,7 +371,11 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
         dawState,
         tracks,
         activeWorkspace,
-        selectedTrack || null
+        selectedTrack || null,
+        // What the last pass was measured to express. Without it the
+        // intelligence cannot answer a question about the feel of a take with
+        // anything but a generality.
+        expressionState
       );
 
       const proposal = answer.actionProposal;

@@ -17,6 +17,7 @@ export const WriteRecordWorkspace: React.FC = () => {
     tracks,
     writeRoomDraft,
     updateWriteRoomDraft,
+    expressionState,
   } = useStudioSession();
 
   const [isWritingAssist, setIsWritingAssist] = useState<'hook' | 'cadence' | null>(null);
@@ -90,7 +91,8 @@ export const WriteRecordWorkspace: React.FC = () => {
         dawState,
         tracks,
         'WRITE_RECORD',
-        tracks.find((t) => t.id === selectionContext.selectedTrackId) || null
+        tracks.find((t) => t.id === selectionContext.selectedTrackId) || null,
+        expressionState
       );
       const label = kind === 'hook' ? 'Hook Alternative' : 'Verse Cadence';
       setLyrics((prev) => `${prev}\n\n[${label}]\n${response.content.trim()}`);

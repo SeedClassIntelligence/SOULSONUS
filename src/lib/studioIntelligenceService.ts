@@ -17,7 +17,7 @@
  * - Platform Guide (SoulSonus capabilities, trigger methods, routing)
  */
 
-import { DAWState, Track, TrackDspSettings, GenerationCandidate, RealizationRoute } from '../types/daw';
+import { DAWState, Track, TrackDspSettings, GenerationCandidate, RealizationRoute, ExpressionState } from '../types/daw';
 import {
   StudioEmphasis,
   ReasoningProvider,
@@ -135,7 +135,14 @@ export class SoulSonusNativeStudioIntelligence {
     dawState: DAWState,
     tracks: Track[],
     activeWorkspace: string,
-    selectedTrack: Track | null
+    selectedTrack: Track | null,
+    /**
+     * The affective reading of the last pass, so the intelligence can explain
+     * a change in the terms SRT-1 V names. Optional: a session that has not
+     * performed anything has no reading, and the intelligence says so rather
+     * than reasoning from a default.
+     */
+    expression: ExpressionState | null = null
   ): Promise<AiAssistantResponse> {
     // 1. Compile safe, bounded read-only projection (No direct state exposure)
     const boundedContext = StudioContextCompiler.compile(
@@ -143,7 +150,8 @@ export class SoulSonusNativeStudioIntelligence {
       tracks,
       activeWorkspace,
       selectedTrack,
-      config.emphasis
+      config.emphasis,
+      expression
     );
 
     // 2. Select reasoning provider (Default: Native Studio Brain)
@@ -189,7 +197,8 @@ export async function queryStudioIntelligence(
   dawState: DAWState,
   tracks: Track[],
   activeWorkspace: string,
-  selectedTrack: Track | null
+  selectedTrack: Track | null,
+  expression: ExpressionState | null = null
 ): Promise<AiAssistantResponse> {
   return SoulSonusNativeStudioIntelligence.evaluate(
     userQuery,
@@ -197,6 +206,7 @@ export async function queryStudioIntelligence(
     dawState,
     tracks,
     activeWorkspace,
-    selectedTrack
+    selectedTrack,
+    expression
   );
 }
