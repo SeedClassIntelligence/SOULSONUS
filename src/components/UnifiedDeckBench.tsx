@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { MIMICRY_TARGETS, TARGET_FAMILIES, targetById } from '../lib/mimicryTarget';
+import { CreativeIntentPanel } from './CreativeIntentPanel';
 
 /**
  * The ways a creator can put a performance into the session.
@@ -489,6 +490,16 @@ export const UnifiedDeckBench: React.FC = () => {
           </span>
         </div>
       )}
+
+      {/* CREATIVE INTENT -- the other half of the middle.
+          The interpretation below says what the last pass sounded like; this
+          says what the studio understands the creator to be going for. A.8
+          asks for the middle to be exposed, and one without the other is half
+          of it. Collapsed by default: A.8 also says it must not take
+          permanent screen space. */}
+      <div className="mt-2">
+        <CreativeIntentPanel />
+      </div>
 
       {/* INTERPRETATION -- what the last pass appears to be.
           Shown after the material is already committed to its tracks, so

@@ -19,6 +19,7 @@ import { signatureService } from '../src/lib/seedSignature';
 import { SoulFlowGovernor, SOULFLOW_STAGE_ORDER } from '../src/lib/soulFlowGovernor';
 import { SoundVaultSemanticMatcher } from '../src/lib/soundVaultSearch';
 import { readFileSync } from 'fs';
+import { deriveCreativeIntent, intentCoverage } from '../src/lib/creativeIntent';
 import { parseVoiceCommand, needsReasoning } from '../src/audio/voiceCommands';
 import { barsToSeconds } from '../src/utils/musicMath';
 import { adoptFromRevision, newRevision, capTree, childrenOf, isBranchPoint, pathToRoot, depthOf, MAX_REVISIONS } from '../src/lib/revisionTree';
@@ -656,6 +657,56 @@ async function runComprehensiveVerification() {
     // Amendment D says depth already earned is not renegotiated.
     check(/handleAcceptContribution/.test(src) && /CollaboratorRole/.test(src), 'COLLAB',
       'The roles and the accept flow are kept -- only the pretence was removed');
+  }
+
+  console.log('\n--- 16. Creative Intent is a real object (IV.4, C.4, A.8) ---');
+  {
+    const emptyStyle: any = { performance: { pocket: null, velocity: null } };
+    const bare = deriveCreativeIntent({ style: emptyStyle, sections: [] });
+
+    check(bare.groove === null && bare.energy === null, 'INTENT',
+      'A field with no measurement behind it is null, not a plausible default');
+    check(bare.expression === null && bare.genreGrammar === null, 'INTENT',
+      'Emotion and genre grammar stay null -- nothing in this build measures either');
+    check(bare.notMeasured.length >= 5, 'INTENT',
+      'Every absence is named rather than left for the creator to notice',
+      `${bare.notMeasured.length} named`);
+    check(bare.notMeasured.every((n) => / — /.test(n)), 'INTENT',
+      'Each absence carries the reason it is absent, not just the field name');
+    check(intentCoverage(bare).known === 1 && intentCoverage(bare).total === 7, 'INTENT',
+      'Coverage is stated honestly: only the contract-preserved set is known on an empty session',
+      `${intentCoverage(bare).known}/${intentCoverage(bare).total}`);
+
+    // With real measurements the fields fill in, and each carries its basis.
+    const measured: any = {
+      performance: {
+        pocket: { meanOffsetMs: -12.4, spreadMs: 5.1, onsets: 32, reads: 'ahead of the beat' },
+        velocity: { min: 70, max: 120, mean: 104 },
+      },
+    };
+    const full = deriveCreativeIntent({
+      style: measured,
+      sections: [{ name: 'Intro' }, { name: 'Verse' }, { name: 'Chorus' }] as any,
+      transformable: ['timbre', 'room_acoustics'],
+    });
+    check(full.groove?.readsAs === 'ahead of the beat' && full.groove?.meanOffsetMs === -12.4, 'INTENT',
+      'Groove reads the measured pocket rather than recomputing it');
+    check(/32 onsets/.test(full.groove?.from || ''), 'INTENT',
+      'The groove reading states the measurement under it', full.groove?.from);
+    check(full.energy?.reads === 'played hard', 'INTENT',
+      'Energy comes from measured velocity', full.energy?.from);
+    check(full.arrangementTrajectory?.reads === 'Intro → Verse → Chorus', 'INTENT',
+      'The arrangement trajectory is the sections that exist');
+    check(full.transform?.properties.join() === 'timbre,room_acoustics', 'INTENT',
+      'Transform lists what the active route actually permits');
+    check(intentCoverage(full).known === 5, 'INTENT',
+      'Coverage rises only as far as what was measured -- emotion and genre stay unknown',
+      `${intentCoverage(full).known}/7`);
+
+    // The whole point of the object: it must not fill its own gaps.
+    const everyField = JSON.stringify(full);
+    check(!/neutral|moderate energy|unknown genre|default/i.test(everyField), 'INTENT',
+      'No field is populated with a placeholder word standing in for a measurement');
   }
 
   console.log('\n========================================================================');

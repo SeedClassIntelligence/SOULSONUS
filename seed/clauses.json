@@ -1662,6 +1662,24 @@
             "src"
           ],
           "min": 1
+        },
+        {
+          "kind": "symbol",
+          "pattern": "CreativeIntentPanel",
+          "scope": [
+            "src/components"
+          ],
+          "min": 1,
+          "note": "The clause says panel. A type alone satisfied the old check, so declaring the shape and rendering nothing would have passed it."
+        },
+        {
+          "kind": "wired",
+          "pattern": "genreGrammar|arrangementTrajectory",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 2,
+          "note": "Two of the six named fields, required in more than one file so the object is used and not merely declared. The clause names emotion, preservation constraints, transformation permissions, groove, genre grammar and arrangement trajectory; a check on the type name alone tested none of them."
         }
       ]
     },
