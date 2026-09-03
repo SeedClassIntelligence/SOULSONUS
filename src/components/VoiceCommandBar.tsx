@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Mic, Send, Volume2, Sparkles, Terminal } from 'lucide-react';
-import { parseVoiceCommand, VoiceCommandResult } from '../audio/voiceCommands';
+import { parseVoiceCommand, needsReasoning, VoiceCommandResult } from '../audio/voiceCommands';
 
 interface VoiceCommandBarProps {
   /**
@@ -10,7 +10,7 @@ interface VoiceCommandBarProps {
    * parsed -- a sentence in the past tense, printed before anything ran and
    * regardless of whether anything could. It shows this instead.
    */
-  onExecuteCommand: (result: VoiceCommandResult) => { ok: boolean; message: string };
+  onExecuteCommand: (result: VoiceCommandResult) => Promise<{ ok: boolean; message: string }>;
 }
 
 export const VoiceCommandBar: React.FC<VoiceCommandBarProps> = ({ onExecuteCommand }) => {
@@ -18,16 +18,25 @@ export const VoiceCommandBar: React.FC<VoiceCommandBarProps> = ({ onExecuteComma
   const [isListening, setIsListening] = useState(false);
   const [lastFeedback, setLastFeedback] = useState<string | null>(null);
   const [lastOk, setLastOk] = useState(true);
+  const [isThinking, setIsThinking] = useState(false);
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim()) return;
 
     const result = parseVoiceCommand(inputText);
-    const outcome = onExecuteCommand(result);
+    setInputText('');
+    // Creative direction goes to the co-producer, which takes a moment. Saying
+    // so beats an empty bar that looks like nothing happened.
+    if (needsReasoning(result)) {
+      setLastFeedback(result.feedbackText);
+      setLastOk(true);
+      setIsThinking(true);
+    }
+    const outcome = await onExecuteCommand(result);
+    setIsThinking(false);
     setLastFeedback(outcome.message);
     setLastOk(outcome.ok);
-    setInputText('');
   };
 
   const handleMicClick = () => {
@@ -57,9 +66,16 @@ export const VoiceCommandBar: React.FC<VoiceCommandBarProps> = ({ onExecuteComma
         setIsListening(false);
         setInputText(transcript);
         const result = parseVoiceCommand(transcript);
-        const outcome = onExecuteCommand(result);
-        setLastFeedback(`Heard "${transcript}" — ${outcome.message}`);
-        setLastOk(outcome.ok);
+        if (needsReasoning(result)) {
+          setLastFeedback(result.feedbackText);
+          setLastOk(true);
+          setIsThinking(true);
+        }
+        void onExecuteCommand(result).then((outcome) => {
+          setIsThinking(false);
+          setLastFeedback(`Heard "${transcript}" — ${outcome.message}`);
+          setLastOk(outcome.ok);
+        });
       };
 
       recognition.onerror = () => {
@@ -152,8 +168,10 @@ export const VoiceCommandBar: React.FC<VoiceCommandBarProps> = ({ onExecuteComma
             lastOk ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-300'
           }`}
         >
-          <Volume2 className={`w-3.5 h-3.5 shrink-0 ${lastOk ? 'text-emerald-400' : 'text-amber-400'}`} />
-          <span>{lastFeedback}</span>
+          <Volume2
+            className={`w-3.5 h-3.5 shrink-0 ${isThinking ? 'animate-pulse text-cyan-400' : lastOk ? 'text-emerald-400' : 'text-amber-400'}`}
+          />
+          <span className="whitespace-pre-wrap">{lastFeedback}</span>
         </div>
       )}
     </div>

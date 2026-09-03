@@ -157,6 +157,13 @@ export const StudioUtilityBar: React.FC = () => {
           onClick: () => openDrawer('soulflow'),
           tone: 'emerald',
         },
+        {
+          label: 'SAY IT',
+          icon: Mic,
+          title: 'Speak or type a command, or just say what you want in your own words',
+          onClick: () => openDrawer('voice'),
+          tone: 'amber',
+        },
       ],
     },
   ];

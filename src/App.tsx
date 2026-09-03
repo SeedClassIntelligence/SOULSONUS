@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { WorkspaceNav } from './components/WorkspaceNav';
 import { StudioCanvas } from './components/StudioCanvas';
 import { barsToSeconds } from './utils/musicMath';
+import { queryStudioIntelligence, loadAiConfig } from './lib/studioIntelligenceService';
 import { StudioMasterStatusBar } from './components/StudioMasterStatusBar';
 import { FocusModeView } from './components/FocusModeView';
 import { QuickInspectorDrawer } from './components/inspectors/QuickInspectorDrawer';
@@ -141,6 +142,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const [isAiControlRoomOpen, setIsAiControlRoomOpen] = useState(false);
   const [isPianoOpen, setIsPianoOpen] = useState(false);
   const [isSoulFlowOpen, setIsSoulFlowOpen] = useState(false);
+  const [isVoiceBarOpen, setIsVoiceBarOpen] = useState(false);
 
   // Drawers
   const [isStudioIntelligenceOpen, setIsStudioIntelligenceOpen] = useState(false);
@@ -260,6 +262,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       if (detail === 'projects' || detail === 'save') setIsProjectMenuOpen(true);
       if (detail === 'piano' || detail === 'keyboard') setIsPianoOpen((prev) => !prev);
       if (detail === 'soulflow' || detail === 'pipeline') setIsSoulFlowOpen((prev) => !prev);
+      if (detail === 'voice' || detail === 'command') setIsVoiceBarOpen((prev) => !prev);
       if (detail === 'capture' || detail === 'performance') setIsInstrumentOpen((prev) => !prev);
 
       if (detail === 'proposal' || detail === 'realization' || (typeof detail === 'object' && detail?.type === 'realization')) {
@@ -400,7 +403,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
    * happened, and an action with no target says so.
    */
   const handleVoiceCommand = useCallback(
-    (result: VoiceCommandResult): { ok: boolean; message: string } => {
+    async (result: VoiceCommandResult): Promise<{ ok: boolean; message: string }> => {
       const target =
         tracks.find((t) => t.id === selectionContext.selectedTrackId) || tracks[0] || null;
       const needsTrack = () =>
@@ -464,6 +467,38 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
             message: `Heard a request for a ${result.payload?.targetInstrument || 'sound'}. Choosing sounds is in the channel workstation — this command cannot do it yet.`,
           };
 
+        case 'REASONING_FALLTHROUGH': {
+          // Clause III.5. This is where the parser used to stop: the old
+          // UNKNOWN branch returned "no command matches it" and the sentence
+          // was gone. Creative direction is most of what gets said out loud in
+          // a studio, and none of it looks like `text.includes('nudge left')`.
+          //
+          // The Native Studio Brain answers with no network and no API key, so
+          // this works in the room the platform is actually used in rather than
+          // only where a model endpoint is reachable.
+          const spoken = result.transcript || '';
+          try {
+            const answer = await queryStudioIntelligence(
+              spoken,
+              loadAiConfig(),
+              dawState,
+              tracks,
+              activeWorkspace,
+              target
+            );
+            return { ok: true, message: answer.content };
+          } catch (err) {
+            // Said plainly rather than as "no command matches it", which
+            // described the parser's limits as if they were the sentence's.
+            return {
+              ok: false,
+              message: `Heard "${spoken}" and could not reach the co-producer to answer it: ${
+                err instanceof Error ? err.message : String(err)
+              }`,
+            };
+          }
+        }
+
         default:
           return { ok: false, message: result.feedbackText };
       }
@@ -481,6 +516,8 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       handleTogglePlay,
       handleToggleMic,
       setDawState,
+      activeWorkspace,
+      dawState,
     ]
   );
 
@@ -726,6 +763,17 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         * does the checking existed, with a passing test, and no file rendered
         * the bar that calls it.
         */}
+      {/* The command bar was imported here and rendered by no file, so
+          `handleVoiceCommand` -- the executor with a branch for every action --
+          was never called by anything. The same shape as the SoulFlow bar
+          above it, and the same fix. Language cannot stop being capped by the
+          parser while nothing can reach the parser. */}
+      {isVoiceBarOpen && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[min(720px,94vw)] rounded-2xl border border-slate-800 bg-slate-950/95 backdrop-blur p-3 shadow-2xl">
+          <VoiceCommandBar onExecuteCommand={handleVoiceCommand} />
+        </div>
+      )}
+
       {isSoulFlowOpen && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-40 w-[min(1100px,94vw)]">
           <SoulFlowOrchestratorBar

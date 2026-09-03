@@ -18,6 +18,7 @@ import { AudioEncoders } from '../src/lib/audioEncoders';
 import { signatureService } from '../src/lib/seedSignature';
 import { SoulFlowGovernor, SOULFLOW_STAGE_ORDER } from '../src/lib/soulFlowGovernor';
 import { SoundVaultSemanticMatcher } from '../src/lib/soundVaultSearch';
+import { parseVoiceCommand, needsReasoning } from '../src/audio/voiceCommands';
 import { barsToSeconds } from '../src/utils/musicMath';
 import { adoptFromRevision, newRevision, capTree, childrenOf, isBranchPoint, pathToRoot, depthOf, MAX_REVISIONS } from '../src/lib/revisionTree';
 import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../src/lib/relayGap';
@@ -584,6 +585,52 @@ async function runComprehensiveVerification() {
     const noTempo = barsToSeconds(2, 2, 0);
     check(Number.isFinite(noTempo.startSeconds) && Number.isFinite(noTempo.endSeconds), 'REGION',
       'A zero tempo does not produce Infinity');
+  }
+
+  console.log('\n--- 14. Language is not capped by the parser (III.5, III.6) ---');
+  {
+    const act = (t: string) => parseVoiceCommand(t).action;
+
+    // The five misfires measured against the parser before this rewrite. Each
+    // was a fragment of a command found inside an unrelated word.
+    check(act('make the vocal clearer') === 'REASONING_FALLTHROUGH', 'LANGUAGE',
+      'A compliment about the vocal no longer wipes the grid ("clearer" contains "clear")',
+      act('make the vocal clearer'));
+    check(act('make sure that is correct') === 'REASONING_FALLTHROUGH', 'LANGUAGE',
+      'Saying "correct" no longer toggles the microphone ("correct" contains "rec")',
+      act('make sure that is correct'));
+    check(act('make that transition feel cinematic') === 'REASONING_FALLTHROUGH', 'LANGUAGE',
+      'The seed\'s own example is no longer routed to a hi-hat swap ("that" contains "hat")',
+      act('make that transition feel cinematic'));
+    check(act('start recording') === 'TOGGLE_REC', 'LANGUAGE',
+      'Asking to record records, instead of starting playback because "start" was tested first',
+      act('start recording'));
+    check(act('fast forward to the drop') === 'REASONING_FALLTHROUGH', 'LANGUAGE',
+      'A phrase about the arrangement is not a pattern nudge', act('fast forward to the drop'));
+
+    // The direct commands still have to work.
+    const direct: [string, string][] = [
+      ['clone bar 1', 'CLONE_BAR_1'], ['nudge left', 'NUDGE_LEFT'], ['nudge right', 'NUDGE_RIGHT'],
+      ['invert', 'INVERT_PATTERN'], ['clear the grid', 'CLEAR_ALL'], ['play', 'TOGGLE_PLAY'],
+      ['record', 'TOGGLE_REC'], ['faster', 'CHANGE_BPM'], ['slow down', 'CHANGE_BPM'],
+      ['replace the snare', 'REPLACE_SOUND_QUERY'],
+    ];
+    const broken = direct.filter(([t, want]) => act(t) !== want).map(([t]) => t);
+    check(broken.length === 0, 'LANGUAGE',
+      'Every direct command still fires after the rewrite', broken.join(', '));
+
+    // III.6 itself: nothing is terminal.
+    const creative = [
+      'make that transition feel cinematic', 'give the chorus more air',
+      'the vocal needs to sit further back', 'can you make it less busy',
+      'put a little more swing on the hats', 'zzz qqq',
+    ];
+    const died = creative.filter((t) => !needsReasoning(parseVoiceCommand(t)));
+    check(died.length === 0, 'LANGUAGE',
+      'III.6: no sentence ends at the parser -- every non-command is carried onward',
+      died.join(', '));
+    check(creative.every((t) => parseVoiceCommand(t).transcript === t), 'LANGUAGE',
+      'The transcript is carried unchanged, so the reasoning layer reads what was said');
   }
 
   console.log('\n========================================================================');
