@@ -64,6 +64,13 @@ export interface ProjectSnapshot {
    * which is correct: it has none, rather than having lost some.
    */
   relayGaps?: unknown[];
+  /**
+   * The contract the creator set. Added after v1 shipped; an older snapshot
+   * lacks them and loads with the contract's long-standing defaults, which is
+   * different from a creator who chose to hold nothing.
+   */
+  intentPreserve?: unknown[];
+  intentStrictness?: unknown;
   detectionSettings: unknown;
   activeWorkspace: string;
   /** Added after v1 shipped; older snapshots simply lack them. */

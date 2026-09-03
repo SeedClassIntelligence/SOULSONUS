@@ -85,6 +85,11 @@ import { vocalRecorder } from '../audio/vocalRecorder';
 import { interpretPass, type Interpretation } from '../lib/interpretation';
 import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../lib/relayGap';
 import {
+  DEFAULT_PRESERVE,
+  type PreservableProperty,
+  type Strictness,
+} from '../lib/intentPolicy';
+import {
   newRevision,
   capTree,
   revisionById,
@@ -560,6 +565,11 @@ export interface StudioSessionState {
   decisionRecords: GenerationDecisionRecord[];
   /** What the creator heard, when it was not what came back. Amendment B. */
   relayGaps: RelayGapRecord[];
+  /** Clause C.4 / Step 3b: the contract the creator asked for. */
+  intentPreserve: PreservableProperty[];
+  setIntentPreserve: (next: PreservableProperty[]) => void;
+  intentStrictness: Strictness;
+  setIntentStrictness: (next: Strictness) => void;
   /** Every committed state, each naming the one it came from. Clause XI.4. */
   revisions: Revision[];
   currentRevisionId: string | null;
@@ -2806,6 +2816,17 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const [relayGaps, setRelayGaps] = useState<RelayGapRecord[]>([]);
 
   /**
+   * What the creator will not let a realization change, and how hard.
+   *
+   * Held here rather than in the panel because it governs every realization
+   * request the session makes, not one screen's local state, and because it
+   * belongs in the project snapshot -- a preserve set that reset on reload
+   * would be a decision the creator made and the studio forgot.
+   */
+  const [intentPreserve, setIntentPreserve] = useState<PreservableProperty[]>(DEFAULT_PRESERVE);
+  const [intentStrictness, setIntentStrictness] = useState<Strictness>('close');
+
+  /**
    * Records that a candidate was rejected, and what the creator heard instead.
    *
    * Rejecting used to run `setIsCandidateDrawerOpen(false)` and nothing else --
@@ -4776,6 +4797,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       lineageRecords,
       decisionRecords,
       relayGaps,
+      intentPreserve,
+      intentStrictness,
       detectionSettings,
       activeWorkspace,
       editorPrefs,
@@ -4810,7 +4833,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     [
       dawState, tracks, sections, lyricSections, masteringChain, masterCandidates,
       activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
-      seedRecords, lineageRecords, decisionRecords, relayGaps, detectionSettings, activeWorkspace,
+      seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, detectionSettings, activeWorkspace,
       editorPrefs, writeRoomDraft, audioAssets,
       vocalState.audioBlob, vocalState.duration, vocalState.waveformData,
     ]
@@ -4872,6 +4895,11 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     // Absent on a snapshot saved before gaps existed. That project has none,
     // which is different from having lost some, so it loads as empty.
     setRelayGaps((snap.relayGaps as RelayGapRecord[] | undefined) ?? []);
+    // Absent on a snapshot saved before the creator could set these, which is
+    // different from a creator who chose to hold nothing -- so it falls back
+    // to the contract's long-standing four rather than to an empty set.
+    setIntentPreserve((snap.intentPreserve as PreservableProperty[] | undefined) ?? DEFAULT_PRESERVE);
+    setIntentStrictness((snap.intentStrictness as Strictness | undefined) ?? 'close');
     setDetectionSettings((prev) => ({ ...prev, ...(snap.detectionSettings as object), enabled: false, micConnected: false }));
     setActiveWorkspace(snap.activeWorkspace as WorkspaceTab);
     // Older snapshots predate these, so fall back rather than clobber defaults.
@@ -4947,7 +4975,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [
     isHydrating, tracks, sections, lyricSections, masteringChain, masterCandidates,
     activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
-    seedRecords, lineageRecords, decisionRecords, relayGaps, detectionSettings, activeWorkspace,
+    seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, detectionSettings, activeWorkspace,
     editorPrefs, writeRoomDraft, dawState, vocalState.audioBlob,
   ]);
 
@@ -5009,6 +5037,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     setLineageRecords([]);
     setDecisionRecords([]);
     setRelayGaps([]);
+    setIntentPreserve(DEFAULT_PRESERVE);
+    setIntentStrictness('close');
     setRevisions([]);
     setCurrentRevisionId(null);
     currentRevisionIdRef.current = null;
@@ -5349,6 +5379,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       lineageRecords,
       decisionRecords,
       relayGaps,
+      intentPreserve,
+      setIntentPreserve,
+      intentStrictness,
+      setIntentStrictness,
       revisions,
       currentRevisionId,
       handleJumpToRevision,
@@ -5557,6 +5591,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       lineageRecords,
       decisionRecords,
       relayGaps,
+      intentPreserve,
+      setIntentPreserve,
+      intentStrictness,
+      setIntentStrictness,
       revisions,
       currentRevisionId,
       handleJumpToRevision,

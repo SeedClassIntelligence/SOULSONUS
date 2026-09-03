@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { WorkspaceNav } from './components/WorkspaceNav';
 import { StudioCanvas } from './components/StudioCanvas';
 import { barsToSeconds } from './utils/musicMath';
+import { buildIntentPolicy, roleKeyFor } from './lib/intentPolicy';
 import { queryStudioIntelligence, loadAiConfig } from './lib/studioIntelligenceService';
 import { StudioMasterStatusBar } from './components/StudioMasterStatusBar';
 import { FocusModeView } from './components/FocusModeView';
@@ -97,6 +98,8 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     handleStopCapture,
     creatorSignature,
     editorPrefs,
+    intentPreserve,
+    intentStrictness,
     handleSaveCreatorSignature,
     isInstrumentOpen,
     setIsInstrumentOpen,
@@ -297,10 +300,23 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
             ? barsToSeconds(bars[0], bars[1], dawState.bpm || 110)
             : null;
 
+          // Step 3b. The creator's preserve set and strictness reach the
+          // contract that judges the candidate. Both existed as concepts and
+          // neither was reachable: lockedProperties was a local `let`, and
+          // thresholdPolicy was settable by a caller that never set it.
+          const role = targetTrack.instrument || 'kick';
+          const intentPolicy = buildIntentPolicy(
+            intentPreserve,
+            intentStrictness,
+            roleKeyFor(role)
+          );
+
           RealizationRouter.createCandidate({
             sourceTrack: targetTrack,
-            targetRole: targetTrack.instrument || 'kick',
+            targetRole: role,
             route,
+            preserve: intentPolicy.lockedProperties,
+            thresholdPolicy: intentPolicy.thresholdPolicy,
             prompt: typeof detail === 'object' ? detail?.prompt : `Realize ${targetTrack.name} with ${route}`,
             projectVersion: dawState.projectVersion || 'v1.0.0',
             creatorSignature,
@@ -351,7 +367,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     // realization sent the whole take with 'all' still closed over -- the
     // scope line in the drawer said "the whole take" no matter what was
     // selected. Every unit test passed; only driving the browser found it.
-  }, [handleOpenProposal, tracks, dawState.projectVersion, dawState.bpm, editorPrefs.activeBarView, creatorSignature, setIsInspectorOpen, setIsCalibrationOpen, setIsVisualizationOpen]);
+  }, [handleOpenProposal, tracks, dawState.projectVersion, dawState.bpm, editorPrefs.activeBarView, intentPreserve, intentStrictness, creatorSignature, setIsInspectorOpen, setIsCalibrationOpen, setIsVisualizationOpen]);
 
   // Play / Stop / Mic Handlers
   const handleTogglePlay = useCallback(async () => {

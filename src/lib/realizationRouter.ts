@@ -53,6 +53,15 @@ export interface RealizationRequest {
   projectVersion?: string;
   thresholdPolicy?: IntentThresholdPolicy;
   /**
+   * The properties the contract is to hold, as the creator set them.
+   *
+   * This was a `let` below, identical for every route, every target and every
+   * creator, and unreachable from outside this file -- so the contract was
+   * enforced and the person it was protecting had no say in what it protected.
+   * Omitted means the four it has always held.
+   */
+  preserve?: (keyof RealizationScoreMap)[];
+  /**
    * ACE_REPAINT's region, in seconds from the start of the source. Omit both
    * to repaint the whole track -- createCandidate measures the actual
    * decoded audio for its real length rather than trust a metadata field
@@ -146,7 +155,12 @@ export class RealizationRouter {
     let backend: RealizerBackend = 'SoulSonusPerformanceTransfer';
     let modelVersion = 'v1.5.0-ACERealizer-PyTorch';
     let mutableProperties: string[] = ['timbre', 'harmonic_profile', 'acoustic_envelope'];
-    let lockedProperties: (keyof RealizationScoreMap)[] = ['rhythm', 'timing', 'pitchContour', 'articulation'];
+    // The creator's preserve set when they have set one, and the four the
+    // contract has always held when they have not. An empty array is a real
+    // choice -- hold nothing -- and is not treated as "unset".
+    let lockedProperties: (keyof RealizationScoreMap)[] = req.preserve
+      ? [...req.preserve]
+      : ['rhythm', 'timing', 'pitchContour', 'articulation'];
 
     // Null until something is actually measured. Nothing here fills it in to
     // keep a type happy -- that is exactly how the fabricated scores got in.

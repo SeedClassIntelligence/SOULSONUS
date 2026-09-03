@@ -17,9 +17,11 @@ import { vocalDspProcessor } from '../src/audio/vocalDspProcessor';
 import { AudioEncoders } from '../src/lib/audioEncoders';
 import { signatureService } from '../src/lib/seedSignature';
 import { SoulFlowGovernor, SOULFLOW_STAGE_ORDER } from '../src/lib/soulFlowGovernor';
+import { evaluateRealizationContract } from '../src/lib/realizationVerifier';
 import { SoundVaultSemanticMatcher } from '../src/lib/soundVaultSearch';
 import { readFileSync } from 'fs';
 import { deriveCreativeIntent, intentCoverage } from '../src/lib/creativeIntent';
+import { buildIntentPolicy, describeUnlocked, roleKeyFor, DEFAULT_PRESERVE } from '../src/lib/intentPolicy';
 import { parseVoiceCommand, needsReasoning } from '../src/audio/voiceCommands';
 import { barsToSeconds } from '../src/utils/musicMath';
 import { adoptFromRevision, newRevision, capTree, childrenOf, isBranchPoint, pathToRoot, depthOf, MAX_REVISIONS } from '../src/lib/revisionTree';
@@ -707,6 +709,82 @@ async function runComprehensiveVerification() {
     const everyField = JSON.stringify(full);
     check(!/neutral|moderate energy|unknown genre|default/i.test(everyField), 'INTENT',
       'No field is populated with a placeholder word standing in for a measurement');
+  }
+
+  console.log('\n--- 17. The creator sets the contract (Step 3b, C.4) ---');
+  {
+    const full = buildIntentPolicy(DEFAULT_PRESERVE, 'close', 'kick');
+    check(full.lockedProperties.length === 4 && full.unlocked.length === 0, 'CONTRACT',
+      'The default holds the four properties the contract has always held');
+    check(full.thresholdPolicy.rhythm === 0.98 && full.thresholdPolicy.pitchContour === 0.50,
+      'CONTRACT',
+      '"close" is the platform\'s own measured thresholds for the role, unchanged',
+      JSON.stringify(full.thresholdPolicy));
+
+    const vocal = buildIntentPolicy(DEFAULT_PRESERVE, 'close', 'vocal');
+    check(vocal.thresholdPolicy.pitchContour === 0.96, 'CONTRACT',
+      'A vocal is not held to a kick\'s pitch contour -- the role tuning survives');
+
+    const tight = buildIntentPolicy(DEFAULT_PRESERVE, 'as_performed', 'melody');
+    const loose = buildIntentPolicy(DEFAULT_PRESERVE, 'loose', 'melody');
+    check(tight.thresholdPolicy.timing > full.thresholdPolicy.timing - 1 &&
+          loose.thresholdPolicy.timing < tight.thresholdPolicy.timing, 'CONTRACT',
+      'Strictness moves the bar in the direction it says',
+      `as_performed ${tight.thresholdPolicy.timing} > loose ${loose.thresholdPolicy.timing}`);
+    const all = [tight, loose, full].flatMap((p) => Object.values(p.thresholdPolicy));
+    check(all.every((v) => v > 0 && v < 1), 'CONTRACT',
+      'No strictness setting produces a threshold outside 0..1', `min ${Math.min(...all)} max ${Math.max(...all)}`);
+
+    // Unlocking must actually stop the contract checking, or the control is
+    // decoration on a decision that was never handed over.
+    const noTiming = buildIntentPolicy(['rhythm', 'pitchContour', 'articulation'], 'close', 'kick');
+    check(!noTiming.lockedProperties.includes('timing'), 'CONTRACT',
+      'A property the creator unlocked leaves the set the contract scores');
+    check(noTiming.unlocked.join() === 'timing', 'CONTRACT',
+      'What was given up is named, not merely absent');
+    check(/timing is not being checked/.test(describeUnlocked(noTiming.unlocked) || ''), 'CONTRACT',
+      'The consequence is stated in a sentence, not implied by a greyed-out chip',
+      describeUnlocked(noTiming.unlocked) || '');
+    check(describeUnlocked([]) === null, 'CONTRACT',
+      'An intact contract renders no warning at all');
+
+    const none = buildIntentPolicy([], 'close', 'kick');
+    check(none.lockedProperties.length === 0 && none.unlocked.length === 4, 'CONTRACT',
+      'Holding nothing is a real choice and is not silently treated as unset');
+
+    check(roleKeyFor('808_bass') === 'bass' && roleKeyFor('lead_vocal') === 'vocal' &&
+          roleKeyFor('studio_drum_kit') === 'melody', 'CONTRACT',
+      'The role key selects the measured threshold row');
+
+    // The decisive one: a preserve set is only real if it changes what the
+    // contract refuses. Same candidate, same bad timing score, two policies.
+    const badTiming = { rhythm: 0.99, timing: 0.40, pitchContour: 0.99, articulation: 0.99 };
+
+    const held = buildIntentPolicy(DEFAULT_PRESERVE, 'close', 'kick');
+    const refused = evaluateRealizationContract(
+      'ast_x', held.lockedProperties, ['timbre'], badTiming, held.thresholdPolicy, 'ACERealizer'
+    );
+    check(refused.candidate.passedIntentContract === false, 'CONTRACT',
+      'With timing held, a candidate that wrecks the timing is refused',
+      `violations: ${refused.candidate.violations.map((v) => v.property).join(', ')}`);
+
+    const allowed = evaluateRealizationContract(
+      'ast_x', noTiming.lockedProperties, ['timbre'], badTiming, noTiming.thresholdPolicy, 'ACERealizer'
+    );
+    check(allowed.candidate.passedIntentContract === true, 'CONTRACT',
+      'With timing unlocked, the identical candidate passes -- the creator\'s choice is the thing deciding',
+      `violations: ${allowed.candidate.violations.length}`);
+    check(!allowed.candidate.preservedProperties.includes('timing'), 'CONTRACT',
+      'An unlocked property is not reported as preserved either -- it was not checked, so nothing is claimed about it');
+    check(refused.candidate.preservedProperties.includes('rhythm'), 'CONTRACT',
+      'The properties still held are still scored and still reported');
+
+    // Order stability: two identical policies must compare equal however the
+    // creator toggled their way to them.
+    const a = buildIntentPolicy(['articulation', 'rhythm'], 'close', 'kick');
+    const bb = buildIntentPolicy(['rhythm', 'articulation'], 'close', 'kick');
+    check(JSON.stringify(a) === JSON.stringify(bb), 'CONTRACT',
+      'Toggle order does not change the resulting contract');
   }
 
   console.log('\n========================================================================');

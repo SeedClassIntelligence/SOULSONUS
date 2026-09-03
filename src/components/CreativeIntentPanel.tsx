@@ -3,6 +3,14 @@ import { Target, ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { computeStyleProfile } from '../lib/styleProfile';
 import { deriveCreativeIntent, intentCoverage } from '../lib/creativeIntent';
+import {
+  DEFAULT_PRESERVE,
+  STRICTNESS_LABEL,
+  STRICTNESS_MEANING,
+  describeUnlocked,
+  type PreservableProperty,
+  type Strictness,
+} from '../lib/intentPolicy';
 
 /**
  * The middle, on screen.
@@ -12,10 +20,17 @@ import { deriveCreativeIntent, intentCoverage } from '../lib/creativeIntent';
  * collapsible rather than a new room, because A.8 also says the intent model
  * should not consume permanent screen real estate.
  *
- * It reads and changes nothing. Phase 3a of the retrofit plan is deliberately
- * read-only: preserve and transform become editable in 3b, and wiring them to
- * `RealizationRequest.thresholdPolicy` before they are proven on screen would
- * be building the second half first.
+ * Phase 3b makes preserve and strictness editable, and they now reach the
+ * contract that judges every candidate. Before this they were concepts with no
+ * way in: `lockedProperties` was a local `let` in the router, the same four for
+ * every route and every creator, and `RealizationRequest.thresholdPolicy` was
+ * settable by a caller that never set it.
+ *
+ * Unlocking is a real decision with a real consequence, and it is stated where
+ * it is made rather than discovered later: take timing out of the set and a
+ * candidate that mangles your timing will pass, because the contract was told
+ * to stop checking. Amendment E puts that call with the owner. It does not
+ * permit making it quietly.
  *
  * The part worth defending is what it does with what it does not know. Every
  * unmeasured field is listed by name, with the reason. An intent model that
@@ -41,6 +56,10 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
     decisionRecords,
     creatorName,
     pitchResponse,
+    intentPreserve,
+    setIntentPreserve,
+    intentStrictness,
+    setIntentStrictness,
   } = useStudioSession();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -70,6 +89,22 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
   ]);
 
   const { known, total } = intentCoverage(intent);
+  const unlocked = DEFAULT_PRESERVE.filter((p) => !intentPreserve.includes(p));
+  const unlockedWarning = describeUnlocked(unlocked);
+
+  const togglePreserve = (prop: PreservableProperty) =>
+    setIntentPreserve(
+      intentPreserve.includes(prop)
+        ? intentPreserve.filter((p) => p !== prop)
+        : DEFAULT_PRESERVE.filter((p) => intentPreserve.includes(p) || p === prop)
+    );
+
+  const PROP_LABEL: Record<PreservableProperty, string> = {
+    rhythm: 'rhythm',
+    timing: 'timing',
+    pitchContour: 'pitch contour',
+    articulation: 'articulation',
+  };
 
   const Row: React.FC<{ label: string; icon?: React.ReactNode; value: { reads: string; from: string } | null; missing?: string }> = ({
     label,
@@ -123,11 +158,76 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
         <div data-testid="creative-intent-body">
           <Row label="Groove" value={intent.groove} missing={reasonFor('groove')} />
           <Row label="Energy" value={intent.energy} missing={reasonFor('energy')} />
-          <Row
-            label="Preserve"
-            icon={<Lock className="w-3 h-3 text-emerald-400" />}
-            value={intent.preserve}
-          />
+          {/* Editable. Every property the contract can refuse a candidate
+              over, and the creator's say in which of them it holds. */}
+          <div className="px-3 py-2 border-b border-slate-800/70">
+            <div className="flex items-center gap-2">
+              <Lock className="w-3 h-3 text-emerald-400" />
+              <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-500">
+                Preserve
+              </span>
+              <span className="text-[9px] font-mono text-slate-600">
+                the contract refuses a candidate that breaks these
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {DEFAULT_PRESERVE.map((prop) => {
+                const held = intentPreserve.includes(prop);
+                return (
+                  <button
+                    key={prop}
+                    type="button"
+                    data-testid={`preserve-${prop}`}
+                    onClick={() => togglePreserve(prop)}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition cursor-pointer ${
+                      held
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                        : 'bg-slate-900 text-slate-500 border-slate-800 line-through'
+                    }`}
+                    title={held ? `Held. Click to stop checking ${PROP_LABEL[prop]}.` : `Not checked. Click to hold ${PROP_LABEL[prop]}.`}
+                  >
+                    {PROP_LABEL[prop]}
+                  </button>
+                );
+              })}
+            </div>
+            {unlockedWarning && (
+              <p
+                data-testid="unlocked-warning"
+                className="text-[10px] font-mono text-amber-300 mt-1.5 leading-snug"
+              >
+                {unlockedWarning}
+              </p>
+            )}
+          </div>
+
+          {/* How hard the held properties are held. */}
+          <div className="px-3 py-2 border-b border-slate-800/70">
+            <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-500">
+              Strictness
+            </span>
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {(['as_performed', 'close', 'loose'] as Strictness[]).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  data-testid={`strictness-${s}`}
+                  onClick={() => setIntentStrictness(s)}
+                  className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition cursor-pointer ${
+                    intentStrictness === s
+                      ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
+                      : 'bg-slate-900 text-slate-500 border-slate-800'
+                  }`}
+                  title={STRICTNESS_MEANING[s]}
+                >
+                  {STRICTNESS_LABEL[s]}
+                </button>
+              ))}
+            </div>
+            <p className="text-[9px] font-mono text-slate-500 mt-1">
+              {STRICTNESS_MEANING[intentStrictness]}
+            </p>
+          </div>
           <Row
             label="Transform"
             icon={<Unlock className="w-3 h-3 text-amber-400" />}
@@ -143,9 +243,8 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
           <Row label="Genre grammar" value={null} missing={reasonFor('genre')} />
 
           <p className="px-3 py-2 bg-slate-900/40 border-t border-slate-800 text-[9px] font-mono text-slate-500 leading-snug">
-            Read-only. This is what the studio currently knows you are going for, from
-            measurements taken elsewhere — nothing here is inferred to fill a gap, and nothing
-            here changes a realization yet.
+            Preserve and strictness govern every realization this session asks for. The
+            measured rows above are read-only and nothing in them is inferred to fill a gap.
           </p>
         </div>
       )}
