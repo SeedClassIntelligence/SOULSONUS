@@ -15,10 +15,19 @@
  * - ACE_STEM_EXTRACTION: Isolate one described element of a performance (task=extract). The Studio
  *   Manager's route -- "have the session work on just the bass" without inventing a new part from
  *   nothing.
- * - ACE_REPAINT: Selective region repainting (task=repaint). Declared, not yet implemented --
- *   RealizationRequest has no region field yet.
- * - ACE_GENERATIVE_EXTENSION: Style continuation (task=complete). Declared, not yet implemented --
- *   RealizationRequest has no target-duration field yet.
+ * - ACE_REPAINT: Selective region repainting (task=repaint). Implemented. Takes the region as
+ *   repaintStartSeconds/repaintEndSeconds, or the whole take when no region is given, measured
+ *   from the decoded audio rather than a metadata field. This comment claimed the route was
+ *   unimplemented and that RealizationRequest had no region field, and both had stopped being
+ *   true: the fields were added and the comment was left behind. The missing half was never the
+ *   route, it was that nothing converted the creator's bar selection into the seconds the route
+ *   takes, so every request covered the whole take however the bar selector was set. That
+ *   conversion is `barsToSeconds` in utils/musicMath, and clause XI.6 -- "only change bar eight"
+ *   -- is what it serves.
+ * - ACE_GENERATIVE_EXTENSION: Style continuation (task=complete). Genuinely unimplemented:
+ *   RealizationRequest carries no target duration, and this route is marked UNREALIZED rather
+ *   than falling through to hand back the untouched source and call it an extension. Making a
+ *   song longer is not a region-scoped edit, so it is not what XI.6 asks for.
  */
 
 import {
@@ -51,6 +60,15 @@ export interface RealizationRequest {
    */
   repaintStartSeconds?: number;
   repaintEndSeconds?: number;
+  /**
+   * The same region as the creator said it: 1-indexed bars, inclusive.
+   *
+   * Carried alongside the seconds rather than instead of them, because the
+   * seconds are what ACE takes and the bars are what the creator meant. A
+   * candidate that came back can then say "only bar 8" instead of
+   * "14.18s to 16.36s", which is not a sentence anyone said.
+   */
+  regionBars?: [number, number];
   /**
    * The creator's sealed signature, when they have one.
    *
@@ -415,6 +433,7 @@ export class RealizationRouter {
       audioArtifactUrl,
       realizationRoute: req.route,
       targetRole: req.targetRole,
+      ...(req.regionBars ? { regionBars: req.regionBars } : {}),
       prompt: req.prompt,
       sourceProjectVersionId: projectVersion,
       preservedProperties,

@@ -30,6 +30,35 @@ export const songTicks = (bars: number) => Math.max(1, Math.round(bars)) * TICKS
 /** Total sixteenth-note steps in a song of `bars` bars. */
 export const songSteps = (bars: number) => Math.max(1, Math.round(bars)) * 16;
 
+/**
+ * A bar range as wall-clock seconds, which is the only unit the realizer takes.
+ *
+ * This is the conversion clause XI.6 was missing. "Only change bar eight" is a
+ * musical statement; ACE_REPAINT's region is `repaintStartSeconds` and
+ * `repaintEndSeconds`. The route has accepted a region for a while and the
+ * creator has been able to select a bar for a while, and nothing joined the
+ * two, so the request that went out always covered the whole take.
+ *
+ * Bars are 1-indexed, the way they are spoken and the way the bar selector
+ * shows them: bar 8 is `barsToSeconds(8, 8, bpm)`. The end is the downbeat of
+ * the following bar, so a single-bar region is one bar long rather than zero.
+ */
+export function barsToSeconds(
+  startBar: number,
+  endBar: number,
+  bpm: number,
+  beatsPerBar = 4
+): { startSeconds: number; endSeconds: number } {
+  const safeBpm = Math.max(1, bpm);
+  const a = Math.max(1, Math.floor(startBar));
+  const b = Math.max(a, Math.floor(endBar));
+  const secondsPerBar = (beatsPerBar * 60) / safeBpm;
+  return {
+    startSeconds: (a - 1) * secondsPerBar,
+    endSeconds: b * secondsPerBar,
+  };
+}
+
 export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
 
 /**

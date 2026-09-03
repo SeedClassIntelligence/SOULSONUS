@@ -18,6 +18,7 @@ import { AudioEncoders } from '../src/lib/audioEncoders';
 import { signatureService } from '../src/lib/seedSignature';
 import { SoulFlowGovernor, SOULFLOW_STAGE_ORDER } from '../src/lib/soulFlowGovernor';
 import { SoundVaultSemanticMatcher } from '../src/lib/soundVaultSearch';
+import { barsToSeconds } from '../src/utils/musicMath';
 import { adoptFromRevision, newRevision, capTree, childrenOf, isBranchPoint, pathToRoot, depthOf, MAX_REVISIONS } from '../src/lib/revisionTree';
 import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../src/lib/relayGap';
 import * as relayGapModule from '../src/lib/relayGap';
@@ -546,6 +547,43 @@ async function runComprehensiveVerification() {
       (noClips.tracks[0].audioClips || []).length === 1, 'RECOMBINE',
       'A field the source revision never had does not erase the one here'
     );
+  }
+
+  console.log('\n--- 13. Region-scoped edits (XI.6: "only change bar eight") ---');
+  {
+    // At 120 BPM in 4/4 a bar is exactly 2 seconds, so the arithmetic is
+    // checkable by hand rather than by trusting the function under test.
+    const b8 = barsToSeconds(8, 8, 120);
+    check(b8.startSeconds === 14 && b8.endSeconds === 16, 'REGION',
+      'Bar 8 at 120 BPM is 14s to 16s', `${b8.startSeconds}-${b8.endSeconds}`);
+    check(b8.endSeconds - b8.startSeconds === 2, 'REGION',
+      'A single bar is one bar long, not zero -- the end is the next downbeat');
+
+    const b1 = barsToSeconds(1, 1, 120);
+    check(b1.startSeconds === 0, 'REGION',
+      'Bars are 1-indexed the way they are spoken: bar 1 starts at zero');
+
+    const span = barsToSeconds(5, 8, 120);
+    check(span.startSeconds === 8 && span.endSeconds === 16, 'REGION',
+      'A range covers from the first downbeat to the end of the last bar');
+
+    const slow = barsToSeconds(8, 8, 60);
+    check(slow.startSeconds === 28 && slow.endSeconds === 32, 'REGION',
+      'The same bar at half the tempo is twice as far in', `${slow.startSeconds}-${slow.endSeconds}`);
+
+    const three = barsToSeconds(2, 2, 120, 3);
+    check(three.startSeconds === 1.5 && three.endSeconds === 3, 'REGION',
+      'Beats per bar is honoured, so 3/4 is not silently treated as 4/4');
+
+    const reversed = barsToSeconds(8, 3, 120);
+    check(reversed.startSeconds === 14 && reversed.endSeconds === 16, 'REGION',
+      'A backwards range does not produce a negative region');
+    const zero = barsToSeconds(0, 0, 120);
+    check(zero.startSeconds === 0 && zero.endSeconds === 2, 'REGION',
+      'Bar zero is clamped to the first bar rather than producing a negative start');
+    const noTempo = barsToSeconds(2, 2, 0);
+    check(Number.isFinite(noTempo.startSeconds) && Number.isFinite(noTempo.endSeconds), 'REGION',
+      'A zero tempo does not produce Infinity');
   }
 
   console.log('\n========================================================================');

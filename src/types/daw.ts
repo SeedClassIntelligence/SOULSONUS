@@ -1098,6 +1098,12 @@ export interface GenerationCandidate {
   audioArtifactUrl?: string;
   realizationRoute?: RealizationRoute;
   targetRole?: string;
+  /**
+   * The bars this candidate was scoped to, if it was scoped. Absent means the
+   * whole take. Clause XI.6 -- shown to the creator in the bars they said,
+   * not in the seconds the realizer takes.
+   */
+  regionBars?: [number, number];
   prompt?: string;
   sourceProjectVersionId: string;
   committedProjectVersionId?: string;

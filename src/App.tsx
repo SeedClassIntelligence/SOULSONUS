@@ -3,6 +3,7 @@ import { StudioSessionProvider, useStudioSession } from './app/StudioSessionCont
 import { Header } from './components/Header';
 import { WorkspaceNav } from './components/WorkspaceNav';
 import { StudioCanvas } from './components/StudioCanvas';
+import { barsToSeconds } from './utils/musicMath';
 import { StudioMasterStatusBar } from './components/StudioMasterStatusBar';
 import { FocusModeView } from './components/FocusModeView';
 import { QuickInspectorDrawer } from './components/inspectors/QuickInspectorDrawer';
@@ -94,6 +95,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     handleClearTrack,
     handleStopCapture,
     creatorSignature,
+    editorPrefs,
     handleSaveCreatorSignature,
     isInstrumentOpen,
     setIsInstrumentOpen,
@@ -270,6 +272,28 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
           : 'INSTRUMENT';
         if (targetTrack) {
           setIsRealizationPending(true);
+
+          // "Only change bar eight." Clause XI.6.
+          //
+          // The repaint route has taken a region in seconds for a while, and
+          // the bar selector above the grid has let the creator pick a bar for
+          // a while. Nothing joined them, so every request that went out
+          // covered the whole take no matter what was selected. An explicit
+          // range in the event wins; otherwise the bar the creator is looking
+          // at is the bar they mean.
+          const explicitBars =
+            typeof detail === 'object' && Array.isArray(detail?.bars) ? detail.bars : null;
+          const viewedBar =
+            typeof editorPrefs.activeBarView === 'number' ? editorPrefs.activeBarView : null;
+          const bars: [number, number] | null = explicitBars
+            ? [Number(explicitBars[0]), Number(explicitBars[1] ?? explicitBars[0])]
+            : viewedBar
+              ? [viewedBar, viewedBar]
+              : null;
+          const region = bars
+            ? barsToSeconds(bars[0], bars[1], dawState.bpm || 110)
+            : null;
+
           RealizationRouter.createCandidate({
             sourceTrack: targetTrack,
             targetRole: targetTrack.instrument || 'kick',
@@ -277,6 +301,13 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
             prompt: typeof detail === 'object' ? detail?.prompt : `Realize ${targetTrack.name} with ${route}`,
             projectVersion: dawState.projectVersion || 'v1.0.0',
             creatorSignature,
+            ...(region
+              ? {
+                  repaintStartSeconds: region.startSeconds,
+                  repaintEndSeconds: region.endSeconds,
+                  regionBars: bars as [number, number],
+                }
+              : {}),
           })
             .then((candidate) => {
               setActiveCandidate(candidate);
@@ -311,7 +342,13 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       window.removeEventListener('soulsonus:openDrawer', handleDrawerEvent);
       window.removeEventListener('soulsonus:openTour', handleTourEvent);
     };
-  }, [handleOpenProposal, tracks, dawState.projectVersion, creatorSignature, setIsInspectorOpen, setIsCalibrationOpen, setIsVisualizationOpen]);
+    // activeBarView and bpm are read by the realization branch above and must
+    // be in here. Without them the listener registered once at mount and kept
+    // the values it captured then, so selecting bar 3 and asking for a
+    // realization sent the whole take with 'all' still closed over -- the
+    // scope line in the drawer said "the whole take" no matter what was
+    // selected. Every unit test passed; only driving the browser found it.
+  }, [handleOpenProposal, tracks, dawState.projectVersion, dawState.bpm, editorPrefs.activeBarView, creatorSignature, setIsInspectorOpen, setIsCalibrationOpen, setIsVisualizationOpen]);
 
   // Play / Stop / Mic Handlers
   const handleTogglePlay = useCallback(async () => {

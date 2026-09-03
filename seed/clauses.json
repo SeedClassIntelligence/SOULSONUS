@@ -773,12 +773,21 @@
           "min": 1
         },
         {
+          "kind": "wired",
+          "pattern": "barsToSeconds",
+          "scope": [
+            "src"
+          ],
+          "minFiles": 2,
+          "note": "The clause is about a bar, and the route takes seconds. This is the conversion that joins them, and it must be used somewhere and not merely exist -- the route accepted a region for a long time while nothing ever fed it one."
+        },
+        {
           "kind": "forbidden",
-          "pattern": "not yet implemented",
+          "pattern": "RealizationRequest has no region field",
           "scope": [
             "src/lib/realizationRouter.ts"
           ],
-          "note": "ACE_REPAINT and ACE_GENERATIVE_EXTENSION are declared but self-documented as unimplemented."
+          "note": "The specific false claim this clause was failing on. It was a stale comment: the region fields had been added and the comment was left behind. The previous check here forbade the phrase 'not yet implemented' anywhere in the file, which also caught ACE_GENERATIVE_EXTENSION's comment -- and that one is true. Making a song longer is not a region-scoped edit, so an honest note about it should not hold this clause down. Narrowed only after the conversion above was built and the bars reached the request; the wired check is what now carries the weight this one was proxying for."
         }
       ]
     },

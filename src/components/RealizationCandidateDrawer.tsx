@@ -167,6 +167,31 @@ export const RealizationCandidateDrawer: React.FC<RealizationCandidateDrawerProp
           </div>
         </div>
 
+        {/* What this touches. Clause XI.6: a scoped edit says so, in the bars
+            the creator said, and an unscoped one says that too rather than
+            leaving them to assume. */}
+        <div
+          className={`mt-3 p-2.5 rounded-xl border text-[10px] font-mono ${
+            candidate.regionBars
+              ? 'bg-cyan-500/5 border-cyan-500/30 text-cyan-300'
+              : 'bg-slate-900/80 border-slate-800 text-slate-400'
+          }`}
+        >
+          <span className="font-bold">SCOPE: </span>
+          {candidate.regionBars ? (
+            candidate.regionBars[0] === candidate.regionBars[1] ? (
+              <>Bar {candidate.regionBars[0]} only. Everything outside it is left as performed.</>
+            ) : (
+              <>
+                Bars {candidate.regionBars[0]}-{candidate.regionBars[1]} only. Everything outside
+                them is left as performed.
+              </>
+            )
+          ) : (
+            <>The whole take. Select a bar above the grid to scope this to it.</>
+          )}
+        </div>
+
         {/* Side-by-Side Audio Audition Player */}
         <div className="mt-5 p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
