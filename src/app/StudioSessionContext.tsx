@@ -1921,7 +1921,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
               // back immediately, which contradicts the thing the creator had
               // just said by muting everything. The plan's own sentence -- the
               // created channel can be muted to respect the monitoring intent
-              // -- was the half I did not do.
+              // -- was the half left undone.
               mute: next.length > 0 && next.every((t) => t.mute),
               solo: false,
               volume: 0,

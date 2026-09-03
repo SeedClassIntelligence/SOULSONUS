@@ -83,10 +83,10 @@ export const UnifiedDeckBench: React.FC = () => {
    * Act on a reading, instead of only being shown one.
    *
    * The plan's Step 4 mockup ends in a row of choices -- "Realize as [808]
-   * [Electric Bass] ... [Keep as recorded]" -- and the panel I built stopped
-   * at the percentages, with `dismiss` as its only button. It ranked the
-   * options and gave the creator no way to take any of them, which makes it a
-   * readout rather than the decision the plan describes.
+   * [Electric Bass] ... [Keep as recorded]" -- and this panel stopped at the
+   * percentages, with `dismiss` as its only button. It ranked the options and
+   * gave the creator no way to take any of them, which makes it a readout
+   * rather than the decision the plan describes.
    *
    * The roles here come from the measurements rather than a fixed list, so
    * this is that row driven by what was actually heard.
@@ -461,8 +461,8 @@ export const UnifiedDeckBench: React.FC = () => {
             // Language reaches it now -- III.5's fallthrough carries anything
             // that is not a direct command to the co-producer. So this opens
             // the command bar, which has the microphone and that route behind
-            // it, instead of arming the classifier. The condition I wrote for
-            // enabling this was met two steps ago and I did not come back.
+            // it, instead of arming the classifier. The condition written
+            // into the note above was met two steps earlier and left unacted on.
             { id: 'SPEAK' as const, label: 'Speak', pending: false },
             { id: 'INSTRUMENT' as const, label: 'MIDI Keys', pending: false },
           ].map((t) => (

@@ -311,8 +311,8 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
     // entry, and no node in the revision tree. So applying a co-producer's mix
     // change could not be taken back, and the tree built in Step 5b had a hole
     // in it exactly where the plan says "Apply on a ChangeSet writes a new
-    // revision rather than overwriting". Found auditing my own work against
-    // the plan, one step after building the tree it bypassed.
+    // revision rather than overwriting", and this bypassed the tree one step
+    // after it was built.
     labelNextEdit(`Applied: ${option.title}`);
     labelNextRevisionOrigin('realization');
     updateTracksWithHistory((prev) =>
