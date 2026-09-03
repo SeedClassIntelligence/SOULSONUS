@@ -333,3 +333,53 @@ export function interpretPass(
     measured,
   };
 }
+
+
+/**
+ * Rebuilds readable events from notes already on a track.
+ *
+ * Amendment F.iv makes re-interpretation a permanent affordance on all
+ * captured material -- "not a prompt shown once at capture time" -- and until
+ * this existed it was exactly that prompt, offered after a pass and gone.
+ *
+ * The honest limitation, stated because it changes what the reading means: a
+ * stored note does not carry the percussive class the detector gave it. What
+ * it carries is the track it landed on, which is the system's own decision
+ * about what it was. So this reads the class from the channel rather than from
+ * the audio. Re-running the classifier over the recorded take would be a
+ * stronger answer and needs the audio, not the notes.
+ */
+export function eventsFromTrack(
+  track: { instrument: string; noteEvents?: NoteEventLike[] },
+  bpm: number
+): CaptureEvent[] {
+  const notes = track.noteEvents || [];
+  const percussive: Record<string, string> = {
+    kick: 'kick',
+    snare: 'snare',
+    hihat: 'hihat',
+    percussion: 'snare',
+  };
+  return notes.map((n) => {
+    const hz = 440 * Math.pow(2, (n.midiNote - 69) / 12);
+    const klass =
+      percussive[track.instrument] ??
+      (hz > 0 && hz < TONAL_SPLIT_HZ ? 'tonal_low' : 'tonal_high');
+    const isPerc = klass in { kick: 1, snare: 1, hihat: 1 };
+    return {
+      klass,
+      pitchHz: isPerc ? 0 : Math.round(hz * 10) / 10,
+      velocity: n.velocity,
+      confidence: n.provenance?.detectionConfidence ?? 0.7,
+      atSeconds: (n.startTick / 480) * (60 / Math.max(1, bpm)),
+      atMs: (n.startTick / 480) * (60000 / Math.max(1, bpm)),
+    } as unknown as CaptureEvent;
+  });
+}
+
+interface NoteEventLike {
+  midiNote: number;
+  velocity: number;
+  startTick: number;
+  provenance?: { detectionConfidence?: number };
+}

@@ -256,6 +256,66 @@ Still not built, and this step is **not complete** until they are:
   time". It is currently only a prompt shown once at capture time. The
   per-track SONUS button reaches realization, not re-interpretation.
 
+### Step 4 -- closed 2026-09-03, and what closing it turned up
+
+Both open items are built, and both are verified in the browser rather than
+by reading the code: `scripts/live-verification/test-51-timing-and-reread.cjs`
+records a take through the microphone, re-reads a channel, applies each mode
+and reads the result back out of session state -- 36 checks, three consecutive
+clean runs.
+
+**Timing options.** `lib/timingModes.ts` implements the three modes SRT-1 VII
+names. Where the mockup above says "Snap to 1/16" the seed says groove --
+"preserve microtiming while regularizing the beat" -- and the seed governs, so
+the third mode straightens the beat and displaces it by the creator's own
+measured pocket instead of hard-snapping the feel out of the take. The fourth
+mode the seed names, reinterpretation, is in the same row and opens
+realization, which is what "use the beatbox as rhythmic intent and generate a
+polished production pattern" already is here. `types/daw.ts` now names all
+four as `InterpretationMode`, and `TimingMode` narrows it rather than
+restating it.
+
+Two properties make the row safe to offer. Every mode reads from the performed
+placement, kept on the note in `provenance.capturedTick` and never overwritten,
+so the modes do not compound and `literal` is a real way back. And the write
+goes through `updateTracksWithHistory` with a revision origin, so it is
+undoable and lands in the tree -- the lesson from the realization Apply that
+called `setTracks` directly.
+
+**Re-reading from a track.** `interpretation.eventsFromTrack` rebuilds capture
+events from the notes on a channel, and every lane carrying notes has a
+re-read control beside its workstation and delete buttons. It changes nothing
+on the track; it produces a reading, and it opens the bench so the reading is
+somewhere the creator can see it.
+
+Three defects were found by verifying rather than by reading, and all three
+are fixed:
+
+- **The panel never worked on a live take.** The microphone commits one onset
+  at a time, so the pass was read from whatever arrived in the last call: after
+  any real performance the panel said "One onset. Too little to read a musical
+  role from." A pass is what is being read, so the pass is what accumulates.
+- **The record button could not stop a take.** `dawState.isRecordingMic` was
+  read in eight places on the performance bench and set by nothing, so the
+  button read "● RECORD LOOP" while the microphone was open, and pressing it
+  again returned early. It is set where the microphone is known to be open.
+- **Live playback hard-quantized to the sixteenth.** Every note inside a step
+  was triggered at the step's own edge, which made literal, assisted and groove
+  sound identical whatever the project file said. Live playback now honours the
+  exact tick, as the offline render always has.
+
+One thing is stated rather than solved, per Amendment E. Straightening a roll
+faster than the grid puts hits on top of each other; the notes all survive and
+`literal` brings them back, but what plays has fewer hits in it. Groove counts
+them and says so with the way back. Regularizing against the resolution the
+material implies, rather than against a fixed sixteenth, is the better answer
+and is not built -- it is the owner's call whether it is worth a step.
+
+Open, and not this step's: `test-30-capture-undo` and `test-03-capture-e2e`
+address capture buttons by names the bench no longer uses, and
+`test-48-kit-plays-live` fails five checks identically with and without this
+work.
+
 ---
 
 ## Step 5 -- Relay gap, then revision branching

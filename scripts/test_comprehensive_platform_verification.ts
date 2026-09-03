@@ -23,6 +23,7 @@ import { readFileSync } from 'fs';
 import { deriveCreativeIntent, intentCoverage } from '../src/lib/creativeIntent';
 import { buildIntentPolicy, describeUnlocked, roleKeyFor, DEFAULT_PRESERVE } from '../src/lib/intentPolicy';
 import { buildChangeSet } from '../src/lib/changeSet';
+import { applyTimingMode } from '../src/lib/timingModes';
 import { parseVoiceCommand, needsReasoning } from '../src/audio/voiceCommands';
 import { barsToSeconds } from '../src/utils/musicMath';
 import { adoptFromRevision, newRevision, capTree, childrenOf, isBranchPoint, pathToRoot, depthOf, MAX_REVISIONS } from '../src/lib/revisionTree';
@@ -841,6 +842,138 @@ async function runComprehensiveVerification() {
     check(dsp.willNotChange.some((g) => /performance/.test(g.property)), 'CHANGESET',
       'And a mix setting promises it does not alter a note that was played');
     check(dsp.note === null, 'CHANGESET', 'A proposal that does guarantee something renders no note');
+  }
+
+  console.log('\n--- 19. Adjustable quantization, the three modes SRT-1 VII names ---');
+  {
+    // At 120 BPM a 16th is 120 ticks and 125 ms; 1 tick is ~1.04 ms.
+    const note = (id: string, startTick: number): any => ({
+      id, startTick, durationTicks: 120, midiNote: 60, velocity: 100, provenance: {},
+    });
+    // 480 is a grid line. +10 ticks is ~10.4 ms out: a slip. +55 ticks is
+    // ~57 ms out: past the 40 ms line, so a different rhythm.
+    const take = [note('a', 480), note('b', 490), note('c', 535), note('d', 960)];
+
+    const literal = applyTimingMode(take, 'literal', 120);
+    check(literal.notes === take && literal.moved === 0, 'TIMING',
+      'literal moves nothing at all -- the same array comes back');
+    check(/exactly where they were played/.test(literal.summary), 'TIMING',
+      'and says so rather than reporting a quantize that did not happen');
+
+    const assisted = applyTimingMode(take, 'assisted', 120);
+    const byId = (r: any, id: string) => r.notes.find((n: any) => n.id === id).startTick;
+    check(byId(assisted, 'b') === 480, 'TIMING',
+      'assisted pulls a note 10 ms out onto the grid line it was reaching for',
+      `490 -> ${byId(assisted, 'b')}`);
+    check(byId(assisted, 'c') === 535, 'TIMING',
+      'and leaves one 57 ms out alone -- past 40 ms it is a rhythm, not a slip',
+      `535 -> ${byId(assisted, 'c')}`);
+    check(byId(assisted, 'a') === 480 && byId(assisted, 'd') === 960, 'TIMING',
+      'notes already on the grid are untouched');
+    check(assisted.moved === 1 && assisted.leftAlone === 1, 'TIMING',
+      'and it reports both counts', `moved ${assisted.moved}, left ${assisted.leftAlone}`);
+    check(take[1].startTick === 490, 'TIMING',
+      'the input notes are not mutated');
+
+    // Groove: a player consistently behind the beat.
+    const behind = [note('a', 492), note('b', 612), note('c', 732), note('d', 852)];
+    const groove = applyTimingMode(behind, 'groove', 120);
+    const spacing = groove.notes.map((n: any) => n.startTick);
+    const gaps = spacing.slice(1).map((t: number, i: number) => t - spacing[i]);
+    check(gaps.every((g: number) => g === gaps[0]), 'TIMING',
+      'groove regularizes the beat -- every gap is now identical', gaps.join(', '));
+    check(groove.pocketMs !== null && groove.pocketMs > 0, 'TIMING',
+      'it measures the pocket it is preserving', `${groove.pocketMs} ms behind`);
+    check(spacing.every((t: number) => t % 120 !== 0), 'TIMING',
+      'and the notes do NOT land on the grid -- the feel survives the straightening',
+      spacing.join(', '));
+
+    const dead = [note('a', 480), note('b', 600), note('c', 720)];
+    const onGrid = applyTimingMode(dead, 'groove', 120);
+    check(onGrid.notes.every((n: any, i: number) => n.startTick === dead[i].startTick), 'TIMING',
+      'a player already dead on the grid is displaced by nothing');
+    check(/dead on the grid/.test(onGrid.summary), 'TIMING',
+      'and that is stated rather than reported as a correction', onGrid.summary);
+
+    check(applyTimingMode([], 'groove', 120).summary === 'Nothing to quantize.', 'TIMING',
+      'an empty take is handled without inventing a result');
+    check(applyTimingMode(take, 'groove', 0).notes.every((n: any) => Number.isFinite(n.startTick)),
+      'TIMING', 'a zero tempo does not produce a non-finite tick');
+    check(applyTimingMode([note('x', 5)], 'groove', 120).notes[0].startTick >= 0, 'TIMING',
+      'a note near zero cannot be pushed to a negative tick');
+
+    // Amendment F: the take is not lost because the creator tried a setting.
+    const played = [note('a', 492), note('b', 613), note('c', 731)];
+    const grooved = applyTimingMode(played, 'groove', 120);
+    check(grooved.notes.every((n: any, i: number) =>
+      (n.provenance.capturedTick ?? n.startTick) === played[i].startTick),
+      'TIMING', 'where every note was played is still recoverable after the pass',
+      grooved.notes.map((n: any) => n.provenance.capturedTick ?? n.startTick).join(', '));
+    check(grooved.notes.filter((n: any, i: number) => n.startTick !== played[i].startTick)
+      .every((n: any) => typeof n.provenance.capturedTick === 'number'), 'TIMING',
+      'every note the pass actually moved carries the tick it came from');
+    check(grooved.notes.some((n: any) => n.provenance.capturedTick === undefined), 'TIMING',
+      'and a note the pass left alone is not stamped with a move it did not make');
+    const back = applyTimingMode(grooved.notes, 'literal', 120);
+    check(back.notes.every((n: any, i: number) => n.startTick === played[i].startTick), 'TIMING',
+      'and literal puts every note back on the tick it was performed on, exactly',
+      back.notes.map((n: any) => n.startTick).join(', '));
+    check(back.moved === 2 && /back exactly where you played/.test(back.summary), 'TIMING',
+      'reported as a restoration of the two it moved, not of the one it never touched',
+      back.summary);
+
+    // The modes are choices, not layers.
+    const twice = applyTimingMode(applyTimingMode(grooved.notes, 'assisted', 120).notes, 'groove', 120);
+    check(twice.notes.every((n: any, i: number) => n.startTick === grooved.notes[i].startTick), 'TIMING',
+      'groove after assisted equals groove on the take -- the modes do not compound',
+      twice.notes.map((n: any) => n.startTick).join(', '));
+    check(twice.notes.every((n: any, i: number) => n.provenance.capturedTick === played[i].startTick),
+      'TIMING', 'and the performed tick survives every pass, never overwritten by a later one');
+
+    // A roll faster than the grid cannot be straightened onto the grid
+    // without hits landing on each other. The notes all survive -- literal
+    // brings them back -- but what plays has fewer hits in it, and that is
+    // said rather than absorbed.
+    const roll = [note('a', 480), note('b', 490), note('c', 500), note('d', 960)];
+    const straightened = applyTimingMode(roll, 'groove', 120);
+    check(straightened.collided === 2, 'TIMING',
+      'groove counts the hits that landed on top of another',
+      `${straightened.collided} collided`);
+    check(/landed on top of another/.test(straightened.summary) &&
+      /Keep my timing brings them back/.test(straightened.summary), 'TIMING',
+      'and says so, with the way back, instead of reporting a clean straighten',
+      straightened.summary);
+    check(applyTimingMode(roll, 'literal', 120).notes.every((n: any, i: number) => n.startTick === roll[i].startTick),
+      'TIMING', 'and the way back is real -- every hit of the roll is still there');
+    // Measured against the take, not against the mode that ran last: assisted
+    // stacks two of these itself, and groove after it must still report all
+    // three hits the creator would lose rather than only the new one.
+    const afterAssisted = applyTimingMode(roll, 'assisted', 120);
+    check(afterAssisted.collided === 2, 'TIMING',
+      'assisted reports the hits its own correction stacked', `${afterAssisted.collided}`);
+    check(applyTimingMode(afterAssisted.notes, 'groove', 120).collided === 2, 'TIMING',
+      'and groove run after it reports what is lost against the take, not against assisted',
+      `${applyTimingMode(afterAssisted.notes, 'groove', 120).collided}`);
+    check(applyTimingMode([note('a', 480), note('b', 960)], 'groove', 120).collided === 0, 'TIMING',
+      'a take with room between its hits reports no collision', '');
+    check(!/landed on top/.test(applyTimingMode([note('a', 485), note('b', 965)], 'groove', 120).summary),
+      'TIMING', 'and is not warned about one');
+
+    // Live playback used to fire every note in a sixteenth at the edge of the
+    // sixteenth, which made all three modes sound identical. The scheduler now
+    // offsets by where in the step the note actually sits, exactly as the
+    // offline render always has.
+    {
+      const bpm = 120;
+      const secondsPerStep = 60 / bpm / 4;
+      const within = (tick: number) => (tick - stepToTick(tickToStep(tick))) / 120 * secondsPerStep;
+      check(Math.abs(within(480)) < 1e-9, 'TIMING',
+        'a note on the grid line is scheduled at the step boundary, as before');
+      check(Math.abs(within(492) - 0.0125) < 1e-6, 'TIMING',
+        'and one 12 ticks late is scheduled 12.5 ms into the step', `${within(492) * 1000} ms`);
+      check(within(599) < secondsPerStep, 'TIMING',
+        'no offset can reach the next step, so ordering is never crossed');
+    }
   }
 
   console.log('\n========================================================================');

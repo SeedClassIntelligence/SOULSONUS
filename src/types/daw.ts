@@ -140,6 +140,23 @@ export type PianoRollTool = 'POINTER' | 'PENCIL' | 'STRETCH' | 'SCISSOR' | 'ERAS
 
 export type TrackViewMode = 'GRID' | 'PIANO_ROLL';
 
+/**
+ * The four ways SRT-1 VII says a captured performance may be interpreted.
+ *
+ *   literal          "Preserve the user's timing."
+ *   assisted         "Correct obvious timing errors."
+ *   groove           "Preserve microtiming while regularizing the beat."
+ *   reinterpretation "Use the beatbox as rhythmic intent and generate a
+ *                    polished production pattern."
+ *
+ * The first three re-place the notes that were captured and are implemented in
+ * `lib/timingModes`, which narrows this type rather than restating it. The
+ * fourth does not move a note at all -- it hands the take to realization,
+ * which is a different operation with a different guarantee, and saying so is
+ * why all four are named in one place.
+ */
+export type InterpretationMode = 'literal' | 'assisted' | 'groove' | 'reinterpretation';
+
 export interface NoteProvenance {
   origin:
     | 'MOUTH'
@@ -158,6 +175,16 @@ export interface NoteProvenance {
   playerRole?: string;
   /** What actually rendered it, named so a take is never mistaken for the creator's own hand. */
   renderer?: string;
+  /**
+   * Where this note was played, before any timing mode moved it.
+   *
+   * Written the first time quantization touches a note and never overwritten,
+   * so the performed placement survives every later pass. Amendment F: the
+   * take is not lost because the creator tried a setting. `literal` restores
+   * from here, and `assisted` and `groove` both read from here rather than
+   * from a previous mode's output, so the modes do not compound.
+   */
+  capturedTick?: number;
 }
 
 export interface NoteExpression {

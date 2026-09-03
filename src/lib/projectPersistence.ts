@@ -71,6 +71,12 @@ export interface ProjectSnapshot {
    */
   intentPreserve?: unknown[];
   intentStrictness?: unknown;
+  /**
+   * Which quantization mode each track is in, by track id. Added with
+   * adjustable quantization; a snapshot without it is a project whose notes
+   * are all where they were played.
+   */
+  trackTimingModes?: Record<string, unknown>;
   detectionSettings: unknown;
   activeWorkspace: string;
   /** Added after v1 shipped; older snapshots simply lack them. */

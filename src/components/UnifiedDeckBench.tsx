@@ -21,6 +21,13 @@ import {
 } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { MIMICRY_TARGETS, TARGET_FAMILIES, targetById } from '../lib/mimicryTarget';
+import {
+  TIMING_MODES,
+  TIMING_MODE_LABEL,
+  TIMING_MODE_MEANING,
+  type TimingMode,
+  type TimingResult,
+} from '../lib/timingModes';
 import { CreativeIntentPanel } from './CreativeIntentPanel';
 
 /**
@@ -67,6 +74,9 @@ export const UnifiedDeckBench: React.FC = () => {
     mimicryTargetId,
     setMimicryTargetId,
     clearLastInterpretation,
+    interpretationSubjectId,
+    trackTimingModes,
+    applyTrackTiming,
   } = useStudioSession();
 
   const [activeModalityTab, setActiveModalityTab] = useState<ExpressionModality>('BEATBOX');
@@ -105,6 +115,53 @@ export const UnifiedDeckBench: React.FC = () => {
           trackId: target.id,
           prompt: `Realize ${target.name} as ${h.role}`,
         },
+      })
+    );
+  };
+
+  /**
+   * Adjustable quantization, on the material the reading is about.
+   *
+   * SRT-1 VII: "the user should retain the feel of their performance.
+   * Therefore quantization should be adjustable." The plan's Step 4 mockup
+   * ends in this row and nothing implemented it -- the header's `Q:` control
+   * snaps an edit as it is made, which is not the same as choosing what a
+   * committed take should keep.
+   *
+   * The channel is named rather than implied. A pass can write several, and a
+   * row that said "Timing" over an unnamed target would be quantizing
+   * something the creator cannot see.
+   */
+  const timingTrack =
+    (interpretationSubjectId ? tracks.find((t) => t.id === interpretationSubjectId) : null) ||
+    (lastInterpretation?.hypotheses.length
+      ? tracks.find((t) => t.instrument === lastInterpretation.hypotheses[0].instrument)
+      : null) ||
+    tracks.find((t) => t.id === selectedTrackId) ||
+    null;
+  const timingNoteCount = timingTrack?.noteEvents?.length ?? 0;
+  const [timingReport, setTimingReport] = useState<TimingResult | null>(null);
+  const activeTimingMode: TimingMode =
+    (timingTrack && trackTimingModes[timingTrack.id]) || 'literal';
+
+  const chooseTiming = (mode: TimingMode) => {
+    if (!timingTrack) return;
+    setTimingReport(applyTrackTiming(timingTrack.id, mode));
+  };
+
+  /**
+   * The fourth mode SRT-1 VII names: "use the beatbox as rhythmic intent and
+   * generate a polished production pattern." It is not a quantize and it does
+   * not move a note, so it is not run through `applyTrackTiming` -- it opens
+   * the realization drawer on this channel, which is where a candidate is
+   * proposed and where nothing is committed until the creator accepts it.
+   */
+  const chooseReinterpretation = () => {
+    if (!timingTrack) return;
+    setTimingReport(null);
+    window.dispatchEvent(
+      new CustomEvent('soulsonus:openDrawer', {
+        detail: { type: 'realization', trackId: timingTrack.id },
       })
     );
   };
@@ -629,6 +686,61 @@ export const UnifiedDeckBench: React.FC = () => {
               </div>
             ))}
           </div>
+
+          {/* TIMING -- the mockup's second row, on the named channel.
+              Undoable and written as a revision, so trying one is not a
+              commitment. `literal` restores the performed placement exactly:
+              each note carries where it was played, so no mode is a one-way
+              door. */}
+          {timingTrack && timingNoteCount > 0 && (
+            <div className="px-3 py-2 border-t border-slate-800" data-testid="timing-row">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-500">
+                  Timing
+                </span>
+                <span className="text-[9px] font-mono text-slate-500">
+                  {timingTrack.name} — {timingNoteCount} note{timingNoteCount === 1 ? '' : 's'}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {TIMING_MODES.map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    data-testid={`timing-${mode}`}
+                    onClick={() => chooseTiming(mode)}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition cursor-pointer ${
+                      activeTimingMode === mode
+                        ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
+                        : 'bg-slate-900 text-slate-500 border-slate-800 hover:text-slate-300'
+                    }`}
+                    title={TIMING_MODE_MEANING[mode]}
+                  >
+                    {TIMING_MODE_LABEL[mode]}
+                  </button>
+                ))}
+                {/* The fourth mode. Kept in the same row because the seed
+                    lists it with the other three, and visibly apart because
+                    it makes a proposal rather than a change. */}
+                <button
+                  type="button"
+                  data-testid="timing-reinterpretation"
+                  onClick={chooseReinterpretation}
+                  className="px-2 py-1 rounded-lg text-[10px] font-mono font-bold border transition cursor-pointer bg-slate-900 text-purple-300 border-purple-500/40 hover:bg-purple-500/10"
+                  title="Use this take as rhythmic intent and propose a produced pattern from it. It moves nothing — it opens a candidate you can turn down."
+                >
+                  reinterpret it
+                </button>
+              </div>
+              {/* What happened, not what was asked for. */}
+              <p
+                data-testid="timing-report"
+                className="text-[9px] font-mono text-slate-500 mt-1 leading-snug"
+              >
+                {timingReport ? timingReport.summary : TIMING_MODE_MEANING[activeTimingMode]}
+              </p>
+            </div>
+          )}
 
           <p className="px-3 py-1.5 text-[9px] font-mono text-slate-600 border-t border-slate-800">
             Your take is already on its tracks. Keeping it as recorded is the default — these only

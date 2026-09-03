@@ -82,7 +82,8 @@ import { installAcePlayers } from '../lib/acePlayer';
 import { resolveCaptureTarget } from '../audio/captureRouting';
 import { midiNoteToCaptureEvent } from '../audio/midiCapture';
 import { vocalRecorder } from '../audio/vocalRecorder';
-import { interpretPass, type Interpretation } from '../lib/interpretation';
+import { interpretPass, eventsFromTrack, type Interpretation } from '../lib/interpretation';
+import { applyTimingMode, TIMING_MODE_LABEL, type TimingMode, type TimingResult } from '../lib/timingModes';
 import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../lib/relayGap';
 import {
   DEFAULT_PRESERVE,
@@ -661,6 +662,28 @@ export interface StudioSessionState {
   /** What the creator declared they are imitating. null when they declared nothing. */
   mimicryTargetId: string | null;
   setMimicryTargetId: (id: string | null) => void;
+  /**
+   * Reads a track that is already on the timeline and says what it appears to
+   * be, exactly as the studio reads a fresh pass.
+   *
+   * Amendment F.iv wants re-interpretation to be a permanent affordance on
+   * captured material rather than a prompt shown once at capture time. Until
+   * this existed, dismissing the reading was the end of it.
+   */
+  reinterpretTrack: (trackId: string) => void;
+  /**
+   * The track the current reading is about, when it came from re-reading one.
+   * Null after a capture pass, where the reading is about the pass itself.
+   */
+  interpretationSubjectId: string | null;
+  /** Which quantization mode each track is currently sitting in. */
+  trackTimingModes: Record<string, TimingMode>;
+  /**
+   * Applies one of SRT-1 VII's three quantization modes to a track. Undoable,
+   * and it writes a revision like every other committed change. Returns what
+   * actually happened, which is not always what was asked for.
+   */
+  applyTrackTiming: (trackId: string, mode: TimingMode) => TimingResult | null;
   isCalibratingPitch: boolean;
   /** Records a sung or hummed take and measures what it does to the model. */
   handleCalibratePitch: (durationMs?: number) => Promise<void>;
@@ -1771,6 +1794,17 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    * notes in bar 5 rather than at the top of the song.
    */
   const captureOriginMsRef = useRef<number | null>(null);
+  /**
+   * Every onset of the pass currently being captured.
+   *
+   * The live microphone commits one event at a time, so reading the pass from
+   * whatever arrived in the last call described a single onset: after a real
+   * take the panel said "One onset. Too little to read a musical role from"
+   * every time, no matter how long the performance was. A pass is the thing
+   * being read, so the pass is what accumulates here. Cleared when a new one
+   * begins, which is the same moment the take's clock is set.
+   */
+  const passEventsRef = useRef<CaptureEvent[]>([]);
   /** Throttles the meter, which the engine offers on every animation frame. */
   const lastMeterAtRef = useRef(0);
   const captureOriginSecondsRef = useRef(0);
@@ -1789,6 +1823,15 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    * capture or commit path waits on it, and clearing it changes no audio.
    */
   const [lastInterpretation, setLastInterpretation] = useState<Interpretation | null>(null);
+  /**
+   * Which track the reading on screen is about.
+   *
+   * Null means it is about the pass that was just captured. A re-read names
+   * its track, so an action offered next to the reading acts on the material
+   * that was actually read rather than on whatever channel happens to hold
+   * that instrument.
+   */
+  const [interpretationSubjectId, setInterpretationSubjectId] = useState<string | null>(null);
 
   /**
    * What the creator said they were imitating before performing, if anything.
@@ -1825,6 +1868,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     // and from the playhead when it is not, so recording into bar 5 puts the
     // notes in bar 5.
     if (captureOriginMsRef.current === null && events.length) {
+      passEventsRef.current = [];
       captureOriginMsRef.current = events[0].atMs;
       captureOriginSecondsRef.current = dawStateRef.current.isPlaying
         ? Tone.getTransport().seconds
@@ -1953,7 +1997,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     // material is safe on its tracks first, and this is offered afterwards.
     // Placed here rather than in a modality branch so it covers every source
     // the router serves -- mic, file and hardware MIDI alike (F.iv).
-    setLastInterpretation(interpretPass(events, mimicryTargetIdRef.current));
+    setInterpretationSubjectId(null);
+    passEventsRef.current = [...passEventsRef.current, ...events];
+    setLastInterpretation(interpretPass(passEventsRef.current, mimicryTargetIdRef.current));
   }, [updateTracksWithHistory]);
 
   /** Live monitoring for a single event. Kept out of state updaters, which must stay pure. */
@@ -2048,6 +2094,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           };
         }
         commitCaptureEvents(events);
+        // A file carries its own timeline. Leaving the take clock set to its
+        // first onset would place the next live pass against the file rather
+        // than against the transport.
+        captureOriginMsRef.current = null;
         const classes = [...new Set(events.map((e) => e.klass))];
         const truncation = droppedBeyondGrid
           ? ` ${droppedBeyondGrid} hits past the end of the song were left out — trim the file, or lengthen the song to keep them.`
@@ -2333,7 +2383,70 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    * just under two, and a take that only just fills one window measures the
    * edge of the buffer as much as the voice.
    */
-  const clearLastInterpretation = useCallback(() => setLastInterpretation(null), []);
+  const clearLastInterpretation = useCallback(() => {
+    setLastInterpretation(null);
+    setInterpretationSubjectId(null);
+  }, []);
+
+  /**
+   * Re-read a track that is already committed.
+   *
+   * The events are rebuilt from the notes on the channel rather than from the
+   * original audio, so the reading is honest about one thing: pitch and
+   * timing are exactly what is on the track, and the percussive class comes
+   * from the channel the note landed on rather than from re-running the
+   * classifier over a waveform. That is enough to re-rank a role and it is
+   * not a second opinion on the detection itself.
+   */
+  const reinterpretTrack = useCallback(
+    (trackId: string) => {
+      const track = tracksRef.current.find((t) => t.id === trackId);
+      if (!track || !(track.noteEvents || []).length) return;
+      const events = eventsFromTrack(track, dawStateRef.current.bpm || 110);
+      setInterpretationSubjectId(trackId);
+      setLastInterpretation(interpretPass(events, mimicryTargetIdRef.current));
+    },
+    []
+  );
+
+  /**
+   * Adjustable quantization (SRT-1 VII), applied to one track.
+   *
+   * It goes through `updateTracksWithHistory` so it is undoable and lands in
+   * the revision tree, which is the lesson from the realization Apply that
+   * called `setTracks` directly. The performed placement is kept on each note
+   * by `applyTimingMode`, so `literal` is a genuine way back rather than a
+   * label on whatever the last mode left behind.
+   */
+  const [trackTimingModes, setTrackTimingModes] = useState<Record<string, TimingMode>>({});
+  const applyTrackTiming = useCallback(
+    (trackId: string, mode: TimingMode): TimingResult | null => {
+      const track = tracksRef.current.find((t) => t.id === trackId);
+      if (!track) return null;
+      const notes = track.noteEvents || [];
+      if (!notes.length) return null;
+
+      const result = applyTimingMode(notes, mode, dawStateRef.current.bpm || 110);
+      setTrackTimingModes((prev) => ({ ...prev, [trackId]: mode }));
+      if (result.moved > 0) {
+        labelNextEdit(`Timing: ${TIMING_MODE_LABEL[mode]} on ${track.name}`);
+        labelNextRevisionOrigin('edit');
+        updateTracksWithHistory((prev) =>
+          prev.map((t) =>
+            t.id === trackId
+              ? {
+                  ...t,
+                  noteEvents: result.notes,
+                  steps: deriveStepArrayFromNoteEvents(result.notes, songStepsRef.current),
+                }
+              : t
+          )
+        );
+      }
+      return result;
+    },
+    [labelNextEdit, labelNextRevisionOrigin, updateTracksWithHistory]
+  );
 
   const handleCalibratePitch = useCallback(async (durationMs = 3000) => {
     setIsCalibratingPitch(true);
@@ -3165,6 +3278,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     // The next take gets its own clock.
     captureOriginMsRef.current = null;
     setDetectionSettings((prev) => ({ ...prev, enabled: false, micConnected: false }));
+    setDawState((prev) => (prev.isRecordingMic ? { ...prev, isRecordingMic: false } : prev));
     return stopSeedRecording();
   }, [stopSeedRecording]);
 
@@ -3288,6 +3402,15 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       kickThreshold: modality === 'MOUTH' ? 0.45 : 0.6,
       snareThreshold: modality === 'MOUTH' ? 0.45 : 0.35,
     }));
+    // Nothing in the app set this, and eight places on the performance bench
+    // read it: the record button's label and colour, the pad's STOP overlay,
+    // the transient monitor's status line. So the microphone could be open
+    // and classifying while the button still read "● RECORD LOOP" -- and
+    // pressing it again returned early on `detectionSettings.enabled`, which
+    // left the creator with no way to end the take from the surface they
+    // started it on. It is set here, where the microphone is known to be
+    // open, and cleared in handleStopCapture.
+    setDawState((prev) => ({ ...prev, isRecordingMic: true }));
   }, [detectionSettings.enabled, handleCreateSourceTrack, startSeedRecording]);
 
   /**
@@ -4821,6 +4944,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       relayGaps,
       intentPreserve,
       intentStrictness,
+      trackTimingModes,
       detectionSettings,
       activeWorkspace,
       editorPrefs,
@@ -4855,7 +4979,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     [
       dawState, tracks, sections, lyricSections, masteringChain, masterCandidates,
       activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
-      seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, detectionSettings, activeWorkspace,
+      seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, trackTimingModes, detectionSettings, activeWorkspace,
       editorPrefs, writeRoomDraft, audioAssets,
       vocalState.audioBlob, vocalState.duration, vocalState.waveformData,
     ]
@@ -4922,6 +5046,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     // to the contract's long-standing four rather than to an empty set.
     setIntentPreserve((snap.intentPreserve as PreservableProperty[] | undefined) ?? DEFAULT_PRESERVE);
     setIntentStrictness((snap.intentStrictness as Strictness | undefined) ?? 'close');
+    // Absent on a snapshot saved before quantization was adjustable. Every
+    // note in such a project is where it was played, which is `literal`, and
+    // an empty map reads as exactly that.
+    setTrackTimingModes((snap.trackTimingModes as Record<string, TimingMode> | undefined) ?? {});
     setDetectionSettings((prev) => ({ ...prev, ...(snap.detectionSettings as object), enabled: false, micConnected: false }));
     setActiveWorkspace(snap.activeWorkspace as WorkspaceTab);
     // Older snapshots predate these, so fall back rather than clobber defaults.
@@ -4997,7 +5125,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [
     isHydrating, tracks, sections, lyricSections, masteringChain, masterCandidates,
     activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
-    seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, detectionSettings, activeWorkspace,
+    seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, trackTimingModes, detectionSettings, activeWorkspace,
     editorPrefs, writeRoomDraft, dawState, vocalState.audioBlob,
   ]);
 
@@ -5459,6 +5587,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       clearLastInterpretation,
       mimicryTargetId,
       setMimicryTargetId,
+      reinterpretTrack,
+      interpretationSubjectId,
+      trackTimingModes,
+      applyTrackTiming,
       isCalibratingPitch,
       handleCalibratePitch,
       creatorName,
@@ -5672,6 +5804,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       clearLastInterpretation,
       mimicryTargetId,
       setMimicryTargetId,
+      reinterpretTrack,
+      interpretationSubjectId,
+      trackTimingModes,
+      applyTrackTiming,
       isCalibratingPitch,
       handleCalibratePitch,
       creatorName,

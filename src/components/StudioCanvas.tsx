@@ -239,6 +239,8 @@ export const StudioCanvas: React.FC = () => {
     editorPrefs,
     updateEditorPrefs,
     handleSetSongBars,
+    lastInterpretation,
+    interpretationSubjectId,
   } = useStudioSession();
 
   // Editor state lives in the session: this component unmounts on a room
@@ -281,6 +283,15 @@ export const StudioCanvas: React.FC = () => {
   useEffect(() => {
     if (isInstrumentOpen) setActiveBench('UNIFIED');
   }, [isInstrumentOpen]);
+
+  // A re-read from a track lane produces a reading that is shown on the
+  // UNIFIED bench. Opening the bench is what makes the affordance permanent
+  // rather than decorative: the button would otherwise do its work into a
+  // panel the creator cannot see. A reading from a capture pass has no
+  // subject track and does not move the bench.
+  useEffect(() => {
+    if (lastInterpretation && interpretationSubjectId) setActiveBench('UNIFIED');
+  }, [lastInterpretation, interpretationSubjectId]);
 
   // Closing the bench releases the shared flag, so the next external open fires.
   useEffect(() => {

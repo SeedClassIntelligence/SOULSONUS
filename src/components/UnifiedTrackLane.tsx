@@ -110,6 +110,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
     setTracks,
     dawState,
     handleSetNoteLyric,
+    reinterpretTrack,
   } = useStudioSession();
 
   const isDrum =
@@ -390,6 +391,7 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
 
   return (
     <div
+      data-track-lane={track.id}
       onClick={onSelectTrack}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -486,6 +488,31 @@ export const UnifiedTrackLane: React.FC<UnifiedTrackLaneProps> = ({
                 title="Toggle Track Workstation Drawer"
               >
                 <Sliders className="w-2.5 h-2.5" />
+              </button>
+              )}
+
+              {/* RE-READ -- Amendment F.iv.
+                  Re-interpretation is "a permanent affordance on all captured
+                  material -- not a prompt shown once at capture time", so it
+                  sits in the lane's own control row rather than inside the
+                  collapsible chrome: any take, at any time, one reach.
+                  SONUS, further down, is realization -- what this should
+                  sound like as some other instrument. This asks the earlier
+                  question again: what is this material. It changes nothing on
+                  the track; it produces a reading the creator can act on or
+                  ignore. */}
+              {revealControls && (track.noteEvents?.length ?? 0) > 0 && (
+              <button
+                type="button"
+                data-testid={`reread-${track.id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  reinterpretTrack(track.id);
+                }}
+                className="w-5 h-5 rounded bg-slate-900 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center transition cursor-pointer"
+                title="Read this track again — what does this material appear to be? Nothing on the track changes."
+              >
+                <Activity className="w-2.5 h-2.5" />
               </button>
               )}
 

@@ -137,7 +137,7 @@ export interface StyleProfileInput {
 /** Enough onsets that a mean is a measurement rather than an anecdote. */
 const MIN_POCKET_ONSETS = 8;
 
-const ticksToMs = (ticks: number, bpm: number) => (ticks / 480) * (60000 / Math.max(1, bpm));
+export const ticksToMs = (ticks: number, bpm: number) => (ticks / 480) * (60000 / Math.max(1, bpm));
 
 /**
  * The grid position a note is nearest, and which family that grid is.
@@ -157,7 +157,7 @@ const GRIDS: { ticks: number; family: string }[] = [
   { ticks: 160, family: 'triplet' },
 ];
 
-function nearestGrid(startTick: number): { distanceTicks: number; family: string; position: number } {
+export function nearestGrid(startTick: number): { distanceTicks: number; family: string; position: number } {
   let best = { distanceTicks: Infinity, family: 'straight', position: 0 };
   for (const grid of GRIDS) {
     const position = Math.round(startTick / grid.ticks) * grid.ticks;
@@ -203,7 +203,7 @@ function measurePocket(notes: NoteEvent[], bpm: number): PocketMeasure | null {
  * and 40 ms is the distance at which it stops being a placement and starts
  * being a different rhythm.
  */
-const OFF_GRID_MS = 40;
+export const OFF_GRID_MS = 40;
 
 function measureSubdivisions(notes: NoteEvent[], bpm: number): { label: string; onsets: number }[] {
   const buckets: Record<string, number> = {};

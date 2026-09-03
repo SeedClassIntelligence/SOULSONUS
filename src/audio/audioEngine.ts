@@ -3,7 +3,7 @@ import { Track, InstrumentType, TrackDspSettings } from '../types/daw';
 import { vocalRecorder } from './vocalRecorder';
 import { SampledInstrument, getCurrentSampledKit, setCurrentSampledKit } from './sampledInstrument';
 import { vocalDspProcessor } from './vocalDspProcessor';
-import { tickToStep, midiToNoteName } from '../utils/musicMath';
+import { tickToStep, stepToTick, midiToNoteName, TICKS_PER_16TH } from '../utils/musicMath';
 import { applyInstrumentParams, createInstrumentVoices, expressiveVelocity, HIHAT_FREQUENCY, InstrumentVoices } from './instrumentVoices';
 import { buildTrackStrip, TrackStrip } from './trackStrip';
 import { AudioAsset, AudioClip } from '../types/daw';
@@ -738,21 +738,32 @@ export class AudioEngine {
 
         if (track.noteEvents && track.noteEvents.length > 0) {
           const startingNotes = track.noteEvents.filter((ev) => tickToStep(ev.startTick) === step);
+          // A step is a window, not a position. Where inside its sixteenth a
+          // note actually sits is the difference between a take and a grid,
+          // and firing every note in the window at the window's edge is a hard
+          // quantize nobody asked for -- it made literal, assisted and groove
+          // sound identical while the project file said they differed. The
+          // offline render has always honoured the exact tick; this is live
+          // playback agreeing with it. A note already on the grid line has an
+          // offset of zero and is scheduled exactly as before.
+          const secondsPerStep = 60 / bpm / 4;
           startingNotes.forEach((ev) => {
+            const withinStep = ev.startTick - stepToTick(tickToStep(ev.startTick));
+            const at = time + (withinStep / TICKS_PER_16TH) * secondsPerStep;
             const durSec = Math.max(0.05, (ev.durationTicks / 480) * (60 / bpm));
             const noteVel = (ev.velocity / 127) * Math.min(1, Math.max(0.1, 1 + track.volume / 20));
             const notePitch = midiToNoteName(ev.midiNote);
 
             if (track.instrument === 'kick') {
-              this.triggerKick(notePitch, time, noteVel, track, durSec, ev.velocity);
+              this.triggerKick(notePitch, at, noteVel, track, durSec, ev.velocity);
             } else if (track.instrument === 'snare') {
-              this.triggerSnare(time, noteVel, track, durSec, ev.velocity);
+              this.triggerSnare(at, noteVel, track, durSec, ev.velocity);
             } else if (track.instrument === 'hihat') {
-              this.triggerHiHat(time, noteVel, track, durSec, ev.velocity);
+              this.triggerHiHat(at, noteVel, track, durSec, ev.velocity);
             } else if (track.instrument === 'bass') {
-              this.triggerBass(notePitch, time, noteVel, track, durSec);
+              this.triggerBass(notePitch, at, noteVel, track, durSec);
             } else {
-              this.triggerMelody(notePitch, time, noteVel, track, durSec);
+              this.triggerMelody(notePitch, at, noteVel, track, durSec);
             }
           });
         } else if (track.steps[step]) {
