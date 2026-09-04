@@ -504,6 +504,63 @@ shown. The creator performed the cadence; language fits it, not the reverse.
 Placement: a rail entry beside the other workstations, opened by the same
 `soulsonus:openDrawer` event every other one uses. No new mechanism.
 
+### Step 7 -- closed 2026-09-04
+
+Built as described: a rail entry, opened by the same event, no new mechanism.
+`test-54-vocal-to-lyric.cjs` hums into the microphone, opens it from the rail,
+reads the cadence off the take, writes against it and keeps a line -- 20
+checks. 29 unit assertions cover the syllable estimator, the seed and the lock.
+
+**The seed.** `lib/lyricSeed.deriveLyricSeed` reads a take as a cadence: the
+onsets are the syllabic rhythm, their velocities are the stress pattern, the
+gaps the creator left are the phrases and therefore where the rhymes land, and
+the tracked fundamental is the melodic fit. That is five of the six things
+SRT-1 VI says Mode B preserves. The sixth, theme, is not derived -- nothing in
+this build can infer what a hummed line is about, and a theme invented here
+would be the studio putting words in the creator's mouth at the moment it
+claims to be preserving their intent. It is theirs to state, and it says so.
+
+**The four kinds stay four.** `LyricSourceKind` keeps a word that was heard, a
+sound carrying cadence with no lexical content, a sung position, and what the
+take is about apart from each other, on screen and in the type. Nothing in
+this build recognises speech, so no position carries a word and the panel says
+that rather than showing an empty column.
+
+**The lock.** `lib/cadenceLock` is a gate, not a score: a proposal that changes
+the syllable count, moves a beat inside a word, or moves the rhyme off the end
+of the line is refused before it reaches the screen, and its text does not come
+out of the gate. What the creator sees is that something was refused and why.
+Their own writing is theirs -- the lock reports on it and does not veto it,
+because E.3 governs what the studio proposes.
+
+**One answer to how many syllables.** `handleAddLyricLine` wrote
+`words.map((w) => w + '-')` into `LyricLine.syllables`, so a typed line's
+"syllables" were its words with a hyphen glued on -- "electric" counted as one
+-- and its emphasis was `i % 2 === 0`, an alternation nobody performed. The
+demo lines shipped with splits typed by hand, so the panel looked right and
+every line a creator actually wrote did not. Both now come from
+`lib/syllables`, which agrees with the hand-typed split on the demo's first
+line exactly, and the emphasis is the rule the lock enforces rather than a
+pattern invented at the call site.
+
+**Three things stated, not solved.**
+
+- Writing lyrics needs a language model. The native brain reasons about the
+  session and has no branch that writes verse, so the workstation says so and
+  proposes nothing, rather than asking it anyway and reporting that the gate
+  protected the creator from four lines that were never lyrics.
+- The stress rule is a decision, and it is the owner's to confirm. English
+  stress is not recoverable from spelling without a pronunciation dictionary
+  this build does not have, so the lock enforces the one thing that is
+  knowable -- a beat the creator hit lands on the start of a word. That refuses
+  a good line built on "ig-NITE", whose stress is on its second syllable.
+  Refusing a good line costs a suggestion; accepting one that moves their beat
+  costs the take's cadence, which is why it is set this way. Say the word and
+  it becomes advisory instead.
+- The syllable estimator is an estimator. It reads "every" as three, and the
+  person who typed the demo line sang it as two. Spelling does not decide
+  this, which is why the count it read is shown rather than applied silently.
+
 ## Sequencing and why
 
 1. **Step 0** -- one condition. Stops the capture path losing a take. First.

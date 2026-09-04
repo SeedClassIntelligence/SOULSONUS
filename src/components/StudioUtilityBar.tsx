@@ -13,6 +13,7 @@ import {
   Sliders,
   Sparkles,
   Target,
+  Type,
   Users,
   ChevronLeft,
   ChevronRight,
@@ -113,6 +114,13 @@ export const StudioUtilityBar: React.FC = () => {
           title: 'Open Songwriting Suite',
           onClick: () => openDrawer('songwriting'),
           tone: 'pink',
+        },
+        {
+          label: 'VOCAL TO LYRIC',
+          icon: Type,
+          title: 'Read a sung or hummed take as a lyric seed and fit words to its cadence',
+          onClick: () => openDrawer('lyric'),
+          tone: 'purple',
         },
         {
           label: 'MIDI HARDWARE',

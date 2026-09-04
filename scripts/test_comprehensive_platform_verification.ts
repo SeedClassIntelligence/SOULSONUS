@@ -31,6 +31,9 @@ import {
   withCreatorReading,
   EXPRESSION_DIMENSIONS,
 } from '../src/audio/expressionState';
+import { countWord, countLine, syllabify } from '../src/lib/syllables';
+import { deriveLyricSeed } from '../src/lib/lyricSeed';
+import { checkAgainstCadence, preserveCadence, describeGate } from '../src/lib/cadenceLock';
 import {
   controlsFromExpression,
   dspFromExpression,
@@ -1185,6 +1188,156 @@ async function runComprehensiveVerification() {
     check(fromCreator.dspSettings!.filterFreq === 2200 && /you said/.test(fromCreator.because),
       'EXPRESSION_CONTROL', 'what the creator says about the take is what the studio acts on',
       fromCreator.because);
+  }
+
+  console.log('\n--- 22. Syllables: one answer, and a real one (SRT-1 VI) ---');
+  {
+    const cases: [string, number][] = [
+      ['walking', 2], ['through', 1], ['the', 1], ['neon', 2], ['rain', 1],
+      ['electric', 3], ['table', 2], ['wanted', 2], ['walked', 1], ['rhythm', 2],
+      ['heartbeat', 2], ['ignite', 2], ['away', 2], ['nation', 2], ['special', 2],
+      ['lion', 2], ['frequency', 3], ['shadows', 2], ['tonight', 2], ['knows', 1],
+    ];
+    const wrong = cases.filter(([w, n]) => countWord(w) !== n);
+    check(wrong.length === 0, 'SYLLABLES',
+      'the estimator counts twenty ordinary words correctly',
+      wrong.map(([w, n]) => `${w}: ${countWord(w)} not ${n}`).join(', ') || 'all correct');
+
+    // The demo lines shipped with hand-typed syllable splits. The estimator
+    // has to agree with a person who did it by hand, or it is not usable as
+    // the one answer.
+    check(countLine('Walking through the neon rain, watching shadows fade away') === 14,
+      'SYLLABLES', 'and it agrees with the hand-written split already in the project',
+      `${countLine('Walking through the neon rain, watching shadows fade away')} of 14`);
+    // The second demo line is where the estimator's limit shows, and the limit
+    // is real English rather than a bug: "every" is three syllables written and
+    // two sung, and the person who typed that line split it the way they would
+    // sing it. Spelling does not decide this, which is why the workstation
+    // shows the count it read instead of applying it silently.
+    check(countLine('Every heartbeat in my chest knows the words I cannot say') === 15 &&
+      countWord('every') === 3,
+      'SYLLABLES', 'and where it disagrees with a singer, the disagreement is "every" — sung as two',
+      `${countLine('Every heartbeat in my chest knows the words I cannot say')} against the 14 that line was sung as`);
+
+    const units = syllabify('electric fire');
+    check(units.length === 4 && units[0].wordInitial && !units[1].wordInitial, 'SYLLABLES',
+      'and it keeps which syllable starts a word, which is what a beat lands on',
+      units.map((u) => `${u.text}${u.wordInitial ? '*' : ''}`).join(' '));
+  }
+
+  console.log('\n--- 23. A performance as a lyric seed (SRT-1 VI, Mode B) ---');
+  {
+    // Two sung phrases, four syllables each, with a rest between them. The
+    // first of each phrase is hit hard.
+    const hit = (atSeconds: number, velocity: number, pitchHz = 220) => ({ atSeconds, velocity, pitchHz });
+    const take = [
+      hit(0, 120), hit(0.5, 80), hit(1.0, 82), hit(1.5, 78),
+      hit(3.2, 118), hit(3.7, 79), hit(4.2, 81), hit(4.7, 77),
+    ];
+    const seed = deriveLyricSeed(take, { bpm: 120 });
+
+    check(seed.phrases.length === 2, 'LYRIC_SEED',
+      'the rest between the lines is where the studio puts the line break',
+      `${seed.phrases.length} phrases`);
+    check(seed.phrases.every((p) => p.syllableCount === 4), 'LYRIC_SEED',
+      'each phrase carries the syllables that were actually sung',
+      seed.phrases.map((p) => p.syllableCount).join(', '));
+    check(seed.phrases[0].stressPattern === '/xxx', 'LYRIC_SEED',
+      'the stress pattern is measured from how hard each one landed',
+      seed.phrases[0].stressPattern);
+    check(seed.positions.filter((p) => p.isRhymePosition).length === 2, 'LYRIC_SEED',
+      'and the rhyme positions are the ends of the lines, one per phrase');
+    check(seed.positions.every((p) => p.kind === 'SYLLABLE_POSITION'), 'LYRIC_SEED',
+      'a sung position is a sung position -- not a word, because none was heard');
+    check(seed.positions.every((p) => p.word === null), 'LYRIC_SEED',
+      'and no position is given a word it did not carry');
+    check(seed.notMeasured.some((n) => n.startsWith('words —')), 'LYRIC_SEED',
+      'the seed says out loud that nothing recognised speech',
+      seed.notMeasured.join(' | ').slice(0, 120));
+    check(seed.notMeasured.some((n) => n.startsWith('theme —')), 'LYRIC_SEED',
+      'and that nothing inferred what the take is about');
+    check(deriveLyricSeed(take, { bpm: 120, semanticIntent: 'driving at night' }).semanticIntent === 'driving at night',
+      'LYRIC_SEED', 'the theme is the creator\'s to state, and is used when they do');
+    check(!deriveLyricSeed(take, { bpm: 120, semanticIntent: 'x' }).notMeasured.some((n) => n.startsWith('theme')),
+      'LYRIC_SEED', 'and stops being reported as missing once they have');
+
+    const percussive = deriveLyricSeed(
+      [0, 0.4, 0.8, 1.2].map((t) => ({ atSeconds: t, velocity: 100, pitchHz: -1 })),
+      { bpm: 120 }
+    );
+    check(percussive.positions.every((p) => p.kind === 'PHONETIC_FRAGMENT'), 'LYRIC_SEED',
+      'an unpitched utterance is a sound carrying cadence, kept apart from a sung note');
+
+    const tooShort = deriveLyricSeed([{ atSeconds: 0, velocity: 100 }], { bpm: 120 });
+    check(tooShort.phrases.length === 0 && /is not a cadence/.test(tooShort.notMeasured[0]),
+      'LYRIC_SEED', 'one onset is not a cadence, and is not described as a one-syllable line',
+      tooShort.notMeasured[0]);
+  }
+
+  console.log('\n--- 24. The cadence lock (Amendment E.3) ---');
+  {
+    const hit = (atSeconds: number, velocity: number) => ({ atSeconds, velocity, pitchHz: 220 });
+    // One phrase, five syllables, first and fourth hit hard.
+    const seed = deriveLyricSeed(
+      [hit(0, 122), hit(0.5, 80), hit(1.0, 78), hit(1.5, 120), hit(2.0, 79)],
+      { bpm: 120 }
+    );
+    check(seed.phrases[0].syllableCount === 5 && seed.phrases[0].stressPattern === '/xx/x',
+      'CADENCE_LOCK', 'the performed phrase is five syllables with two hard beats',
+      seed.phrases[0].stressPattern);
+
+    // "hold on to the light" -- 5 syllables, every one word-initial.
+    const fits = checkAgainstCadence('hold on to the light', seed, 0);
+    check(fits.ok && fits.violations.length === 0, 'CADENCE_LOCK',
+      'a line with the same syllables and the beats on words passes',
+      JSON.stringify(fits.violations));
+
+    const tooMany = checkAgainstCadence('hold on to the light tonight', seed, 0);
+    check(!tooMany.ok && tooMany.violations[0].kind === 'SYLLABLE_COUNT', 'CADENCE_LOCK',
+      'a line with more syllables than were sung is refused');
+    check(/nowhere to land/.test(tooMany.violations[0].says), 'CADENCE_LOCK',
+      'and the reason is what it costs the creator, not a code',
+      tooMany.violations[0].says);
+    const tooFew = checkAgainstCadence('hold on tight', seed, 0);
+    check(!tooFew.ok && /would go silent/.test(tooFew.violations[0].says), 'CADENCE_LOCK',
+      'a line with fewer says which of their syllables would go silent',
+      tooFew.violations[0].says);
+    check(tooMany.violations.length === 1 && tooFew.violations.length === 1, 'CADENCE_LOCK',
+      'and nothing is judged on an alignment that does not exist');
+
+    // Beat 4 is hard. "to-night" puts its second syllable there.
+    const beatInsideWord = checkAgainstCadence('hold on tonight now', seed, 0);
+    check(!beatInsideWord.ok && beatInsideWord.violations.some((v) => v.kind === 'STRESS_PATTERN'),
+      'CADENCE_LOCK', 'a beat the creator hit hard cannot land inside a word',
+      beatInsideWord.violations.map((v) => v.says).join(' | '));
+    check(/beat 4/.test(beatInsideWord.violations.find((v) => v.kind === 'STRESS_PATTERN')!.says),
+      'CADENCE_LOCK', 'and it names which beat',
+      beatInsideWord.violations.find((v) => v.kind === 'STRESS_PATTERN')!.says);
+
+    // The gate itself: refused lines come out with no text on them.
+    const gate = preserveCadence(
+      [
+        { id: 'a', text: 'hold on to the light', phraseIndex: 0, from: 'STUDIO_INTELLIGENCE' },
+        { id: 'b', text: 'hold on to the light tonight', phraseIndex: 0, from: 'STUDIO_INTELLIGENCE' },
+        { id: 'c', text: 'hold on tight', phraseIndex: 0, from: 'STUDIO_INTELLIGENCE' },
+      ],
+      seed
+    );
+    check(gate.accepted.length === 1 && gate.rejected.length === 2, 'CADENCE_LOCK',
+      'the gate passes what fits and refuses what does not',
+      `${gate.accepted.length} accepted, ${gate.rejected.length} refused`);
+    check(!JSON.stringify(gate.rejected).includes('tonight'), 'CADENCE_LOCK',
+      'and a refused line is refused before it is shown -- its words do not come out of the gate',
+      JSON.stringify(gate.rejected).slice(0, 120));
+    check(/refused before you saw/.test(describeGate(gate)), 'CADENCE_LOCK',
+      'what the creator is told is that something was refused, and why',
+      describeGate(gate));
+    check(/fit the cadence you performed/.test(describeGate({ accepted: gate.accepted, rejected: [] })),
+      'CADENCE_LOCK', 'and a clean round says so without inventing a refusal');
+
+    const noPhrase = checkAgainstCadence('anything at all', seed, 4);
+    check(!noPhrase.ok, 'CADENCE_LOCK',
+      'a line aimed at a phrase that was never performed is refused, not passed');
   }
 
   console.log('\n========================================================================');

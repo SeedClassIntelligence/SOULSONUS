@@ -11,6 +11,7 @@ import { FocusModeView } from './components/FocusModeView';
 import { QuickInspectorDrawer } from './components/inspectors/QuickInspectorDrawer';
 import { TrackWorkstationDrawer } from './components/inspectors/TrackWorkstationDrawer';
 import { SongwritingSuiteDrawer } from './components/inspectors/SongwritingSuiteDrawer';
+import { VocalToLyricWorkstation } from './components/VocalToLyricWorkstation';
 import { InstrumentRoom } from './components/InstrumentRoom';
 import { VoiceCloneDrawer } from './components/inspectors/VoiceCloneDrawer';
 import { ExternalHardwareMidiDrawer } from './components/inspectors/ExternalHardwareMidiDrawer';
@@ -154,6 +155,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const [isTrackWorkstationOpen, setIsTrackWorkstationOpen] = useState(false);
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const [isSongwritingSuiteOpen, setIsSongwritingSuiteOpen] = useState(false);
+  const [isVocalToLyricOpen, setIsVocalToLyricOpen] = useState(false);
   /** The instrument's full Train / Play / Packs room, opened from the strip. */
   const [isHardwareMidiOpen, setIsHardwareMidiOpen] = useState(false);
   const [isNativeBrainOpen, setIsNativeBrainOpen] = useState(false);
@@ -253,6 +255,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       if (detail === 'inspector') setIsInspectorOpen((prev) => !prev);
       if (detail === 'workstation') setIsTrackWorkstationOpen((prev) => !prev);
       if (detail === 'songwriting' || detail === 'vocal') setIsSongwritingSuiteOpen((prev) => !prev);
+      if (detail === 'lyric' || detail === 'vocaltolyric') setIsVocalToLyricOpen((prev) => !prev);
       if (detail === 'voiceclone' || detail === 'voice') setIsVoiceCloneDrawerOpen((prev) => !prev);
       if (detail === 'hardware' || detail === 'midi') setIsHardwareMidiOpen((prev) => !prev);
       if (detail === 'intelligence') setIsStudioIntelligenceOpen((prev) => !prev);
@@ -642,6 +645,11 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
           // tracks directly and could not be taken back.
           if (selectedTrackId) handleUpdateTrack(selectedTrackId, updates);
         }}
+      />
+
+      <VocalToLyricWorkstation
+        isOpen={isVocalToLyricOpen}
+        onClose={() => setIsVocalToLyricOpen(false)}
       />
 
       <SongwritingSuiteDrawer

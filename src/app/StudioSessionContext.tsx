@@ -87,6 +87,7 @@ import { vocalRecorder } from '../audio/vocalRecorder';
 import { interpretPass, eventsFromTrack, type Interpretation } from '../lib/interpretation';
 import { applyTimingMode, TIMING_MODE_LABEL, type TimingMode, type TimingResult } from '../lib/timingModes';
 import { deriveExpression, withCreatorReading, type ExpressionOnset } from '../audio/expressionState';
+import { syllabify } from '../lib/syllables';
 import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../lib/relayGap';
 import {
   DEFAULT_PRESERVE,
@@ -193,6 +194,14 @@ export interface WriteRoomDraft {
   lyrics: string;
   cadence: string;
   takes: WriteRoomTake[];
+  /**
+   * What the creator says the take is about, for the Vocal-to-Lyric
+   * workstation. Nothing infers it -- SRT-1 VI lists theme among what Mode B
+   * preserves, and a theme the studio invented would be the studio putting
+   * words in their mouth while claiming to preserve their intent. It lives on
+   * the write-room draft so it persists with the project like the rest of it.
+   */
+  lyricTheme?: string;
 }
 
 export interface StemExtractionResult {
@@ -4026,8 +4035,17 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
   // Step 3: Lyric Actions
+  //
+  // The syllables written here were `words.map((w) => w + '-')` -- a line's
+  // words with a hyphen glued on, so "electric" counted as one syllable and
+  // the emphasis was `i % 2 === 0`, an alternation nobody performed. The demo
+  // lines shipped with splits typed by hand, so the panel looked right and
+  // every line a creator actually wrote did not. Both now come from the one
+  // estimator in `lib/syllables`, and the emphasis is the rule the cadence
+  // lock enforces -- a beat lands on the start of a word -- rather than a
+  // pattern invented here.
   const handleAddLyricLine = useCallback((sectionId: string, text: string) => {
-    const words = text.trim().split(/\s+/).filter(Boolean);
+    const units = syllabify(text);
     const lineId = `line_${Date.now()}`;
     setLyricSections((prev) => {
       const sec = prev[sectionId] || {
@@ -4042,8 +4060,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         sectionId,
         bar: (sec.lines.length % 4) + 1,
         text: text.trim(),
-        syllables: words.map((w) => w + '-'),
-        cadenceEmphasis: words.map((_, i) => i % 2 === 0),
+        syllables: units.map((u) => u.text),
+        cadenceEmphasis: units.map((u) => u.wordInitial),
         cadenceRhythm: 'on_beat',
         status: 'draft',
       };
