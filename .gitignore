@@ -22,3 +22,6 @@ train_*.png
 wire_*.png
 audit_*.png
 disclosure_*.png
+
+# Built by npm run build:server (see server/index.ts)
+server.js

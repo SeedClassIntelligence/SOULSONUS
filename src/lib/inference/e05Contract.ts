@@ -24,9 +24,12 @@
 /**
  * The six task types the pinned checkpoint exposes.
  *
- * `acestep-v15-xl-base` is the only XL variant that reaches extract, lego and
- * complete; the SFT and Turbo variants stop at the first three. The registry
- * already names xl-base, so all six are reachable.
+ * Every DiT checkpoint reaches text2music, cover and repaint. Only the two
+ * base models -- `acestep-v15-base` (2B) and `acestep-v15-xl-base` (4B) --
+ * also reach extract, lego and complete; the SFT and Turbo variants of both
+ * families stop at the first three. The registry names xl-base, so all six
+ * are reachable, and a deployment that swaps in Turbo for speed loses stem
+ * extraction without saying so. Checked against the upstream model zoo.
  */
 export type E05Task =
   | 'text2music'

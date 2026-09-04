@@ -34,6 +34,40 @@ const serveOrtRaw = (): Plugin => ({
 });
 
 /**
+ * The realization route, in dev.
+ *
+ * The same handler the built server mounts, loaded through vite so it is one
+ * implementation rather than two that can drift. Without this, `npm run dev`
+ * answers `/api/e05` with index.html and the studio reports NO_SERVICE_ROUTE
+ * -- which is what it did, and what made realization look unbuilt rather than
+ * unhosted.
+ */
+const serveE05 = (): Plugin => ({
+  name: 'soulsonus-e05-route',
+  configureServer(server) {
+    server.middlewares.use(async (req, res, next) => {
+      if (!(req.url || '').startsWith('/api/e05')) return next();
+      try {
+        const mod = await server.ssrLoadModule('/server/e05Route.ts');
+        const handled = await mod.handleE05(req, res, mod.configFromEnv());
+        if (!handled) next();
+      } catch (err) {
+        // A route that throws while loading must not answer with the SPA:
+        // the provider would read that as "this build has no route" and the
+        // reason would be lost.
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(
+          JSON.stringify({
+            error: `The realization route failed to load: ${err instanceof Error ? err.message : String(err)}`,
+          })
+        );
+      }
+    });
+  },
+});
+
+/**
  * The commit this bundle was built from, stamped into the page.
  *
  * Without it there is no way to tell a stale deploy from a broken change:
@@ -56,7 +90,7 @@ export default defineConfig(() => {
     define: {
       __BUILD_ID__: JSON.stringify(buildId()),
     },
-    plugins: [serveOrtRaw(), react(), tailwindcss()],
+    plugins: [serveOrtRaw(), serveE05(), react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

@@ -5,14 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/copy-ort.cjs && vite --port=3000 --host=0.0.0.0",
-    "build": "node scripts/copy-ort.cjs && vite build",
+    "build": "node scripts/copy-ort.cjs && vite build && npm run build:server",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test": "npx esbuild scripts/test_comprehensive_platform_verification.ts --bundle --platform=node | node",
     "copy-ort": "node scripts/copy-ort.cjs",
     "seed:audit": "node scripts/seed_audit.mjs",
-    "seed:gate": "node scripts/seed_audit.mjs --gate"
+    "seed:gate": "node scripts/seed_audit.mjs --gate",
+    "build:server": "npx esbuild server/index.ts --bundle --platform=node --format=esm --packages=external --outfile=server.js",
+    "start": "node server.js"
   },
   "overrides": {
     "protobufjs": "^7.4.0"

@@ -42,13 +42,37 @@ docker compose logs -f    # first ACE-Step request downloads ~10GB of
                            # normal and only happens once
 ```
 
-Then in SoulSonus, open the Native Brain / inference settings and confirm:
-- ACE-Step endpoint: `http://localhost:8001`
-- Demucs endpoint: `http://localhost:8010`
+Then run SoulSonus with the ACE endpoint in its environment, and open it:
 
-(These are the defaults in `src/lib/inference/inferenceSettings.ts` — you
-only need to change them if you're running the services somewhere other
-than localhost, e.g. a separate GPU machine on your network.)
+```bash
+npm run build          # builds the app and server.js
+ACE_STEP_ENDPOINT=http://localhost:8001 npm start
+```
+
+**The ACE endpoint belongs to the server, not the browser.** ACE's own
+`route_setup.py` admits only localhost origins, so a deployed page calling
+it directly is refused before the model is consulted — and an endpoint or
+an API key in a client bundle is a key anyone can read. SoulSonus's own
+`/api/e05` route holds both and does the talking:
+
+| Variable | Default | What it is |
+|---|---|---|
+| `ACE_STEP_ENDPOINT` | `http://localhost:8001` | Where ACE-Step is listening. Empty means realization is not configured, and the studio says so. |
+| `ACESTEP_API_KEY` | *(none)* | Sent only if set. Never reaches the browser. |
+| `ACESTEP_API_KEY_HEADER` | `Authorization` | Which header carries it. |
+| `ACESTEP_API_KEY_FORMAT` | `Bearer {key}` | How it is written. |
+| `PORT` | `8080` | Where SoulSonus itself listens. |
+
+Demucs is different: `src/lib/inference/inferenceSettings.ts` keeps its
+endpoint (default `http://localhost:8010`) because the browser reaches it
+directly. Change that one in the app's own settings if you run it
+elsewhere.
+
+**Which checkpoint to run matters.** Every DiT model does text2music, cover
+and repaint; only `acestep-v15-base` and `acestep-v15-xl-base` also do
+extract, lego and complete. SoulSonus routes to cover, repaint and extract,
+so running an `sft` or `turbo` checkpoint silently costs you stem
+extraction. `base` (2B) is the light one that still does all six.
 
 ## Native install (no GPU, Mac, or AMD — don't use the ace-step Docker image)
 

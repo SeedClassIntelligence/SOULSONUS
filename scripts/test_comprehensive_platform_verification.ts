@@ -54,6 +54,12 @@ import * as relayGapModule from '../src/lib/relayGap';
 import { interpretPass } from '../src/lib/interpretation';
 import { MIMICRY_TARGETS } from '../src/lib/mimicryTarget';
 import { SoulSonusServiceProvider } from '../src/lib/inference/e05Provider';
+import { e05Status } from '../server/e05Route';
+import {
+  e05StateFromAceStatus,
+  extractAudioPath,
+  toAceTaskBody,
+} from '../src/lib/inference/e05Contract';
 import { DemucsClient } from '../src/lib/inference/demucsClient';
 import { autocorrelationPitchTrajectory } from '../src/lib/inference/audioPreservationScoring';
 import {
@@ -1467,6 +1473,54 @@ async function runComprehensiveVerification() {
     check(/Import it again as a performance/.test(secondOpinionOfPercussion(3, ['kick']).says),
       'FANOUT', 'and says how to keep it, rather than keeping it for them',
       secondOpinionOfPercussion(3, ['kick']).says.slice(-60));
+  }
+
+  console.log('\n--- 28. The realization service route (E05) ---');
+  {
+    // The route the browser has always addressed, and nothing implemented.
+    const dead = await e05Status({
+      endpoint: 'http://127.0.0.1:59998',
+      apiKeyHeader: 'Authorization',
+      apiKeyFormat: 'Bearer {key}',
+    });
+    check(dead.available === false && dead.reason === 'UNREACHABLE', 'E05_ROUTE',
+      'a host that is not there is unreachable — which is not the same as having no route',
+      `${dead.reason}: ${dead.detail}`);
+    check(!/59998|127\.0\.0\.1/.test(dead.detail || ''), 'E05_ROUTE',
+      'and the reason a creator reads carries no endpoint', dead.detail || '');
+
+    const unconfigured = await e05Status({
+      endpoint: '',
+      apiKeyHeader: 'Authorization',
+      apiKeyFormat: 'Bearer {key}',
+    });
+    check(unconfigured.reason === 'NOT_CONFIGURED', 'E05_ROUTE',
+      'a deployment with no host configured says so, rather than reporting one down',
+      unconfigured.detail || '');
+
+    // The mapping onto ACE's own field names. Unknown fields are ignored by
+    // its request model, so a wrong name here fails silently -- which is
+    // exactly why this is asserted rather than assumed.
+    const body = toAceTaskBody({ task: 'repaint', instruction: 'fix the second bar',
+      repaintStartSeconds: 2, repaintEndSeconds: 4 });
+    check(body.task_type === 'repaint' && body.instruction === 'fix the second bar', 'E05_ROUTE',
+      'the task and the instruction land on the names ACE declares',
+      JSON.stringify(body));
+    check(body.repainting_start === 2 && body.repainting_end === 4, 'E05_ROUTE',
+      'and the region lands on repainting_start / repainting_end, not our own names');
+    check(!('repaint_start' in body) && !('task' in body), 'E05_ROUTE',
+      'nothing is sent under a name ACE would ignore');
+    check(toAceTaskBody({ task: 'cover', instruction: 'x', durationSeconds: 30 }).audio_duration === undefined,
+      'E05_ROUTE', 'a duration is not sent for a task that takes its length from the source');
+
+    // The two shapes a finished result comes back in.
+    check(extractAudioPath('/tmp/out/a.wav') === '/tmp/out/a.wav', 'E05_ROUTE',
+      'a raw path is passed through');
+    check(extractAudioPath('/v1/audio?path=%2Ftmp%2Fout%2Fa.wav') === '/tmp/out/a.wav', 'E05_ROUTE',
+      'and a URL-shaped one is unwrapped, so it is not wrapped a second time');
+    check(e05StateFromAceStatus(0) === 'RUNNING' && e05StateFromAceStatus(1) === 'SUCCEEDED' &&
+      e05StateFromAceStatus(2) === 'FAILED', 'E05_ROUTE',
+      'and ACE\'s integer status is read as an integer');
   }
 
   console.log('\n========================================================================');

@@ -159,10 +159,22 @@ const openProposal = (page) =>
       return { status: r.status, body };
     } catch (e) { return { status: 0, body: String(e) }; }
   })()`);
+  // This used to assert the route's absence, because there was none: the
+  // fetch fell through to the SPA and the provider's guard reported
+  // NO_SERVICE_ROUTE. The route exists now, so the honest property is not
+  // "there is nothing here" -- it is that the seam answers with a service
+  // status rather than the app shell, and that an unavailable answer names a
+  // reason from the set the app knows how to show.
+  const REASONS = ['NO_SERVICE_ROUTE', 'NOT_CONFIGURED', 'UNREACHABLE', 'UNAUTHORIZED'];
   check(
-    'the dev server has no realization route, and that is visible',
-    svc.status === 404 || svc.body === 'not json' || svc.body?.available === false,
+    'the realization seam answers a service status, not the app shell',
+    svc.status === 404 || svc.body === 'not json' || typeof svc.body?.available === 'boolean',
     `HTTP ${svc.status} · ${JSON.stringify(svc.body).slice(0, 70)}`
+  );
+  check(
+    'and when it is unavailable it says why, in a reason the app can show',
+    svc.body?.available !== false || REASONS.includes(svc.body?.reason),
+    svc.body?.available === false ? String(svc.body?.reason) : 'a host answered'
   );
   check(
     'the browser holds no ACE endpoint or key',

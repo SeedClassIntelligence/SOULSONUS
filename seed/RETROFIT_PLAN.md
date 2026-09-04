@@ -658,6 +658,61 @@ monetization (XIX.1).
 
 ---
 
+## The realization service route - 2026-09-04
+
+Not a plan step. `e05Provider.ts` has addressed `/api/e05?action=...` since it
+was written, and nothing in the repository implemented it: no `server.js`, no
+`api/` directory, and a dev server with middleware for `/ort/` and nothing
+else. So the fetch fell through to the SPA, came back as `index.html`, and the
+provider's own guard reported NO_SERVICE_ROUTE. **That is why every realization
+badge read NO ANSWER** -- not because ACE-Step was missing. A creator could run
+`docker compose up`, have ACE healthy on :8001, and still have nothing for the
+browser to talk to.
+
+`server/e05Route.ts` is the missing half, mounted twice from one
+implementation: a vite plugin in dev, and `server/index.ts` built to
+`server.js` for production -- the file `npm run clean` has been deleting since
+before it was written. It maps our request onto ACE-Step 1.5's async API and
+maps the answer back, and decides nothing about music.
+
+Three properties make it a service layer rather than a proxy. The host address
+and the API key stay server-side, because ACE's `route_setup.py` admits only
+localhost origins and a key in a client bundle is a key anyone can read.
+`?action=audio` serves only paths this process saw ACE produce -- it reaches a
+file-reading endpoint on the model host, and an unchecked path there is an
+unchecked path on that host. And nothing invents a result: unreachable is
+reported as unreachable, a failed job as failed with whatever reason the host
+gave.
+
+Verified end to end against `ace-stub.mjs`, which answers ACE's wire protocol
+with a fixed tone and is **not a model**: `test-56-e05-route.cjs`, 14 checks.
+The studio submitted a take, polled through a running state, fetched the
+produced audio and built a candidate whose scores were measured against the
+creator's own take -- 49.8 / 49.3 / 50 / 49.8, which is what a one-second tone
+should score against a beatbox, and the first candidate in this project's
+history produced by an actual round trip rather than asserted. The instruction
+that arrived at the host carried the creator's measured expression, which is
+clause V.4 working live rather than only in a unit test.
+
+What this cannot prove is anything about realization quality: the stub
+realizes nothing. Running it against a real ACE-Step host is the remaining
+verification, and it needs a machine with the weights on it.
+
+Two corrections came out of checking the upstream project rather than
+recalling it. `acestep-v15-base` and `acestep-v15-turbo` are the 2B family,
+not 3.5-4B; the 4B models are the XL variants. And extract, lego and complete
+are reachable on **both** base checkpoints, not only `xl-base` as this
+codebase's contract said -- so a deployment can run the lighter 2B base and
+keep all six tasks, while an `sft` or `turbo` checkpoint silently loses stem
+extraction. `e05Contract.ts` and the inference-server README now say so.
+
+`test-38-honest-candidates` asserted the route's absence as the honest state.
+It now asserts the property that survives both worlds: the seam answers with a
+service status rather than the app shell, and an unavailable answer names a
+reason the app knows how to show.
+
+---
+
 ## Measured findings - Basic Pitch on mouth material (2026-09-01)
 
 Read-only measurement, no source changed. Ran `public/models/basic_pitch.onnx`
