@@ -54,7 +54,7 @@ import * as relayGapModule from '../src/lib/relayGap';
 import { interpretPass } from '../src/lib/interpretation';
 import { MIMICRY_TARGETS } from '../src/lib/mimicryTarget';
 import { SoulSonusServiceProvider } from '../src/lib/inference/e05Provider';
-import { e05Status } from '../server/e05Route';
+import { e05Status, parseAceRow } from '../server/e05Route';
 import {
   e05StateFromAceStatus,
   extractAudioPath,
@@ -1521,6 +1521,54 @@ async function runComprehensiveVerification() {
     check(e05StateFromAceStatus(0) === 'RUNNING' && e05StateFromAceStatus(1) === 'SUCCEEDED' &&
       e05StateFromAceStatus(2) === 'FAILED', 'E05_ROUTE',
       'and ACE\'s integer status is read as an integer');
+
+    // The two payloads below are what a live ACE-Step 1.5 server returned,
+    // copied from its own responses rather than from the API reference. Both
+    // caught a defect the documentation-shaped stub could not.
+    //
+    // `result` is an ARRAY, because a job can be a batch. Read as an object,
+    // `file` is undefined on every successful job and the realization dies
+    // with "the host reported success but returned no audio".
+    const succeeded = parseAceRow({
+      task_id: 'j1',
+      status: 1,
+      result: JSON.stringify([
+        { file: '/v1/audio?path=%2Ftmp%2Fout%2Fa.wav', status: 1, stage: 'succeeded',
+          seed_value: '4242,4242', model: 'acestep-v15-base', metas: { duration: 10.5 } },
+      ]),
+    }, 'j1');
+    check(succeeded.audioPaths?.[0] === '/tmp/out/a.wav', 'E05_ROUTE',
+      'the audio path is found inside the array a live server returns',
+      JSON.stringify(succeeded.audioPaths));
+    check(succeeded.resolvedSeed === 4242 && succeeded.resolvedModel === 'acestep-v15-base' &&
+      succeeded.resolvedDurationSeconds === 10.5, 'E05_ROUTE',
+      'along with the seed it actually used, the model, and the length',
+      JSON.stringify(succeeded));
+
+    // Verbatim from a live server whose weights could not be downloaded.
+    const failed = parseAceRow({
+      task_id: 'j2',
+      status: 2,
+      result: JSON.stringify([
+        { file: '', wave: '', status: 2, stage: 'failed', progress: 0.0, metas: {},
+          error: 'ERROR: Failed to download main model: Both HuggingFace and ModelScope downloads failed.' },
+      ]),
+    }, 'j2');
+    check(failed.state === 'FAILED' && /Failed to download main model/.test(failed.error || ''),
+      'E05_ROUTE', 'and a failed job carries the host’s own reason, not "gave no reason"',
+      (failed.error || '').slice(0, 70));
+    check(failed.resolvedSeed === undefined, 'E05_ROUTE',
+      'a job that never got a seed is not reported as having used seed 0',
+      String(failed.resolvedSeed));
+    check(!failed.audioPaths, 'E05_ROUTE',
+      'and an empty file field is not offered as a path to fetch');
+
+    const silent = parseAceRow({ task_id: 'j3', status: 2, result: '' }, 'j3');
+    check(/gave no reason/.test(silent.error || ''), 'E05_ROUTE',
+      'a host that fails a job and says nothing is reported as exactly that', silent.error || '');
+    const unreadable = parseAceRow({ task_id: 'j4', status: 1, result: 'not json' }, 'j4');
+    check(unreadable.state === 'FAILED' && /could not read/.test(unreadable.error || ''),
+      'E05_ROUTE', 'and a result this service cannot read is a failure, not a success with nothing in it');
   }
 
   console.log('\n========================================================================');

@@ -695,8 +695,60 @@ that arrived at the host carried the creator's measured expression, which is
 clause V.4 working live rather than only in a unit test.
 
 What this cannot prove is anything about realization quality: the stub
-realizes nothing. Running it against a real ACE-Step host is the remaining
-verification, and it needs a machine with the weights on it.
+realizes nothing.
+
+### Against the real ACE-Step host - 2026-09-04
+
+Run afterwards, and it earned its keep immediately. The upstream project was
+cloned, its dependencies installed from PyPI, and `acestep.api_server` started
+on :8101 -- the real FastAPI server, its real routes, its real request model.
+The service route was pointed at it and a job submitted through
+`server.js`.
+
+The host accepted it and named it (`de6d8207-1383-411e-...`), which settles
+the contract questions the stub could only assume. Two things it settled that
+the published API reference does not say, and both were defects here:
+
+- **`result` is a JSON array, not an object.** A live server returns
+  `[{"file": ..., "status": 2, ...}]`, because a job can be a batch. The route
+  read `file` off an object, so on every *successful* job the path would have
+  been undefined and the realization would have died with "the host reported
+  success but returned no audio". The stub, written from the documentation,
+  returned an object and could never have shown this. It now returns the array
+  the server returns.
+- **A failed entry carries the host's own `error`.** The route said "the host
+  reported the job failed and gave no reason" while the host had given a
+  paragraph naming exactly what went wrong. It carries the reason verbatim now,
+  and no longer reports a seed of 0 for a job that never got one.
+
+Both live payloads are now fixtures in the suite, so neither can come back.
+Also verified from the cloned source rather than from a document: the API key
+travels in `Authorization: Bearer <key>` (`acestep/api/http/auth.py`), and the
+multipart file field is `src_audio` or `ctx_audio`, saved to a temp path
+(`release_task_request_parser.py`) -- which is what the route sends, and why it
+sends the file rather than a `src_audio_path` the host could not read.
+
+**Generation itself could not run here, and the reason is not SoulSonus.**
+This machine has no GPU and, more decisively, the model weights cannot be
+fetched: HuggingFace is denied by the environment's egress policy (403 on
+CONNECT), ModelScope and hf-mirror have no route, and `download.pytorch.org`
+is blocked as well. The host reported this itself:
+
+    ERROR: Failed to download main model: Both HuggingFace and ModelScope
+    downloads failed.
+
+So the route is verified end to end against a real server for status,
+submission, the polling loop, the result shape and the failure path. What
+remains unverified is one thing only: that a checkpoint with weights produces
+audio the contract then scores. `scripts/live-verification/verify-real-ace.mjs`
+is that last mile as one command, to be run on a machine that has them:
+
+    ACE_STEP_ENDPOINT=http://localhost:8001 npm start &
+    node scripts/live-verification/verify-real-ace.mjs http://localhost:8080
+
+It reports what happened rather than deciding what should have: a host with no
+weights prints "the ROUTE works, the DEPLOYMENT could not generate" and the
+host's own reason, because those are two different findings.
 
 Two corrections came out of checking the upstream project rather than
 recalling it. `acestep-v15-base` and `acestep-v15-turbo` are the 2B family,

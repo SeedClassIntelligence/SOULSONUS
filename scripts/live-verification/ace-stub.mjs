@@ -111,21 +111,36 @@ http
       }
       const data = ids.map((id) => {
         const job = jobs.get(id);
-        if (!job) return { task_id: id, status: 2, result: '' };
+        if (!job) {
+          return {
+            task_id: id,
+            status: 2,
+            result: JSON.stringify([{ file: '', status: 2, stage: 'failed', error: 'no such task' }]),
+          };
+        }
         job.polls++;
         if (job.polls <= RUNNING_POLLS) return { task_id: id, status: 0, result: '' };
         return {
           task_id: id,
           status: 1,
-          result: JSON.stringify({
-            // The URL-shaped form, which is one of the two shapes ACE returns
-            // and the one that needs unwrapping.
-            file: `/v1/audio?path=${encodeURIComponent(`/tmp/stub/${id}.wav`)}`,
-            status: 1,
-            seed_value: '4242,4242',
-            model: 'stub-not-a-model',
-            metas: { bpm: 120, duration: 1.0, keyscale: 'C major', timesignature: '4/4' },
-          }),
+          // An ARRAY, which is what a live server returns -- a job can be a
+          // batch. This stub returned the object shape the published API
+          // reference shows, and a route written against it read `file` off an
+          // array and found nothing on every successful job. The fixture now
+          // matches the server rather than the documentation.
+          result: JSON.stringify([
+            {
+              // The URL-shaped form, which is one of the two shapes ACE
+              // returns and the one that needs unwrapping.
+              file: `/v1/audio?path=${encodeURIComponent(`/tmp/stub/${id}.wav`)}`,
+              wave: '',
+              status: 1,
+              stage: 'succeeded',
+              seed_value: '4242,4242',
+              model: 'stub-not-a-model',
+              metas: { bpm: 120, duration: 1.0, keyscale: 'C major', timesignature: '4/4' },
+            },
+          ]),
         };
       });
       return send(res, 200, { data });

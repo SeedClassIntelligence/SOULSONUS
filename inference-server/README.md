@@ -68,6 +68,18 @@ endpoint (default `http://localhost:8010`) because the browser reaches it
 directly. Change that one in the app's own settings if you run it
 elsewhere.
 
+Once it is running, check the whole path in one command:
+
+```bash
+node scripts/live-verification/verify-real-ace.mjs http://localhost:8080
+```
+
+It submits a short job through SoulSonus's own route, watches it, fetches the
+audio back and confirms that a path the service never issued is refused. A
+host without its weights fails the generation and prints the host's own
+reason — which is a pass for the route and a fail for the deployment, and it
+says which is which.
+
 **Which checkpoint to run matters.** Every DiT model does text2music, cover
 and repaint; only `acestep-v15-base` and `acestep-v15-xl-base` also do
 extract, lego and complete. SoulSonus routes to cover, repaint and extract,

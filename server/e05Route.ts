@@ -224,6 +224,77 @@ async function submit(req: IncomingMessage, res: ServerResponse, cfg: E05RouteCo
   return json(res, 200, { jobId, queuePosition: body?.data?.queue_position });
 }
 
+/**
+ * Reads one `query_result` row into our own result shape.
+ *
+ * Exported and pure so the payloads a live server actually returns can be
+ * tested without one -- which is how the two defects below were caught, and
+ * how they stay caught.
+ */
+export function parseAceRow(
+  row: { task_id: string; status: number; result?: string },
+  jobId: string
+): E05Result {
+  const result: E05Result = { jobId, state: e05StateFromAceStatus(row.status) };
+
+  // `result` is a JSON string on the row, and a live server settled two things
+  // the published API reference does not say.
+  //
+  // It is an ARRAY of entries -- `[{"file": ..., "status": 2, ...}]` -- because
+  // a job can be a batch. Read as an object, `file` is undefined on every
+  // successful job, and the realization fails with "the host reported success
+  // but returned no audio". A stub written from the documentation returns an
+  // object and never shows this.
+  //
+  // And a failed entry carries `error` with the host's own explanation. Without
+  // reading it, a creator whose job died because the model weights could not be
+  // downloaded is told the host "gave no reason", while the host gave a
+  // paragraph.
+  if (row.result) {
+    try {
+      const parsed = JSON.parse(row.result) as unknown;
+      const entries = (Array.isArray(parsed) ? parsed : [parsed]) as {
+        file?: string | string[];
+        seed_value?: string | number;
+        model?: string;
+        error?: string;
+        stage?: string;
+        metas?: { duration?: number };
+      }[];
+
+      const paths: string[] = [];
+      for (const entry of entries) {
+        const files = Array.isArray(entry.file) ? entry.file : entry.file ? [entry.file] : [];
+        for (const file of files) {
+          if (!file) continue;
+          paths.push(extractAudioPath(file));
+        }
+        // The seed comes back as "4242,4242" on a batch and as "" on a job that
+        // never got far enough to have one. An empty string parses to zero,
+        // which would report a seed the host never chose.
+        const rawSeed = String(entry.seed_value ?? '').split(',')[0].trim();
+        if (rawSeed && Number.isFinite(Number(rawSeed))) result.resolvedSeed = Number(rawSeed);
+        if (entry.model) result.resolvedModel = entry.model;
+        if (typeof entry.metas?.duration === 'number') {
+          result.resolvedDurationSeconds = entry.metas.duration;
+        }
+        if (entry.error) result.error = entry.error;
+        else if (!result.error && entry.stage === 'failed') result.error = 'the host reported the job failed';
+      }
+      if (paths.length) result.audioPaths = paths;
+    } catch {
+      // A result that will not parse is reported as a failure with the reason,
+      // rather than as a success with nothing in it.
+      result.state = 'FAILED';
+      result.error = 'The host returned a result this service could not read.';
+    }
+  }
+  if (result.state === 'FAILED' && !result.error) {
+    result.error = 'the host reported the job failed and gave no reason';
+  }
+  return result;
+}
+
 /** Polls one job and translates ACE's answer into the states the app expects. */
 async function poll(res: ServerResponse, cfg: E05RouteConfig, jobId: string) {
   const aceRes = await fetch(`${cfg.endpoint}/query_result`, {
@@ -242,39 +313,9 @@ async function poll(res: ServerResponse, cfg: E05RouteConfig, jobId: string) {
     return json(res, 404, { error: 'The realization host does not know that job.' });
   }
 
-  const result: E05Result = { jobId, state: e05StateFromAceStatus(row.status) };
-
-  // `result` is a JSON string on the row, and its shape differs between code
-  // paths -- one gives a raw filesystem path, another the already-built
-  // `/v1/audio?path=` URL. `extractAudioPath` is the one place that knows.
-  if (row.result) {
-    try {
-      const parsed = JSON.parse(row.result) as {
-        file?: string | string[];
-        seed_value?: string | number;
-        model?: string;
-        metas?: { duration?: number };
-      };
-      const files = Array.isArray(parsed.file) ? parsed.file : parsed.file ? [parsed.file] : [];
-      const paths = files.map(extractAudioPath);
-      for (const p of paths) issuedPaths.add(p);
-      if (paths.length) result.audioPaths = paths;
-      const seed = Number(String(parsed.seed_value ?? '').split(',')[0]);
-      if (Number.isFinite(seed)) result.resolvedSeed = seed;
-      if (parsed.model) result.resolvedModel = parsed.model;
-      if (typeof parsed.metas?.duration === 'number') {
-        result.resolvedDurationSeconds = parsed.metas.duration;
-      }
-    } catch {
-      // A result that will not parse is reported as a failure with the reason,
-      // rather than as a success with nothing in it.
-      result.state = 'FAILED';
-      result.error = 'The host returned a result this service could not read.';
-    }
-  }
-  if (result.state === 'FAILED' && !result.error) {
-    result.error = 'the host reported the job failed and gave no reason';
-  }
+  const result = parseAceRow(row, jobId);
+  // Only a path this service saw the host produce may be fetched later.
+  for (const p of result.audioPaths || []) issuedPaths.add(p);
   return json(res, 200, result);
 }
 
