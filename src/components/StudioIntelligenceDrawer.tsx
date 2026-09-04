@@ -100,7 +100,17 @@ interface ProposalOption {
    * nothing to apply, and the commit must say so rather than report success.
    */
   apply?: {
-    /** Which track to change; falls back to the instrument named here. */
+    /**
+     * The channel the proposal named, by id.
+     *
+     * Without it, committing resolved the target by instrument or fell back to
+     * whatever the creator happened to have selected -- so a proposal that
+     * said "on Kick (Thump)" could write its settings to another channel and
+     * then report having applied them to that one. The proposal names a track;
+     * this is that track.
+     */
+    targetTrackId?: string;
+    /** Which track to change when no id was carried; falls back to selection. */
     targetInstrument?: Track['instrument'];
     dspSettings?: Partial<TrackDspSettings>;
     /** Human-readable summary of the change, used in the confirmation. */
@@ -288,6 +298,7 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
     }
 
     const target =
+      (option.apply.targetTrackId && tracks.find((t) => t.id === option.apply!.targetTrackId)) ||
       (option.apply.targetInstrument && tracks.find((t) => t.instrument === option.apply!.targetInstrument)) ||
       selectedTrack;
 
@@ -401,6 +412,7 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
               }),
               apply: proposal.proposedChanges.dspSettings
                 ? {
+                    targetTrackId: proposal.targetTrackId,
                     dspSettings: proposal.proposedChanges.dspSettings,
                     summary: proposal.proposedChanges.actionSummary,
                   }

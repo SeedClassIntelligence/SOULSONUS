@@ -44,8 +44,14 @@ export interface ExpressionOnset {
 }
 
 /**
- * The poles, in the order SRT-1 V writes them: value -1 is the first, +1 the
- * second.
+ * The two poles of each axis: -1 is the first, +1 the second.
+ *
+ * Six of the seven are in the order SRT-1 V writes them. Valence is the one
+ * exception -- the seed writes it "positive <-> negative" -- and it is
+ * deliberately reversed here so that every axis in the set runs from its
+ * negative pole to its positive one. A creator reading two bars where one
+ * runs the other way would misread the take, which costs more than matching
+ * the order of a list.
  */
 export const EXPRESSION_POLES: Record<ExpressionDimensionName, [string, string]> = {
   valence: ['negative', 'positive'],
@@ -317,11 +323,24 @@ export function withCreatorReading(
   measured: ExpressionState
 ): ExpressionState {
   if (value === null) {
-    return { ...state, [name]: measured[name] };
+    // Handing it back restores the measurement, and with it the reason the
+    // measurement is absent when there was none.
+    const restored = { ...state, [name]: measured[name] } as ExpressionState;
+    const missing = measured.notMeasured.filter((n) => n.startsWith(`${name} `) || n.startsWith(`${name} —`));
+    return {
+      ...restored,
+      notMeasured: [...restored.notMeasured.filter((n) => !n.startsWith(`${name} `)), ...missing].sort(),
+    };
   }
   const [low, high] = EXPRESSION_POLES[name];
   return {
     ...state,
+    // A dimension the creator has spoken about is no longer one the state is
+    // silent on. Leaving the line in place would have the object saying, of
+    // the same dimension, both "nothing in this pass carried a pitch" and the
+    // creator's own reading -- and the creator's reading is the one that
+    // stands (Amendment B.ii).
+    notMeasured: state.notMeasured.filter((n) => !n.startsWith(`${name} `)),
     [name]: {
       ...dimension(name, Math.max(-1, Math.min(1, value)), `you said this take is ${value < 0 ? low : high}`),
       fromCreator: true,

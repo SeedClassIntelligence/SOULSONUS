@@ -14,7 +14,7 @@
  *      apply it says it cannot apply.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, recordTake } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -63,12 +63,7 @@ async function ask(page, text) {
 
   // ---- a hummed take: pitch and spectrum both present ----
   console.log('\n-- a hummed take --');
-  await page.getByRole('button', { name: 'Hum / Voice' }).first().click();
-  await page.waitForTimeout(400);
-  await page.getByRole('button', { name: '● RECORD LOOP' }).first().click();
-  await page.waitForTimeout(9000);
-  await page.getByRole('button', { name: /STOP RECORDING/ }).first().click();
-  await page.waitForTimeout(2500);
+  await recordTake(page, 'Hum / Voice', 9);
   const after = await st();
   const ex = after.expression;
   check('the pass produced a reading', !!ex, ex ? `${ex.measuredFrom.onsets} onsets` : 'none');
@@ -141,6 +136,38 @@ async function ask(page, text) {
     (answer.match(/tempo is untouched[^\n]*/) || [''])[0]);
   check('what it cannot apply, it says it cannot apply',
     !/harmonic tension/.test(answer) || /cannot make the change for you/.test(answer));
+
+  // ---- a take the studio cannot read all of ----
+  //
+  // A percussive pass carries no pitch, so valence and tension are not
+  // readable from it. The creator still has something to say about them, and
+  // SRT-1 V lists their own emotional intent as an input in its own right --
+  // so the row has to be theirs to fill, not only theirs to correct.
+  console.log('\n-- a dimension the studio could not read --');
+  await page.getByRole('button', { name: '✦ STUDIO INTELLIGENCE' }).first().click();
+  await page.waitForTimeout(500);
+  await page.locator('#btn-blank-canvas').first().click();
+  await page.waitForTimeout(1200);
+  await recordTake(page, 'Oral Beatbox', 8);
+  const drums = await st();
+  check('the percussive take was read', !!drums.expression,
+    drums.expression ? `${drums.expression.measuredFrom.onsets} onsets` : 'none');
+  check('and valence is not readable from it', drums.expression.valence === null,
+    drums.expression.notMeasured.filter((n) => n.startsWith('valence')).join(''));
+  const closed = await page.locator('[data-testid="creative-intent-body"]').count();
+  if (!closed) await page.locator('[data-testid="creative-intent-toggle"]').first().click();
+  await page.waitForTimeout(400);
+  const canSay = await page.locator('[data-testid="say-valence-low"]').count();
+  check('the creator is still offered the dimension', canSay === 1, `${canSay} control(s)`);
+  await page.locator('[data-testid="say-valence-low"]').first().click();
+  await page.waitForTimeout(500);
+  const spoken = await st();
+  check('what they say fills a dimension nothing measured',
+    spoken.expression.valence && spoken.expression.valence.fromCreator === true,
+    spoken.expression.valence ? `${spoken.expression.valence.value} — ${spoken.expression.valence.from}` : 'still null');
+  check('and the state stops calling it unmeasured',
+    !spoken.expression.notMeasured.some((n) => n.startsWith('valence')),
+    spoken.expression.notMeasured.join(' | ').slice(0, 90));
 
   await page.screenshot({ path: `${SP}/52_expression.png` });
   await browser.close();

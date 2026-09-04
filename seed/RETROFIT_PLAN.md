@@ -365,7 +365,7 @@ to justify is a number in a struct.
 Verified in the browser as well as in the suite:
 `scripts/live-verification/test-52-expression.cjs` hums into the microphone,
 reads the state back out of session state, overrules a dimension and asks the
-intelligence to explain a change -- 22 checks. 39 unit assertions cover the
+intelligence to explain a change -- 22 checks. 44 unit assertions cover the
 derivation and the control mapping.
 
 **The reading.** `audio/expressionState.deriveExpression` takes a whole pass
@@ -413,6 +413,58 @@ The gate test for this, `test-07-channel-separation`, could not run: it and two
 others addressed capture buttons by names the bench no longer uses. They are
 repaired and share one `recordTake` helper now. All five of its cases pass,
 including both hum registers landing on melody and bass.
+
+### Review of Steps 4 and 6 -- 2026-09-04
+
+Re-read against the plan and against what runs, not against the commit
+messages. Four findings, all fixed, and four things left standing that a
+reader should know.
+
+**Fixed.**
+
+- *A proposal could be applied to a channel it did not name.* Committing a
+  Studio Intelligence proposal resolved its target by instrument, or fell back
+  to whatever the creator had selected, so a proposal reading "on Kick
+  (Thump)" could write its settings elsewhere and then report having applied
+  them to that other channel. The proposal's own `targetTrackId` is carried
+  through and resolved first now.
+- *The creator could only overrule a dimension the studio already had an
+  opinion about.* SRT-1 V lists user-specified emotional intent as an input in
+  its own right, not as a correction to a machine reading, and a percussive
+  take is not a take the creator has nothing to say about. The say-row is
+  offered on every dimension, measured or not.
+- *A dimension the creator stated was still listed as unmeasured.* The state
+  said, of the same dimension, both "nothing in this pass carried a pitch" and
+  their reading. Their reading stands; the line is dropped, and handing the
+  dimension back restores both the absence and the reason for it.
+- *A false comment in the source.* `EXPRESSION_POLES` claimed to be in the
+  order SRT-1 V writes them. Six are; valence is deliberately reversed so
+  every axis runs negative to positive, and the comment now says so.
+
+**Verified that had not been.** The three fields added to the project
+snapshot -- the timing mode per track, the affective reading, the creator's
+corrections -- were written and never proved to come back.
+`test-53-state-survives-reload.cjs` saves through the session's own save,
+reloads the page, reopens, and reads all of it back, including each note's
+performed tick. 13 checks.
+
+**Left standing, and why.**
+
+- The reading rides with the ACE instruction beside the creator's measured
+  feel, and cannot be verified end to end here: E05 does not answer in this
+  environment. Built, unproven, and named as such.
+- For the local routes -- SAMPLE, INSTRUMENT, SYNTH -- the reading reaches the
+  render only through the intelligence's proposal, which the creator applies.
+  It does not silently shape those routes.
+- The timing row is offered with the reading, which is what "a per-pass choice
+  that re-quantizes what was just committed" asks for. Dismissing the reading
+  takes the row with it until the track is re-read. Nothing is lost by that --
+  the mode persists and every note keeps its performed tick -- but a track
+  sitting in groove carries no mark on its own lane saying so.
+- `test-48-kit-plays-live` fails five checks identically with and without this
+  work: the factory kit reports as loaded and plays nothing. Not this step's,
+  not touched, and not fixed.
+
 
 ---
 

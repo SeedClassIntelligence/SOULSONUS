@@ -1091,6 +1091,25 @@ async function runComprehensiveVerification() {
     check(handedBack.darkness!.value === measuredState.darkness!.value && !handedBack.darkness!.fromCreator,
       'EXPRESSION', 'clearing it hands the dimension back to the measurement');
 
+    // A dimension the studio could not read is one the creator can still
+    // state: SRT-1 V lists their own emotional intent as an input in its own
+    // right, not as a correction to a machine reading.
+    const drumState = deriveExpression(beatbox);
+    check(drumState.valence === null && drumState.notMeasured.some((n) => n.startsWith('valence ')),
+      'EXPRESSION', 'the take could not support valence, and the state says so');
+    const spoken = withCreatorReading(drumState, 'valence', -0.7, drumState);
+    check(spoken.valence!.value === -0.7 && spoken.valence!.fromCreator === true, 'EXPRESSION',
+      'the creator can state a dimension nothing measured');
+    check(!spoken.notMeasured.some((n) => n.startsWith('valence ')), 'EXPRESSION',
+      'and the state stops calling it unmeasured, rather than saying both at once',
+      spoken.notMeasured.join(' | '));
+    check(expressionCoverage(spoken).known === expressionCoverage(drumState).known + 1, 'EXPRESSION',
+      'coverage counts it, because it is now known -- from them');
+    const givenBack = withCreatorReading(spoken, 'valence', null, drumState);
+    check(givenBack.valence === null && givenBack.notMeasured.some((n) => n.startsWith('valence ')),
+      'EXPRESSION', 'handing it back restores both the absence and the reason for it',
+      givenBack.notMeasured.join(' | '));
+
     // The sentence a realization acts on names only what was read.
     const sentence = describeExpression(deriveExpression(dark));
     check(sentence.length > 0 && !/valence|tension/.test(sentence), 'EXPRESSION',

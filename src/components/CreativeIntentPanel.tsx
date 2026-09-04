@@ -320,10 +320,20 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
                         )}
                       </div>
 
-                      {dim && (
-                        <div className="flex items-center gap-1.5 pl-[62px]">
+                      {/* The say-row is offered whether or not the studio
+                          measured this dimension. SRT-1 V lists the creator's
+                          own emotional intent as an input in its own right,
+                          not as a correction to a machine reading -- so a
+                          dimension the take could not support is one they can
+                          still state, and a percussive take is not a take
+                          about which they have nothing to say. */}
+                      <div className="flex items-center gap-1.5 pl-[62px]">
                           <p className="text-[9px] font-mono text-slate-500 flex-1 leading-snug">
-                            {dim.fromCreator ? `you: ${dim.reads}` : `${dim.reads} — ${dim.from}`}
+                            {!dim
+                              ? 'the studio could not read this one — say it yourself'
+                              : dim.fromCreator
+                                ? `you: ${dim.reads}`
+                                : `${dim.reads} — ${dim.from}`}
                           </p>
                           {/* Amendment B: the creator's reading replaces the
                               studio's on that dimension, and is labelled as
@@ -358,7 +368,6 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
                             )}
                           </div>
                         </div>
-                      )}
                     </div>
                   );
                 })}
