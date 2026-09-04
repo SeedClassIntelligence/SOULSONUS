@@ -71,6 +71,7 @@ export const VocalToLyricWorkstation: React.FC<VocalToLyricWorkstationProps> = (
     handleAddLyricLine,
     selectionContext,
     activeWorkspace,
+    lastPassLyricSeed,
   } = useStudioSession();
 
   // Takes that carry a performance to read. A drum channel is not a lyric
@@ -85,15 +86,30 @@ export const VocalToLyricWorkstation: React.FC<VocalToLyricWorkstationProps> = (
       ),
     [tracks]
   );
+  // The take that was just performed, read at full fidelity by the fan-out
+  // (SRT-1 III) rather than rebuilt from the notes it was written to. Its
+  // onsets carry the velocities and pitches the microphone measured; a channel
+  // carries what survived quantisation and routing. Offered first when there
+  // is one, and the creator can still read any channel instead.
+  const PASS = '__last_pass__';
   const [seedTrackId, setSeedTrackId] = useState<string | null>(null);
-  const track =
-    candidates.find((t) => t.id === seedTrackId) ||
-    candidates.find((t) => t.id === selectionContext.selectedTrackId) ||
-    candidates[0] ||
-    null;
+  const readingPass = lastPassLyricSeed
+    ? seedTrackId === PASS || seedTrackId === null
+    : false;
+  const track = readingPass
+    ? null
+    : candidates.find((t) => t.id === seedTrackId) ||
+      candidates.find((t) => t.id === selectionContext.selectedTrackId) ||
+      candidates[0] ||
+      null;
 
   const theme = (writeRoomDraft as { lyricTheme?: string }).lyricTheme || '';
   const seed: LyricSeed | null = useMemo(() => {
+    if (readingPass && lastPassLyricSeed) {
+      // The pass already carries the creator's theme through the fan-out; it
+      // is re-applied here so typing one updates the seed without a new take.
+      return { ...lastPassLyricSeed, semanticIntent: theme || lastPassLyricSeed.semanticIntent };
+    }
     if (!track) return null;
     const bpm = dawState.bpm || 110;
     const events = eventsFromTrack(track, bpm);
@@ -105,7 +121,7 @@ export const VocalToLyricWorkstation: React.FC<VocalToLyricWorkstationProps> = (
       })),
       { bpm, semanticIntent: theme || null, expression: expressionState }
     );
-  }, [track, dawState.bpm, theme, expressionState]);
+  }, [track, dawState.bpm, theme, expressionState, readingPass, lastPassLyricSeed]);
 
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [draft, setDraft] = useState('');
@@ -245,12 +261,19 @@ export const VocalToLyricWorkstation: React.FC<VocalToLyricWorkstationProps> = (
                   Reading
                 </span>
                 <select
-                  value={track?.id || ''}
+                  value={readingPass ? PASS : track?.id || ''}
                   onChange={(e) => setSeedTrackId(e.target.value || null)}
                   data-testid="vtl-take"
                   className="flex-1 bg-slate-900 border border-slate-800 focus:border-purple-500 text-[11px] text-slate-100 rounded-lg px-2 py-1 outline-none cursor-pointer"
                 >
-                  {candidates.length === 0 && <option value="">no take to read yet</option>}
+                  {candidates.length === 0 && !lastPassLyricSeed && (
+                    <option value="">no take to read yet</option>
+                  )}
+                  {lastPassLyricSeed && (
+                    <option value={PASS}>
+                      the take you just performed — {lastPassLyricSeed.positions.length} onsets
+                    </option>
+                  )}
                   {candidates.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name} — {t.noteEvents?.length ?? 0} onsets
@@ -258,7 +281,7 @@ export const VocalToLyricWorkstation: React.FC<VocalToLyricWorkstationProps> = (
                   ))}
                 </select>
               </div>
-              {!candidates.length && (
+              {!candidates.length && !lastPassLyricSeed && (
                 <p className="text-[10px] text-amber-300/80 mt-1.5 leading-snug">
                   Sing or hum a line first. This reads a performance; it has nothing to read yet,
                   and there is no cadence to fit words to.

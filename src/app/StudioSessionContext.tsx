@@ -87,6 +87,12 @@ import { vocalRecorder } from '../audio/vocalRecorder';
 import { interpretPass, eventsFromTrack, type Interpretation } from '../lib/interpretation';
 import { applyTimingMode, TIMING_MODE_LABEL, type TimingMode, type TimingResult } from '../lib/timingModes';
 import { deriveExpression, withCreatorReading, type ExpressionOnset } from '../audio/expressionState';
+import {
+  fanOutPerformance,
+  secondOpinionOfPercussion,
+  secondOpinionOfPitch,
+} from '../audio/expressionFanout';
+import type { LyricSeed } from '../lib/lyricSeed';
 import { syllabify } from '../lib/syllables';
 import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../lib/relayGap';
 import {
@@ -675,6 +681,14 @@ export interface StudioSessionState {
   mimicryTargetId: string | null;
   setMimicryTargetId: (id: string | null) => void;
   /**
+   * The production grammar the creator asked for, by id (SRT-1 XIV).
+   *
+   * Named by them, never classified from their material, and carried into
+   * every realization this session asks for.
+   */
+  genreId: string | null;
+  setGenreId: (id: string | null) => void;
+  /**
    * Reads a track that is already on the timeline and says what it appears to
    * be, exactly as the studio reads a fresh pass.
    *
@@ -693,6 +707,14 @@ export interface StudioSessionState {
    * measured. Null before anything has been performed.
    */
   expressionState: ExpressionState | null;
+  /**
+   * The same pass read as a cadence -- syllable positions, stress, phrases.
+   *
+   * One performance feeds several processors (SRT-1 III), so the pass that
+   * produced the reading above produced this at the same moment, from the same
+   * onsets, rather than being rebuilt later from the notes it was written to.
+   */
+  lastPassLyricSeed: LyricSeed | null;
   /**
    * What the creator said about a dimension themselves, which replaces the
    * measurement on that dimension. SRT-1 V lists their own emotional intent
@@ -1877,6 +1899,14 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    * merged view is what everything downstream consumes.
    */
   const [measuredExpression, setMeasuredExpression] = useState<ExpressionState | null>(null);
+  const [lastPassLyricSeed, setLastPassLyricSeed] = useState<LyricSeed | null>(null);
+  /**
+   * The theme the creator typed, readable from inside a capture callback.
+   *
+   * The fan-out runs while a take is being committed, which is outside the
+   * render that holds the draft.
+   */
+  const writeRoomDraftRef = useRef<{ lyricTheme?: string }>({});
   const [creatorExpressionReadings, setCreatorExpressionReadings] = useState<
     Partial<Record<ExpressionDimensionName, number>>
   >({});
@@ -1936,6 +1966,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    * and must not be rebuilt every time the creator changes the picker.
    */
   const [mimicryTargetId, setMimicryTargetId] = useState<string | null>(null);
+  const [genreId, setGenreId] = useState<string | null>(null);
   const mimicryTargetIdRef = useRef<string | null>(null);
   useEffect(() => {
     mimicryTargetIdRef.current = mimicryTargetId;
@@ -2093,11 +2124,19 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     // the router serves -- mic, file and hardware MIDI alike (F.iv).
     setInterpretationSubjectId(null);
     passEventsRef.current = [...passEventsRef.current, ...events];
-    setLastInterpretation(interpretPass(passEventsRef.current, mimicryTargetIdRef.current));
-    // SRT-1 V, read off the same pass and from the same measurements. A new
-    // performance is a new reading: the creator's own corrections are about
-    // the take they were said over, not about the next one.
-    setMeasuredExpression(deriveExpression(expressionOnsetsOf(passEventsRef.current)));
+    // One performance, every processor, at once (SRT-1 III). The role reading,
+    // the affective reading and the cadence all come off the same onsets in
+    // the same moment instead of three places each rebuilding their own view
+    // of the take. A new performance is a new reading: the creator's own
+    // corrections are about the take they were said over, not the next one.
+    const read = fanOutPerformance(passEventsRef.current, {
+      bpm: dawStateRef.current.bpm || 110,
+      declaredTargetId: mimicryTargetIdRef.current,
+      semanticIntent: writeRoomDraftRef.current.lyricTheme || null,
+    });
+    setLastInterpretation(read.interpretation);
+    setMeasuredExpression(read.expression);
+    setLastPassLyricSeed(read.lyricSeed);
     setCreatorExpressionReadings({});
   }, [updateTracksWithHistory]);
 
@@ -2198,6 +2237,25 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         // than against the transport.
         captureOriginMsRef.current = null;
         const classes = [...new Set(events.map((e) => e.klass))];
+
+        // SRT-1 III: a single performance can feed several processors, and
+        // this file went to exactly one. The transcriber is asked the same
+        // question over the same audio -- the measurement recorded in the
+        // retrofit plan says percussion never drove it to produce a note at
+        // any threshold, so it cannot steal percussive hits. Nothing it hears
+        // is written: the creator said "performance", and doubling their
+        // material silently would be the fan-out destroying the take it
+        // exists to protect. They are told, and they decide.
+        let alsoHeard = '';
+        try {
+          const pitched = await transcribe(buffer.getChannelData(0), buffer.sampleRate, {
+            creatorPeaks: pitchResponseRef.current,
+          });
+          alsoHeard = ` ${secondOpinionOfPitch(pitched.notes.length).says}`;
+        } catch {
+          // A second reading that fails costs the creator nothing, and saying
+          // it failed would be noise in a result about their import.
+        }
         const truncation = droppedBeyondGrid
           ? ` ${droppedBeyondGrid} hits past the end of the song were left out — trim the file, or lengthen the song to keep them.`
           : '';
@@ -2206,7 +2264,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           mode,
           message:
             `Separated ${events.length} hits across ${classes.length} sound ` +
-            `${classes.length === 1 ? 'type' : 'types'}.${truncation}`,
+            `${classes.length === 1 ? 'type' : 'types'}.${truncation}${alsoHeard}`,
           eventCount: events.length,
           droppedBeyondGrid,
           classes,
@@ -2296,11 +2354,25 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         const truncation = droppedBeyondGrid
           ? ` ${droppedBeyondGrid} notes past the end of the song were left out — lengthen the song to keep them.`
           : '';
+
+        // The other half of the fan-out: the classifier reads the same file,
+        // and what it heard is reported rather than written. A hummed line
+        // with a mouth kick under it is one performance carrying two things,
+        // and the creator should be told the second one is there.
+        let alsoHeard = '';
+        try {
+          const percussive = analyzePerformanceBuffer(buffer, 'MOUTH');
+          const heardClasses = [...new Set(percussive.events.map((e) => e.klass))];
+          alsoHeard = ` ${secondOpinionOfPercussion(percussive.events.length, heardClasses).says}`;
+        } catch {
+          // As above: a failed second reading costs nothing and is not news.
+        }
+
         return {
           ok: true,
           mode,
           message:
-            `Heard ${kept.length} notes and wrote them to ${track.name}.${truncation}`,
+            `Heard ${kept.length} notes and wrote them to ${track.name}.${truncation}${alsoHeard}`,
           eventCount: kept.length,
           droppedBeyondGrid,
           transcription: {
@@ -2503,10 +2575,17 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!track || !(track.noteEvents || []).length) return;
       const events = eventsFromTrack(track, dawStateRef.current.bpm || 110);
       setInterpretationSubjectId(trackId);
-      setLastInterpretation(interpretPass(events, mimicryTargetIdRef.current));
-      // Read from the notes on the channel, which carry no spectrum: what
-      // comes back says so by leaving darkness and intimacy unmeasured.
-      setMeasuredExpression(deriveExpression(expressionOnsetsOf(events)));
+      // The same fan-out a fresh pass gets. Read from the notes on the
+      // channel, which carry no spectrum: what comes back says so by leaving
+      // darkness and intimacy unmeasured rather than filling them.
+      const read = fanOutPerformance(events, {
+        bpm: dawStateRef.current.bpm || 110,
+        declaredTargetId: mimicryTargetIdRef.current,
+        semanticIntent: writeRoomDraftRef.current.lyricTheme || null,
+      });
+      setLastInterpretation(read.interpretation);
+      setMeasuredExpression(read.expression);
+      setLastPassLyricSeed(read.lyricSeed);
       setCreatorExpressionReadings({});
     },
     []
@@ -5011,6 +5090,12 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       { id: 'take_4', name: 'Ad-Libs & Accents', type: 'adlib', muted: false, volume: -2 },
     ],
   });
+
+  // Readable from inside a capture callback, which runs outside the render
+  // that holds the draft.
+  useEffect(() => {
+    writeRoomDraftRef.current = writeRoomDraft;
+  }, [writeRoomDraft]);
   const updateWriteRoomDraft = useCallback(
     (updates: Partial<WriteRoomDraft>) => setWriteRoomDraft((prev) => ({ ...prev, ...updates })),
     []
@@ -5063,6 +5148,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       intentPreserve,
       intentStrictness,
       trackTimingModes,
+      genreId,
       expressionState: measuredExpression,
       creatorExpressionReadings,
       detectionSettings,
@@ -5099,7 +5185,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     [
       dawState, tracks, sections, lyricSections, masteringChain, masterCandidates,
       activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
-      seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, trackTimingModes,
+      seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, trackTimingModes, genreId,
       measuredExpression, creatorExpressionReadings, detectionSettings, activeWorkspace,
       editorPrefs, writeRoomDraft, audioAssets,
       vocalState.audioBlob, vocalState.duration, vocalState.waveformData,
@@ -5175,6 +5261,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     // comes back with it. Absent on a snapshot saved before it was measured,
     // which is a project nobody has read yet rather than one that reads as
     // nothing.
+    // Named by the creator, so it comes back with their project. Absent on a
+    // snapshot saved before genre was a parameter, which is a project nobody
+    // named a grammar for.
+    setGenreId((snap.genreId as string | undefined) ?? null);
     setMeasuredExpression((snap.expressionState as ExpressionState | undefined) ?? null);
     setCreatorExpressionReadings(
       (snap.creatorExpressionReadings as Partial<Record<ExpressionDimensionName, number>> | undefined) ?? {}
@@ -5254,7 +5344,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [
     isHydrating, tracks, sections, lyricSections, masteringChain, masterCandidates,
     activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
-    seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, trackTimingModes,
+    seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, trackTimingModes, genreId,
       measuredExpression, creatorExpressionReadings, detectionSettings, activeWorkspace,
     editorPrefs, writeRoomDraft, dawState, vocalState.audioBlob,
   ]);
@@ -5717,9 +5807,12 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       clearLastInterpretation,
       mimicryTargetId,
       setMimicryTargetId,
+      genreId,
+      setGenreId,
       reinterpretTrack,
       interpretationSubjectId,
       expressionState,
+      lastPassLyricSeed,
       setExpressionReading,
       creatorExpressionReadings,
       trackTimingModes,
@@ -5937,9 +6030,12 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       clearLastInterpretation,
       mimicryTargetId,
       setMimicryTargetId,
+      genreId,
+      setGenreId,
       reinterpretTrack,
       interpretationSubjectId,
       expressionState,
+      lastPassLyricSeed,
       setExpressionReading,
       creatorExpressionReadings,
       trackTimingModes,

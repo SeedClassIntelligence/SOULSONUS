@@ -22,6 +22,8 @@
 
 import type { PocketMeasure, StyleProfile } from './styleProfile';
 import type { ArrangementSection, ExpressionState, RealizationScoreMap } from '../types/daw';
+import { conditionGenre, grammarById, GENRE_DIMENSION_LABEL, type ConditionedGenre } from './genreGrammar';
+import { DEFAULT_PRESERVE, type PreservableProperty } from './intentPolicy';
 
 /** Where a value came from, so a reading can be checked rather than trusted. */
 export interface IntentBasis {
@@ -59,10 +61,14 @@ export interface CreativeIntent {
   arrangementTrajectory: (IntentBasis & { sections: string[] }) | null;
 
   /**
-   * Genre as a set of rules rather than a label. Nothing in this build
-   * measures it, so it stays null and is named below.
+   * Genre as a set of rules rather than a label (SRT-1 XIV).
+   *
+   * Null until the creator names one. Nothing here classifies their material:
+   * a studio that listened to a take and announced its genre would be
+   * producing the output label the section rules out, and making a claim about
+   * the person rather than a measurement of the audio.
    */
-  genreGrammar: null;
+  genreGrammar: (IntentBasis & { conditioned: ConditionedGenre }) | null;
 
   /**
    * Every field above that has no measurement behind it, named. Read this
@@ -93,6 +99,10 @@ export function deriveCreativeIntent(input: {
   transformable?: string[];
   /** The affective reading of the last pass, measured elsewhere. */
   expression?: ExpressionState | null;
+  /** The production grammar the creator named, by id. Never inferred. */
+  genreId?: string | null;
+  /** What the creator's contract holds, so a grammar cannot reach past it. */
+  preserve?: PreservableProperty[];
 }): CreativeIntent {
   const notMeasured: string[] = [];
 
@@ -166,7 +176,31 @@ export function deriveCreativeIntent(input: {
   } else if (expression.notMeasured.length) {
     for (const line of expression.notMeasured) notMeasured.push(`emotion: ${line}`);
   }
-  notMeasured.push('genre grammar — nothing measures genre as a rule set yet');
+  // --- genre grammar ---------------------------------------------------
+  const grammar = grammarById(input.genreId);
+  const conditioned = grammar
+    ? conditionGenre(grammar, input.preserve ?? DEFAULT_PRESERVE)
+    : null;
+  const genreGrammar = conditioned
+    ? {
+        conditioned,
+        reads: `${conditioned.grammar.label} — ${conditioned.conditioned
+          .map((d) => GENRE_DIMENSION_LABEL[d])
+          .join(', ')}`,
+        from: conditioned.withheld.length
+          ? `named by you; ${conditioned.withheld
+              .map((w) => GENRE_DIMENSION_LABEL[w.dimension])
+              .join(' and ')} withheld because your contract holds ${conditioned.withheld
+              .map((w) => w.property)
+              .join(' and ')}`
+          : 'named by you; the contract holds nothing this grammar needs',
+      }
+    : null;
+  if (!genreGrammar) {
+    notMeasured.push(
+      'genre grammar — you have not named one, and nothing here classifies your material'
+    );
+  }
 
   return {
     expression,
@@ -175,7 +209,7 @@ export function deriveCreativeIntent(input: {
     preserve,
     transform,
     arrangementTrajectory,
-    genreGrammar: null,
+    genreGrammar,
     notMeasured,
   };
 }

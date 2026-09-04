@@ -9,6 +9,7 @@ import {
   expressionCoverage,
 } from '../audio/expressionState';
 import type { ExpressionDimensionName } from '../types/daw';
+import { GENRE_GRAMMARS, GENRE_DIMENSION_LABEL } from '../lib/genreGrammar';
 import {
   DEFAULT_PRESERVE,
   STRICTNESS_LABEL,
@@ -70,6 +71,8 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
     expressionState,
     setExpressionReading,
     creatorExpressionReadings,
+    genreId,
+    setGenreId,
   } = useStudioSession();
   // The prop still wins when a caller supplies one; otherwise the session's
   // active candidate is the answer, and the row can finally fill.
@@ -90,6 +93,8 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
       sections,
       transformable: transformableNow,
       expression: expressionState,
+      genreId,
+      preserve: intentPreserve,
     });
   }, [
     creatorName,
@@ -101,6 +106,8 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
     sections,
     transformableNow,
     expressionState,
+    genreId,
+    intentPreserve,
   ]);
 
   const { known, total } = intentCoverage(intent);
@@ -374,7 +381,54 @@ export const CreativeIntentPanel: React.FC<CreativeIntentPanelProps> = ({ transf
               </div>
             )}
           </div>
-          <Row label="Genre grammar" value={null} missing={reasonFor('genre')} />
+          {/* GENRE -- SRT-1 XIV.
+              A parameter, not an output label. Nothing here listens to a take
+              and announces its genre; the creator names one, and what reaches
+              a realization is the grammar's rules minus anything their
+              contract holds. */}
+          <div className="px-3 py-2 border-b border-slate-800/70">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-500">
+                Genre grammar
+              </span>
+              <select
+                value={genreId ?? ''}
+                data-testid="genre-select"
+                onChange={(e) => setGenreId(e.target.value || null)}
+                className="bg-slate-900 border border-slate-800 focus:border-cyan-500 text-[11px] text-slate-100 font-mono rounded-lg px-2 py-1 outline-none cursor-pointer"
+                title="Production grammar. It conditions the sound, never what you played."
+              >
+                <option value="">none — nothing classifies your material</option>
+                {GENRE_GRAMMARS.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {intent.genreGrammar ? (
+              <>
+                <p className="text-[11px] text-slate-200 mt-1">{intent.genreGrammar.reads}</p>
+                <p className="text-[9px] font-mono text-slate-500 mt-0.5 leading-snug">
+                  {intent.genreGrammar.from}
+                </p>
+                {intent.genreGrammar.conditioned.withheld.length > 0 && (
+                  <p
+                    data-testid="genre-withheld"
+                    className="text-[10px] font-mono text-emerald-300/90 mt-1 leading-snug"
+                  >
+                    Held back:{' '}
+                    {intent.genreGrammar.conditioned.withheld
+                      .map((w) => GENRE_DIMENSION_LABEL[w.dimension])
+                      .join(', ')}
+                    . What you played stays what you played.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-[10px] font-mono text-amber-300/80 mt-0.5">{reasonFor('genre')}</p>
+            )}
+          </div>
 
           <p className="px-3 py-2 bg-slate-900/40 border-t border-slate-800 text-[9px] font-mono text-slate-500 leading-snug">
             Preserve and strictness govern every realization this session asks for. The

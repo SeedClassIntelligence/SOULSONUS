@@ -44,6 +44,7 @@ import {
 } from '../types/daw';
 import { DEFAULT_THRESHOLD_POLICY } from './realizationVerifier';
 import { describeExpression } from '../audio/expressionState';
+import { conditionGenre, describeGenre, grammarById } from './genreGrammar';
 import { computePreservationScores } from './inference/audioPreservationScoring';
 import { getE05Provider } from './inference/e05Provider';
 
@@ -102,6 +103,16 @@ export interface RealizationRequest {
    * than a neutral seven.
    */
   expression?: ExpressionState | null;
+  /**
+   * The production grammar the creator asked for, by id.
+   *
+   * SRT-1 XIV: genre is a parameter, not an output label. Nothing classifies
+   * the take -- the creator says "interpret this as neo-soul" -- and what
+   * reaches the model is the grammar's rules rather than the word, minus any
+   * dimension their preserve set holds. Omitted means no genre was asked for,
+   * which is different from a genre of nothing.
+   */
+  genreId?: string | null;
 }
 
 /**
@@ -139,6 +150,20 @@ export function describeCreatorFeel(signature?: CreatorMusicSignature | null): s
   if (style.choices.bpm) parts.push(`at ${Math.round(style.choices.bpm)}bpm`);
 
   return parts.length ? `Match the creator's feel: ${parts.join(', ')}.` : '';
+}
+
+/**
+ * The genre grammar this request may actually apply.
+ *
+ * Conditioned against the creator's own preserve set rather than applied
+ * whole: "the underlying creative identity remains while production grammar
+ * changes" is the seed's sentence, and this is where it is enforced. A request
+ * with no genre gets none.
+ */
+function genreFor(req: RealizationRequest) {
+  const grammar = grammarById(req.genreId);
+  if (!grammar) return null;
+  return conditionGenre(grammar, req.preserve ?? ['rhythm', 'timing', 'pitchContour', 'articulation']);
 }
 
 export class RealizationRouter {
@@ -204,7 +229,11 @@ export class RealizationRouter {
           // The creator's measured feel, and what the performance was measured
           // to express. Both are omitted when unmeasured rather than defaulted,
           // so an instruction never describes a reading nobody took.
-          const feel = [describeCreatorFeel(req.creatorSignature), describeExpression(req.expression)]
+          const feel = [
+            describeCreatorFeel(req.creatorSignature),
+            describeExpression(req.expression),
+            describeGenre(genreFor(req)),
+          ]
             .filter(Boolean)
             .join(' ');
           const realization = await getE05Provider().realize(
@@ -318,6 +347,7 @@ export class RealizationRouter {
                 const feel = [
                   describeCreatorFeel(req.creatorSignature),
                   describeExpression(req.expression),
+                  describeGenre(genreFor(req)),
                 ]
                   .filter(Boolean)
                   .join(' ');

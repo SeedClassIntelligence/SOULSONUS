@@ -102,6 +102,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     intentPreserve,
     intentStrictness,
     expressionState,
+    genreId,
     setRealizationTransformables,
     handleSaveCreatorSignature,
     isInstrumentOpen,
@@ -328,6 +329,9 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
             // SRT-1 V: the affective reading is a control variable, so it goes
             // with the request rather than staying on a panel.
             expression: expressionState,
+            // SRT-1 XIV: so is the production grammar, when the creator named
+            // one. The router conditions it against their preserve set.
+            genreId,
             ...(region
               ? {
                   repaintStartSeconds: region.startSeconds,
@@ -377,7 +381,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
     // realization sent the whole take with 'all' still closed over -- the
     // scope line in the drawer said "the whole take" no matter what was
     // selected. Every unit test passed; only driving the browser found it.
-  }, [handleOpenProposal, tracks, dawState.projectVersion, dawState.bpm, editorPrefs.activeBarView, intentPreserve, intentStrictness, expressionState, creatorSignature, setIsInspectorOpen, setIsCalibrationOpen, setIsVisualizationOpen]);
+  }, [handleOpenProposal, tracks, dawState.projectVersion, dawState.bpm, editorPrefs.activeBarView, intentPreserve, intentStrictness, expressionState, genreId, creatorSignature, setIsInspectorOpen, setIsCalibrationOpen, setIsVisualizationOpen]);
 
   // Play / Stop / Mic Handlers
   const handleTogglePlay = useCallback(async () => {

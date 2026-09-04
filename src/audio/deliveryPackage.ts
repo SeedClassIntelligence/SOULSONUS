@@ -17,6 +17,7 @@ import { AudioAsset, MasteringDspChain, SeedSignatureRecord, Track } from '../ty
 import { renderMasterBounce } from './masterRender';
 import { masteringTelemetryEngine, LoudnessTelemetryReport } from './masteringTelemetryEngine';
 import { audioEncoders } from '../lib/audioEncoders';
+import { buildSyntheticDisclosure, type SyntheticDisclosure } from '../lib/syntheticDisclosure';
 
 export interface DeliveryFile {
   /** File name as downloaded. */
@@ -54,6 +55,12 @@ export interface DeliveryPackage {
   provenance: DeliveryFile;
   /** Tracks that rendered silent, named so the gap is visible rather than implied. */
   silentTracks: string[];
+  /**
+   * What in this master a machine made. Carried on the package as well as
+   * written into the provenance file, so the creator can read it before they
+   * sign rather than discover it in a JSON afterwards.
+   */
+  syntheticDisclosure: SyntheticDisclosure;
   /** What the true-peak stage did to the master, or null when bypassed. */
   truePeakLimiting: {
     inputTruePeakDbtp: number;
@@ -339,6 +346,12 @@ export async function buildDeliveryPackage(options: BuildDeliveryOptions): Promi
       volumeDb: t.volume,
     })),
     silentTracks,
+    // Clause XVIII.4. A record that lists every track and cannot say which of
+    // them a machine made is a record that fails the one question asked of
+    // records like it. Read off the provenance already carried by the notes
+    // and the tracks -- and a project with none says so, because an absent
+    // disclosure and a disclosure of nothing are different claims.
+    syntheticDisclosure: buildSyntheticDisclosure(tracks),
     // Hashes are taken over the bytes of the files in this package, so the
     // record can be checked against them rather than merely asserted.
     files: [...masters, ...stems, ...(stemsZip ? [stemsZip] : [])].map((f) => ({
@@ -379,6 +392,7 @@ export async function buildDeliveryPackage(options: BuildDeliveryOptions): Promi
     stemsZip,
     provenance,
     silentTracks,
+    syntheticDisclosure: provenanceBody.syntheticDisclosure,
     truePeakLimiting: master.truePeakLimiting
       ? {
           inputTruePeakDbtp: master.truePeakLimiting.inputTruePeakDbtp,

@@ -119,6 +119,36 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen = true, onClose
           </div>
         )}
 
+        {/* What in this master a machine made. Clause XVIII.4: it goes into
+            the provenance file, and it is read here first -- a disclosure a
+            creator only finds by opening a JSON after they have sent the
+            record is a disclosure that arrived too late to be one. */}
+        {deliveryPackage && (
+          <div
+            data-testid="synthetic-disclosure"
+            className={`rounded-xl border px-3 py-2 ${
+              deliveryPackage.syntheticDisclosure.syntheticTracks
+                ? 'border-amber-500/40 bg-amber-500/5'
+                : 'border-slate-800 bg-slate-900/40'
+            }`}
+          >
+            <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-500">
+              Synthetic media disclosure
+            </span>
+            <p
+              className={`text-[11px] mt-0.5 leading-snug ${
+                deliveryPackage.syntheticDisclosure.syntheticTracks ? 'text-amber-200' : 'text-slate-300'
+              }`}
+            >
+              {deliveryPackage.syntheticDisclosure.statement}
+            </p>
+            <p className="text-[9px] font-mono text-slate-500 mt-1 leading-snug">
+              This is written into {deliveryPackage.provenance.name}.{' '}
+              {deliveryPackage.syntheticDisclosure.limits[0]}
+            </p>
+          </div>
+        )}
+
         {/* Files */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {files.map((file) => (

@@ -598,6 +598,66 @@ Steps 1, 2, 3a, 4 and 5a change no audio path and no commit path at all.
 
 ---
 
+## Three absent clauses closed - 2026-09-04
+
+Not plan steps. Three of the fourteen clauses reading ABSENT after Step 7 were
+small and had everything they needed already recorded, so they were closed on
+the owner's instruction. `test-55-three-clauses.cjs` checks all three where a
+creator meets them -- 17 checks -- and 28 unit assertions cover the functions.
+
+**XVIII.4 -- synthetic media disclosure reaches the release manifest.** The
+provenance record shipped with a master listed every track's id, name, role,
+note count and volume and said nothing about which of it a machine made. A
+creator handing that file to a distributor or a rights body was handing over a
+document that could not answer the one question asked of records like it.
+`lib/syntheticDisclosure` reads it off the provenance already carried by the
+notes and the tracks -- origin, renderer, session player, the track's own
+sound origin -- names what it cannot see, and a project with nothing generated
+into it gets a sentence saying so, because an absent disclosure and a
+disclosure of nothing are different claims. It is written into the provenance
+file and shown on the export screen before anything is sent.
+
+**XIV.1 -- genre as a conditioning parameter, not an output label.** SRT-1 XIV
+says genre "should not mean a simple classifier". `lib/genreGrammar` holds it
+as rules across the nine dimensions the section names, and three rules are
+enforced rather than described: nothing classifies the creator's material --
+they name a grammar or there is none; a grammar conditions production and
+never performance, so `conditionGenre` withholds any dimension the creator's
+own preserve set holds; and what rides with a realization is the rules rather
+than the word, so "neo-soul" is not left to whatever a model's training makes
+of it. The seed's own sentence -- "the underlying creative identity remains
+while production grammar changes" -- is the test, and the panel says which
+dimensions were held back and why.
+
+**III.4 -- one performance feeds several processors.** The processors existed
+and each ran somewhere else: a pass was read for its role in one place, for its
+affect in another, and as a cadence only when a workstation was opened, each
+rebuilding its own view of the same onsets. `audio/expressionFanout` is the one
+place a performance is read, and it reads it every way at once -- role,
+affect, cadence -- off the same onsets, with no branch filling another's gaps.
+The Vocal-to-Lyric workstation now offers the pass itself, at the fidelity the
+microphone heard it, rather than only the notes it was written to.
+
+The second half is the import path, where the seed's point bites hardest: a
+file went to the spectral classifier or to the pitch transcriber, and whichever
+the creator chose, the other was never asked. Both are asked now, and the one
+the creator did not route to reports what it heard without writing a note --
+the measurement recorded below says percussion never drove the transcriber to
+produce a note at any threshold, so the two can safely read the same audio.
+Committing what the second processor heard would be the fan-out destroying the
+take it exists to protect, so it says how to keep it and leaves the decision
+where it belongs.
+
+Eleven clauses still read ABSENT. Four of them -- A.8, C.3, A.12 and XVII.2 --
+are capabilities that exist and are verified, whose checks name a symbol
+nothing in the code uses; changing a check to match an implementation is the
+move that fakes conformance, so they are the owner's call and are left alone.
+The other seven are product decisions: disclosure levels (XVII.3, C.1), a
+collaborative state model (XV.1), analytics (XVI.1, XVI.3, XVI.4) and
+monetization (XIX.1).
+
+---
+
 ## Measured findings - Basic Pitch on mouth material (2026-09-01)
 
 Read-only measurement, no source changed. Ran `public/models/basic_pitch.onnx`

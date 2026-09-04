@@ -82,6 +82,8 @@ export interface ProjectSnapshot {
    * corrections to it. Added with the expression state; a snapshot without
    * them is a project nobody has read yet.
    */
+  /** The production grammar the creator named. Added with genre-as-parameter. */
+  genreId?: unknown;
   expressionState?: unknown;
   creatorExpressionReadings?: Record<string, unknown>;
   detectionSettings: unknown;

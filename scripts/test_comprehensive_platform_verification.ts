@@ -34,6 +34,13 @@ import {
 import { countWord, countLine, syllabify } from '../src/lib/syllables';
 import { deriveLyricSeed } from '../src/lib/lyricSeed';
 import { checkAgainstCadence, preserveCadence, describeGate } from '../src/lib/cadenceLock';
+import { buildSyntheticDisclosure } from '../src/lib/syntheticDisclosure';
+import { conditionGenre, describeGenre, grammarById } from '../src/lib/genreGrammar';
+import {
+  fanOutPerformance,
+  secondOpinionOfPercussion,
+  secondOpinionOfPitch,
+} from '../src/audio/expressionFanout';
 import {
   controlsFromExpression,
   dspFromExpression,
@@ -1338,6 +1345,128 @@ async function runComprehensiveVerification() {
     const noPhrase = checkAgainstCadence('anything at all', seed, 4);
     check(!noPhrase.ok, 'CADENCE_LOCK',
       'a line aimed at a phrase that was never performed is refused, not passed');
+  }
+
+  console.log('\n--- 25. Synthetic media disclosure reaches the manifest (SRT-1 XVIII.4) ---');
+  {
+    const note = (origin: string, extra: any = {}) => ({
+      id: `n_${Math.random()}`, startTick: 0, durationTicks: 120, midiNote: 60, velocity: 100,
+      provenance: { origin, creatorEdited: false, ...extra },
+    });
+    const played: any = { id: 't1', name: 'Kick (Thump)', instrument: 'kick', steps: [], mute: false,
+      solo: false, volume: 0, pitch: 'C1', noteEvents: [note('MOUTH'), note('MOUTH')] };
+    const rendered: any = { id: 't2', name: 'Session Bass', instrument: 'bass', steps: [], mute: false,
+      solo: false, volume: 0, pitch: 'C2',
+      noteEvents: [note('SESSION_PLAYER', { playerRole: 'bassist', renderer: 'ace-step-1.5' }), note('MOUTH')] };
+
+    const clean = buildSyntheticDisclosure([played]);
+    check(clean.syntheticTracks === 0 && /No synthetic material/.test(clean.statement),
+      'DISCLOSURE', 'a record with nothing machine-made says so, rather than saying nothing',
+      clean.statement);
+    check(clean.machineNotes === 0 && clean.totalNotes === 2, 'DISCLOSURE',
+      'and still counts what it read, so the claim can be checked');
+
+    const mixed = buildSyntheticDisclosure([played, rendered]);
+    check(mixed.syntheticTracks === 1 && mixed.machineNotes === 1, 'DISCLOSURE',
+      'a track carrying a machine-played note is disclosed, and only that track',
+      `${mixed.syntheticTracks} of ${mixed.totalTracks} tracks, ${mixed.machineNotes} of ${mixed.totalNotes} notes`);
+    check(/1 of 2 tracks/.test(mixed.statement) && /1 of 4 notes/.test(mixed.statement),
+      'DISCLOSURE', 'the sentence carries the counts, not an adjective', mixed.statement);
+    check(mixed.renderers.includes('ace-step-1.5') && mixed.players.includes('bassist'),
+      'DISCLOSURE', 'and names what rendered it and who played it',
+      `${mixed.renderers.join(', ')} / ${mixed.players.join(', ')}`);
+    check(mixed.tracks[0].synthetic === false && mixed.tracks[1].synthetic === true, 'DISCLOSURE',
+      'the creator\'s own track is not swept into the disclosure with it');
+    check(mixed.limits.length >= 2 && mixed.limits.some((l) => /timeline/.test(l)), 'DISCLOSURE',
+      'and the disclosure states what it cannot see', mixed.limits.join(' | ').slice(0, 100));
+
+    const synthesised: any = { ...played, id: 't3', name: 'Pad', originType: 'SYNTHESIS',
+      noteEvents: [note('MANUAL')] };
+    check(buildSyntheticDisclosure([synthesised]).syntheticTracks === 1, 'DISCLOSURE',
+      'a track whose SOUND was synthesised is disclosed even when the notes are the creator\'s');
+    check(/as its sound, played from the creator/.test(buildSyntheticDisclosure([synthesised]).statement),
+      'DISCLOSURE', 'and the difference between the two is stated, not flattened',
+      buildSyntheticDisclosure([synthesised]).statement);
+  }
+
+  console.log('\n--- 26. Genre as a parameter, not a label (SRT-1 XIV) ---');
+  {
+    const neoSoul = grammarById('neo_soul')!;
+    check(!!neoSoul && Object.keys(neoSoul.rules).length >= 4, 'GENRE',
+      'a grammar is a set of rules across several dimensions, not a word',
+      Object.keys(neoSoul.rules).join(', '));
+
+    // The contract holds the performance; the grammar gets the production.
+    const held = conditionGenre(neoSoul, ['rhythm', 'timing', 'pitchContour', 'articulation']);
+    check(!held.conditioned.includes('rhythm') && !held.conditioned.includes('harmonicLanguage'),
+      'GENRE', 'a grammar cannot move rhythm or harmony while the contract holds them',
+      held.conditioned.join(', '));
+    check(held.withheld.some((w) => w.dimension === 'rhythm' && w.property === 'rhythm'), 'GENRE',
+      'and what it was refused is named with the property that refused it',
+      held.withheld.map((w) => `${w.dimension}<-${w.property}`).join(', '));
+    check(held.conditioned.includes('instrumentation') && held.conditioned.includes('mixAesthetic'),
+      'GENRE', 'while the production grammar it asked for still changes',
+      held.conditioned.join(', '));
+
+    const loose = conditionGenre(neoSoul, []);
+    check(loose.conditioned.length > held.conditioned.length && loose.withheld.length === 0,
+      'GENRE', 'a creator holding nothing gets the whole grammar -- their contract, their call',
+      `${loose.conditioned.length} vs ${held.conditioned.length}`);
+
+    const instruction = describeGenre(held);
+    check(/neo-soul/.test(instruction) && /Rhodes/.test(instruction), 'GENRE',
+      'what reaches a model is the rules, so the word is not left to its training',
+      instruction.slice(0, 90));
+    check(/Leave rhythm and harmonic language exactly as performed/.test(instruction), 'GENRE',
+      'and it is told what to leave alone, in the same sentence',
+      instruction.slice(-70));
+    check(describeGenre(null) === '', 'GENRE',
+      'no genre named contributes no instruction at all');
+    check(grammarById(null) === null && grammarById('not_a_genre') === null, 'GENRE',
+      'and nothing invents a grammar for a name it does not have');
+  }
+
+  console.log('\n--- 27. One performance, several processors (SRT-1 III) ---');
+  {
+    const ev = (atMs: number, pitchHz: number, velocity: number): any => ({
+      klass: pitchHz > 0 ? 'tonal_high' : 'kick', velocity, confidence: 0.8,
+      centroidHz: pitchHz > 0 ? 900 : 120, pitchHz,
+      bands: { sub: 0.1, low: 0.2, lowMid: 0.3, mid: 0.2, high: 0.1, air: 0.1 },
+      bandPeak: 0.3, spectralEnergy: 1, rms: velocity / 127, modality: 'VOICE', atMs,
+      atSeconds: atMs / 1000,
+    });
+    const take = [ev(0, 220, 120), ev(500, 247, 80), ev(1000, 262, 82), ev(1500, 294, 78)];
+    const fan = fanOutPerformance(take, { bpm: 120, declaredTargetId: null });
+
+    check(fan.onsets === take.length, 'FANOUT',
+      'every processor is given the whole performance', `${fan.onsets} onsets`);
+    check(!!fan.interpretation && fan.interpretation.hypotheses.length > 0, 'FANOUT',
+      'it comes back read for what it is', fan.interpretation.hypotheses.map((h: any) => h.role).join(', '));
+    check(!!fan.expression && fan.expression.measuredFrom.onsets === take.length, 'FANOUT',
+      'read for what it expresses, off the same onsets');
+    check(!!fan.lyricSeed && fan.lyricSeed.positions.length === take.length, 'FANOUT',
+      'and read as a cadence, off the same onsets again',
+      `${fan.lyricSeed.positions.length} positions`);
+    check(fan.lyricSeed.expression === fan.expression, 'FANOUT',
+      'the cadence carries the affective reading rather than taking a second one');
+    check(take.length === 4, 'FANOUT',
+      'and no processor consumed the performance -- it is still four onsets afterwards');
+
+    // A percussive take feeds the same three, and each says what it could not read.
+    const drums = [ev(0, -1, 120), ev(400, -1, 90), ev(800, -1, 95), ev(1200, -1, 88)];
+    const drumFan = fanOutPerformance(drums, { bpm: 120 });
+    check(drumFan.expression.valence === null && drumFan.lyricSeed.positions.length === 4, 'FANOUT',
+      'a take with no pitch still feeds every processor; each reports its own gaps');
+    check(drumFan.lyricSeed.positions.every((p: any) => p.kind === 'PHONETIC_FRAGMENT'), 'FANOUT',
+      'and the cadence reads it as sound carrying rhythm, not as sung syllables');
+
+    check(/not written/.test(secondOpinionOfPitch(7).says) &&
+      /nothing was lost/.test(secondOpinionOfPitch(0).says), 'FANOUT',
+      'the processor the creator did not route to reports what it heard, and writes nothing',
+      secondOpinionOfPitch(7).says.slice(0, 90));
+    check(/Import it again as a performance/.test(secondOpinionOfPercussion(3, ['kick']).says),
+      'FANOUT', 'and says how to keep it, rather than keeping it for them',
+      secondOpinionOfPercussion(3, ['kick']).says.slice(-60));
   }
 
   console.log('\n========================================================================');
