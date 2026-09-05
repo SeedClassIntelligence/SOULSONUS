@@ -35,6 +35,13 @@ import { countWord, countLine, syllabify } from '../src/lib/syllables';
 import { deriveLyricSeed } from '../src/lib/lyricSeed';
 import { checkAgainstCadence, preserveCadence, describeGate } from '../src/lib/cadenceLock';
 import { buildSyntheticDisclosure } from '../src/lib/syntheticDisclosure';
+import {
+  benchForRoom,
+  levelOf,
+  surfacesAt,
+  unreachableSurfaces,
+  whereToFind,
+} from '../src/lib/disclosureLevels';
 import { deriveCreativeAnalytics, analyticsCoverage } from '../src/lib/creativeAnalytics';
 import {
   recommendationsFrom,
@@ -1793,6 +1800,56 @@ async function runComprehensiveVerification() {
       /made up/.test(audienceUnavailable), 'RECOMMENDATION',
       'and asked about listeners, the answer is that there are none to know about',
       audienceUnavailable.slice(0, 80));
+  }
+
+  console.log('\n--- 31. Four declared disclosure levels (Amendment A §17, clauses XVII.3 / C.1) ---');
+  {
+    // §16 is the fence: "the professional DAW controls should NOT disappear".
+    // So the first thing asserted is that nothing left.
+    const RAIL = [
+      'piano', 'instrumentRoom', 'seedSignature', 'sourcing', 'collaboration', 'nativeBrain',
+      'trackWorkstation', 'songwritingSuite', 'vocalToLyric', 'midiHardware', 'inspector',
+      'calibration', 'radar', 'importAudio', 'soulFlow',
+    ];
+    const CANVAS = ['liveExpressionEngine', 'performInstrument', 'patternControls', 'sectionBuilder',
+      'timeline', 'trackLanes', 'clips', 'sections'];
+    const CHROME = ['project', 'transport', 'rooms', 'studioIntelligence', 'export'];
+    check(unreachableSurfaces([...RAIL, ...CANVAS, ...CHROME]).length === 0, 'DISCLOSURE',
+      'every surface the app puts on screen has a declared level',
+      unreachableSurfaces([...RAIL, ...CANVAS, ...CHROME]).join(', ') || 'none unaccounted for');
+    check(unreachableSurfaces(['somethingNobodyDeclared']).length === 1, 'DISCLOSURE',
+      'and a surface nobody declared is reported rather than treated as level zero');
+
+    check(surfacesAt(1).length >= 4 && surfacesAt(4).length >= 10, 'DISCLOSURE',
+      'the levels are populated as the amendment describes them',
+      `L1 ${surfacesAt(1).length}, L2 ${surfacesAt(2).length}, L3 ${surfacesAt(3).length}, L4 ${surfacesAt(4).length}`);
+    // The rail is a filing cabinet, not the definition of a level. Everything
+    // on it is reachable there; most of it is level 4, and a surface that is
+    // level 2 because it IS an activity has to be reachable from that activity
+    // too, or the table is describing something the app does not do.
+    check(RAIL.filter((r) => levelOf(r as any) !== 4).length <= 1, 'DISCLOSURE',
+      'the rail is level 4 but for the surfaces that are an activity in their own right',
+      RAIL.filter((r) => levelOf(r as any) !== 4).join(', ') || 'all level 4');
+    check(levelOf('vocalToLyric') === 2 && levelOf('lyricCadenceStudio') === 2, 'DISCLOSURE',
+      'reading a take as lyrics is writing, which the amendment puts at level 2');
+    check(levelOf('timeline') === 3 && levelOf('trackLanes') === 3, 'DISCLOSURE',
+      'the song itself is level 3 and does not move');
+    check(levelOf('studioIntelligence') === 1 && levelOf('transport') === 1, 'DISCLOSURE',
+      'and what must always be visible is level 1');
+    check(/one reach away/.test(whereToFind('piano')) && !/hidden/.test(whereToFind('piano')),
+      'DISCLOSURE', 'a level 4 surface is described as filed, never as hidden',
+      whereToFind('piano'));
+
+    // Level 2 follows the activity, by the amendment's own examples.
+    check(benchForRoom('CREATE') === 'UNIFIED', 'DISCLOSURE',
+      'arriving to create opens the expression engine');
+    check(benchForRoom('WRITE_RECORD') === 'PERFORM', 'DISCLOSURE',
+      'arriving to write opens the room for writing in');
+    check(benchForRoom('BUILD') === 'SECTIONS', 'DISCLOSURE',
+      'and arriving to build opens the structure');
+    check(benchForRoom('MIX') === null && benchForRoom('MASTER') === null, 'DISCLOSURE',
+      'a room that carries its own surfaces gets no opinion, rather than a guess at one',
+      `${benchForRoom('MIX')}`);
   }
 
   console.log('\n========================================================================');

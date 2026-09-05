@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { levelOf, LEVEL_MEANING, type SurfaceName } from '../lib/disclosureLevels';
 import {
   Brain,
   Cable,
@@ -39,6 +40,16 @@ export const StudioUtilityBar: React.FC = () => {
 
   const [isExpanded, setIsExpanded] = useState(true);
 
+  /**
+   * Level 4, declared rather than implied.
+   *
+   * Amendment A §17 puts these here -- "available instantly, but not
+   * permanently demanding attention" -- and §16 is why none of them is gone:
+   * "the professional DAW controls should NOT disappear." The `surface` field
+   * is not a label. It is typed against the level table, so a utility added
+   * here without a declared level does not compile, and cannot end up in a
+   * rail that no level accounts for.
+   */
   const tools: {
     group: string;
     items: {
@@ -48,6 +59,7 @@ export const StudioUtilityBar: React.FC = () => {
       onClick: () => void;
       tone: string;
       active?: boolean;
+      surface: SurfaceName;
     }[];
   }[] = [
     {
@@ -55,6 +67,7 @@ export const StudioUtilityBar: React.FC = () => {
       items: [
         {
           label: '🎹 PIANO',
+          surface: 'piano',
           icon: Music2,
           title: 'Open Interactive Virtual Piano Keyboard',
           onClick: () => openDrawer('piano'),
@@ -62,6 +75,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'INSTRUMENT',
+          surface: 'instrumentRoom',
           icon: Drum,
           title: 'Open Performance Instrument',
           onClick: () => openDrawer('capture'),
@@ -69,6 +83,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'SIGNATURE',
+          surface: 'seedSignature',
           icon: Sparkles,
           title: 'Open Creator Training & My Sounds Studio',
           onClick: () => openDrawer('training'),
@@ -76,6 +91,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'SOURCING',
+          surface: 'sourcing',
           icon: Database,
           title: 'Sound Sourcing Vault',
           onClick: () => setIsVaultModalOpen(true),
@@ -83,6 +99,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'COLLAB',
+          surface: 'collaboration',
           icon: Users,
           title: 'Open Real-Time Collaboration',
           onClick: () => openDrawer('collab'),
@@ -90,6 +107,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'NATIVE BRAIN',
+          surface: 'nativeBrain',
           icon: Brain,
           title: 'Open Native Studio Brain',
           onClick: () => openDrawer('nativebrain'),
@@ -97,6 +115,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'WORKSTATION',
+          surface: 'trackWorkstation',
           icon: Layers,
           title: 'Open Track Workstation',
           onClick: () => openDrawer('workstation'),
@@ -110,6 +129,7 @@ export const StudioUtilityBar: React.FC = () => {
       items: [
         {
           label: 'SONGWRITING',
+          surface: 'songwritingSuite',
           icon: Mic,
           title: 'Open Songwriting Suite',
           onClick: () => openDrawer('songwriting'),
@@ -117,6 +137,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'VOCAL TO LYRIC',
+          surface: 'vocalToLyric',
           icon: Type,
           title: 'Read a sung or hummed take as a lyric seed and fit words to its cadence',
           onClick: () => openDrawer('lyric'),
@@ -124,6 +145,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'MIDI HARDWARE',
+          surface: 'midiHardware',
           icon: Cable,
           title: 'Open External MIDI Controllers & Hardware Synths',
           onClick: () => openDrawer('hardware'),
@@ -131,6 +153,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'INSPECTOR',
+          surface: 'inspector',
           icon: Sliders,
           title: 'Open Quick Production Inspector Drawer',
           onClick: () => setIsInspectorOpen(!isInspectorOpen),
@@ -139,6 +162,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'CALIBRATION',
+          surface: 'calibration',
           icon: Target,
           title: 'Open Calibration Drawer',
           onClick: () => openDrawer('calibration'),
@@ -146,6 +170,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'RADIAL RADAR',
+          surface: 'radar',
           icon: Eye,
           title: 'Open Radial Radar Drawer',
           onClick: () => openDrawer('visualization'),
@@ -153,6 +178,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'IMPORT AUDIO',
+          surface: 'importAudio',
           icon: Disc,
           title: 'Import audio or separate mix into stems',
           onClick: () => setIsAudioImportModalOpen(true),
@@ -160,6 +186,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'PIPELINE',
+          surface: 'soulFlow',
           icon: Compass,
           title: 'Open SoulFlow Governance Pipeline',
           onClick: () => openDrawer('soulflow'),
@@ -167,6 +194,7 @@ export const StudioUtilityBar: React.FC = () => {
         },
         {
           label: 'SAY IT',
+          surface: 'nativeBrain',
           icon: Mic,
           title: 'Speak or type a command, or just say what you want in your own words',
           onClick: () => openDrawer('voice'),
@@ -208,10 +236,16 @@ export const StudioUtilityBar: React.FC = () => {
           type="button"
           onClick={() => setIsExpanded((v) => !v)}
           className="flex items-center space-x-2 px-1 py-1 text-[10px] font-bold text-slate-300 hover:text-amber-400 cursor-pointer transition"
-          title={isExpanded ? 'Collapse workstations' : 'Expand workstations'}
+          title={`${LEVEL_MEANING[levelOf('piano')]} ${
+            isExpanded ? 'Click to collapse.' : 'Click to expand.'
+          }`}
         >
           <Wrench className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-          {isExpanded && <span className="uppercase tracking-wider truncate">WORKSTATIONS</span>}
+          {isExpanded && (
+            <span className="uppercase tracking-wider truncate" data-testid="level-4-label">
+              WORKSTATIONS
+            </span>
+          )}
           {isExpanded ? (
             <ChevronLeft className="w-3 h-3 text-slate-400 ml-auto shrink-0" />
           ) : (

@@ -177,6 +177,18 @@ export interface EditorPreferences {
   showVelocityLane: boolean;
   activeBarView: 'all' | number;
   seedTargetMode: 'NEW_TRACK' | 'ADD_LAYER';
+  /**
+   * Which level-2 bench is open, and whether the creator chose it themselves.
+   *
+   * Here rather than in the canvas for the reason the canvas already states
+   * about the editor tools: it unmounts on a room switch. Held there, a bench
+   * the creator picked was forgotten the moment they looked at the mix, and
+   * the level put its own suggestion back -- the organizing layer overruling
+   * them, which Amendment D forbids. `benchChosen` is what stops the
+   * suggestion once they have made a choice, including the choice to close one.
+   */
+  activeBench: 'UNIFIED' | 'PERFORM' | 'PATTERN' | 'SECTIONS' | null;
+  benchChosen: boolean;
 }
 
 /**
@@ -5106,6 +5118,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     showVelocityLane: false,
     activeBarView: 'all',
     seedTargetMode: 'NEW_TRACK',
+    activeBench: 'UNIFIED',
+    benchChosen: false,
   });
   const updateEditorPrefs = useCallback(
     (updates: Partial<EditorPreferences>) => setEditorPrefs((prev) => ({ ...prev, ...updates })),

@@ -154,6 +154,22 @@ export const WriteRecordWorkspace: React.FC = () => {
             ))}
           </div>
         </div>
+
+        {/* Level 2 is the activity at hand, and Amendment A §17's own example
+            of it is "if you're writing: Lyrics + melody + structure". Reading
+            a sung take as a lyric seed is that work, and it was reachable only
+            from the level 4 rail — filed correctly, but not present in the
+            activity it belongs to. It is still on the rail; this is the second
+            door, not a move. */}
+        <button
+          type="button"
+          data-testid="write-room-vocal-to-lyric"
+          onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'lyric' }))}
+          className="px-3 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/40 text-purple-300 hover:bg-purple-500/25 text-xs font-bold cursor-pointer transition"
+          title="Read a sung or hummed take as a lyric seed, and fit words to the cadence you performed"
+        >
+          VOCAL → LYRIC
+        </button>
       </div>
 
       {/* 2-Column Songwriting & Vocal Take Stack Workspace */}

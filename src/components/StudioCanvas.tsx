@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { Track, PianoRollTool } from '../types/daw';
+import { benchForRoom, type BenchId } from '../lib/disclosureLevels';
 import { UnifiedTrackLane } from './UnifiedTrackLane';
 import { SectionBuilder } from './SectionBuilder';
 import { ShootAroundControls } from './ShootAroundControls';
@@ -275,8 +276,28 @@ export const StudioCanvas: React.FC = () => {
    * One at a time, by name. These panels were all open at once, which is what
    * put five rows of controls in front of the first note.
    */
-  const [activeBench, setActiveBench] = useState<'UNIFIED' | 'PERFORM' | 'PATTERN' | 'SECTIONS' | null>('UNIFIED');
+  // Level 2's open bench, and whether the creator chose it. In the session,
+  // not here: this component unmounts on a room switch, so a bench they picked
+  // was forgotten the moment they looked at the mix and the level put its own
+  // suggestion back in its place.
+  const activeBench = editorPrefs.activeBench;
+  const setActiveBench = (next: BenchId | null) => updateEditorPrefs({ activeBench: next });
   const [isScopeExpanded, setIsScopeExpanded] = useState(true);
+
+  /**
+   * Level 2, following the work.
+   *
+   * "If you're beatboxing: Expression Engine + Beatbox controls. If you're
+   * writing: Lyrics + melody + structure." The bench selector still offers all
+   * four in every room -- nothing is removed from it, and a room the mapping
+   * has no opinion about is left exactly as the creator left it.
+   */
+  useEffect(() => {
+    if (editorPrefs.benchChosen) return;
+    const suggested = benchForRoom(activeWorkspace);
+    if (suggested) updateEditorPrefs({ activeBench: suggested });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWorkspace, editorPrefs.benchChosen]);
 
   // Other rooms open the instrument through the app-wide drawer event; that
   // has to land on the UNIFIED bench rather than on a flag nothing reads.
@@ -517,7 +538,15 @@ export const StudioCanvas: React.FC = () => {
                   <button
                     key={bench.id}
                     type="button"
-                    onClick={() => setActiveBench(active ? null : bench.id)}
+                    data-testid={`bench-${bench.id}`}
+                    data-active={active}
+                    onClick={() =>
+                      // Their choice from here on, including closing one.
+                      updateEditorPrefs({
+                        activeBench: active ? null : bench.id,
+                        benchChosen: true,
+                      })
+                    }
                     aria-expanded={active}
                     className={`px-3 py-2 rounded-xl border font-bold text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shrink-0 ${
                       active ? bench.on : bench.off

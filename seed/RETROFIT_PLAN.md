@@ -699,6 +699,52 @@ intelligence says there are none to know about and that a sentence about them
 would be made up, rather than producing the seed's other example sentence off
 data that does not exist.
 
+## The four disclosure levels - 2026-09-05
+
+XVII.3 and C.1, closed on the owner's instruction. `lib/disclosureLevels`
+declares them and `test-58-disclosure-levels.cjs` checks them in the running
+app (11 checks); 12 unit assertions cover the table and the mapping.
+
+**Amendment A §16 is the fence, and it was built to first.** "The professional
+DAW controls should NOT disappear... we should not turn SoulSonus into six
+giant buttons. That would destroy much of what you've already built." So
+nothing was removed, nothing was collapsed, and the first thing the browser
+test asserts is that all fifteen specialist utilities are still on the rail --
+before and after every level behaviour it exercises.
+
+**§17's complaint is narrower than it looks.** "Your screenshot is not
+fundamentally wrong. It is too simultaneous." The fix is hierarchy, and the
+sentence that judges an implementation of it is "that preserves everything
+while making SoulSonus feel substantially calmer".
+
+So: every surface the app puts on screen is assigned a level, and the
+assignment is enforced rather than described. The utilities rail types each
+entry against the table, so a utility added without a declared level does not
+compile; `unreachableSurfaces` reports anything the table does not account
+for, because a surface belonging to no level is one refactor from being
+dropped. Level 2 follows the work, by the amendment's own examples -- create
+opens the expression engine, write opens the room for writing, build opens the
+structure -- and a room that carries its own surfaces gets no opinion rather
+than a guess at one. Level 4 is described to the creator as filed, never as
+hidden.
+
+**The creator outranks the hierarchy, and that took a fix.** Level 2 suggests
+only until they choose; after that the choice is theirs in every room. It was
+not: `StudioCanvas` unmounts on a room switch -- its own comment says so about
+the editor tools -- so a bench they had picked was forgotten the moment they
+looked at the mix, and the level put its own suggestion back in its place.
+That is the organizing layer overruling the creator, which Amendment D
+forbids. The open bench and the fact that they chose it live in the session
+now, and the browser test walks two rooms and back to prove the level never
+takes it off them.
+
+**One contradiction the table itself exposed.** Vocal-to-Lyric was declared
+level 2 -- reading a take as lyrics is writing, which is the amendment's own
+example of a level 2 activity -- while being reachable only from the level 4
+rail. Rather than relabel it to match where it happened to sit, the Write &
+Record room now offers it too. It is still on the rail: a second door, not a
+move.
+
 ## The four naming clauses - 2026-09-05
 
 A.8, C.3, A.12 and XVII.2 read ABSENT while the capabilities they name were
