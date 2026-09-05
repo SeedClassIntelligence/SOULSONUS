@@ -745,6 +745,47 @@ rail. Rather than relabel it to match where it happened to sit, the Write &
 Record room now offers it too. It is still on the rail: a second door, not a
 move.
 
+## Getting the engines connected, and getting a take recorded - 2026-09-05
+
+Two open-source services sit behind this platform and neither is bundled:
+ACE-Step 1.5 for realization, Demucs v4 for stem separation. The compose stack
+that runs them has existed since the inference server was written; what was
+missing is the thing between "I have a repository" and "I recorded something":
+a way to find out what is actually connected, and an order to do it in.
+
+**`npm run engines:check`.** Asks both services from the same addresses the app
+uses, and asks the service route as well -- worth asking separately, because the
+browser never talks to ACE directly and a route holding the wrong endpoint looks
+exactly like a missing model from inside the app. It starts nothing and
+downloads nothing. Where something is not reachable it prints the command that
+would fix it rather than a status code. Verified in both directions: against a
+host answering ACE's real protocol and a Demucs answering the real `/health`
+shape, and against nothing at all.
+
+The ACE probe is the same one the service route uses -- `query_result` with an
+empty list, the cheapest call that proves the host exists and answers as ACE.
+
+**`docs/QUICKSTART.md`.** Three sections in the order a creator needs them, and
+the first one needs nothing installed but the repository: install, run, enter,
+pick a modality, press record, perform, stop, play it back. Capture,
+classification onto separate channels, editing, mixing, mastering and export all
+run locally with both services off, and the document says so rather than
+implying a GPU is the price of entry. It also names the one thing that stops a
+first take for reasons that are not SoulSonus's: browsers refuse the microphone
+outside `localhost` or HTTPS.
+
+**One piece of documentation drift corrected.** The README still drew the
+six-room topology with a BUILD room that was fused into CREATE two commits into
+this project's history. It draws the five rooms that exist.
+
+Not fixed, and it cannot be fixed from here: the model weights. HuggingFace,
+ModelScope and download.pytorch.org are all refused by this environment's egress
+policy, so realization can be proven to the wire and no further in this
+container. The route, the request mapping, the polling, the audio transfer and
+the status reporting are all verified against a real ACE-Step server compiled
+and run here; what is not verified is any claim about what the model sounds
+like, and nothing in the code makes one.
+
 ## The verification suite, audited - 2026-09-05
 
 Sixty live tests. **Twenty-eight were passing when the audit started and sixty

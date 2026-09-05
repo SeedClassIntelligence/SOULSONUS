@@ -14,7 +14,8 @@
     "seed:audit": "node scripts/seed_audit.mjs",
     "seed:gate": "node scripts/seed_audit.mjs --gate",
     "build:server": "npx esbuild server/index.ts --bundle --platform=node --format=esm --packages=external --outfile=server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "engines:check": "node scripts/engines-check.mjs"
   },
   "overrides": {
     "protobufjs": "^7.4.0"

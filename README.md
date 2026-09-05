@@ -7,6 +7,19 @@
 
 ---
 
+## Start here
+
+**[docs/QUICKSTART.md](docs/QUICKSTART.md)** — record a take in five minutes with
+nothing installed but this repository, then turn on the two open-source engines
+(ACE-Step for realization, Demucs for stems) when you want them.
+
+```bash
+npm install && npm run dev     # record something
+npm run engines:check          # what is actually connected
+```
+
+---
+
 ## 🌟 Overview & Architecture Philosophy
 
 **SoulSonus** is a creator-first Digital Audio Workstation (DAW) and generative co-production studio built on a single governing rule:
@@ -22,17 +35,19 @@
 
 ---
 
-## 🎛️ 6-Room Canonical Studio Topology
+## 🎛️ Studio Topology
 
-SoulSonus operates across six dedicated workspaces, all sharing the same persistent multitrack state:
+Five rooms, all sharing the same persistent multitrack state. Capture and
+arrangement are one continuous screen — CREATE and the old BUILD room were fused,
+and the section editor, the pattern tools and the timeline all live in CREATE:
 
 ```
-┌──────────────┐     ┌──────────────┐     ┌────────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│  1. CREATE   │ ──► │   2. BUILD   │ ──► │ 3. WRITE/RECORD│ ──► │    4. MIX    │ ──► │  5. MASTER   │ ──► │  6. RELEASE  │
-│ Acoustic     │     │ Multi-Bar    │     │ 4-Layer Vocal  │     │ 32-Ch Console│     │ -14.0 LUFS   │     │ 24/48 WAV    │
-│ Performance  │     │ Arrangement  │     │ Take Stacks &  │     │ Faders & DSP │     │ True Peak    │     │ Lossless FLAC│
-│ Capture      │     │ Structure    │     │ Comp Builder   │     │ Sub-Buses    │     │ Limiter      │     │ Manifest     │
-└──────────────┘     └──────────────┘     └────────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
+┌──────────────┐     ┌────────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  1. CREATE   │ ──► │ 2. WRITE&RECORD│ ──► │    3. MIX    │ ──► │  4. MASTER   │ ──► │  5. RELEASE  │
+│ Performance  │     │ 4-Layer Vocal  │     │ 32-Ch Console│     │ -14.0 LUFS   │     │ 24/48 WAV    │
+│ Capture,     │     │ Take Stacks &  │     │ Faders & DSP │     │ True Peak    │     │ Lossless FLAC│
+│ Arrangement  │     │ Comp Builder   │     │ Sub-Buses    │     │ Limiter      │     │ Manifest     │
+└──────────────┘     └────────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
 ```
 
 ---
