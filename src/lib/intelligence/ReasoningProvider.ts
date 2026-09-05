@@ -14,7 +14,9 @@ import {
   controlsFromExpression,
   dspFromExpression,
   explainExpressionChange,
+  expressionRationale,
 } from '../expressionControls';
+import { rationaleLines } from '../musicalRationale';
 import { EXPRESSION_DIMENSIONS } from '../../audio/expressionState';
 import { analyticsCoverage, type CreativeAnalytics } from '../creativeAnalytics';
 import {
@@ -350,6 +352,7 @@ export class NativeStudioBrainProvider implements ReasoningProvider {
           `has been captured or re-read in this session — so there is nothing measured to reason from, ` +
           `and a reading of a creator nobody took would be worse than this sentence.`;
       } else {
+        const rationale = expressionRationale(controls);
         const read = EXPRESSION_DIMENSIONS.map((d) => state[d])
           .filter((d): d is NonNullable<typeof d> => !!d)
           .map((d) => `• **${d.reads}**${d.fromCreator ? ' — your reading' : ` — ${d.from}`}`);
@@ -358,7 +361,12 @@ export class NativeStudioBrainProvider implements ReasoningProvider {
           `**What the take reads as** (${read.length} of 7 dimensions, from ${state.measuredFrom.onsets} onsets):\n\n` +
           (read.length ? read.join('\n') : '• nothing was measurable from this pass') +
           (unread.length ? `\n\n**Not measured**:\n${unread.join('\n')}` : '') +
-          (controls.length ? `\n\n**What that argues for**: ${explainExpressionChange(controls)}` : '');
+          // Amendment A.12's own shape, shown as its three parts rather than
+          // run together: what it would do, the measurements behind it, and
+          // what it refuses to do instead.
+          (rationale
+            ? `\n\n**What that argues for**:\n${rationaleLines(rationale).join('\n')}`
+            : '');
 
         const patch = dspFromExpression(controls);
         if (target && Object.keys(patch).length) {

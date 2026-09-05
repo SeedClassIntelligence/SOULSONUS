@@ -699,6 +699,52 @@ intelligence says there are none to know about and that a sentence about them
 would be made up, rather than producing the seed's other example sentence off
 data that does not exist.
 
+## The four naming clauses - 2026-09-05
+
+A.8, C.3, A.12 and XVII.2 read ABSENT while the capabilities they name were
+built and verified, because their checks looked for symbols nothing in the code
+used. Closed on the owner's instruction, and closed the way CLAUDE.md says:
+**the code was changed to match the text.** Not one line of `clauses.json` was
+touched -- loosening a check to fit an implementation is the move that fakes
+conformance, and it would have been available in about a minute.
+
+**A.8 and C.3 -- the Interpretation layer.** It was 140 lines of JSX inside the
+expression engine, so the thing the seed names had no name here.
+`components/InterpretationPanel.tsx` is that panel, extracted whole. Per
+CLAUDE.md §4 the handler set was diffed before and after: identical, five test
+handles, and `test-51` passes unchanged.
+
+**XVII.2 -- expression entry as a first-class surface.** The component was
+called `UnifiedDeckBench` while rendering the words LIVE EXPRESSION ENGINE
+across its own header, so the surface the clause names was called one thing on
+screen and another everywhere else. Renamed to `LiveExpressionEngine`.
+
+That clause also lists six ways in -- Talk, Sing, Hum, Beatbox, Mimic,
+Upload -- and the surface offered five. Upload was reachable only from the
+utilities rail, which is not "expression entry as a first-class surface": a
+creator whose performance is already a file had to go looking. It is a tab now,
+and it opens the same importer the rail does.
+
+**A.12 -- explaining musical reasoning in creator terms.** This one needed a
+concept rather than a rename. Read the amendment's own sentence again --
+"I preserved that lift by widening the harmony and increasing rhythmic density
+rather than increasing tempo" -- and it is three things: what was done, why,
+and what was deliberately *not* done instead. The third is what makes it an
+explanation rather than an announcement. The platform had six functions
+producing sentences of this kind and no shared shape between them, so that
+third part existed in one of the six, by accident. `lib/musicalRationale` is
+the shape, with the rule that comes with it: a rationale whose `because` is
+empty is not built at all, because an explanation with no reason is an
+assertion. The intelligence now answers in its three parts rather than a run-on
+sentence.
+
+**One defect found while moving.** The performance pads had always read
+`takeTrack.events?.length`, and `events` is not a field on `Track` -- so every
+pad reported "0 events" however much had been performed on it. It was also the
+one pre-existing `tsc` error this codebase has carried. The notes are on
+`noteEvents`. **The src error count is now 0, not the 1 CLAUDE.md §4 names as
+the baseline.**
+
 ### Review of XVI.1, XVI.4 and the E05 route - 2026-09-05
 
 Five findings, all fixed, all with a test behind them now.

@@ -51,7 +51,9 @@ import {
   controlsFromExpression,
   dspFromExpression,
   explainExpressionChange,
+  expressionRationale,
 } from '../src/lib/expressionControls';
+import { rationaleFrom, sayRationale } from '../src/lib/musicalRationale';
 import { parseVoiceCommand, needsReasoning } from '../src/audio/voiceCommands';
 import { barsToSeconds } from '../src/utils/musicMath';
 import { adoptFromRevision, newRevision, capTree, childrenOf, isBranchPoint, pathToRoot, depthOf, MAX_REVISIONS } from '../src/lib/revisionTree';
@@ -1193,12 +1195,34 @@ async function runComprehensiveVerification() {
     check(!('harmonicTension' in dspFromExpression(heavy)), 'EXPRESSION_CONTROL',
       'nothing invents a setting name to carry a suggestion');
 
-    const sentence = explainExpressionChange(heavy);
-    check(/so /.test(sentence) && /tempo is untouched/.test(sentence), 'EXPRESSION_CONTROL',
-      'the explanation is a measurement, a change, and what it refused to move',
-      sentence.slice(0, 140));
-    check(explainExpressionChange([]) === '', 'EXPRESSION_CONTROL',
-      'and nothing measured explains nothing');
+    // Amendment A.12's sentence is three things: what was done, why, and what
+    // it refused to do instead. The type carries all three or is not built.
+    const rationale = expressionRationale(heavy)!;
+    check(!!rationale && rationale.because.length > 0, 'EXPRESSION_CONTROL',
+      'the explanation carries the measurements behind it', rationale?.because[0]);
+    check(rationale.ratherThan.some((r) => /touching the tempo/.test(r)), 'EXPRESSION_CONTROL',
+      'and names what it refused to move, which is the half that makes it an explanation',
+      rationale.ratherThan[0]);
+    check(/rather than/.test(explainExpressionChange(heavy)) &&
+      /because/.test(explainExpressionChange(heavy)), 'EXPRESSION_CONTROL',
+      'said aloud, it keeps that order', explainExpressionChange(heavy).slice(0, 120));
+    check(explainExpressionChange([]) === '' && expressionRationale([]) === null,
+      'EXPRESSION_CONTROL', 'and nothing measured explains nothing');
+
+    // A reason-free explanation is an assertion, and this codebase has had to
+    // take those back before.
+    check(rationaleFrom({ says: 'I widened the harmony', because: [] }) === null,
+      'EXPRESSION_CONTROL', 'a rationale with no reason behind it is not built at all');
+    check(rationaleFrom({ says: '', because: ['measured'] }) === null, 'EXPRESSION_CONTROL',
+      'and neither is one that does not say what it did');
+    const a12 = rationaleFrom({
+      says: 'I preserved that lift by widening the harmony and increasing rhythmic density',
+      because: ['your performance lifted 0.4 on arousal across the section'],
+      ratherThan: ['increasing the tempo'],
+    })!;
+    check(/rather than increasing the tempo, because your performance lifted/.test(sayRationale(a12)),
+      'EXPRESSION_CONTROL', 'and the shape is the one Amendment A.12 asks for, in its order',
+      sayRationale(a12));
 
     // The creator's own reading drives the control, because it replaced the
     // measurement on that dimension.

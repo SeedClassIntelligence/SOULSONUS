@@ -132,10 +132,14 @@ async function ask(page, text) {
     read.some((d) => answer.includes(ex[d].from.slice(0, 18))), 'measurement quoted');
   check('it explains what the reading argues for', /argues for/.test(answer));
   check('and refuses to move the tempo on the strength of a feeling',
-    /tempo is untouched/.test(answer),
-    (answer.match(/tempo is untouched[^\n]*/) || [''])[0]);
+    /rather than touching the tempo/.test(answer),
+    (answer.match(/rather than touching the tempo[^\n]*/) || [''])[0]);
+  check('with the measurement behind the change, and the change, kept apart',
+    /• because /.test(answer) && /• rather than /.test(answer),
+    (answer.match(/• because [^\n]*/) || [''])[0].slice(0, 80));
   check('what it cannot apply, it says it cannot apply',
-    !/harmonic tension/.test(answer) || /cannot make the change for you/.test(answer));
+    !/harmonic tension/.test(answer) || /cannot apply for you/.test(answer),
+    (answer.match(/harmonic tension[^\n]*/) || [''])[0].slice(0, 90));
 
   // ---- a take the studio cannot read all of ----
   //

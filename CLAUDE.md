@@ -61,7 +61,11 @@ the second earns the word done.
 Standing checks for any change here:
 
 ```bash
-npx tsc --noEmit          # src error count must stay at its pre-existing 1
+npx tsc --noEmit          # src errors must stay at 0. The one long-standing
+                          # error was `takeTrack.events` on the performance
+                          # pads -- a field Track has never had, so every pad
+                          # reported 0 events. Fixed 2026-09-05; the baseline
+                          # is zero now, and a new error is a new error.
 npm run build             # must pass
 npm run seed:audit        # no clause regresses
 ```

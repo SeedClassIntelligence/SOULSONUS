@@ -5,7 +5,7 @@ import { UnifiedTrackLane } from './UnifiedTrackLane';
 import { SectionBuilder } from './SectionBuilder';
 import { ShootAroundControls } from './ShootAroundControls';
 import { InstrumentStrip } from './InstrumentStrip';
-import { UnifiedDeckBench } from './UnifiedDeckBench';
+import { LiveExpressionEngine } from './LiveExpressionEngine';
 import { TICKS_PER_16TH, TICKS_PER_BEAT } from '../utils/musicMath';
 import {
   Layers,
@@ -538,7 +538,7 @@ export const StudioCanvas: React.FC = () => {
 
             {activeBench === 'UNIFIED' && (
               <div className="mb-2">
-                <UnifiedDeckBench />
+                <LiveExpressionEngine />
               </div>
             )}
 

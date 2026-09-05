@@ -25,6 +25,7 @@
  */
 
 import type { ExpressionDimensionName, ExpressionState, TrackDspSettings } from '../types/daw';
+import { rationaleFrom, sayRationale, type MusicalRationale } from './musicalRationale';
 
 /** The musical dimensions SRT-1 V lists, as far as this build reaches them. */
 export type MusicalDimension =
@@ -191,29 +192,32 @@ export function controlsFromExpression(state: ExpressionState | null): Expressio
  * what is. Tempo is the example the retrofit plan uses and it is never moved
  * here: a creator's performance sits at the tempo they played it at.
  */
-export function explainExpressionChange(controls: ExpressionControl[]): string {
-  if (!controls.length) return '';
+export function expressionRationale(controls: ExpressionControl[]): MusicalRationale | null {
+  if (!controls.length) return null;
   const applied = controls.filter((c) => c.dspSettings);
   const stated = controls.filter((c) => !c.dspSettings);
   const lead = applied[0] || controls[0];
-  const parts = [`${lead.because}, so ${lead.reads}.`];
-  if (applied.length > 1) {
-    parts.push(
-      `Also ${applied
-        .slice(1)
-        .map((c) => `${DIMENSION_LABEL[c.dimension]}: ${c.reads}`)
-        .join('; ')}.`
-    );
-  }
-  if (stated.length) {
-    parts.push(
-      `Not applied, because this build cannot make the change for you: ${stated
-        .map((c) => `${DIMENSION_LABEL[c.dimension]} — ${c.reads}`)
-        .join('; ')}.`
-    );
-  }
-  parts.push('The tempo is untouched: you played this at the tempo you played it at.');
-  return parts.join(' ');
+  return rationaleFrom({
+    says: applied.length
+      ? `${lead.reads}${applied.length > 1 ? `, and ${applied.slice(1).map((c) => `${DIMENSION_LABEL[c.dimension]}: ${c.reads}`).join('; ')}` : ''}`
+      : lead.reads,
+    because: [lead.because, ...applied.slice(1).map((c) => c.because)],
+    ratherThan: [
+      // The example A.12 gives ends on the thing it refused to do, and this is
+      // that thing: a creator's tempo is theirs, and a reading of their mood is
+      // not a reason to move it.
+      'touching the tempo — you played this at the tempo you played it at',
+      ...stated.map(
+        (c) => `${DIMENSION_LABEL[c.dimension]}, which this build cannot apply for you (${c.reads})`
+      ),
+    ],
+  });
+}
+
+/** The same reasoning as one sentence, for a caller with a line to fill. */
+export function explainExpressionChange(controls: ExpressionControl[]): string {
+  const rationale = expressionRationale(controls);
+  return rationale ? sayRationale(rationale) : '';
 }
 
 /** Every setting the applicable controls agree on, as one patch. */
