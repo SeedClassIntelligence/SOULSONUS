@@ -16,6 +16,12 @@ import {
   explainExpressionChange,
 } from '../expressionControls';
 import { EXPRESSION_DIMENSIONS } from '../../audio/expressionState';
+import { analyticsCoverage, type CreativeAnalytics } from '../creativeAnalytics';
+import {
+  audienceUnavailable,
+  sayRecommendation,
+  type CreativeRecommendation,
+} from '../creativeRecommendation';
 import { proposeRealization } from '../realizationProposal';
 import {
   CALL_ORDER,
@@ -65,6 +71,10 @@ export interface BoundedStudioContext {
    * performance that read as nothing.
    */
   expression?: ExpressionState | null;
+  /** What the creator has been doing, counted off the session's own record. */
+  analytics?: CreativeAnalytics | null;
+  /** Those counts as questions. The intelligence asks them; it never acts on them. */
+  recommendations?: CreativeRecommendation[];
 }
 
 export interface ReasoningProposal {
@@ -366,6 +376,47 @@ export class NativeStudioBrainProvider implements ReasoningProvider {
                 .join(', ')}`,
             },
           };
+        }
+      }
+    }
+    // 0c. What the studio has noticed about how this session is going.
+    //
+    // SRT-1 XVI's recommendation layer, and the section's own framing is the
+    // constraint: it "creates a learning creative environment", which means it
+    // asks. Every line below is a count and a question. Nothing here decides
+    // anything, and nothing acts on an answer by itself.
+    else if (
+      /\b(noticed|notice|pattern|patterns|habit|habits|analytics|what am i doing|how am i working|my workflow|listeners?|audience|plays?|streams?)\b/.test(q)
+    ) {
+      // Asked about listeners: there are none, and that is the answer.
+      if (/\b(listeners?|audience|plays?|streams?|replay|skips?)\b/.test(q)) {
+        reply = `**On your audience**:\n\n${audienceUnavailable}`;
+      } else {
+        const a = context.analytics || null;
+        const recs = context.recommendations || [];
+        if (!a) {
+          reply =
+            '**What I have noticed**:\n\nNothing yet — this reads your revisions, your decisions and ' +
+            'what you said about them, and there is no record to read.';
+        } else {
+          const { known, total } = analyticsCoverage(a);
+          const measured = [
+            a.iterationFrequency && `• ${a.iterationFrequency.reads} — ${a.iterationFrequency.from}`,
+            a.sectionsRevised && `• ${a.sectionsRevised.reads} — ${a.sectionsRevised.from}`,
+            a.preferredSounds && `• ${a.preferredSounds.reads} — ${a.preferredSounds.from}`,
+            a.abandonedIdeas && `• ${a.abandonedIdeas.reads} — ${a.abandonedIdeas.from}`,
+            a.workflowPatterns && `• ${a.workflowPatterns.reads} — ${a.workflowPatterns.from}`,
+          ].filter(Boolean) as string[];
+
+          reply =
+            `**What I have noticed** (${known} of ${total} things measured):\n\n` +
+            (measured.length ? measured.join('\n') : '• not enough has happened yet to count anything') +
+            (a.notMeasured.length
+              ? `\n\n**Not measured**:\n${a.notMeasured.map((n) => `• ${n}`).join('\n')}`
+              : '') +
+            (recs.length
+              ? `\n\n**Worth asking**:\n${recs.map((r) => `• ${sayRecommendation(r)}`).join('\n')}`
+              : '\n\nNothing here is consistent enough yet to be worth a question about it.');
         }
       }
     }

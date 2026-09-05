@@ -658,6 +658,49 @@ monetization (XIX.1).
 
 ---
 
+## Creative analytics, and the question they raise - 2026-09-05
+
+XVI.1 and XVI.4, closed on the owner's instruction. `test-57-analytics.cjs`
+drives both in the browser (15 checks) and 23 unit assertions cover the
+derivations.
+
+**The counts.** `lib/creativeAnalytics` reads the session's own record rather
+than watching anything: the revision tree, the decision records, the relay
+gaps and the tracks, all of which exist for their own reasons. There is no
+telemetry, nothing is timed in the background, and an undo takes the analytics
+back with it, because the tree is the record. Five of the six the seed names
+are measured -- iteration frequency from the median gap between revisions
+rather than the mean, so one long break does not describe the session;
+sections repeatedly revised, by comparing which bars' notes changed between
+consecutive revisions and mapping those bars to sections; abandoned ideas, from
+rejected candidates, branches nothing came after, and sounds that stopped
+appearing; preferred sounds, by survival across revisions; and workflow
+patterns, from the sequence of revision origins.
+
+The sixth, average project completion time, is named as unmeasurable rather
+than approximated. A project records when it was saved and never when it was
+begun, and nothing marks one finished, so any figure would be invented.
+
+**The question.** `lib/creativeRecommendation` turns those counts into
+something worth saying, and the seed's own example is written as a question --
+"should I prioritize warmer timbres?" -- so that is the form: an observation
+and a question, never a directive, and nothing acts on the answer by itself.
+Three of anything is the floor, because the seed's word is "consistently" and
+two is a coincidence. Where the creator has already said why they turned
+something down, the relay gap is quoted verbatim rather than summarised: a
+paraphrase of "that's not what I heard" is a lower-value signal than the
+sentence itself (Amendment B), and the observation stays a count so the studio
+never characterises their taste back at them.
+
+**Nothing claims an audience.** XVI.3 is the one clause in this section still
+absent, and it should be: nothing has been published from this build and
+nothing measures listens, replays or skips. Asked about listeners, the
+intelligence says there are none to know about and that a sentence about them
+would be made up, rather than producing the seed's other example sentence off
+data that does not exist.
+
+---
+
 ## The realization service route - 2026-09-04
 
 Not a plan step. `e05Provider.ts` has addressed `/api/e05?action=...` since it

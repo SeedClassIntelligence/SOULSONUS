@@ -93,6 +93,8 @@ import {
   secondOpinionOfPitch,
 } from '../audio/expressionFanout';
 import type { LyricSeed } from '../lib/lyricSeed';
+import { deriveCreativeAnalytics, type CreativeAnalytics } from '../lib/creativeAnalytics';
+import { recommendationsFrom, type CreativeRecommendation } from '../lib/creativeRecommendation';
 import { syllabify } from '../lib/syllables';
 import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../lib/relayGap';
 import {
@@ -722,6 +724,15 @@ export interface StudioSessionState {
    */
   setExpressionReading: (name: ExpressionDimensionName, value: number | null) => void;
   creatorExpressionReadings: Partial<Record<ExpressionDimensionName, number>>;
+  /**
+   * What the creator has been doing, counted off the session's own record
+   * (SRT-1 XVI). Nothing is watched or timed in the background: this reads the
+   * revision tree, the decisions and the gaps, so undoing back to the start
+   * takes the analytics with it.
+   */
+  creativeAnalytics: CreativeAnalytics;
+  /** Those counts turned into questions worth asking. Never into instructions. */
+  creativeRecommendations: CreativeRecommendation[];
   /** Which quantization mode each track is currently sitting in. */
   trackTimingModes: Record<string, TimingMode>;
   /**
@@ -3119,6 +3130,32 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    * Amendment B.4.
    */
   const [relayGaps, setRelayGaps] = useState<RelayGapRecord[]>([]);
+
+  /**
+   * The session reading its own record (SRT-1 XVI).
+   *
+   * Derived rather than accumulated: there is no counter ticking anywhere and
+   * nothing is recorded for this. It reads the revision tree, the decisions
+   * and the gaps, all of which exist for their own reasons, so an undo takes
+   * the analytics back with it and a creator who clears the session has
+   * cleared what the studio knows about them.
+   */
+  const creativeAnalytics = useMemo(
+    () =>
+      deriveCreativeAnalytics({
+        revisions,
+        decisionRecords,
+        relayGaps,
+        currentRevisionId,
+        tracks,
+      }),
+    [revisions, decisionRecords, relayGaps, currentRevisionId, tracks]
+  );
+
+  const creativeRecommendations = useMemo(
+    () => recommendationsFrom({ analytics: creativeAnalytics, decisionRecords, relayGaps }),
+    [creativeAnalytics, decisionRecords, relayGaps]
+  );
 
   /**
    * What the creator will not let a realization change, and how hard.
@@ -5811,6 +5848,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setGenreId,
       reinterpretTrack,
       interpretationSubjectId,
+      creativeAnalytics,
+      creativeRecommendations,
       expressionState,
       lastPassLyricSeed,
       setExpressionReading,
@@ -6034,6 +6073,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setGenreId,
       reinterpretTrack,
       interpretationSubjectId,
+      creativeAnalytics,
+      creativeRecommendations,
       expressionState,
       lastPassLyricSeed,
       setExpressionReading,

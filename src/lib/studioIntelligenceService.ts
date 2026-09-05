@@ -18,6 +18,8 @@
  */
 
 import { DAWState, Track, TrackDspSettings, GenerationCandidate, RealizationRoute, ExpressionState } from '../types/daw';
+import type { CreativeAnalytics } from './creativeAnalytics';
+import type { CreativeRecommendation } from './creativeRecommendation';
 import {
   StudioEmphasis,
   ReasoningProvider,
@@ -142,7 +144,10 @@ export class SoulSonusNativeStudioIntelligence {
      * performed anything has no reading, and the intelligence says so rather
      * than reasoning from a default.
      */
-    expression: ExpressionState | null = null
+    expression: ExpressionState | null = null,
+    /** SRT-1 XVI: what the session counted about itself, and what it would ask. */
+    analytics: CreativeAnalytics | null = null,
+    recommendations: CreativeRecommendation[] = []
   ): Promise<AiAssistantResponse> {
     // 1. Compile safe, bounded read-only projection (No direct state exposure)
     const boundedContext = StudioContextCompiler.compile(
@@ -151,7 +156,9 @@ export class SoulSonusNativeStudioIntelligence {
       activeWorkspace,
       selectedTrack,
       config.emphasis,
-      expression
+      expression,
+      analytics,
+      recommendations
     );
 
     // 2. Select reasoning provider (Default: Native Studio Brain)
@@ -198,7 +205,9 @@ export async function queryStudioIntelligence(
   tracks: Track[],
   activeWorkspace: string,
   selectedTrack: Track | null,
-  expression: ExpressionState | null = null
+  expression: ExpressionState | null = null,
+  analytics: CreativeAnalytics | null = null,
+  recommendations: CreativeRecommendation[] = []
 ): Promise<AiAssistantResponse> {
   return SoulSonusNativeStudioIntelligence.evaluate(
     userQuery,
@@ -207,6 +216,8 @@ export async function queryStudioIntelligence(
     tracks,
     activeWorkspace,
     selectedTrack,
-    expression
+    expression,
+    analytics,
+    recommendations
   );
 }

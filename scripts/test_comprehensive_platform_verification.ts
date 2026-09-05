@@ -35,6 +35,12 @@ import { countWord, countLine, syllabify } from '../src/lib/syllables';
 import { deriveLyricSeed } from '../src/lib/lyricSeed';
 import { checkAgainstCadence, preserveCadence, describeGate } from '../src/lib/cadenceLock';
 import { buildSyntheticDisclosure } from '../src/lib/syntheticDisclosure';
+import { deriveCreativeAnalytics, analyticsCoverage } from '../src/lib/creativeAnalytics';
+import {
+  recommendationsFrom,
+  sayRecommendation,
+  audienceUnavailable,
+} from '../src/lib/creativeRecommendation';
 import { conditionGenre, describeGenre, grammarById } from '../src/lib/genreGrammar';
 import {
   fanOutPerformance,
@@ -1569,6 +1575,150 @@ async function runComprehensiveVerification() {
     const unreadable = parseAceRow({ task_id: 'j4', status: 1, result: 'not json' }, 'j4');
     check(unreadable.state === 'FAILED' && /could not read/.test(unreadable.error || ''),
       'E05_ROUTE', 'and a result this service cannot read is a failure, not a success with nothing in it');
+  }
+
+  console.log('\n--- 29. Creative analytics, counted off the record (SRT-1 XVI) ---');
+  {
+    const t0 = 1_700_000_000_000;
+    const note = (tick: number, midi = 60): any => ({
+      id: `n${tick}_${midi}`, startTick: tick, durationTicks: 120, midiNote: midi,
+      velocity: 100, provenance: { origin: 'MOUTH', creatorEdited: false },
+    });
+    const track = (notes: any[], vaultLabel?: string): any => ({
+      id: 't1', name: 'Kick', instrument: 'kick', steps: [], mute: false, solo: false,
+      volume: 0, pitch: 'C1', noteEvents: notes, vaultLabel,
+    });
+    const SECTIONS: any[] = [
+      { id: 'sec_v', name: 'Verse', tag: 'Verse', bars: [1, 2], energy: 'low', color: '#111' },
+      { id: 'sec_h', name: 'Hook', tag: 'Chorus', bars: [3, 4], energy: 'high', color: '#222' },
+    ];
+    // Bar 1 is ticks 0..1919; bar 3 is 3840..5759.
+    const rev = (id: string, parent: string | null, minutes: number, origin: string, notes: any[], label = 'x'): any =>
+      ({ revisionId: id, parentRevisionId: parent, label, at: t0 + minutes * 60000,
+         origin, tracks: [track(notes, 'Analog Kick')], sections: SECTIONS });
+
+    const thin = deriveCreativeAnalytics({
+      revisions: [rev('r1', null, 0, 'root', [])],
+      decisionRecords: [], relayGaps: [], currentRevisionId: 'r1', tracks: [],
+    });
+    check(thin.iterationFrequency === null && thin.workflowPatterns === null, 'ANALYTICS',
+      'one revision is not a rhythm of work, and nothing is reported as one');
+    check(thin.notMeasured.some((n) => /is not a rhythm of work yet/.test(n)), 'ANALYTICS',
+      'and the reason is named', thin.notMeasured[0]);
+    check(thin.notMeasured.some((n) => /average project completion time/.test(n)), 'ANALYTICS',
+      'the one the seed lists that nothing here can measure is named as unmeasurable',
+      thin.notMeasured.find((n) => /completion/.test(n)) || '');
+    check(thin.projectCompletionTime === null, 'ANALYTICS',
+      'and is null rather than approximated from a save time');
+
+    // Four revisions: the Hook (bar 3) reworked three times, the Verse once.
+    const revisions = [
+      rev('r1', null, 0, 'root', [note(0)]),
+      rev('r2', 'r1', 2, 'capture', [note(0), note(3840)]),
+      rev('r3', 'r2', 5, 'edit', [note(0), note(3840, 62)]),
+      rev('r4', 'r3', 9, 'edit', [note(0), note(3840, 64)]),
+      rev('r5', 'r4', 12, 'edit', [note(240), note(3840, 64)]),
+    ];
+    const a = deriveCreativeAnalytics({
+      revisions,
+      decisionRecords: [
+        { decisionId: 'd1', commitTransactionId: 'c', candidateId: 'x1', decision: 'REJECTED', overrideIntentContract: false, timestamp: t0 },
+        { decisionId: 'd2', commitTransactionId: 'c', candidateId: 'x2', decision: 'REJECTED', overrideIntentContract: false, timestamp: t0 },
+        { decisionId: 'd3', commitTransactionId: 'c', candidateId: 'x3', decision: 'REJECTED', overrideIntentContract: false, timestamp: t0 },
+        { decisionId: 'd4', commitTransactionId: 'c', candidateId: 'x4', decision: 'ACCEPTED', overrideIntentContract: false, timestamp: t0 },
+      ] as any,
+      relayGaps: [
+        { gapId: 'g1', candidateId: 'x1', openedAt: t0, attributedTo: 'me', inCreatorWords: 'too bright, it lost the thump', exchange: [] },
+        { gapId: 'g2', candidateId: 'x2', openedAt: t0, attributedTo: 'me', inCreatorWords: 'still too glassy', exchange: [] },
+      ] as any,
+      currentRevisionId: 'r5',
+      tracks: [track([note(240)], 'Analog Kick')],
+    });
+
+    check(a.iterationFrequency?.value.revisions === 5, 'ANALYTICS',
+      'iteration frequency counts the revisions and the time between them',
+      a.iterationFrequency?.from);
+    check(a.iterationFrequency?.value.medianGapMinutes === 3, 'ANALYTICS',
+      'from the median gap, not the average, so one long break does not describe the session',
+      String(a.iterationFrequency?.value.medianGapMinutes));
+
+    const hook = a.sectionsRevised?.value.find((s) => s.name === 'Hook');
+    const verse = a.sectionsRevised?.value.find((s) => s.name === 'Verse');
+    check(!!hook && hook.times === 3, 'ANALYTICS',
+      'a section counts as revised when the notes inside its bars changed',
+      a.sectionsRevised?.from);
+    check(!!verse && verse.times === 1, 'ANALYTICS',
+      'and only the section that changed counts, not every section in the revision');
+    check(/coming back to Hook/.test(a.sectionsRevised?.reads || ''), 'ANALYTICS',
+      'which is said in the creator\'s terms', a.sectionsRevised?.reads);
+
+    check(a.abandonedIdeas?.value.rejectedCandidates === 3, 'ANALYTICS',
+      'what was turned down is counted from the decisions, not guessed');
+    check(/not deleted/.test(a.abandonedIdeas?.reads || ''), 'ANALYTICS',
+      'and an abandoned idea is described as kept, because it is', a.abandonedIdeas?.reads);
+    check(a.preferredSounds?.value[0]?.survived === 5 && a.preferredSounds?.value[0]?.kept === true,
+      'ANALYTICS', 'a preferred sound is one that survived the revisions, which is countable',
+      a.preferredSounds?.from);
+    check(a.workflowPatterns?.value[0]?.step === 'edited → edited', 'ANALYTICS',
+      'and a workflow pattern is the move they actually repeat', a.workflowPatterns?.from);
+    check(analyticsCoverage(a).known === 5 && analyticsCoverage(a).total === 6, 'ANALYTICS',
+      'coverage counts the six the seed names and claims the five it measured',
+      JSON.stringify(analyticsCoverage(a)));
+  }
+
+  console.log('\n--- 30. Analytics become a question, never an instruction (SRT-1 XVI) ---');
+  {
+    const t0 = 1_700_000_000_000;
+    const rejections = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({
+        decisionId: `d${i}`, commitTransactionId: 'c', candidateId: `x${i}`,
+        decision: 'REJECTED', overrideIntentContract: false, timestamp: t0,
+      })) as any;
+    const gaps = (words: string[]) =>
+      words.map((w, i) => ({
+        gapId: `g${i}`, candidateId: `x${i}`, openedAt: t0, attributedTo: 'me',
+        inCreatorWords: w, exchange: [],
+      })) as any;
+    const empty = {
+      iterationFrequency: null, sectionsRevised: null, abandonedIdeas: null,
+      preferredSounds: null, projectCompletionTime: null, workflowPatterns: null, notMeasured: [],
+    } as any;
+
+    check(recommendationsFrom({ analytics: empty, decisionRecords: rejections(2), relayGaps: [] }).length === 0,
+      'RECOMMENDATION', 'two of a thing is not "consistently", and nothing is said about it');
+
+    const recs = recommendationsFrom({
+      analytics: empty,
+      decisionRecords: rejections(4),
+      relayGaps: gaps(['too bright, it lost the thump', 'still too glassy']),
+    });
+    check(recs.length === 1 && recs[0].id === 'rejections', 'RECOMMENDATION',
+      'four rejections with words behind them is worth raising');
+    check(recs[0].asks.trim().endsWith('?'), 'RECOMMENDATION',
+      'and what is raised is a question, not an instruction', recs[0].asks);
+    check(recs[0].inTheirWords.includes('too bright, it lost the thump'), 'RECOMMENDATION',
+      'the creator\'s own words are quoted, not summarised into an adjective',
+      JSON.stringify(recs[0].inTheirWords));
+    check(!/bright|glassy/.test(recs[0].observed), 'RECOMMENDATION',
+      'the observation itself stays a count and does not characterise their taste',
+      recs[0].observed);
+    check(recs[0].strength === 'STRONG', 'RECOMMENDATION',
+      'and it is stronger for having their words behind it');
+    check(/You said: "too bright/.test(sayRecommendation(recs[0])) &&
+      sayRecommendation(recs[0]).trim().endsWith('?'), 'RECOMMENDATION',
+      'as said aloud, it ends on the question they answer',
+      sayRecommendation(recs[0]).slice(-60));
+
+    const quiet = recommendationsFrom({
+      analytics: empty, decisionRecords: rejections(4), relayGaps: [],
+    });
+    check(quiet[0].strength === 'SUGGESTIVE' && quiet[0].inTheirWords.length === 0, 'RECOMMENDATION',
+      'without their words it is weaker, and invents none', quiet[0].from);
+
+    check(/nothing here knows anything about an audience/i.test(audienceUnavailable) &&
+      /made up/.test(audienceUnavailable), 'RECOMMENDATION',
+      'and asked about listeners, the answer is that there are none to know about',
+      audienceUnavailable.slice(0, 80));
   }
 
   console.log('\n========================================================================');

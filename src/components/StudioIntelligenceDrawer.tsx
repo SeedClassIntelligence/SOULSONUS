@@ -150,6 +150,8 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
     handleAddGapWords,
     handleResolveGap,
     expressionState,
+    creativeAnalytics,
+    creativeRecommendations,
   } = useStudioSession();
   const [gapReply, setGapReply] = useState<Record<string, string>>({});
 
@@ -386,7 +388,12 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
         // What the last pass was measured to express. Without it the
         // intelligence cannot answer a question about the feel of a take with
         // anything but a generality.
-        expressionState
+        expressionState,
+        // And what the session has counted about how it is going, so "what
+        // have you noticed" is answered from the record rather than from a
+        // guess about the person asking.
+        creativeAnalytics,
+        creativeRecommendations
       );
 
       const proposal = answer.actionProposal;

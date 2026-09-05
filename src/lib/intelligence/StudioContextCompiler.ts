@@ -7,6 +7,8 @@
  */
 
 import { DAWState, ExpressionState, Track } from '../../types/daw';
+import type { CreativeAnalytics } from '../creativeAnalytics';
+import type { CreativeRecommendation } from '../creativeRecommendation';
 import { BoundedStudioContext, BoundedTrackContext, StudioEmphasis } from './ReasoningProvider';
 
 export class StudioContextCompiler {
@@ -20,7 +22,10 @@ export class StudioContextCompiler {
     selectedTrack: Track | null,
     emphasis: StudioEmphasis = 'CO_PRODUCER',
     /** The affective reading of the last pass. Null when nothing was performed. */
-    expression: ExpressionState | null = null
+    expression: ExpressionState | null = null,
+    /** What the session has counted about how it is going, and the questions it raises. */
+    analytics: CreativeAnalytics | null = null,
+    recommendations: CreativeRecommendation[] = []
   ): BoundedStudioContext {
     const boundedTracks: BoundedTrackContext[] = tracks.map((t) => ({
       id: t.id,
@@ -62,6 +67,8 @@ export class StudioContextCompiler {
       tracks: boundedTracks,
       emphasis,
       expression,
+      analytics,
+      recommendations,
     };
   }
 }
