@@ -5,7 +5,7 @@
  * but until this existed a refresh discarded all of it.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, recordTake } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 const STUDIO = `window.__studio = () => {
@@ -55,12 +55,11 @@ const waitSettled = async (page) => {
 
   // Make real work: capture a take, change the mix and the mastering chain.
   console.log('-- making work in the session --');
-  await page.getByRole('button', { name: '🎤 BEATBOX (MOUTH)' }).first().click({ force: true });
-  await page.waitForTimeout(1000);
-  await page.locator('button[title="Play (Space)"]').first().click({ force: true }).catch(() => {});
-  await page.waitForTimeout(5000);
+  // The capture row is modality tabs and one record control now; this test was
+  // waiting for a '🎤 BEATBOX (MOUTH)' button that no longer exists and timed
+  // out before it made any work to persist.
+  await recordTake(page, 'Oral Beatbox', 5, { play: true });
   await page.locator('button[title="Stop Playhead"]').first().click({ force: true }).catch(() => {});
-  await page.locator('button[title="Toggle Mic Recording Engine"]').first().click({ force: true }).catch(() => {});
   await page.waitForTimeout(800);
 
   await page.evaluate(`(() => {

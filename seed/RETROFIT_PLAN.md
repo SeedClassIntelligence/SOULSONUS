@@ -745,6 +745,104 @@ rail. Rather than relabel it to match where it happened to sit, the Write &
 Record room now offers it too. It is still on the rail: a second door, not a
 move.
 
+## The collaborative state model - 2026-09-05
+
+XV.1, the last of the three absent clauses that could be built honestly here.
+`lib/collaborativeState` is the model; `test-59-collaborative-state.cjs` is 33
+checks in the running app, 21 of them run against the module the app itself
+loads rather than a copy compiled for a test.
+
+**The clause is one sentence and it is not about a socket.** "A serious
+implementation requires more than Socket.io. It needs a collaborative state
+model." The easy half already existed -- a role union, a contribution record, a
+screen. What was missing was the half that makes those mean anything when two
+people are working: a log of who did what, when, to which track, producing
+which version, that two machines can exchange and agree on.
+
+So the seed's own chain is the file's shape, in its order: project ->
+participants -> roles -> permissions -> assets -> tracks -> revisions ->
+operations -> ownership/provenance. Three properties are asserted rather than
+claimed -- two peers merge to the same state either way round, receiving the
+same peer twice changes nothing, and everything both of them did survives it.
+
+**Amendment F decides the two hardest rules.** There is no last-write-wins path
+anywhere in the merge; it is a union, so no rule exists under which one
+participant's take can replace another's. Two people who performed onto the
+same track both keep their take and the collision is reported for a person to
+settle by listening. And a capture is never refused out of the log: a
+participant without permission to perform still has their audio kept, with the
+refusal recorded beside it saying it was kept anyway. Losing a take to a
+permission check is exactly the failure the amendment was written about.
+
+**Permissions are enforced and refusals are recorded, not dropped.** A writer
+who tries to mix is refused, the operation stays out of the log, and the
+refusal stays in it -- the creator can see that someone tried.
+
+**The five questions section XV names are answered off the log or not at all.**
+Who added it, what changed, when, which version produced the final asset, and
+what belongs to whom. An asset the log never saw gets `null` and a sentence
+saying that is an absence of record, not an absence of work. The ledger reports
+counts and tracks and refuses to compute a percentage: one capture can be the
+song and forty mix tweaks can be nothing, and the section says this matters
+financially and legally.
+
+**There is still no transport, and it says so.** `unconfiguredTransport`
+reports itself unconfigured and throws rather than silently succeeding at
+publishing, and the collaboration screen reads that status instead of stating
+it. The screen now reads the model rather than holding a list of its own, which
+is why it has history on a project nobody has shared: the creator is a
+participant like any other, and what they did is recorded the way a
+collaborator's would be.
+
+### Two defects in the revision tree, found by building on it
+
+The version history XV asks for points at revisions, so the tree had to be
+sound. It was not, and neither fault was visible from the screen.
+
+- *Every commit made two revisions, kept one, and pointed it at the twin it
+  threw away.* The revisions were built inside the `setRevisions` updater,
+  which StrictMode invokes twice, and the current-revision ref was set from in
+  there. The tree read as a row of orphans: no root at all, every parent id
+  resolving to nothing, `childrenOf` always empty, `isBranchPoint` never true.
+  The branch that clause XI.4 exists to keep was being recorded against a node
+  that did not exist. Built outside the updater now; the same trap is
+  documented forty lines below for undo and redo, which was fixed the same way
+  earlier.
+- *Every revision stored the state from before the edit it was named after.*
+  The commit effect read `tracksRef.current`, and that ref is synced by an
+  effect declared after it, so it held the previous render's tracks. Jumping
+  back to a version would have restored the version before it. The effect has
+  `tracks` and `sections` as its own dependencies; it uses them now.
+
+Verified before and after by probe: 0 roots and 2 of 2 orphan parents before,
+1 root and 0 orphans after, with the take present in the revision named for it.
+`test-30`, `test-31` and `test-57` -- capture undo, the one undo stack, and the
+analytics that count revisions -- pass after the change.
+
+Two test files had drifted off renamed controls and were timing out before they
+measured anything: `test-31` was clicking a rail label and a capture button
+that no longer exist. Repaired to address the current controls, not weakened.
+
+### Two findings held for the owner, not acted on
+
+Both were turned up by repairing test selectors that had gone stale, and both
+reproduce with this work stashed, so neither is caused by it. Neither is inside
+XV.1, so under Reflex 10 they are proposed and held rather than fixed.
+
+1. **Opening a saved version comes back without the take.** `test-21` saves a
+   project carrying 23 captured notes, starts a new session, and reopens the
+   saved one: bpm, name, mix and mastering all return, and the notes come back
+   as 0. Autosave is fine -- the same file proves a reload keeps all 23. It is
+   the named save/open path. Under Amendment F this is the most serious open
+   defect I know of in the repository: a take that was written is not coming
+   back.
+2. **Arrangement sections are unreachable.** `test-33` addresses a `2. BUILD`
+   room that no longer exists, and `SectionBuilder` -- which owns
+   `#btn-add-section` -- is imported by `StudioCanvas` and never rendered, in
+   this commit and in every commit checked back through the Create/Build
+   fusion. Sections still exist in session state and revisions carry them; the
+   controls for them are not on screen anywhere.
+
 ## The four naming clauses - 2026-09-05
 
 A.8, C.3, A.12 and XVII.2 read ABSENT while the capabilities they name were

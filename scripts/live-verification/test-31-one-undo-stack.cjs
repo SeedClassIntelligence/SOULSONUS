@@ -11,7 +11,7 @@
  * edit with a recorded take and undoes both from one stack.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, recordTake } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -65,7 +65,10 @@ async function openSynthTab(page, scope) {
   console.log('=== ONE UNDO STACK ===\n');
 
   // ---- 1. the drawer mount ----
-  await page.getByRole('button', { name: '🎛️ TRACK WORKSTATION', exact: false }).first().click({ force: true });
+  // Addressed by its title rather than its label: the rail entry reads
+  // 'WORKSTATION' and this test was still clicking a label that no longer
+  // exists, so it timed out before it measured anything.
+  await page.locator('button[title="Open Track Workstation"]').first().click({ force: true });
   await page.waitForTimeout(1400);
   const drawer = page.locator('div.fixed.right-0:has-text("TRACK PRODUCTION WORKSTATION")').first();
   const expand = drawer.getByRole('button', { name: /OPEN WORKSTATION/i }).first();
@@ -91,7 +94,10 @@ async function openSynthTab(page, scope) {
         'settings restored');
 
   // close the drawer
-  await page.getByRole('button', { name: '🎛️ TRACK WORKSTATION', exact: false }).first().click({ force: true });
+  // Addressed by its title rather than its label: the rail entry reads
+  // 'WORKSTATION' and this test was still clicking a label that no longer
+  // exists, so it timed out before it measured anything.
+  await page.locator('button[title="Open Track Workstation"]').first().click({ force: true });
   await page.waitForTimeout(800);
 
   // ---- 2. one stack across a workstation edit and a recorded take ----
@@ -102,7 +108,10 @@ async function openSynthTab(page, scope) {
   await page.waitForTimeout(1200);
 
   // Re-apply the workstation edit so there is something under the take.
-  await page.getByRole('button', { name: '🎛️ TRACK WORKSTATION', exact: false }).first().click({ force: true });
+  // Addressed by its title rather than its label: the rail entry reads
+  // 'WORKSTATION' and this test was still clicking a label that no longer
+  // exists, so it timed out before it measured anything.
+  await page.locator('button[title="Open Track Workstation"]').first().click({ force: true });
   await page.waitForTimeout(1400);
   const drawer2 = page.locator('div.fixed.right-0:has-text("TRACK PRODUCTION WORKSTATION")').first();
   const expand2 = drawer2.getByRole('button', { name: /OPEN WORKSTATION/i }).first();
@@ -114,20 +123,19 @@ async function openSynthTab(page, scope) {
   check('the workstation edit landed again',
         movedAgain && JSON.stringify(beforePanel.dsp) !== JSON.stringify(afterPanel.dsp),
         movedAgain ? `label "${afterPanel.undoLabel}"` : 'no slider found on the reopened drawer');
-  await page.getByRole('button', { name: '🎛️ TRACK WORKSTATION', exact: false }).first().click({ force: true });
+  // Addressed by its title rather than its label: the rail entry reads
+  // 'WORKSTATION' and this test was still clicking a label that no longer
+  // exists, so it timed out before it measured anything.
+  await page.locator('button[title="Open Track Workstation"]').first().click({ force: true });
   await page.waitForTimeout(800);
 
   // ---- 3. one stack across a panel edit and a recorded take ----
   const beforeTake = await state(page);
 
-  await page.getByRole('button', { name: '🎤 BEATBOX (MOUTH)' }).first().click({ force: true });
-  await page.waitForTimeout(4500);
-  await page.getByRole('button', { name: 'CALIBRATION', exact: false }).first().click({ force: true });
-  await page.waitForTimeout(900);
-  await page.getByRole('button', { name: 'Stop Mic', exact: true }).first().click({ force: true });
-  await page.waitForTimeout(600);
-  await page.getByRole('button', { name: 'CALIBRATION', exact: false }).first().click({ force: true });
-  await page.waitForTimeout(2600);
+  // The capture row is a set of modality tabs and one record control now; the
+  // old single '🎤 BEATBOX (MOUTH)' button is gone, and this test was waiting
+  // for it rather than recording anything.
+  await recordTake(page, 'Oral Beatbox', 5);
 
   const afterTake = await state(page);
   check('the take recorded on top of the edit', afterTake.notes > beforeTake.notes,

@@ -57,6 +57,7 @@ import {
   FinalizationGateStatus,
   ExpressionState,
   ExpressionDimensionName,
+  CollaboratorRole,
 } from '../types/daw';
 import {
   deriveStepArrayFromNoteEvents,
@@ -95,6 +96,13 @@ import {
 import type { LyricSeed } from '../lib/lyricSeed';
 import { deriveCreativeAnalytics, type CreativeAnalytics } from '../lib/creativeAnalytics';
 import { recommendationsFrom, type CreativeRecommendation } from '../lib/creativeRecommendation';
+import {
+  createCollaborationStore,
+  type CollaborativeState,
+  type CollaborationStore,
+  type OperationKind,
+  type SyncStatus,
+} from '../lib/collaborativeState';
 import { syllabify } from '../lib/syllables';
 import { openRelayGap, addExchange, resolveByCreator, studioAccountOf } from '../lib/relayGap';
 import {
@@ -759,6 +767,20 @@ export interface StudioSessionState {
 
   // Creator Info
   creatorName: string;
+
+  /**
+   * The shared collaborative state model (SRT-1 XV.1).
+   *
+   * Real and local. Every committed revision is an operation in it, authored,
+   * timed and pointing at the version it produced, so the five questions
+   * section XV says a creator must be able to answer are answered off the log
+   * rather than guessed. `collaborationSync` says whether any of it is being
+   * shared, and in this build it says it is not.
+   */
+  collaboration: CollaborativeState;
+  collaborationSelfId: string;
+  collaborationSync: SyncStatus | null;
+  handleInviteCollaborator: (name: string, role: CollaboratorRole, email?: string) => void;
 
   // Source Track Creation & Extraction
   editorPrefs: EditorPreferences;
@@ -1599,23 +1621,37 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     // whole of clause XI.4: those lines drop the redo path, and this one has
     // already kept it as a branch. Nothing about undo or redo changes; what
     // changes is that the road not taken still exists.
-    setRevisions((prev) => {
-      const parentId = currentRevisionIdRef.current;
-      // The first edit of a session has nothing above it, so the state it
-      // started from is recorded as the root rather than lost by being the
-      // thing that came before the first record.
-      const withRoot =
-        prev.length === 0 && parentId === null
-          ? [newRevision(null, 'Session start', 'root', snapshot.tracks, snapshot.sections)]
-          : prev;
-      const rootParent = prev.length === 0 && parentId === null
-        ? withRoot[0].revisionId
-        : parentId;
-      const rev = newRevision(rootParent, label, origin, tracksRef.current, sectionsRef.current);
-      currentRevisionIdRef.current = rev.revisionId;
-      setCurrentRevisionId(rev.revisionId);
-      return capTree([...withRoot, rev]);
-    });
+    // Built here, outside the updater, and the updater only appends what was
+    // built. It used to make the revisions inside `setRevisions` and set the
+    // current id from in there -- and StrictMode invokes updaters twice, so
+    // every commit made two revisions, kept one, and pointed it at the twin
+    // that was thrown away. The tree read as a row of orphans: no root, every
+    // parent id resolving to nothing, `childrenOf` empty, `isBranchPoint`
+    // never true. The branch clause XI.4 exists to keep was being recorded
+    // against a node that did not exist. The same trap is documented forty
+    // lines below for undo/redo, which was fixed the same way.
+    const parentId = currentRevisionIdRef.current;
+    const held = revisionsRef.current;
+    // The first edit of a session has nothing above it, so the state it
+    // started from is recorded as the root rather than lost by being the
+    // thing that came before the first record.
+    const root =
+      held.length === 0 && parentId === null
+        ? newRevision(null, 'Session start', 'root', snapshot.tracks, snapshot.sections)
+        : null;
+    // `tracks` and `sections`, not the refs. This effect already has both --
+    // they are its dependencies -- and the refs are synced by effects that run
+    // after this one, so reading them here stored the state from before the
+    // edit the revision is named after. Every node in the tree was one commit
+    // behind its own label, which means jumping back to a version restored the
+    // version before it.
+    const rev = newRevision(root ? root.revisionId : parentId, label, origin, tracks, sections);
+    currentRevisionIdRef.current = rev.revisionId;
+    setCurrentRevisionId(rev.revisionId);
+    // Appending to `prev` rather than to what the ref held: a doubled
+    // invocation now recomputes the same append from the same revision
+    // objects, which is what makes it safe to run twice.
+    setRevisions((prev) => capTree(root ? [...prev, root, rev] : [...prev, rev]));
 
     setFuture([]);
     setFutureLabels([]);
@@ -3166,6 +3202,96 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const creativeRecommendations = useMemo(
     () => recommendationsFrom({ analytics: creativeAnalytics, decisionRecords, relayGaps }),
     [creativeAnalytics, decisionRecords, relayGaps]
+  );
+
+  /**
+   * The collaborative state model, and the session writing to it (SRT-1 XV.1).
+   *
+   * The seed's chain is Project -> participants -> roles -> permissions ->
+   * assets -> tracks -> revisions -> operations -> ownership/provenance, and
+   * the link that was missing is the second half: there were revisions and
+   * there was a role union, and nothing recorded that a particular person made
+   * a particular version at a particular time. So every revision the session
+   * commits becomes an operation authored by whoever committed it, naming the
+   * tracks it touched and the version it produced. Nothing is accumulated
+   * twice: the log is written off the revision tree, which already exists, and
+   * a revision that has been logged is never logged again.
+   *
+   * The root is deliberately not logged. "Session start" is the state the
+   * session opened on -- a preset -- and attributing it to the creator would
+   * be exactly the kind of invented provenance clause XV.4 exists to stop.
+   */
+  const collaborationStoreRef = useRef<CollaborationStore | null>(null);
+  if (collaborationStoreRef.current === null) {
+    collaborationStoreRef.current = createCollaborationStore({
+      projectId: `proj_${dawState.projectName.toLowerCase().replace(/\s+/g, '_')}`,
+      projectName: dawState.projectName,
+      self: { participantId: 'p_self', name: creatorName, role: 'owner' },
+    });
+  }
+  const collaborationStore = collaborationStoreRef.current;
+
+  const [collaboration, setCollaboration] = useState<CollaborativeState>(() =>
+    collaborationStore.getState()
+  );
+  useEffect(() => collaborationStore.subscribe(setCollaboration), [collaborationStore]);
+
+  const [collaborationSync, setCollaborationSync] = useState<SyncStatus | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void collaborationStore.status().then((status) => {
+      if (alive) setCollaborationSync(status);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [collaborationStore]);
+
+  useEffect(() => {
+    collaborationStore.rename(dawState.projectName);
+  }, [collaborationStore, dawState.projectName]);
+
+  const loggedRevisionsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    // Pruned to what the tree still holds. A revision id is never reissued, so
+    // forgetting a trimmed one cannot cause it to be logged twice, and the set
+    // stops growing for the length of the session.
+    const present = new Set(revisions.map((r) => r.revisionId));
+    for (const id of loggedRevisionsRef.current) {
+      if (!present.has(id)) loggedRevisionsRef.current.delete(id);
+    }
+    for (const rev of revisions) {
+      if (loggedRevisionsRef.current.has(rev.revisionId)) continue;
+      loggedRevisionsRef.current.add(rev.revisionId);
+      if (rev.origin === 'root') continue;
+
+      const parent = revisionById(revisions, rev.parentRevisionId);
+      // Tracks are copied immutably one at a time, so an unchanged track is
+      // the same object it was in the parent. Identity is therefore both the
+      // cheap comparison and the accurate one; a deep diff here would walk
+      // every note of every take on every commit for the same answer.
+      const touched = parent
+        ? rev.tracks.filter((t) => parent.tracks.find((p) => p.id === t.id) !== t).map((t) => t.id)
+        : rev.tracks.map((t) => t.id);
+      const rearranged = !!parent && parent.sections !== rev.sections;
+      const kind: OperationKind =
+        rev.origin === 'capture' ? 'capture' : rev.origin === 'realization' ? 'accept' : rearranged ? 'arrange' : 'edit';
+
+      collaborationStore.record({
+        kind,
+        summary: rev.label,
+        revisionId: rev.revisionId,
+        trackIds: touched,
+        at: rev.at,
+      });
+    }
+  }, [revisions, collaborationStore]);
+
+  const handleInviteCollaborator = useCallback(
+    (name: string, role: CollaboratorRole, email?: string) => {
+      collaborationStore.invite(name, role, email);
+    },
+    [collaborationStore]
   );
 
   /**
@@ -5872,6 +5998,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       isCalibratingPitch,
       handleCalibratePitch,
       creatorName,
+      collaboration,
+      collaborationSelfId: collaborationStore.selfId,
+      collaborationSync,
+      handleInviteCollaborator,
       coproducerContext,
       editorPrefs,
       updateEditorPrefs,
@@ -6097,6 +6227,10 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       isCalibratingPitch,
       handleCalibratePitch,
       creatorName,
+      collaboration,
+      collaborationStore,
+      collaborationSync,
+      handleInviteCollaborator,
       coproducerContext,
       editorPrefs,
       updateEditorPrefs,
