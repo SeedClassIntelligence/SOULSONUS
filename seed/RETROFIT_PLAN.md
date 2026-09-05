@@ -745,6 +745,42 @@ rail. Rather than relabel it to match where it happened to sit, the Write &
 Record room now offers it too. It is still on the rail: a second door, not a
 move.
 
+## The section editor, put back on screen - 2026-09-05
+
+Arrangement sections were unreachable. `SectionBuilder` -- rename, retag, remap
+bars, add and delete -- was imported by `StudioCanvas` and rendered nowhere,
+while **both** of the controls that open it were left wired to nothing: the
+SECTIONS bench tab set a bench no block matched, and the EDIT SECTIONS button
+in the scope row toggled a flag nothing read. So a creator could reach for the
+structure of their song from two directions and get silence from both.
+
+Removed by 81072fc, a UI reorganization, which took out the render and left the
+controls. The same commit removed the song-length notice: `songLengthNotice` is
+still written on every length change -- it is the sentence that says
+"1 note now sits past the end (kept, not deleted)" -- and the element that
+showed it was gone, so the one moment a creator most needs to be told what
+happened to their work told them nothing.
+
+Both are restored where they were deleted from, on their original conditions.
+Nothing was redesigned: the panel is the same component with the same props,
+and the notice is the same element with its dismiss. Per CLAUDE.md §4 the
+handler set of `StudioCanvas` was diffed before and after -- 29 handlers to 30,
+the one addition being the restored notice's own dismiss button, and nothing
+lost.
+
+`test-33-arrangement-sections.cjs` is the check, and it now opens the editor
+through both controls before touching it: add, rename, undo, redo, survives a
+room switch, survives a reload, delete, no page errors. `test-37`'s notice
+check passes on the real element rather than an absence.
+
+Two more tests were addressing controls that had moved rather than testing
+anything: `test-33` and `test-34` both opened a BUILD room that no longer
+exists, and `test-34`'s cluster is now behind one labelled disclosure with
+ids on its buttons. Repaired to address what is there, and three ids were
+added to the app (`btn-pattern-ops`, `btn-note-settings`, `btn-quantize-track`)
+so the next relabelling does not silently disarm them. `test-34` passes end to
+end again: invert, undo, nudge, clear, quantize.
+
 ## Saving and opening a named version - 2026-09-05
 
 The reported defect was not real and is withdrawn above: no take was ever lost.
@@ -869,12 +905,9 @@ XV.1, so under Reflex 10 they are proposed and held rather than fixed.
    opened. Called directly, `handleOpenProject` restored every note, and the
    row's own button restores every note now that the test addresses it. See
    the section below for what was actually wrong in that path.
-2. **Arrangement sections are unreachable.** `test-33` addresses a `2. BUILD`
-   room that no longer exists, and `SectionBuilder` -- which owns
-   `#btn-add-section` -- is imported by `StudioCanvas` and never rendered, in
-   this commit and in every commit checked back through the Create/Build
-   fusion. Sections still exist in session state and revisions carry them; the
-   controls for them are not on screen anywhere.
+2. **Fixed 2026-09-05, see below.** Arrangement sections were unreachable:
+   `SectionBuilder` was imported by `StudioCanvas` and never rendered, while
+   both controls that open it were left in place.
 
 ## The four naming clauses - 2026-09-05
 

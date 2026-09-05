@@ -28,8 +28,27 @@ const sections = async (page) => JSON.parse(await session(page, SECTIONS));
 
   console.log('=== ARRANGEMENT SECTIONS ===\n');
 
-  await page.getByRole('button', { name: '2. BUILD', exact: false }).first().click({ force: true });
-  await page.waitForTimeout(1600);
+  // Sections live in CREATE since Create and Build were fused into one screen;
+  // this test was still opening a BUILD room that no longer exists. The editor
+  // is behind either of its two controls -- the SECTIONS bench or the EDIT
+  // SECTIONS button in the scope row -- and both are exercised here, because
+  // both of them were left wired to nothing when the panel was removed.
+  await page.getByRole('button', { name: '1. CREATE', exact: false }).first().click({ force: true });
+  await page.waitForTimeout(1400);
+
+  const editorHidden = await page.locator('[data-testid="section-editor"]').count();
+  check('the section editor is not in the way until it is asked for', editorHidden === 0,
+        `${editorHidden} on screen`);
+
+  await page.locator('[data-testid="bench-SECTIONS"]').first().click();
+  await page.waitForTimeout(900);
+  check('the SECTIONS bench opens it', (await page.locator('[data-testid="section-editor"]').count()) === 1);
+  await page.locator('[data-testid="bench-SECTIONS"]').first().click();
+  await page.waitForTimeout(600);
+
+  await page.getByRole('button', { name: 'EDIT SECTIONS', exact: false }).first().click();
+  await page.waitForTimeout(900);
+  check('and so does EDIT SECTIONS', (await page.locator('[data-testid="section-editor"]').count()) === 1);
 
   const start = await sections(page);
   console.log(`  start: ${start.map((s) => s.name).join(' | ')}`);
@@ -77,9 +96,10 @@ const sections = async (page) => JSON.parse(await session(page, SECTIONS));
         `name is "${redoneName && redoneName.name}"`);
 
   // ---- survives a room switch ----
-  await page.getByRole('button', { name: '4. MIX', exact: false }).first().click({ force: true });
+  // The rooms were renumbered when Create and Build were fused.
+  await page.getByRole('button', { name: '3. MIX', exact: false }).first().click({ force: true });
   await page.waitForTimeout(1200);
-  await page.getByRole('button', { name: '2. BUILD', exact: false }).first().click({ force: true });
+  await page.getByRole('button', { name: '1. CREATE', exact: false }).first().click({ force: true });
   await page.waitForTimeout(1500);
   const afterSwitch = await sections(page);
   check('sections survive a room switch',
@@ -96,6 +116,15 @@ const sections = async (page) => JSON.parse(await session(page, SECTIONS));
         survived ? `"${survived.name}" still there` : `${afterReload.length} sections, the new one gone`);
 
   // ---- delete ----
+  // A reload lands on the landing page and closes the editor, which is local
+  // to the screen; the sections themselves are session state and are read
+  // above without it. Reopen it to reach the delete control.
+  const enter = page.getByRole('button', { name: 'ENTER THE STUDIO' }).first();
+  if (await enter.count()) { await enter.click(); await page.waitForTimeout(2500); }
+  if (!(await page.locator('[data-testid="section-editor"]').count())) {
+    await page.getByRole('button', { name: 'EDIT SECTIONS', exact: false }).first().click();
+    await page.waitForTimeout(900);
+  }
   const delTarget = (await sections(page)).find((s) => s.id === added.id);
   if (delTarget) {
     const delBtn = page.locator(`[data-testid="delete-section-${delTarget.id}"]`).first();

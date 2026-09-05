@@ -35,16 +35,29 @@ const state = async (page) => JSON.parse(await session(page, STATE));
   page.on('pageerror', (e) => errors.push(e.message.slice(0, 140)));
   await enterStudio(page);
 
-  console.log('=== BUILD ROOM CONTROLS ===\n');
+  console.log('=== PATTERN TRANSFORMATION CONTROLS ===\n');
 
-  await page.getByRole('button', { name: '2. BUILD', exact: false }).first().click({ force: true });
-  await page.waitForTimeout(1600);
+  // The transformation cluster moved into CREATE's PATTERN bench when Create
+  // and Build were fused; this test was still opening a BUILD room that no
+  // longer exists and timed out before touching a control.
+  await page.getByRole('button', { name: '1. CREATE', exact: false }).first().click({ force: true });
+  await page.waitForTimeout(1400);
+  await page.locator('[data-testid="bench-PATTERN"]').first().click();
+  await page.waitForTimeout(900);
 
   const before = await state(page);
   console.log(`  start: ${before.total} active steps across ${before.steps.length} tracks`);
 
+  // The cluster is behind one labelled disclosure now ("Pattern"), and the
+  // buttons inside it carry ids rather than the shouted labels this test was
+  // matching on. Addressed by id, which is what survives a relabelling.
+  // By id: the bench tab is also called PATTERN, and matching on the label
+  // closed the bench instead of opening the cluster inside it.
+  await page.locator('#btn-pattern-ops').first().click();
+  await page.waitForTimeout(700);
+
   // ---- INVERT: what was silent should play, and the reverse ----
-  const invert = page.getByRole('button', { name: /INVERT/i }).first();
+  const invert = page.locator('#btn-invert-pattern').first();
   check('an invert control exists', (await invert.count()) > 0, '');
   if (await invert.count()) {
     await invert.click();
@@ -62,8 +75,14 @@ const state = async (page) => JSON.parse(await session(page, STATE));
   }
 
   // ---- NUDGE: the pattern should move ----
-  const nudge = page.getByRole('button', { name: 'NUDGE >>', exact: true }).first();
+  // Nudging an empty grid moves nothing, and so does nudging a full one --
+  // this ran on a session that now starts blank, so it was asserting movement
+  // in a pattern that had none to make. A random bar gives it something with a
+  // shape to shift.
+  const nudge = page.locator('#btn-nudge-right').first();
   if (await nudge.count()) {
+    await page.locator('#btn-randomize-bar1').first().click();
+    await page.waitForTimeout(800);
     const pre = await state(page);
     await nudge.click();
     await page.waitForTimeout(800);
@@ -75,7 +94,7 @@ const state = async (page) => JSON.parse(await session(page, STATE));
   }
 
   // ---- CLEAR ALL ----
-  const clear = page.getByRole('button', { name: 'CLEAR GRID', exact: true }).first();
+  const clear = page.locator('#btn-clear-all').first();
   if (await clear.count()) {
     await clear.click();
     await page.waitForTimeout(800);
@@ -91,7 +110,11 @@ const state = async (page) => JSON.parse(await session(page, STATE));
   await page.getByRole('button', { name: '1. CREATE', exact: false }).first().click({ force: true });
   await page.waitForTimeout(1400);
   const beforeQuantize = await state(page);
-  const quantize = page.getByRole('button', { name: /QUANTIZE/i }).first();
+  // Quantize sits inside the note-settings disclosure ("Notes"), which has to
+  // be open before the control is on screen.
+  await page.locator('#btn-note-settings').first().click().catch(() => {});
+  await page.waitForTimeout(700);
+  const quantize = page.locator('#btn-quantize-track').first();
   if (await quantize.count()) {
     const errsBefore = errors.length;
     await quantize.click({ force: true });

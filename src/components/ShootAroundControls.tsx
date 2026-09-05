@@ -82,6 +82,7 @@ export const ShootAroundControls: React.FC<ShootAroundControlsProps> = ({
 
         {/* One labelled disclosure, rather than six buttons shouting at once. */}
         <button
+          id="btn-pattern-ops"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-extrabold uppercase tracking-wide transition cursor-pointer ${

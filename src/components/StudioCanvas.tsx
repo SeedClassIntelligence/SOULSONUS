@@ -760,6 +760,48 @@ export const StudioCanvas: React.FC = () => {
           )}
         </div>
 
+            {/* The section editor, under the row that opens it.
+                It was removed in a UI reorganization while both of its
+                controls were left in place: the SECTIONS bench tab set a bench
+                nothing rendered, and EDIT SECTIONS toggled a flag nothing
+                read. So a creator could name, retag and remap the sections of
+                their song right up until the moment they clicked either
+                control, and then nothing happened. Restored where it was
+                deleted from, on both of its original conditions. */}
+            {(isSectionEditorOpen || activeBench === 'SECTIONS') && (
+              <div className="mb-2" data-testid="section-editor">
+                <SectionBuilder
+                  sections={sections}
+                  onUpdateSections={handleUpdateSections}
+                  tracks={tracks}
+                  currentStep={dawState.currentStep}
+                  onSelectBarView={(barView) => updateEditorPrefs({ activeBarView: barView })}
+                />
+              </div>
+            )}
+
+            {/* Changing the song length reports what it did to work that no
+                longer fits -- "kept, not deleted". The message was still being
+                written by the same reorganization that removed the element
+                showing it, so the one moment a creator most needs to be told
+                something told them nothing. */}
+            {songLengthNotice && (
+              <div
+                id="song-length-notice"
+                className="flex items-center justify-between gap-2 mb-2 px-2 py-1 rounded-lg border border-amber-500/40 bg-amber-500/10 text-[10px] font-mono text-amber-300"
+              >
+                <span>{songLengthNotice}</span>
+                <button
+                  type="button"
+                  onClick={() => setSongLengthNotice(null)}
+                  className="text-amber-400/70 hover:text-amber-200 font-bold px-1 cursor-pointer"
+                  title="Dismiss"
+                >
+                  &times;
+                </button>
+              </div>
+            )}
+
             {/* 2. UNIVERSAL ARRANGER EDITING TOOLBAR */}
             <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-900/90 rounded-xl border border-slate-800 text-[10px] font-mono mb-2">
               {/* Tool Selection Group */}
@@ -842,6 +884,7 @@ export const StudioCanvas: React.FC = () => {
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
+                  id="btn-note-settings"
                   onClick={() => setShowNoteSettings((v) => !v)}
                   aria-expanded={showNoteSettings}
                   className={`px-2 py-1 rounded-lg border text-[9px] font-extrabold uppercase tracking-wide transition cursor-pointer flex items-center gap-1 ${
@@ -914,6 +957,7 @@ export const StudioCanvas: React.FC = () => {
                 {/* Quantize Button */}
                 <button
                   type="button"
+                  id="btn-quantize-track"
                   onClick={() => {
                     // An empty id list means "every note on the track"; the
                     // division belongs in the third argument, and used to be
