@@ -33,7 +33,9 @@ const settle = async (page) => {
   await enterStudio(page);
   await settle(page);
 
-  await page.getByRole('button', { name: '3. WRITE & RECORD' }).first().click({ force: true });
+  // The room is '2. WRITE & RECORD' since the rooms were renumbered; this test
+  // was waiting for the old label and timed out before recording anything.
+  await page.getByRole('button', { name: '2. WRITE & RECORD' }).first().click({ force: true });
   await page.waitForTimeout(1800);
   await page.locator('#btn-record-vocal').first().evaluate(e => e.click());
 

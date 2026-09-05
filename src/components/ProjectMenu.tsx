@@ -37,20 +37,34 @@ export const ProjectMenu: React.FC<{ isOpen: boolean; onClose: () => void }> = (
 
   if (!isOpen) return null;
 
+  // `busy` disables every control on this screen, so it is released in a
+  // `finally`. Without one, a save or open that threw left the projects screen
+  // permanently dead -- no message, no way to retry, and the creator's only
+  // route to their saved work greyed out.
   const save = async () => {
     setBusy(true);
-    const saved = await handleSaveProjectAs(name);
-    setBusy(false);
-    setNotice(saved ? `Saved "${saved.name}".` : 'Give the project a name first.');
-    refresh();
+    try {
+      const saved = await handleSaveProjectAs(name);
+      setNotice(saved ? `Saved "${saved.name}".` : 'Give the project a name first.');
+      refresh();
+    } catch (err) {
+      setNotice(err instanceof Error ? `Could not save: ${err.message}` : 'Could not save that version.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const open = async (id: string, label: string) => {
     setBusy(true);
-    const ok = await handleOpenProject(id);
-    setBusy(false);
-    setNotice(ok ? `Opened "${label}".` : 'That project could not be opened.');
-    if (ok) onClose();
+    try {
+      const ok = await handleOpenProject(id);
+      setNotice(ok ? `Opened "${label}".` : 'That project could not be opened.');
+      if (ok) onClose();
+    } catch (err) {
+      setNotice(err instanceof Error ? `Could not open: ${err.message}` : 'That project could not be opened.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -113,6 +127,7 @@ export const ProjectMenu: React.FC<{ isOpen: boolean; onClose: () => void }> = (
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
+                  data-testid="open-project"
                   onClick={() => open(p.id, p.name)}
                   disabled={busy}
                   className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold transition cursor-pointer flex items-center gap-1"

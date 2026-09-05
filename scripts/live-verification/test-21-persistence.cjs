@@ -122,10 +122,17 @@ const waitSettled = async (page) => {
   const cleared = await session(page, SNAP);
   console.log(`  new project clears notes: ${cleared.notes} notes   ${cleared.notes === 0 ? 'PASS' : 'FAIL'}`);
 
-  await page.getByRole('button', { name: 'OPEN' }).first().click({ force: true });
+  // The row's own OPEN button. `getByRole('button', { name: 'OPEN' })` matched
+  // a Songwriting Suite control behind the modal -- its accessible name comes
+  // from a title starting "Open the full..." -- so the forced click landed on
+  // the backdrop and this check reported the take as lost when the take was
+  // never touched.
+  await page.locator('[data-testid=open-project]').first().click();
   await page.waitForTimeout(2500);
   const reopened = await session(page, SNAP);
   console.log(`  reopened saved version: ${reopened.recorded} captured notes, bpm ${reopened.bpm}   ${reopened.recorded === before.recorded ? 'PASS' : 'FAIL'}`);
+  console.log(`  reopened under the name it was saved as: ${reopened.projectName}   ${reopened.projectName === 'Take One' ? 'PASS' : 'FAIL'}`);
+  console.log(`  every note came back: ${reopened.notes} of ${before.notes}   ${reopened.notes === before.notes ? 'PASS' : 'FAIL'}`);
 
   await browser.close();
 })();

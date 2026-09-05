@@ -745,6 +745,38 @@ rail. Rather than relabel it to match where it happened to sit, the Write &
 Record room now offers it too. It is still on the rail: a second door, not a
 move.
 
+## Saving and opening a named version - 2026-09-05
+
+The reported defect was not real and is withdrawn above: no take was ever lost.
+Verified three ways -- the snapshot in IndexedDB carries every note, calling
+`handleOpenProject` directly restores every note, and the repaired test now
+opens the version through its own button and gets all of them back.
+
+Two real faults were in that path, and both are fixed.
+
+- *A saved version reopened under a different name.* `buildSnapshot` wrote
+  `dawState.projectName` -- the name the session happened to be carrying -- into
+  a row saved under the name the creator typed. Saving "Take One" therefore
+  produced a row called Take One whose own state still said the old name, and
+  opening it put the creator in a project called something else. The snapshot
+  now carries the name it is saved under.
+- *A throw left the projects screen dead.* `save` and `open` set a `busy` flag
+  that disables every control on that screen and cleared it on the line after
+  the await, with no `finally`. Any failure -- a storage quota, a refused
+  transaction -- left the flag set: no message, no retry, and the creator's only
+  route back to their saved work greyed out. Both release it in a `finally` and
+  report the error now.
+
+Three test files were addressing controls that had been renamed and were timing
+out before they measured anything: `test-21` (the OPEN button above), `test-24`
+(a room renumbered to `2. WRITE & RECORD`) and, earlier, `test-31`. Repaired to
+address the current controls, not weakened. `test-24` now passes end to end --
+the recorded vocal take survives a reload byte for byte.
+
+`test-15` is not repaired: it is written around a six-room layout with a BUILD
+room that no longer exists, which is the second finding above rather than a
+selector to swap.
+
 ## The collaborative state model - 2026-09-05
 
 XV.1, the last of the three absent clauses that could be built honestly here.
@@ -829,13 +861,14 @@ Both were turned up by repairing test selectors that had gone stale, and both
 reproduce with this work stashed, so neither is caused by it. Neither is inside
 XV.1, so under Reflex 10 they are proposed and held rather than fixed.
 
-1. **Opening a saved version comes back without the take.** `test-21` saves a
-   project carrying 23 captured notes, starts a new session, and reopens the
-   saved one: bpm, name, mix and mastering all return, and the notes come back
-   as 0. Autosave is fine -- the same file proves a reload keeps all 23. It is
-   the named save/open path. Under Amendment F this is the most serious open
-   defect I know of in the repository: a take that was written is not coming
-   back.
+1. **Withdrawn, 2026-09-05. The take was never lost.** `test-21` reported a
+   reopened version coming back with 0 captured notes. It was the test:
+   `getByRole('button', { name: 'OPEN' })` matched a Songwriting Suite control
+   sitting behind the modal -- its accessible name comes from a title reading
+   "Open the full..." -- so the forced click landed on the backdrop and nothing
+   opened. Called directly, `handleOpenProject` restored every note, and the
+   row's own button restores every note now that the test addresses it. See
+   the section below for what was actually wrong in that path.
 2. **Arrangement sections are unreachable.** `test-33` addresses a `2. BUILD`
    room that no longer exists, and `SectionBuilder` -- which owns
    `#btn-add-section` -- is imported by `StudioCanvas` and never rendered, in

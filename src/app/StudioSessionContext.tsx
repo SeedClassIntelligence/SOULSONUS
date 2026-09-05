@@ -5304,7 +5304,11 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         isLooping: dawState.isLooping,
         activeBarView: dawState.activeBarView,
         soulFlowState: dawState.soulFlowState,
-        projectName: dawState.projectName,
+        // The name it is being saved under, not the name the session happened
+        // to be carrying. Saving "Take One" wrote a row called Take One whose
+        // own state still said the old name, so opening that version put the
+        // creator in a project called something else.
+        projectName: name,
         projectVersion: dawState.projectVersion,
       },
       tracks,
