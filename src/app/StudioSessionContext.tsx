@@ -3147,9 +3147,8 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         decisionRecords,
         relayGaps,
         currentRevisionId,
-        tracks,
       }),
-    [revisions, decisionRecords, relayGaps, currentRevisionId, tracks]
+    [revisions, decisionRecords, relayGaps, currentRevisionId]
   );
 
   const creativeRecommendations = useMemo(

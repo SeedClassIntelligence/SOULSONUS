@@ -80,7 +80,14 @@ export function recommendationsFrom(input: {
 
   // --- what they turned down, in their words ----------------------------
   const rejected = input.decisionRecords.filter((d) => d.decision === 'REJECTED');
+  // Only the gaps opened on something they turned down. A gap can be opened on
+  // an acceptance too -- `GenerationDecisionRecord.relayGap` says so: accepting
+  // a take does not mean it landed -- and quoting those under "you have turned
+  // down four candidates" would attribute words they said about something they
+  // kept to something they refused.
+  const rejectedIds = new Set(rejected.map((d) => d.candidateId));
   const words = input.relayGaps
+    .filter((g) => rejectedIds.has(g.candidateId))
     .map((g) => g.inCreatorWords?.trim())
     .filter((w): w is string => !!w && w.length > 2);
   if (rejected.length >= MIN_OBSERVATIONS) {

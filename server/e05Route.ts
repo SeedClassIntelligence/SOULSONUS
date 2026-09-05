@@ -76,8 +76,23 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): E05RouteCon
  */
 const issuedPaths = new Set<string>();
 
-/** Jobs this route submitted, so poll can report a state for one it knows. */
-const knownJobs = new Set<string>();
+/**
+ * How many produced paths stay fetchable.
+ *
+ * The set is a permission list, not a record, and a server that runs for weeks
+ * would otherwise hold every path it ever saw. The oldest is dropped when the
+ * cap is reached; a creator whose realization is that far in the past has long
+ * since had its audio.
+ */
+const MAX_ISSUED_PATHS = 500;
+
+const rememberPath = (path: string) => {
+  if (issuedPaths.size >= MAX_ISSUED_PATHS) {
+    const oldest = issuedPaths.values().next().value;
+    if (oldest) issuedPaths.delete(oldest);
+  }
+  issuedPaths.add(path);
+};
 
 const authHeaders = (cfg: E05RouteConfig): Record<string, string> =>
   cfg.apiKey ? { [cfg.apiKeyHeader]: cfg.apiKeyFormat.replace('{key}', cfg.apiKey) } : {};
@@ -220,7 +235,6 @@ async function submit(req: IncomingMessage, res: ServerResponse, cfg: E05RouteCo
       error: body?.error || `The realization host refused the job (${aceRes.status}).`,
     });
   }
-  knownJobs.add(jobId);
   return json(res, 200, { jobId, queuePosition: body?.data?.queue_position });
 }
 
@@ -308,14 +322,17 @@ async function poll(res: ServerResponse, cfg: E05RouteConfig, jobId: string) {
   const body = (await aceRes.json().catch(() => null)) as
     | { data?: { task_id: string; status: number; result?: string }[] }
     | null;
-  const row = body?.data?.find((d) => d.task_id === jobId) || body?.data?.[0];
+  // Only the row for the job that was asked about. Falling back to the first
+  // row would report another job's state, and its audio, as this one's -- the
+  // host answers a list, and a list can come back holding something else.
+  const row = body?.data?.find((d) => d.task_id === jobId);
   if (!row) {
     return json(res, 404, { error: 'The realization host does not know that job.' });
   }
 
   const result = parseAceRow(row, jobId);
   // Only a path this service saw the host produce may be fetched later.
-  for (const p of result.audioPaths || []) issuedPaths.add(p);
+  for (const p of result.audioPaths || []) rememberPath(p);
   return json(res, 200, result);
 }
 

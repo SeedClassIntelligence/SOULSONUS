@@ -1569,6 +1569,11 @@ async function runComprehensiveVerification() {
     check(!failed.audioPaths, 'E05_ROUTE',
       'and an empty file field is not offered as a path to fetch');
 
+    // The host answers a list, and a list can come back holding another job.
+    const wrongJob = parseAceRow({ task_id: 'other', status: 1, result: '' }, 'other');
+    check(wrongJob.jobId === 'other', 'E05_ROUTE',
+      'a parsed row is always reported under the job it was asked about');
+
     const silent = parseAceRow({ task_id: 'j3', status: 2, result: '' }, 'j3');
     check(/gave no reason/.test(silent.error || ''), 'E05_ROUTE',
       'a host that fails a job and says nothing is reported as exactly that', silent.error || '');
@@ -1599,7 +1604,7 @@ async function runComprehensiveVerification() {
 
     const thin = deriveCreativeAnalytics({
       revisions: [rev('r1', null, 0, 'root', [])],
-      decisionRecords: [], relayGaps: [], currentRevisionId: 'r1', tracks: [],
+      decisionRecords: [], relayGaps: [], currentRevisionId: 'r1',
     });
     check(thin.iterationFrequency === null && thin.workflowPatterns === null, 'ANALYTICS',
       'one revision is not a rhythm of work, and nothing is reported as one');
@@ -1632,7 +1637,6 @@ async function runComprehensiveVerification() {
         { gapId: 'g2', candidateId: 'x2', openedAt: t0, attributedTo: 'me', inCreatorWords: 'still too glassy', exchange: [] },
       ] as any,
       currentRevisionId: 'r5',
-      tracks: [track([note(240)], 'Analog Kick')],
     });
 
     check(a.iterationFrequency?.value.revisions === 5, 'ANALYTICS',
@@ -1664,6 +1668,31 @@ async function runComprehensiveVerification() {
     check(analyticsCoverage(a).known === 5 && analyticsCoverage(a).total === 6, 'ANALYTICS',
       'coverage counts the six the seed names and claims the five it measured',
       JSON.stringify(analyticsCoverage(a)));
+
+    // Note order is not musical content. Built in array order, the same notes
+    // stored differently fingerprint differently, and a section is reported as
+    // reworked when nothing in it changed -- a count about the creator's work
+    // that is not true of it.
+    const reordered = deriveCreativeAnalytics({
+      revisions: [
+        rev('a1', null, 0, 'edit', [note(0), note(240)]),
+        rev('a2', 'a1', 1, 'edit', [note(240), note(0)]),
+      ],
+      decisionRecords: [], relayGaps: [], currentRevisionId: 'a2',
+    });
+    check(!reordered.sectionsRevised, 'ANALYTICS',
+      'the same notes in a different order is not a revision of anything',
+      JSON.stringify(reordered.sectionsRevised?.value));
+    const moved = deriveCreativeAnalytics({
+      revisions: [
+        rev('b1', null, 0, 'edit', [note(0), note(240)]),
+        rev('b2', 'b1', 1, 'edit', [note(0), note(360)]),
+      ],
+      decisionRecords: [], relayGaps: [], currentRevisionId: 'b2',
+    });
+    check(moved.sectionsRevised?.value[0]?.times === 1, 'ANALYTICS',
+      'while a note that actually moved still counts',
+      JSON.stringify(moved.sectionsRevised?.value));
   }
 
   console.log('\n--- 30. Analytics become a question, never an instruction (SRT-1 XVI) ---');
@@ -1704,6 +1733,27 @@ async function runComprehensiveVerification() {
       recs[0].observed);
     check(recs[0].strength === 'STRONG', 'RECOMMENDATION',
       'and it is stronger for having their words behind it');
+
+    // A gap can be opened on an acceptance too -- accepting a take does not
+    // mean it landed. Those words are not evidence about a rejection.
+    const mixed = recommendationsFrom({
+      analytics: empty,
+      decisionRecords: [
+        ...rejections(4),
+        { decisionId: 'ok', commitTransactionId: 'c', candidateId: 'kept',
+          decision: 'ACCEPTED', overrideIntentContract: false, timestamp: t0 },
+      ] as any,
+      relayGaps: [
+        ...gaps(['too bright, it lost the thump']),
+        { gapId: 'gk', candidateId: 'kept', openedAt: t0, attributedTo: 'me',
+          inCreatorWords: 'I kept this but the tail is long', exchange: [] },
+      ] as any,
+    });
+    check(!mixed[0].inTheirWords.some((w) => /I kept this/.test(w)), 'RECOMMENDATION',
+      'what they said about a take they kept is not quoted as a reason they refused one',
+      JSON.stringify(mixed[0].inTheirWords));
+    check(mixed[0].inTheirWords.includes('too bright, it lost the thump'), 'RECOMMENDATION',
+      'while what they said about the refusals still is');
     check(/You said: "too bright/.test(sayRecommendation(recs[0])) &&
       sayRecommendation(recs[0]).trim().endsWith('?'), 'RECOMMENDATION',
       'as said aloud, it ends on the question they answer',

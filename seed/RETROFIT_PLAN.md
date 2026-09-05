@@ -699,6 +699,32 @@ intelligence says there are none to know about and that a sentence about them
 would be made up, rather than producing the seed's other example sentence off
 data that does not exist.
 
+### Review of XVI.1, XVI.4 and the E05 route - 2026-09-05
+
+Five findings, all fixed, all with a test behind them now.
+
+- *A section was reported as reworked when nothing in it changed.* The bar
+  fingerprint was built in array order, so the same notes stored in a different
+  order compared as different. Note order is not musical content and several
+  edit paths rewrite the array without moving a note. Sorted before comparison.
+- *The analytics recomputed the whole revision history on every captured
+  onset.* `tracks` was an input that changed constantly and could not affect
+  the output -- preference is measured by survival across revisions, so the
+  latest revision is the reference and the live tracks are not. Removed, and
+  proven equivalent before removing.
+- *Words said about a take the creator kept were quoted as reasons they refused
+  one.* A relay gap can be opened on an acceptance -- accepting a take does not
+  mean it landed -- and the recommendation quoted every gap under an
+  observation about rejections. Now only the gaps on candidates they turned
+  down.
+- *The service route held dead state.* `knownJobs` was written on every submit
+  and read by nothing. Removed; `issuedPaths` is the real permission list, and
+  it is capped now rather than growing for the life of the process.
+- *A poll could answer with another job's row.* `query_result` returns a list,
+  and the route fell back to the first row when the requested id was not in it,
+  which would have reported a different job's state and its audio as this
+  one's. The fallback is gone.
+
 ---
 
 ## The realization service route - 2026-09-04

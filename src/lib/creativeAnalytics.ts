@@ -78,19 +78,29 @@ const median = (xs: number[]) => {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 };
 
-/** Which bars a revision's notes actually occupy, so a change can be located. */
+/**
+ * Which bars a revision's notes occupy, and what is in each, so a change can
+ * be located.
+ *
+ * The fingerprint is sorted before it is joined. Built in array order, the same
+ * notes stored in a different order fingerprint differently, and the studio
+ * reports a section as reworked when nothing in it changed -- a count about
+ * the creator's work that is not true of it. Note order is not musical
+ * content, and several edit paths rewrite the array without moving a note.
+ */
 const barsTouched = (tracks: Track[]): Map<string, string> => {
-  const byTrackBar = new Map<string, string>();
+  const parts = new Map<string, string[]>();
   for (const track of tracks) {
     for (const note of track.noteEvents || []) {
       const bar = Math.floor(note.startTick / TICKS_PER_BAR) + 1;
       const key = `${track.id}:${bar}`;
-      // The bar's content, cheaply: enough to tell "this bar changed" from
-      // "this bar is the same", without storing the notes twice.
-      const prev = byTrackBar.get(key) || '';
-      byTrackBar.set(key, `${prev}|${note.startTick}.${note.midiNote}.${note.velocity}`);
+      const list = parts.get(key) || [];
+      list.push(`${note.startTick}.${note.midiNote}.${note.velocity}`);
+      parts.set(key, list);
     }
   }
+  const byTrackBar = new Map<string, string>();
+  for (const [key, list] of parts) byTrackBar.set(key, list.sort().join('|'));
   return byTrackBar;
 };
 
@@ -120,7 +130,6 @@ export function deriveCreativeAnalytics(input: {
   decisionRecords: GenerationDecisionRecord[];
   relayGaps: RelayGapRecord[];
   currentRevisionId?: string | null;
-  tracks: Track[];
 }): CreativeAnalytics {
   const notMeasured: string[] = [];
   const revisions = [...input.revisions].sort((a, b) => a.at - b.at);
@@ -208,7 +217,12 @@ export function deriveCreativeAnalytics(input: {
   const abandonedBranches = revisions.filter(
     (r) => !hasChild.has(r.revisionId) && r.revisionId !== input.currentRevisionId && r.origin !== 'root'
   ).length;
-  const latestSounds = soundsIn(revisions[revisions.length - 1]?.tracks || input.tracks);
+  // The latest revision, not the live tracks. A sound chosen a second ago has
+  // survived nothing yet, and preference here is measured by survival. This
+  // also keeps the derivation off the session's hot path: `tracks` changes on
+  // every captured onset, and taking it as an input meant recomputing the
+  // whole history mid-take for a value that never depended on it.
+  const latestSounds = soundsIn(revisions[revisions.length - 1]?.tracks || []);
   const everSounds = new Set<string>();
   for (const r of revisions) for (const s of soundsIn(r.tracks)) everSounds.add(s);
   const droppedSounds = [...everSounds].filter((s) => !latestSounds.has(s));
