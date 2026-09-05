@@ -1,6 +1,6 @@
 /** Focused: does [RECORD VOCAL OVERDUB] produce a real, playable take? */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 const PROJ = `s => ({ isRecording: s.vocalState.isRecording, blobSize: s.vocalState.audioBlob ? s.vocalState.audioBlob.size : 0,
@@ -11,7 +11,7 @@ const PROJ = `s => ({ isRecording: s.vocalState.isRecording, blobSize: s.vocalSt
 (async () => {
   const { browser, page } = await launch(playwright, `${SP}/hum_A4.wav`);
   await enterStudio(page);
-  await page.getByRole('button', { name: '3. WRITE & RECORD' }).first().click();
+  await goToRoom(page, 'WRITE_RECORD', { settle: 0 });
   await page.waitForTimeout(1800);
   await page.locator('#btn-record-vocal').first().evaluate(e => e.click());
   for (let i = 1; i <= 40; i++) {

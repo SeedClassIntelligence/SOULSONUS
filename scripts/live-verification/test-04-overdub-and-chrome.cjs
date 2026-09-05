@@ -2,7 +2,7 @@
  * Item 3 (vocal overdub) + item 4 (page title, SEEDSIGNATURE footer state).
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 const PROJ = `s => ({
@@ -32,9 +32,10 @@ const PROJ = `s => ({
   console.log('seedRecords in session:', (await session(page, PROJ)).seedRecords);
 
   // Sign in the Master/Release room and see whether the footer follows.
-  for (const room of ['5. MASTER', '6. RELEASE']) {
-    await page.getByRole('button', { name: room }).first().click();
-    await page.waitForTimeout(1800);
+  // Addressed by which room it is: the numbering changed when Create and Build
+  // were fused, and this loop was clicking labels that no longer exist.
+  for (const room of ['MASTER', 'RELEASE']) {
+    await goToRoom(page, room, { settle: 1800 });
     for (const tab of ['GATE CHECK']) {
       const t = page.getByRole('button', { name: tab, exact: true }).first();
       if (await t.count()) { await t.click({ force: true }).catch(()=>{}); await page.waitForTimeout(600); }
@@ -50,7 +51,7 @@ const PROJ = `s => ({
   await page.screenshot({ path: `${SP}/05_release.png` });
 
   console.log('\n=== ITEM 3d: VOCAL OVERDUB ===');
-  await page.getByRole('button', { name: '3. WRITE & RECORD' }).first().click();
+  await goToRoom(page, 'WRITE_RECORD', { settle: 0 });
   await page.waitForTimeout(1800);
   const labels = await page.$$eval('button', els => els.map(e => e.innerText.replace(/\s+/g,' ').trim()).filter(t => /RECORD|OVERDUB|VOCAL|TAKE/i.test(t)));
   console.log('record-ish buttons:', JSON.stringify(labels));

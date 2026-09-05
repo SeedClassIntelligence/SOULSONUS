@@ -8,7 +8,7 @@
  * dropped, and is a whole gesture one entry in the undo stack rather than sixty.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom, openUtility, READ_SESSION } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -32,7 +32,7 @@ const state = async (page) => JSON.parse(await session(page, STATE));
 const HISTORY = `s => JSON.stringify({ label: s.undoLabel, canUndo: s.canUndo })`;
 
 async function openSuite(page, tab) {
-  await page.getByRole('button', { name: '🎙️ SONGWRITING SUITE', exact: false }).first().click({ force: true });
+  await openUtility(page, 'SONGWRITING', { settle: 0 });
   await page.waitForTimeout(1400);
   const panel = page.locator('div.fixed.right-0:has-text("SONGWRITING SUITE")').first();
   const t = panel.getByRole('button', { name: tab, exact: true }).first();
@@ -83,7 +83,7 @@ async function drag(page, selector, dx) {
   }`);
   await panel.locator(`[data-testid="place-take-${takeId}"]`).first().click({ force: true });
   await page.waitForTimeout(2500);
-  await page.getByRole('button', { name: '🎙️ SONGWRITING SUITE', exact: false }).first().click({ force: true });
+  await openUtility(page, 'SONGWRITING', { settle: 0 });
   await page.waitForTimeout(900);
 
   const placed = await state(page);
@@ -158,14 +158,20 @@ async function drag(page, selector, dx) {
         `offset ${undoneHead.offset}s at ${undoneHead.startTick} ticks`);
 
   // ---- a clip past the grid is marked, not hidden ----
-  await page.getByRole('button', { name: '2. BUILD', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(1500);
+  // `TimelineAudioPanel` -- which owned the move-one-bar buttons this used --
+  // is no longer rendered anywhere; the lane moves a clip by dragging it. The
+  // move is driven through the session so what is measured is the off-grid
+  // marker, not the drag.
   const id = (await state(page)).clips[0].id;
   for (let i = 0; i < 5; i++) {
-    await page.locator(`[data-testid="clip-right-${id}"]`).first().click();
+    await page.evaluate(
+      `(() => { const s = ${READ_SESSION}; s.handleMoveAudioClip(${JSON.stringify(id)}, 1920); })()`
+    );
     await page.waitForTimeout(300);
   }
-  await page.getByRole('button', { name: '1. CREATE', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(1500);
   const offGrid = await page.locator(`[data-testid="clip-offgrid-${id}"]`).count();
   check('a clip past four bars is marked, not hidden', offGrid > 0,

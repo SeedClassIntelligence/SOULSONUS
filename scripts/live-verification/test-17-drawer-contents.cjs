@@ -6,17 +6,20 @@
  * action-shaped control and move every slider, and see what actually happened.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, UTILITY_TITLE } = require('./lib.cjs');
 
+// Each drawer is opened by the title its control carries, not by a visible
+// label: the labels lost their emoji prefixes and this file timed out on the
+// first one before it examined a single drawer.
 const DRAWERS = [
-  ['✦ STUDIO INTELLIGENCE', 'STUDIO INTELLIGENCE'],
-  ['🧠 NATIVE BRAIN', 'NATIVE STUDIO BRAIN'],
-  ['🎛️ TRACK WORKSTATION', 'TRACK PRODUCTION WORKSTATION'],
-  ['🎙️ SONGWRITING SUITE', 'SONGWRITING SUITE'],
-  ['🎹 MIDI & HARDWARE', 'EXTERNAL HARDWARE'],
-  ['INSPECTOR', 'QUICK PRODUCTION INSPECTOR'],
-  ['CALIBRATION', 'FFT & Detection Calibration'],
-  ['RADIAL RADAR', 'Radial Step Visualizer'],
+  [{ name: '✦ STUDIO INTELLIGENCE' }, 'STUDIO INTELLIGENCE'],
+  [{ title: UTILITY_TITLE.NATIVE_BRAIN }, 'NATIVE STUDIO BRAIN'],
+  [{ title: UTILITY_TITLE.WORKSTATION }, 'TRACK PRODUCTION WORKSTATION'],
+  [{ title: UTILITY_TITLE.SONGWRITING }, 'SONGWRITING SUITE'],
+  [{ title: UTILITY_TITLE.MIDI_HARDWARE }, 'EXTERNAL HARDWARE'],
+  [{ title: UTILITY_TITLE.INSPECTOR }, 'QUICK PRODUCTION INSPECTOR'],
+  [{ title: UTILITY_TITLE.CALIBRATION }, 'FFT & Detection Calibration'],
+  [{ title: UTILITY_TITLE.RADAR }, 'Radial Step Visualizer'],
 ];
 
 const ACTION_WORDS = /AUDITION|PREVIEW|PLAY|GENERATE|ANALYZ|APPLY|COMMIT|TRAIN|RENDER|PROPOSE|RUN|START|SCAN|EXPORT|BOUNCE/i;
@@ -53,7 +56,10 @@ async function panel(page, title) {
   for (const [trigger, title] of DRAWERS) {
     await enterStudio(page);
     await page.evaluate(INSTRUMENT);
-    await page.getByRole('button', { name: trigger, exact: false }).first().click({ force: true });
+    await (trigger.title
+      ? page.locator(`button[title="${trigger.title}"]`).first()
+      : page.getByRole('button', { name: trigger.name, exact: false }).first()
+    ).click({ force: true });
     await page.waitForTimeout(1400);
 
     const p = await panel(page, title);

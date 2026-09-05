@@ -13,7 +13,7 @@
  * music from the one that was heard.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, seedPattern } = require('./lib.cjs');
 
 let failures = 0;
 function check(label, ok, detail) {
@@ -66,6 +66,13 @@ const ctx = async (page, expr) => page.evaluate(`(async () => {
   await enterStudio(page);
 
   console.log('=== THE KIT PLAYS LIVE ===\n');
+
+  // The session opens with channels and nothing on them now, so pressing play
+  // here used to measure silence and report the engine dead. A plain pattern
+  // goes in first: kick on the beats, snare on 2 and 4, hats on the 8ths.
+  const seeded = await seedPattern(page);
+  check('there is a pattern to play', !!seeded && seeded.kick === 4,
+    seeded ? `kick ${seeded.kick}, snare ${seeded.snare}, hats ${seeded.hat}` : 'no session');
 
   // ---- before the kit: the drums are synthesised ----
   await page.evaluate(INSTRUMENT);

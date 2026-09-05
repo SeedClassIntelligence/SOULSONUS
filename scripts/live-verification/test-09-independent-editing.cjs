@@ -3,7 +3,7 @@
  * move notes, change velocity, mute/solo — without disturbing the others.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, armCapture } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 const SNAP = `s => Object.fromEntries(s.tracks
@@ -19,7 +19,7 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 (async () => {
   const { browser, page } = await launch(playwright, `${SP}/beatbox_ksh.wav`);
   await enterStudio(page);
-  await page.getByRole('button', { name: '🎤 BEATBOX (MOUTH)' }).first().click();
+  await armCapture(page, 'BEATBOX', { settle: 0 });
   await page.waitForTimeout(1200);
   await page.locator('button[title="Play (Space)"]').first().click().catch(() => {});
   await page.waitForTimeout(11000);

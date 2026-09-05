@@ -1,6 +1,6 @@
 /** Does starting the transport give recorded notes real, distinct startTicks? */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, armCapture } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 const PROJ = `s => ({
@@ -13,7 +13,7 @@ const PROJ = `s => ({
 (async () => {
   const { browser, page } = await launch(playwright, `${SP}/beatbox_A.wav`);
   await enterStudio(page);
-  await page.getByRole('button', { name: '🎤 BEATBOX (MOUTH)' }).first().click();
+  await armCapture(page, 'BEATBOX', { settle: 0 });
   await page.waitForTimeout(1200);
 
   // Find and press the real transport play control.

@@ -13,7 +13,7 @@
  * have to be that performance's numbers.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, openUtility, armCapture, stopCapture } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -23,11 +23,15 @@ function check(label, ok, detail) {
 }
 
 async function openTraining(page) {
-  await page.locator('#btn-train-signature').first().click();
+  // The rail entry is SIGNATURE now and carries no id.
+  await openUtility(page, 'SIGNATURE');
+  // The signing pillar is the last one and the preview lives there. Matched on
+  // its own label: /seed lock|7/ also matched an unrelated control, and
+  // `.first()` picked that one, so the pillar was never opened and every check
+  // below read an empty string.
   await page.waitForTimeout(1200);
-  // The signing pillar is the last one; the preview lives there.
-  const seal = page.getByRole('button', { name: /seed lock|7/i }).first();
-  if (await seal.count()) { await seal.click({ force: true }); await page.waitForTimeout(600); }
+  const seal = page.getByRole('button', { name: '7. Seed Lock', exact: false }).first();
+  if (await seal.count()) { await seal.click({ force: true }); await page.waitForTimeout(800); }
 }
 
 const previewText = async (page) => {
@@ -66,10 +70,10 @@ const previewText = async (page) => {
 
   // ---- perform, then look again ----
   console.log('\n-- after a real take --');
-  await page.locator('[data-testid="capture-mouth"]').first().click();
+  // Modality tab, then record: the single BEATBOX button that did both is gone.
+  await armCapture(page, 'BEATBOX');
   await page.waitForTimeout(7000);
-  await page.locator('#btn-mic-arm').first().click();
-  await page.waitForTimeout(3000);
+  await stopCapture(page, { settle: 3000 });
 
   const captured = JSON.parse(await session(page, `s => JSON.stringify({
     performed: s.tracks.reduce((n, t) => n + (t.noteEvents || []).filter(e => e.provenance && ['MOUTH','BODY','MIDI_KEYS'].includes(e.provenance.origin)).length, 0),

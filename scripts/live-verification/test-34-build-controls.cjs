@@ -10,7 +10,7 @@
  * This drives those controls and reads the session state they claim to change.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom } = require('./lib.cjs');
 
 let failures = 0;
 const errors = [];
@@ -40,7 +40,7 @@ const state = async (page) => JSON.parse(await session(page, STATE));
   // The transformation cluster moved into CREATE's PATTERN bench when Create
   // and Build were fused; this test was still opening a BUILD room that no
   // longer exists and timed out before touching a control.
-  await page.getByRole('button', { name: '1. CREATE', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(1400);
   await page.locator('[data-testid="bench-PATTERN"]').first().click();
   await page.waitForTimeout(900);
@@ -107,7 +107,7 @@ const state = async (page) => JSON.parse(await session(page, STATE));
   }
 
   // ---- quantize, in the Create canvas ----
-  await page.getByRole('button', { name: '1. CREATE', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(1400);
   const beforeQuantize = await state(page);
   // Quantize sits inside the note-settings disclosure ("Notes"), which has to

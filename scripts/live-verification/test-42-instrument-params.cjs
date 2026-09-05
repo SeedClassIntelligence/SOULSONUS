@@ -13,7 +13,7 @@
  * present.
  */
 const playwright = require('playwright');
-const { launch, enterStudio } = require('./lib.cjs');
+const { launch, enterStudio, seedPattern, seedMelody } = require('./lib.cjs');
 
 let failures = 0;
 function check(label, ok, detail) {
@@ -84,6 +84,16 @@ async function moves(page, label, trackId, key, from, to, detailFn) {
   await page.evaluate(STUDIO);
 
   console.log('=== THE INSTRUMENT PANEL ===\n');
+
+  // Same reason as the bounce: an empty grid renders silence, and every
+  // parameter below then "changes nothing" because there is nothing to change.
+  await seedPattern(page);
+  await seedMelody(page);
+  // The bass is soloed and measured further down, so it needs a part too.
+  await seedMelody(page, { trackInstrument: 'bass' });
+  // Re-established after seeding: entering the studio changes the hash, and a
+  // navigation destroys the page-side handle this file defined before it.
+  await page.evaluate(STUDIO);
 
   console.log('-- the amplitude envelope --');
   await moves(page, 'kick decay changes the render', 't-kick', 'decay', 650, 40);

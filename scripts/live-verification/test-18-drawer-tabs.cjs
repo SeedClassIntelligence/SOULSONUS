@@ -3,7 +3,7 @@
  * controls on each, rather than only whichever tab opens by default.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, openUtility } = require('./lib.cjs');
 
 const ACTION = /AUDITION|PREVIEW|PLAY|GENERATE|ANALYZ|APPLY|COMMIT|TRAIN|RENDER|PROPOSE|RUN|START|SCAN|TEST|HANDSHAKE|SAVE|BOUNCE|CAPTURE|DETECT/i;
 
@@ -68,7 +68,7 @@ async function exercise(page, panel, label) {
   console.log('=== TRACK PRODUCTION WORKSTATION ===');
   await enterStudio(page);
   await page.evaluate(INSTRUMENT);
-  await page.getByRole('button', { name: '🎛️ TRACK WORKSTATION', exact: false }).first().click({ force: true });
+  await openUtility(page, 'WORKSTATION', { settle: 0 });
   await page.waitForTimeout(1500);
   let panel = page.locator('div.fixed.right-0:has-text("TRACK PRODUCTION WORKSTATION")').first();
 
@@ -94,7 +94,7 @@ async function exercise(page, panel, label) {
   console.log('\n=== SONGWRITING SUITE & VOCAL BOOTH ===');
   await enterStudio(page);
   await page.evaluate(INSTRUMENT);
-  await page.getByRole('button', { name: '🎙️ SONGWRITING SUITE', exact: false }).first().click({ force: true });
+  await openUtility(page, 'SONGWRITING', { settle: 0 });
   await page.waitForTimeout(1500);
   panel = page.locator('div.fixed.right-0:has-text("SONGWRITING SUITE")').first();
 

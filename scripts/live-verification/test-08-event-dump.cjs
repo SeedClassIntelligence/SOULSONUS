@@ -1,15 +1,14 @@
 /** Dumps every classified capture event's features, to size the rejection guards. */
 const playwright = require('playwright');
-const { launch, enterStudio } = require('./lib.cjs');
+const { launch, enterStudio, armCapture } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 (async () => {
-  for (const [button, clip] of [['🎤 BEATBOX (MOUTH)', 'beatbox_ks.wav'], ['👏 CLAP / TAP (BODY)', 'body_taps.wav']]) {
+  for (const [modality, clip] of [['BEATBOX', 'beatbox_ks.wav'], ['CLAP_TAP', 'body_taps.wav']]) {
     const { browser, page } = await launch(playwright, `${SP}/${clip}`);
     await enterStudio(page);
     const t0 = await page.evaluate('Date.now()');
-    await page.getByRole('button', { name: button }).first().click();
-    await page.waitForTimeout(1200);
+    await armCapture(page, modality);
     await page.locator('button[title="Play (Space)"]').first().click().catch(() => {});
     await page.waitForTimeout(11000);
     const events = await page.evaluate(`(() => {

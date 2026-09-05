@@ -6,7 +6,7 @@
  * seed with nothing in it says so rather than inventing a pattern.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, armCapture } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 const STUDIO = `window.__studio = () => {
@@ -37,7 +37,7 @@ async function run(clip, seconds, label) {
   await page.waitForTimeout(1200);
 
   if (clip) {
-    await page.getByRole('button', { name: '🎤 BEATBOX (MOUTH)' }).first().click({ force: true });
+    await armCapture(page, 'BEATBOX', { settle: 0 });
     await page.waitForTimeout(1000);
   } else {
     // Create the seed without arming the mic. Chromium's fake device emits a

@@ -13,7 +13,7 @@
  * organizing layer entering the room, which Amendment D forbids.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom } = require('./lib.cjs');
 
 let failures = 0;
 function check(label, ok, detail = '') {
@@ -67,14 +67,14 @@ const benchOf = (page) =>
   check('arriving in CREATE, the expression engine is the activity',
     (await benchOf(page)) === 'UNIFIED', String(await benchOf(page)));
 
-  await page.getByRole('button', { name: '2. WRITE & RECORD', exact: false }).first().click();
+  await goToRoom(page, 'WRITE_RECORD', { settle: 0 });
   await page.waitForTimeout(1200);
   const room = JSON.parse(await session(page, `s => JSON.stringify(s.activeWorkspace)`));
   check('the room changed', room === 'WRITE_RECORD', room);
   check('and reading a take as lyrics is offered with the writing, not only from the rail',
     await page.locator('[data-testid="write-room-vocal-to-lyric"]').isVisible().catch(() => false));
 
-  await page.getByRole('button', { name: '1. CREATE', exact: false }).first().click();
+  await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(1000);
   check('back in CREATE, the activity is the expression engine again',
     (await benchOf(page)) === 'UNIFIED', String(await benchOf(page)));
@@ -86,9 +86,9 @@ const benchOf = (page) =>
   check('choosing a bench selects it', (await benchOf(page)) === 'SECTIONS',
     String(await benchOf(page)));
 
-  await page.getByRole('button', { name: '2. WRITE & RECORD', exact: false }).first().click();
+  await goToRoom(page, 'WRITE_RECORD', { settle: 0 });
   await page.waitForTimeout(900);
-  await page.getByRole('button', { name: '1. CREATE', exact: false }).first().click();
+  await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(900);
   check('and the level never takes it back off them across rooms',
     (await benchOf(page)) === 'SECTIONS',

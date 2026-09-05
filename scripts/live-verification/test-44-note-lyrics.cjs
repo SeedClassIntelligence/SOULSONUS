@@ -9,7 +9,7 @@
  * across rather than going with it.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, seedMelody } = require('./lib.cjs');
 
 let failures = 0;
 function check(label, ok, detail) {
@@ -28,6 +28,11 @@ const lyrics = async (page) => JSON.parse(await session(page, LYRICS));
   await enterStudio(page);
 
   console.log('=== A SYLLABLE ON A NOTE ===\n');
+
+  // The melody channel arrives empty now -- the preset carries channels and no
+  // performance -- so this used to stop at "0 notes" before it wrote a
+  // syllable onto anything.
+  await seedMelody(page);
 
   const before = await lyrics(page);
   check('the melody track has notes', before.length > 0, `${before.length} notes`);

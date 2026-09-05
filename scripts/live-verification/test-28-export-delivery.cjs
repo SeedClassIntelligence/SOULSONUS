@@ -8,7 +8,7 @@
  * directory, and the provenance hashes recomputed over the exported bytes.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, seedPattern, seedMelody } = require('./lib.cjs');
 
 let failures = 0;
 function check(label, ok, detail) {
@@ -47,6 +47,11 @@ const inspect = (page, url) => page.evaluate(`(${INSPECT_FN})(${JSON.stringify(u
   await enterStudio(page);
 
   console.log('=== EXPORT DELIVERY ===\n');
+
+  // There has to be something to export: the session opens with empty
+  // channels, and a render of silence is not what this file is asking about.
+  await seedPattern(page);
+  await seedMelody(page);
 
   await page.getByRole('button', { name: 'EXPORT', exact: true }).first().click({ force: true });
   await page.waitForTimeout(800);

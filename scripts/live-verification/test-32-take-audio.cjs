@@ -10,7 +10,7 @@
  * page to see whether the audio is still there.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, openUtility } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -41,7 +41,7 @@ const TAKES = `s => JSON.stringify(s.tracks.flatMap(t => (t.vocalTakes || []).ma
 const takes = async (page) => JSON.parse(await session(page, TAKES));
 
 async function openSuite(page, tab) {
-  await page.getByRole('button', { name: '🎙️ SONGWRITING SUITE', exact: false }).first().click({ force: true });
+  await openUtility(page, 'SONGWRITING', { settle: 0 });
   await page.waitForTimeout(1400);
   const panel = page.locator('div.fixed.right-0:has-text("SONGWRITING SUITE")').first();
   const t = panel.getByRole('button', { name: tab, exact: true }).first();

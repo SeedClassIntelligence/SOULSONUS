@@ -15,7 +15,7 @@
  * out named with their reasons.
  */
 const playwright = require('playwright');
-const { launch, enterStudio } = require('./lib.cjs');
+const { launch, enterStudio, openUtility, READ_SESSION } = require('./lib.cjs');
 
 let failures = 0;
 function check(label, ok, detail) {
@@ -29,8 +29,9 @@ function check(label, ok, detail) {
 
   console.log('=== WHERE THE SOUNDS COME FROM ===\n');
 
-  await page.locator('#btn-sound-sourcing').first().click();
-  await page.waitForTimeout(900);
+  // The opener is the utilities rail's SOURCING entry now; the id this used is
+  // gone, so the whole file timed out before opening the panel.
+  await openUtility(page, 'SOURCING');
   const panel = page.locator('#sound-sourcing-panel');
   check('the panel opens', (await panel.count()) === 1, 'sound sourcing');
   if (!(await panel.count())) { console.log('\nFAILED'); await browser.close(); process.exit(1); }
@@ -108,6 +109,21 @@ function check(label, ok, detail) {
     !/no sound bank loaded/.test(runtimeAfter) && /preset/.test(runtimeAfter),
     runtimeAfter
   );
+
+  // The session starts with channels and no performance now, so this used to
+  // stop at "no kick channel with notes" before it reached the bank at all.
+  // Four kick notes are written first, through the session's own note writer.
+  await page.evaluate(`(() => {
+    const s = ${READ_SESSION};
+    const kick = s.tracks.find(t => t.instrument === 'kick');
+    [0, 480, 960, 1440].forEach((tick) =>
+      // C1, the kick channel's own pitch. Deliberately not General MIDI 36:
+      // the check below is that the studio's numbering is mapped onto the
+      // kit's key rather than played as written.
+      s.handleAddNote(kick.id, { startTick: tick, durationTicks: 120, midiNote: 24, velocity: 110 })
+    );
+  })()`);
+  await page.waitForTimeout(1200);
 
   // Rendering a channel through the bank is the real product path -- it is
   // how a sampled instrument reaches the timeline -- so that is what is

@@ -14,7 +14,7 @@
  * that nothing generated.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, seedMelody, seedPattern } = require('./lib.cjs');
 
 let failures = 0;
 function check(label, ok, detail) {
@@ -38,6 +38,11 @@ async function ask(page, text) {
   await enterStudio(page);
 
   console.log('=== THE SESSION BAND: ADDRESSING A PLAYER ===\n');
+
+  // The drummer is asked to play exactly what was played, so there has to be
+  // something on the drums to copy. The session arrives with empty channels.
+  await seedPattern(page);
+
 
   await page.evaluate(`window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'intelligence' }))`);
   await page.waitForTimeout(1500);
@@ -112,6 +117,11 @@ async function ask(page, text) {
     })),
     bassNotes: (s.tracks.filter(t => t.instrument === 'bass' && t.name.indexOf('session take') < 0)[0] || {}).noteEvents || [],
   })`;
+  // "Play exactly what I played" needs something played: the bass channel
+  // arrives empty now, so the player had nothing to copy and no take came
+  // back, which this file was reading as a broken session band.
+  await seedMelody(page, { trackInstrument: 'bass' });
+
   const before39 = JSON.parse(await session(page, COUNTS));
   console.log(`  bass channel holds ${before39.bassNotes.length} notes before the call`);
 

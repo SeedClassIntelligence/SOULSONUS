@@ -5,30 +5,44 @@
  * button that silently no-ops is distinguishable from one that works.
  */
 const playwright = require('playwright');
-const { launch, enterStudio } = require('./lib.cjs');
+const { launch, enterStudio, UTILITY_TITLE } = require('./lib.cjs');
 
-// [button label, expected heading inside the panel that should appear]
+// Addressed by the title each control carries rather than its visible label:
+// the labels lost their emoji prefixes and several of these moved from the
+// header to the utilities rail, so every entry read ABSENT while this file
+// still exited 0.
+// [{ how to find it }, expected heading inside the panel that should appear]
 const UTILITY_TRIGGERS = [
-  ['✦ STUDIO INTELLIGENCE', 'STUDIO INTELLIGENCE'],
-  ['🧠 NATIVE BRAIN', 'NATIVE'],
-  ['🎛️ TRACK WORKSTATION', 'TRACK PRODUCTION WORKSTATION'],
-  ['🎙️ SONGWRITING SUITE', 'SONGWRITING'],
-  ['🎹 MIDI & HARDWARE', 'MIDI'],
-  ['INSPECTOR', 'INSPECTOR'],
-  ['CALIBRATION', 'CALIBRATION'],
-  ['RADIAL RADAR', 'RADIAL'],
+  [{ label: 'STUDIO INTELLIGENCE', name: '✦ STUDIO INTELLIGENCE' }, 'STUDIO INTELLIGENCE'],
+  [{ label: 'NATIVE BRAIN', title: UTILITY_TITLE.NATIVE_BRAIN }, 'NATIVE'],
+  [{ label: 'WORKSTATION', title: UTILITY_TITLE.WORKSTATION }, 'TRACK PRODUCTION WORKSTATION'],
+  [{ label: 'SONGWRITING', title: UTILITY_TITLE.SONGWRITING }, 'SONGWRITING'],
+  [{ label: 'MIDI HARDWARE', title: UTILITY_TITLE.MIDI_HARDWARE }, 'MIDI'],
+  [{ label: 'INSPECTOR', title: UTILITY_TITLE.INSPECTOR }, 'INSPECTOR'],
+  [{ label: 'CALIBRATION', title: UTILITY_TITLE.CALIBRATION }, 'CALIBRATION'],
+  [{ label: 'RADIAL RADAR', title: UTILITY_TITLE.RADAR }, 'RADIAL'],
 ];
 
+// The headings are what these panels actually say -- PIANO opens VIRTUAL
+// KEYBOARD and MANUAL opens the studio manual, and both were being reported as
+// misses against headings from an older build.
 const HEADER_TRIGGERS = [
-  ['🎹 PIANO', 'PIANO'],
-  ['SOUND VAULT', 'SOUND'],
-  ['IMPORT AUDIO', 'IMPORT'],
-  ['MANUAL', 'HELP'],
-  ['COLLAB', 'COLLAB'],
-  ['EXPORT', 'EXPORT'],
-  ['TRAIN SIGNATURE', 'TRAINING'],
-  ['STUDIO TOUR', 'TOUR'],
+  [{ label: 'PIANO', title: UTILITY_TITLE.PIANO }, 'VIRTUAL KEYBOARD'],
+  [{ label: 'SOURCING', title: UTILITY_TITLE.SOURCING }, 'SOUND'],
+  [{ label: 'IMPORT AUDIO', title: UTILITY_TITLE.IMPORT_AUDIO }, 'IMPORT'],
+  [{ label: 'MANUAL', name: 'MANUAL' }, 'MANUAL'],
+  [{ label: 'COLLAB', title: UTILITY_TITLE.COLLAB }, 'COLLAB'],
+  [{ label: 'EXPORT', name: 'EXPORT' }, 'EXPORT'],
+  [{ label: 'SIGNATURE', title: UTILITY_TITLE.SIGNATURE }, 'TRAINING'],
+  [{ label: 'STUDIO TOUR', name: 'STUDIO TOUR' }, 'TOUR'],
 ];
+
+const triggerLocator = (page, t) =>
+  t.title
+    ? page.locator(`button[title="${t.title}"]`).first()
+    : page.getByRole('button', { name: t.name, exact: false }).first();
+
+let missing = 0;
 
 /** Every fixed overlay currently on screen, with its heading text. */
 async function overlays(page) {
@@ -44,10 +58,11 @@ async function overlays(page) {
   );
 }
 
-async function testTrigger(page, label, expected) {
+async function testTrigger(page, trigger, expected) {
+  const label = trigger.label;
   await enterStudio(page);
   const before = await overlays(page);
-  const btn = page.getByRole('button', { name: label, exact: false }).first();
+  const btn = triggerLocator(page, trigger);
   if (!(await btn.count())) return { label, reachable: false };
 
   await btn.click({ force: true });
@@ -65,15 +80,17 @@ async function testTrigger(page, label, expected) {
 
   console.log('=== DRAWER TRIGGERS ===\n');
   console.log('-- STUDIO UTILITIES row (Room 1 CREATE) --');
-  for (const [label, expected] of UTILITY_TRIGGERS) {
-    const r = await testTrigger(page, label, expected);
-    console.log(`  ${r.matched ? 'OPENS ' : r.reachable ? 'MISS  ' : 'ABSENT'} ${label.padEnd(26)} -> ${r.opened || 'not reachable'}`);
+  for (const [trigger, expected] of UTILITY_TRIGGERS) {
+    const r = await testTrigger(page, trigger, expected);
+    if (!r.matched) missing++;
+    console.log(`  ${r.matched ? 'OPENS ' : r.reachable ? 'MISS  ' : 'ABSENT'} ${trigger.label.padEnd(26)} -> ${r.opened || 'not reachable'}`);
   }
 
   console.log('\n-- Header triggers --');
-  for (const [label, expected] of HEADER_TRIGGERS) {
-    const r = await testTrigger(page, label, expected);
-    console.log(`  ${r.matched ? 'OPENS ' : r.reachable ? 'MISS  ' : 'ABSENT'} ${label.padEnd(26)} -> ${r.opened || 'not reachable'}`);
+  for (const [trigger, expected] of HEADER_TRIGGERS) {
+    const r = await testTrigger(page, trigger, expected);
+    if (!r.matched) missing++;
+    console.log(`  ${r.matched ? 'OPENS ' : r.reachable ? 'MISS  ' : 'ABSENT'} ${trigger.label.padEnd(26)} -> ${r.opened || 'not reachable'}`);
   }
 
   // Which rooms even show the utilities row?
@@ -93,20 +110,20 @@ async function testTrigger(page, label, expected) {
     throw new Error('no ctx');
   }`);
 
-  for (const room of ['CREATE', 'BUILD', 'WRITE_RECORD', 'MIX', 'MASTER', 'RELEASE']) {
+  for (const room of ['CREATE', 'WRITE_RECORD', 'MIX', 'MASTER', 'RELEASE']) {
     // Switch through the context so a stray overlay cannot block the tab click.
     await page.evaluate(`window.__studio().setActiveWorkspace(${JSON.stringify(room)})`);
     await page.waitForTimeout(1400);
     const actual = await page.evaluate('window.__studio().activeWorkspace');
 
     let present = 0;
-    for (const [label] of UTILITY_TRIGGERS) {
-      if (await page.getByRole('button', { name: label, exact: false }).count()) present++;
+    for (const [trigger] of UTILITY_TRIGGERS) {
+      if (await triggerLocator(page, trigger).count()) present++;
     }
 
     let worksHere = 'n/a';
     if (present) {
-      const b = page.getByRole('button', { name: '🎛️ TRACK WORKSTATION', exact: false }).first();
+      const b = page.locator(`button[title="${UTILITY_TITLE.WORKSTATION}"]`).first();
       if (await b.count()) {
         await b.click({ force: true }).catch(() => {});
         await page.waitForTimeout(1200);
@@ -119,4 +136,8 @@ async function testTrigger(page, label, expected) {
   }
 
   await browser.close();
+  // It used to exit 0 whatever it found, so a run where half the triggers were
+  // unreachable still counted as a pass.
+  console.log(`\n  ${missing === 0 ? 'every trigger opened what it claims to open' : missing + ' trigger(s) did not'}`);
+  process.exit(missing === 0 ? 0 : 1);
 })();

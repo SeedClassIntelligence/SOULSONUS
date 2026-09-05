@@ -58,6 +58,11 @@ export const WorkspaceNav: React.FC<WorkspaceNavProps> = ({ activeWorkspace, onS
           return (
             <button
               key={ws.id}
+              // Addressed by which room it is, not by the number in front of
+              // it. The rooms have been renumbered twice, and each time every
+              // check that named a label went quietly dead rather than failing.
+              data-testid={`room-${ws.id}`}
+              data-active={isActive}
               onClick={() => onSelectWorkspace(ws.id)}
               title={`${ws.label}: ${ws.desc}`}
               className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-2 transition-all cursor-pointer whitespace-nowrap ${

@@ -14,7 +14,7 @@
  * extractor could never be applied to a take you already played.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, armCapture, openUtility } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -55,13 +55,12 @@ const state = async (page) => JSON.parse(await session(page, STATE));
   check('no seed track to begin with', before.seed === null, `${before.assets.length} assets`);
 
   // ---- perform ----
-  const beatbox = page.locator('[data-testid="capture-mouth"]').first();
-  await beatbox.scrollIntoViewIfNeeded();
-  await beatbox.click();
-  await page.waitForTimeout(600);
+  // Choosing the modality and starting the take are two controls now; the
+  // seed track is made when recording starts, not when the tab is picked.
+  await armCapture(page, 'BEATBOX');
 
   const armed = await state(page);
-  check('pressing BEATBOX makes a seed track', !!armed.seed, armed.seed ? armed.seed.name : 'none');
+  check('recording a mouth take makes a seed track', !!armed.seed, armed.seed ? armed.seed.name : 'none');
   check('and it is a MOUTH seed', armed.seed?.instrument === 'custom', `instrument=${armed.seed?.instrument}`);
 
   // Perform for a few seconds.
@@ -137,11 +136,10 @@ const state = async (page) => JSON.parse(await session(page, STATE));
   // recorder running into the next arm. A performance must not depend on which
   // button the creator happened to reach for.
   console.log('\n-- stopped from the calibration drawer --');
-  await beatbox.scrollIntoViewIfNeeded();
-  await beatbox.click();
+  await armCapture(page, 'BEATBOX');
   await page.waitForTimeout(4000);
 
-  await page.getByRole('button', { name: 'CALIBRATION', exact: false }).first().click({ force: true });
+  await openUtility(page, 'CALIBRATION', { settle: 0 });
   await page.waitForTimeout(900);
   await page.getByRole('button', { name: 'Stop Mic', exact: true }).first().click({ force: true });
   await page.waitForTimeout(6000);

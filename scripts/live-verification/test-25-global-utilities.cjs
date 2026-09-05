@@ -5,22 +5,31 @@
  * eight workstations and the audio import were unreachable from the other four.
  */
 const playwright = require('playwright');
-const { launch, enterStudio } = require('./lib.cjs');
+const { launch, enterStudio, UTILITY_TITLE } = require('./lib.cjs');
 
+// Addressed by the title each control carries, which says what it opens. The
+// visible labels lost their emoji prefixes in a relabelling and every entry
+// here went to ABSENT -- while this file still exited 0, so the suite stayed
+// green while reporting that four utilities could not be reached from any room.
 const TRIGGERS = [
-  ['✦ STUDIO INTELLIGENCE', 'STUDIO INTELLIGENCE'],
-  ['🧠 NATIVE BRAIN', 'NATIVE STUDIO BRAIN'],
-  ['🎛️ TRACK WORKSTATION', 'TRACK PRODUCTION WORKSTATION'],
-  ['🎙️ SONGWRITING SUITE', 'SONGWRITING SUITE'],
-  ['🎹 MIDI & HARDWARE', 'EXTERNAL HARDWARE'],
-  ['INSPECTOR', 'QUICK PRODUCTION INSPECTOR'],
-  ['CALIBRATION', 'FFT & Detection Calibration'],
-  ['RADIAL RADAR', 'Radial Step Visualizer'],
-  ['IMPORT AUDIO', 'IMPORT AUDIO & MULTITRACK STEMS'],
+  [{ label: 'STUDIO INTELLIGENCE', name: '✦ STUDIO INTELLIGENCE' }, 'STUDIO INTELLIGENCE'],
+  [{ label: 'NATIVE BRAIN', title: UTILITY_TITLE.NATIVE_BRAIN }, 'NATIVE STUDIO BRAIN'],
+  [{ label: 'WORKSTATION', title: UTILITY_TITLE.WORKSTATION }, 'TRACK PRODUCTION WORKSTATION'],
+  [{ label: 'SONGWRITING', title: UTILITY_TITLE.SONGWRITING }, 'SONGWRITING SUITE'],
+  [{ label: 'MIDI HARDWARE', title: UTILITY_TITLE.MIDI_HARDWARE }, 'EXTERNAL HARDWARE'],
+  [{ label: 'INSPECTOR', title: UTILITY_TITLE.INSPECTOR }, 'QUICK PRODUCTION INSPECTOR'],
+  [{ label: 'CALIBRATION', title: UTILITY_TITLE.CALIBRATION }, 'FFT & Detection Calibration'],
+  [{ label: 'RADIAL RADAR', title: UTILITY_TITLE.RADAR }, 'Radial Step Visualizer'],
+  [{ label: 'IMPORT AUDIO', title: UTILITY_TITLE.IMPORT_AUDIO }, 'IMPORT AUDIO & MULTITRACK STEMS'],
 ];
 
-const ROOMS = [['CREATE','1. CREATE'],['BUILD','2. BUILD'],['WRITE_RECORD','3. WRITE & RECORD'],
-               ['MIX','4. MIX'],['MASTER','5. MASTER'],['RELEASE','6. RELEASE']];
+const triggerLocator = (page, t) =>
+  t.title
+    ? page.locator(`button[title="${t.title}"]`).first()
+    : page.getByRole('button', { name: t.name, exact: false }).first();
+
+// BUILD was fused into CREATE; the room list is what the app actually has.
+const ROOMS = [['CREATE'], ['WRITE_RECORD'], ['MIX'], ['MASTER'], ['RELEASE']];
 
 const STUDIO = `window.__studio = () => {
   const root = document.getElementById('root');
@@ -40,7 +49,7 @@ const overlayFor = async (page, expect) =>
   (await page.locator(`div.fixed:has-text("${expect}")`).count()) > 0;
 
 (async () => {
-  console.log('=== UTILITY REACHABILITY, ALL SIX ROOMS ===\n');
+  console.log('=== UTILITY REACHABILITY, EVERY ROOM ===\n');
   const { browser, page } = await launch(playwright, null);
   await enterStudio(page);
   await page.evaluate(STUDIO);
@@ -52,8 +61,9 @@ const overlayFor = async (page, expect) =>
     const actual = await page.evaluate('window.__studio().activeWorkspace');
 
     const results = [];
-    for (const [label, expect] of TRIGGERS) {
-      const btn = page.getByRole('button', { name: label, exact: false }).first();
+    for (const [trigger, expect] of TRIGGERS) {
+      const label = trigger.label;
+      const btn = triggerLocator(page, trigger);
       if (!(await btn.count())) { results.push(`${label}:ABSENT`); continue; }
       // Some rooms auto-open their panel on arrival, so a drawer may already be
       // showing. Close it first, or the click under test would just close it.
@@ -85,4 +95,7 @@ const overlayFor = async (page, expect) =>
   const allOk = Object.values(grid).every(g => g.results.every(r => r.endsWith(':OPENS')));
   console.log(`\n  every trigger works in every room : ${allOk ? 'PASS' : 'FAIL'}`);
   await browser.close();
+  // This file used to exit 0 whatever it found, so a run reporting four
+  // unreachable utilities in every room still counted as a pass.
+  process.exit(allOk ? 0 : 1);
 })();

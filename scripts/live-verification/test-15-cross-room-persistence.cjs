@@ -6,7 +6,7 @@
  * workspace COMPONENT survive (or unmount and remount, losing its local state)?
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, openUtility, armCapture, goToRoom } = require('./lib.cjs');
 
 const STATE = `s => ({
   workspace: s.activeWorkspace,
@@ -34,12 +34,10 @@ const STUDIO = `window.__studio = () => {
   throw new Error('studio context not found');
 }`;
 
-const ROOMS = { CREATE: '1. CREATE', BUILD: '2. BUILD', WRITE_RECORD: '3. WRITE & RECORD', MIX: '4. MIX', MASTER: '5. MASTER', RELEASE: '6. RELEASE' };
-
-async function go(page, room) {
-  await page.getByRole('button', { name: ROOMS[room] }).first().click();
-  await page.waitForTimeout(1400);
-}
+// Rooms are addressed by which room they are. This file held its own table of
+// numbered labels, and BUILD -- fused into CREATE -- was still in it, so the
+// first switch timed out and nothing after it ran.
+const go = (page, room) => goToRoom(page, room);
 
 // Reads the local (non-context) UI state of the CREATE canvas.
 async function canvasLocalState(page) {
@@ -82,7 +80,7 @@ const drawerOpen = async (page, title) => {
   await page.waitForTimeout(600);
   const before = await session(page, STATE);
 
-  for (const room of ['BUILD', 'WRITE_RECORD', 'MIX', 'MASTER', 'RELEASE', 'CREATE']) await go(page, room);
+  for (const room of ['WRITE_RECORD', 'MIX', 'MASTER', 'RELEASE', 'CREATE']) await go(page, room);
   const after = await session(page, STATE);
 
   console.log(`  kick volume     : ${before.kickVolume} -> ${after.kickVolume}  ${before.kickVolume === after.kickVolume ? 'PASS' : 'FAIL'}`);
@@ -92,20 +90,20 @@ const drawerOpen = async (page, title) => {
 
   // ---------- 2. Open drawers ----------
   console.log('\n-- 2. Does an OPEN DRAWER survive a room switch? --');
-  await page.getByRole('button', { name: '🎛️ TRACK WORKSTATION' }).first().click();
+  await openUtility(page, 'WORKSTATION', { settle: 0 });
   await page.waitForTimeout(2000);
   const openInCreate = await drawerOpen(page, 'TRACK PRODUCTION WORKSTATION');
-  await go(page, 'BUILD');
-  const openInBuild = await drawerOpen(page, 'TRACK PRODUCTION WORKSTATION');
+  await go(page, 'WRITE_RECORD');
+  const openInWrite = await drawerOpen(page, 'TRACK PRODUCTION WORKSTATION');
   await go(page, 'MIX');
   const openInMix = await drawerOpen(page, 'TRACK PRODUCTION WORKSTATION');
   await go(page, 'CREATE');
   const openBack = await drawerOpen(page, 'TRACK PRODUCTION WORKSTATION');
   console.log(`  opened in CREATE : ${openInCreate}`);
-  console.log(`  still open in BUILD : ${openInBuild}  ${openInBuild === openInCreate ? 'persists' : 'CLOSED on switch'}`);
+  console.log(`  still open in WRITE & RECORD : ${openInWrite}  ${openInWrite === openInCreate ? 'persists' : 'CLOSED on switch'}`);
   console.log(`  still open in MIX   : ${openInMix}`);
   console.log(`  still open back in CREATE : ${openBack}`);
-  console.log(`  drawer persists across rooms : ${openInCreate && openInBuild && openInMix && openBack ? 'YES' : 'see values above'}`);
+  console.log(`  drawer persists across rooms : ${openInCreate && openInWrite && openInMix && openBack ? 'YES' : 'see values above'}`);
 
   // Close it so it stops intercepting clicks on the canvas beneath.
   await page.locator('div.fixed.right-0 button').first().click({ force: true }).catch(() => {});
@@ -127,13 +125,10 @@ const drawerOpen = async (page, title) => {
   const kept = JSON.stringify(localBefore) === JSON.stringify(localAfter);
   console.log(`  canvas local state kept  : ${kept ? 'PASS — component stayed mounted' : 'FAIL — component was unmounted and rebuilt'}`);
 
-  // Same probe for a room switch that does NOT change the rendered workspace.
-  await page.getByRole('button', { name: 'DRAW (B)' }).first().click({ force: true });
-  await page.waitForTimeout(300);
-  const beforeSibling = await canvasLocalState(page);
-  await go(page, 'BUILD');
-  const afterSibling = await canvasLocalState(page);
-  console.log(`  CREATE -> BUILD (same component): ${JSON.stringify(beforeSibling) === JSON.stringify(afterSibling) ? 'state kept' : 'state lost'}`);
+  // This probe used to switch CREATE -> BUILD, two rooms that rendered the
+  // same component, to separate "the component unmounted" from "the room
+  // changed". BUILD was fused into CREATE, so there is no such pair left and
+  // the probe has nothing to ask.
 
   // ---------- 4. Playback across rooms ----------
   console.log('\n-- 4. Does PLAYBACK survive a room switch? --');
@@ -153,7 +148,7 @@ const drawerOpen = async (page, title) => {
   // ---------- 5. Live mic capture across rooms ----------
   console.log('\n-- 5. Does an ARMED MIC / in-progress capture survive a room switch? --');
   await go(page, 'CREATE');
-  await page.getByRole('button', { name: '🎤 BEATBOX (MOUTH)' }).first().click({ force: true });
+  await armCapture(page, 'BEATBOX', { settle: 0 });
   await page.waitForTimeout(2500);
   const armed1 = await session(page, STATE);
   await go(page, 'MIX');

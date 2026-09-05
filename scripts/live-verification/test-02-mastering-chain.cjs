@@ -4,7 +4,7 @@
  * and do the LUFS / True-Peak readouts respond to them?
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom } = require('./lib.cjs');
 
 const PROJ = `s => ({
   chainName: s.masteringChain.name,
@@ -29,7 +29,7 @@ const PROJ = `s => ({
       .forEach(m => { const o = AP[m]; AP[m] = function(v){ window.__paramSets.push(v); return o.apply(this, arguments); }; });
   `);
 
-  await page.getByRole('button', { name: '5. MASTER' }).first().click();
+  await goToRoom(page, 'MASTER', { settle: 0 });
   await page.waitForTimeout(2000);
   await page.screenshot({ path: (process.env.SOULSONUS_VERIFY_DIR||'/tmp') + '/03_master.png' });
 

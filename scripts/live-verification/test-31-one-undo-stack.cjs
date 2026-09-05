@@ -11,7 +11,7 @@
  * edit with a recorded take and undoes both from one stack.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session, recordTake } = require('./lib.cjs');
+const { launch, enterStudio, session, recordTake, goToRoom } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -104,7 +104,7 @@ async function openSynthTab(page, scope) {
   // (The Create room's inspector would be the other mount of this handler, but
   // ContextualToolPanel — and the inspector inside it — is imported by nothing,
   // so there is no reachable second mount to drive.)
-  await page.getByRole('button', { name: '1. CREATE', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(1200);
 
   // Re-apply the workstation edit so there is something under the take.

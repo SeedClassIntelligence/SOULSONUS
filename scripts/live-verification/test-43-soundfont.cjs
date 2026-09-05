@@ -15,7 +15,7 @@
  * checks the audio that lands on the timeline came from the file.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, seedMelody } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -68,6 +68,9 @@ async function openVault(page) {
       if (f.child) stack.push(f.child); if (f.sibling) stack.push(f.sibling);
     }
   })()`);
+  // The melody channel arrives with no notes, so the render had nothing to
+  // render and every check below read as a broken sound bank.
+  await seedMelody(page);
   await page.waitForTimeout(600);
   await openVault(page);
 

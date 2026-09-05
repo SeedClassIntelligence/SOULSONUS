@@ -10,7 +10,7 @@
  * take has audio behind it, and the character chips must move real numbers.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, openUtility } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 const INSTRUMENT = `
@@ -48,7 +48,7 @@ let suitePanel = null;
 // inside it — clicking the trigger again would close what the last check opened.
 async function openSuite(page, tab) {
   if (!suitePanel) {
-    await page.getByRole('button', { name: '🎙️ SONGWRITING SUITE', exact: false }).first().click({ force: true });
+    await openUtility(page, 'SONGWRITING', { settle: 0 });
     await page.waitForTimeout(1500);
     suitePanel = page.locator('div.fixed.right-0:has-text("SONGWRITING SUITE")').first();
   }

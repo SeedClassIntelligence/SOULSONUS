@@ -11,7 +11,7 @@
  * of pass this project keeps finding.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, seedPattern, seedMelody } = require('./lib.cjs');
 
 const STUDIO = `window.__studio = () => {
   const root = document.getElementById('root');
@@ -45,6 +45,15 @@ const setSlot = (page, type, params) => page.evaluate(`(() => {
   await enterStudio(page);
   await page.evaluate(STUDIO);
   console.log('=== MASTER BOUNCE, MEASUREMENT & EXPORT ===\n');
+
+  // The session opens empty, so a bounce taken here is silence and every
+  // stage below reads "-70 LUFS -> -70 LUFS" as a dead processor. A plain
+  // drum pattern and a phrase go in first, so the bounce has something in it.
+  await seedPattern(page);
+  await seedMelody(page);
+  // Re-established after seeding: entering the studio changes the hash, and a
+  // navigation destroys the page-side handle this file defined before it.
+  await page.evaluate(STUDIO);
 
   // 0.1 — is anything actually measured?
   const base = await analyze(page);

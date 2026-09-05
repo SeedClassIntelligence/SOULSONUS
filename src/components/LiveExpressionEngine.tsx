@@ -395,7 +395,10 @@ export const LiveExpressionEngine: React.FC = () => {
       {/* REAL-TIME LIVE WAVEFORM & LOOP PULSE VISUALIZER */}
       <div className="w-full h-10 bg-slate-950 rounded-xl border border-slate-800/80 overflow-hidden relative flex items-center px-2">
         <canvas ref={canvasRef} width={600} height={40} className="w-full h-full object-cover opacity-90" />
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center space-x-1.5 pointer-events-none">
+        <div
+          data-testid="capture-status"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center space-x-1.5 pointer-events-none"
+        >
           <Activity className="w-3 h-3 text-cyan-400 animate-pulse" />
           <span>{dawState.isRecordingMic ? 'MIC RECORDING • TRANSIENTS LOCKING TO 480 PPQ' : dawState.isPlaying ? 'LOOP PLAYBACK ACTIVE' : 'LIVE TRANSIENT MONITOR READY'}</span>
         </div>
@@ -511,6 +514,12 @@ export const LiveExpressionEngine: React.FC = () => {
             <button
               key={t.id}
               type="button"
+              // By modality, not by label. The capture row used to be one
+              // button per modality with a testid naming the old taxonomy, and
+              // every check that addressed it went silently dead when the row
+              // became tabs.
+              data-testid={`capture-${t.id.toLowerCase()}`}
+              data-active={activeModalityTab === t.id}
               disabled={t.pending}
               onClick={() => {
                 if (t.pending) return;

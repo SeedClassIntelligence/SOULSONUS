@@ -4,7 +4,7 @@
  * actual track audio, and do AUDITION / COMMIT do anything to the signal path?
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 const PROJ = `s => ({
@@ -24,7 +24,7 @@ async function run(preset, audio) {
     await page.waitForTimeout(1500);
   }
 
-  await page.getByRole('button', { name: '4. MIX' }).first().click();
+  await goToRoom(page, 'MIX', { settle: 0 });
   await page.waitForTimeout(1800);
 
   const advisor = page.getByRole('button', { name: 'AI ADVISOR' }).first();

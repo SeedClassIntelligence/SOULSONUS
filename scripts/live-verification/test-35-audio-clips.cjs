@@ -8,7 +8,7 @@
  * undo, does it survive a reload, and does it reach the export.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom, openUtility, READ_SESSION } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -49,7 +49,7 @@ const STATE = `s => JSON.stringify({
 const state = async (page) => JSON.parse(await session(page, STATE));
 
 async function openSuite(page, tab) {
-  await page.getByRole('button', { name: '🎙️ SONGWRITING SUITE', exact: false }).first().click({ force: true });
+  await openUtility(page, 'SONGWRITING', { settle: 0 });
   await page.waitForTimeout(1400);
   const panel = page.locator('div.fixed.right-0:has-text("SONGWRITING SUITE")').first();
   const t = panel.getByRole('button', { name: tab, exact: true }).first();
@@ -122,7 +122,7 @@ async function openSuite(page, tab) {
   // ---- it must play ----
   // Close the suite by its own trigger: an open drawer sits over the Build
   // room's controls, and a covered control is not a control.
-  await page.getByRole('button', { name: '🎙️ SONGWRITING SUITE', exact: false }).first().click({ force: true });
+  await openUtility(page, 'SONGWRITING', { settle: 0 });
   await page.waitForTimeout(900);
   await page.evaluate('window.__audio.started = 0;');
   await page.locator('#btn-play-pause').first().click({ force: true });
@@ -135,13 +135,22 @@ async function openSuite(page, tab) {
   await page.waitForTimeout(600);
 
   // ---- it must move, and the move must undo ----
-  await page.getByRole('button', { name: '2. BUILD', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(1600);
-  const panelPresent = await page.locator('[data-testid="timeline-audio"]').count();
-  check('the timeline shows what is on it', panelPresent > 0, '');
+  // Clips are drawn on the track lane itself now, with the clip as a waveform
+  // block you drag and trim, rather than in a separate timeline panel with
+  // move-one-bar buttons. `TimelineAudioPanel` -- which owned
+  // `clip-right-*` -- is no longer rendered anywhere, so this waited thirty
+  // seconds for a button that is not on screen.
+  const lanePresent = await page.locator(`[data-testid="clip-block-${clip.id}"]`).count();
+  check('the timeline shows what is on it', lanePresent > 0, 'the clip is drawn on its track lane');
 
   const before = (await state(page)).clips[0];
-  await page.locator(`[data-testid="clip-right-${clip.id}"]`).first().click();
+  // The lane moves a clip by dragging it; a bar is 1920 ticks. Driven through
+  // the session so this measures the move and the history, not the drag.
+  await page.evaluate(
+    `(() => { const s = ${READ_SESSION}; s.handleMoveAudioClip(${JSON.stringify(clip.id)}, 1920); })()`
+  );
   await page.waitForTimeout(800);
   const moved = (await state(page)).clips[0];
   check('a clip moves by a bar', moved.startTick === before.startTick + 1920,
@@ -194,11 +203,13 @@ async function openSuite(page, tab) {
   // Pushed past the end of the four-bar note grid first: a bounce sized only by
   // the grid would truncate it, and the check would otherwise pass on a render
   // that was already long enough for other reasons.
-  await page.getByRole('button', { name: '2. BUILD', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(1500);
   const survivorId = (await state(page)).clips[0].id;
   for (let i = 0; i < 5; i++) {
-    await page.locator(`[data-testid="clip-right-${survivorId}"]`).first().click();
+    await page.evaluate(
+      `(() => { const s = ${READ_SESSION}; s.handleMoveAudioClip(${JSON.stringify(survivorId)}, 1920); })()`
+    );
     await page.waitForTimeout(350);
   }
   const pushed = (await state(page)).clips[0];

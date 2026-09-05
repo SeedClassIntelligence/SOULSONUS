@@ -175,6 +175,11 @@ writeWav(`${dir}/hum_A4.wav`, melody([440], 10));
 writeWav(`${dir}/beatbox_A.wav`, pattern(12, 500, [kick, hat]));
 writeWav(`${dir}/beatbox_B.wav`, pattern(12, 500, [() => kick(95), snare]));
 
+// Nothing performed at all. test-13 feeds this to check that the studio says
+// it heard nothing rather than inventing a take; the file was referenced and
+// never generated, so that test died on a missing fixture instead.
+writeWav(`${dir}/silence.wav`, new Float32Array(44100 * 10));
+
 console.log('wrote test clips to', dir);
 
 function writeFileRaw(path, buf) {

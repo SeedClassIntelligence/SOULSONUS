@@ -6,7 +6,7 @@
  * be stored at all.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 const SNAP = `s => ({
@@ -35,7 +35,7 @@ const settle = async (page) => {
 
   // The room is '2. WRITE & RECORD' since the rooms were renumbered; this test
   // was waiting for the old label and timed out before recording anything.
-  await page.getByRole('button', { name: '2. WRITE & RECORD' }).first().click({ force: true });
+  await goToRoom(page, 'WRITE_RECORD', { settle: 0 });
   await page.waitForTimeout(1800);
   await page.locator('#btn-record-vocal').first().evaluate(e => e.click());
 

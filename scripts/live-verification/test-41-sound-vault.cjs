@@ -13,7 +13,7 @@
  * committing change the channel, and do two presets differ in the render.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, seedPattern } = require('./lib.cjs');
 
 let failures = 0;
 function check(label, ok, detail) {
@@ -138,6 +138,11 @@ async function openVault(page) {
       const m = await ctx.handleAnalyzeMaster();
       return { lufs: m.integratedLufs, peak: m.samplePeakDbfs };
     })()`);
+
+  // A master analysed from an empty grid is silence, so both sounds measured
+  // -70 LUFS and the comparison could never be anything but "identical". The
+  // pattern goes in first.
+  await seedPattern(page);
 
   const with909 = await measure();
   await page.locator('[data-testid="vault-sound-snd_k1"]').first().click();

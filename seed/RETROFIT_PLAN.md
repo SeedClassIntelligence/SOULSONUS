@@ -745,6 +745,84 @@ rail. Rather than relabel it to match where it happened to sit, the Write &
 Record room now offers it too. It is still on the rail: a second door, not a
 move.
 
+## The verification suite, audited - 2026-09-05
+
+Sixty live tests. **Twenty-eight were passing when the audit started and sixty
+pass now**, and the gap was not sixty tests' worth of broken studio: it was a
+suite that had drifted off the app it verifies. Three real defects were sitting
+behind that drift, unseen, and one thing I had reported to the owner as the
+worst open defect in the repository turned out not to exist.
+
+### What the rot actually was
+
+Two shapes, and both make a working control read as a broken one.
+
+**Controls named by what they say rather than by what they are.** Rooms were
+renumbered twice -- BUILD was fused into CREATE, then everything after it moved
+down one -- so `4. MIX` clicked nothing and timed out thirty seconds later. The
+utilities rail lost its emoji prefixes, so `🎛️ TRACK WORKSTATION` matched
+nothing. The capture row became modality tabs plus one record control, so
+`🎤 BEATBOX (MOUTH)` matched nothing. Twenty-two files died on their first or
+second action, before measuring anything at all.
+
+**A premise that changed underneath them.** The studio used to open on a demo
+pattern; the preset is empty by construction now. Eight tests pressed play on
+arrival and measured silence: the bounce, the instrument parameters, the sound
+bank, the vault, the export, the session band, note lyrics, and the factory kit
+playing live. Every one of them reported a dead engine. All eight pass once
+something is played.
+
+Two files were worse than dead: `test-16` and `test-25` printed FAIL and exited
+0, so a run reporting that four utilities could not be reached from any room
+still counted as green. Both exit non-zero now. `test-13` died on a fixture
+(`silence.wav`) the harness's own generator never wrote; the generator writes it.
+
+### The three real defects behind the timeouts
+
+- *Arming from the transport left the capture row saying nothing was being
+  recorded.* `handleToggleMic` opened the microphone and set the detection
+  settings, and the capture row reads `isRecordingMic` -- its status line, its
+  live visualizer and its own record button all hang off that flag. So notes
+  landed while the bench said "LIVE TRANSIENT MONITOR READY" and the visualizer
+  stayed still. The two record controls agree now.
+- *One dispatch opened two surfaces.* `'voice'` was claimed by both the voice
+  cloning studio and the command bar, so SAY IT (and the SPEAK modality tab)
+  opened both, and the cloning drawer landed on top of the command bar's own GO
+  button. A creator could type a command and not reach the control that runs
+  it. The cloning studio is `'voiceclone'` now; `'voice'` is the command bar.
+- *`TimelineAudioPanel` is rendered nowhere*, like the section editor before it.
+  Unlike the section editor its function was replaced -- clips are drawn,
+  dragged and trimmed on the track lane itself -- so the tests were moved to the
+  lane rather than the panel restored. The file is dead code and is left for
+  the owner to decide on.
+
+### A correction
+
+I reported to the owner that the factory kit "reports loaded and plays nothing",
+and that `test-48` failed identically with and without my work. The failure was
+real; the diagnosis was wrong. The test pressed play on an empty grid. With a
+pattern in, the kit plays live (14 sampled hits, the drum synths standing down
+from 97 oscillator starts to 0) and survives the bounce as a measurably
+different record. `test-48` passes end to end.
+
+### What was added so this cannot happen the same way again
+
+Five ids and testids in the app, each naming what a control *is*: `room-<ID>`
+on the nav, `capture-<MODALITY>` on the modality tabs, `capture-status` on the
+transient monitor, `btn-pattern-ops`, `btn-note-settings`, `btn-quantize-track`.
+And in `lib.cjs`, the mapping the tests use instead of labels: `goToRoom`,
+`openUtility` (keyed on the title that says what each opens), `armCapture`,
+`stopCapture`, `seedPattern`, `seedMelody`. The next rename is one edit there
+rather than twenty in the tests. The harness README says all of it, including
+the rule the eight silent tests broke: **anything that measures sound has to put
+a performance in first.**
+
+Not repaired, and named rather than hidden: `test-17`, `test-03b` and `test-08`
+are diagnostic dumps with no verdict -- they run and print, and they cannot
+fail. `test-56` needs `ace-stub.mjs` on :8099 and the dev server started with
+`ACE_STEP_ENDPOINT` pointing at it; it passes with them and reports the host
+unreachable without them, which is correct behaviour rather than a failure.
+
 ## The section editor, put back on screen - 2026-09-05
 
 Arrangement sections were unreachable. `SectionBuilder` -- rename, retag, remap

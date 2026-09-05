@@ -8,7 +8,7 @@
  * the real keyboard shortcut.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session, recordTake } = require('./lib.cjs');
+const { launch, enterStudio, session, recordTake, goToRoom } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -106,7 +106,7 @@ const takeOf = (page, seconds) => recordTake(page, 'Oral Beatbox', seconds);
         `${unwound.notes} notes on ${unwound.tracks} tracks`);
 
   // ---- the shortcut must not fire while typing ----
-  await page.getByRole('button', { name: '2. WRITE & RECORD', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'WRITE_RECORD', { settle: 0 });
   await page.waitForTimeout(1500);
   const box = page.locator('textarea').first();
   if (await box.count()) {

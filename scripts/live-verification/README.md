@@ -51,8 +51,39 @@ much faster than wall-clock, so treat elapsed-time assertions with care.
 | `test-22-extract-stems` | Does Extract Stems use the actual take, and refuse honestly when there is none? |
 | `test-23-masking-analysis` | Is the Mix advisor measured — and silent on an empty canvas? |
 | `test-24-vocal-take-persistence` | Does a recorded vocal Blob survive a reload and re-decode? |
-| `test-25-global-utilities` | Are all nine utility triggers reachable and working from all six rooms? |
+| `test-25-global-utilities` | Are all nine utility triggers reachable and working from every room? |
 | `test-26-room-switch-state` | Do editor state and the Write & Record draft survive a room switch and a reload? |
+
+## Address controls by identity, not by label
+
+The suite went quietly dead in twenty-two places because it named controls by
+what they said rather than by what they are. Rooms were renumbered twice
+(`2. BUILD` was fused into CREATE, then everything after it moved down one),
+the utilities rail lost its emoji prefixes (`🎛️ TRACK WORKSTATION` became
+`WORKSTATION`), and the capture row became modality tabs plus one record
+control. Each rename turned a check into a thirty-second timeout that reads
+like a broken studio, and three real defects were sitting behind those
+timeouts unseen.
+
+`lib.cjs` holds the mapping so the next rename is one edit here rather than
+twenty in the tests:
+
+| helper | what it does |
+|---|---|
+| `goToRoom(page, 'MIX')` | Clicks the room by `data-testid="room-<ID>"`, not by its number. |
+| `openUtility(page, 'WORKSTATION')` | Clicks the rail entry by the `title` that says what it opens. `UTILITY_TITLE` lists them. |
+| `armCapture(page, 'BEATBOX')` | Picks the modality tab, then presses record. Two controls now, deliberately. |
+| `stopCapture(page)` | Ends the take from whichever control is on screen. |
+| `recordTake(page, 'Oral Beatbox', 8)` | Arm, perform for N seconds, stop. |
+| `seedPattern(page)` | Kick on the beats, snare on 2 and 4, hats on 8ths. |
+| `seedMelody(page)` | Eight pitched notes on the melody channel (or any instrument you name). |
+
+**Anything that measures sound must put a performance in first.** The studio
+used to open on a demo pattern; the preset is empty by construction now, so a
+check that presses play on arrival is measuring silence. That single change had
+eight tests reporting a dead engine: the bounce, the instrument parameters, the
+sound bank, the vault, the export, the session band, note lyrics, and the
+factory kit playing live. All eight pass once something is played.
 
 ## Two harness traps these tests hit
 

@@ -15,7 +15,7 @@
  * asked for".
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, UTILITY_TITLE, READ_SESSION } = require('./lib.cjs');
 
 let failures = 0;
 function check(label, ok, detail) {
@@ -48,8 +48,10 @@ async function command(page, text) {
 
   console.log('=== THE COMMAND BAR ===\n');
 
-  const open = page.locator('#btn-voice-command').first();
-  check('there is a way to open it', (await open.count()) === 1, 'COMMAND in the utility bar');
+  // The rail entry is 'SAY IT' now and carries no id; addressed by the title
+  // that says what it opens, which is what survives a relabelling.
+  const open = page.locator(`button[title="${UTILITY_TITLE.SAY_IT}"]`).first();
+  check('there is a way to open it', (await open.count()) === 1, 'SAY IT in the utility bar');
   await open.scrollIntoViewIfNeeded();
   await open.click();
   await page.waitForTimeout(800);
@@ -77,6 +79,17 @@ async function command(page, text) {
 
   // ---- a pattern edit ----
   console.log('\n-- a command that edits a pattern --');
+  // The session opens empty now, and nudging an empty grid moves nothing --
+  // this asserted movement in a pattern that had none to make. A uniform grid
+  // is no better: shifting every-step-on looks identical to itself. So a few
+  // steps are put on the kick first, through the session rather than through
+  // the bar, and the nudge has something with a shape to move.
+  await page.evaluate(`(() => {
+    const s = ${READ_SESSION};
+    const kick = s.tracks.find(t => t.instrument === 'kick') || s.tracks[0];
+    [0, 5, 11].forEach((i) => s.handleToggleStep(kick.id, i));
+  })()`);
+  await page.waitForTimeout(800);
   const beforeNudge = await state(page);
   const nudgeMsg = await command(page, 'nudge right');
   const afterNudge = await state(page);
@@ -98,26 +111,42 @@ async function command(page, text) {
     `${invertBefore.activeSteps} → ${invertAfter.activeSteps} active steps · "${invertMsg}"`
   );
 
-  // ---- a command with nothing behind it must say so ----
-  console.log('\n-- a command with nothing behind it --');
+  // ---- a command the parser cannot execute ----
+  //
+  // This used to require the bar to answer "I cannot do it yet". Clause III.5
+  // changed that deliberately: language stops dying at the parser, and
+  // anything that is not a direct command is carried to the co-producer rather
+  // than refused. The requirement that survives is the one that matters -- it
+  // must never report having done something it did not do.
+  console.log('\n-- a command the parser cannot execute --');
+  const DONE = /\b(Nudged|Inverted|Cloned|Tempo \d|Set |Quantized|Cleared|Randomi[sz]ed)\b/;
+  const swapBefore = await state(page);
   const swapMsg = await command(page, 'give me a fatter kick');
+  const swapAfter = await state(page);
   check(
-    'it admits it cannot do that yet',
-    /cannot do it yet/.test(swapMsg),
-    `"${swapMsg}"`
+    'a request it cannot execute is not reported as done',
+    !DONE.test(swapMsg) && JSON.stringify(swapBefore) === JSON.stringify(swapAfter),
+    `"${swapMsg.slice(0, 90)}"`
   );
-  const gibberish = await command(page, 'xylophone quantum tuesday');
   check(
-    'and an unrecognised command is not reported as done',
-    /no command matches/.test(gibberish),
-    `"${gibberish}"`
+    'and it is carried to the co-producer rather than dropped',
+    swapMsg.trim().length > 0,
+    `${swapMsg.trim().length} characters back`
+  );
+  const gibBefore = await state(page);
+  const gibberish = await command(page, 'xylophone quantum tuesday');
+  const gibAfter = await state(page);
+  check(
+    'an unrecognised command changes nothing and claims nothing',
+    !DONE.test(gibberish) && JSON.stringify(gibBefore) === JSON.stringify(gibAfter),
+    `"${gibberish.slice(0, 90)}"`
   );
 
   // ---- the pipeline ----
   console.log('\n=== THE PIPELINE GATE ===\n');
-  await page.locator('#btn-voice-command').first().click();
+  await page.locator(`button[title="${UTILITY_TITLE.SAY_IT}"]`).first().click();
   await page.waitForTimeout(400);
-  const pipe = page.locator('#btn-soulflow').first();
+  const pipe = page.locator(`button[title="${UTILITY_TITLE.PIPELINE}"]`).first();
   check('there is a way to open it', (await pipe.count()) === 1, 'PIPELINE in the utility bar');
   await pipe.scrollIntoViewIfNeeded();
   await pipe.click();

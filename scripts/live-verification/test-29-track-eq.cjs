@@ -8,7 +8,7 @@
  * move, and an untouched track must not.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom, seedPattern, seedMelody } = require('./lib.cjs');
 
 let failures = 0;
 function check(label, ok, detail) {
@@ -71,6 +71,11 @@ const db = (a, b) => 20 * Math.log10(Math.max(a, 1e-12) / Math.max(b, 1e-12));
   console.log('=== PER-TRACK EQ ===\n');
 
   // ---- baseline render, EQ flat ----
+  // An export of an empty session never produces a summary, so this waited
+  // four minutes and died. A pattern and a phrase go in first.
+  await seedPattern(page);
+  await seedMelody(page);
+
   const before = await renderPackage(page);
   check('stems rendered for the baseline', !!before && Object.keys(before).length > 0,
         before ? `${Object.keys(before).length} stems` : 'none');
@@ -83,7 +88,7 @@ const db = (a, b) => 20 * Math.log10(Math.max(a, 1e-12) / Math.max(b, 1e-12));
   console.log(`  baseline: snare >8k ${beforeSnareHigh.toFixed(5)}   kick <120 ${beforeKickLow.toFixed(5)}   melody ~1.2k ${beforeMelodyMid.toFixed(5)}   hat >6k ${beforeHatHigh.toFixed(5)}`);
 
   // ---- move the real sliders in the Mix room ----
-  await page.getByRole('button', { name: '4. MIX', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'MIX', { settle: 0 });
   await page.waitForTimeout(1500);
 
   const setSlider = async (label, value) => {
@@ -172,14 +177,14 @@ const db = (a, b) => 20 * Math.log10(Math.max(a, 1e-12) / Math.max(b, 1e-12));
     }
   `);
 
-  await page.getByRole('button', { name: '1. CREATE', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(800);
   await page.locator('#btn-play-pause').first().click({ force: true }).catch(() => {});
   await page.waitForTimeout(2500);
   const built = await page.evaluate('window.__audio.biquads');
   check('live strips build EQ nodes', built > 0, `${built} biquads created once playback started`);
 
-  await page.getByRole('button', { name: '4. MIX', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'MIX', { settle: 0 });
   await page.waitForTimeout(1200);
   await focusTrack('Snare');
   await page.evaluate('window.__audio.params = 0; window.__audio.biquads = 0;');

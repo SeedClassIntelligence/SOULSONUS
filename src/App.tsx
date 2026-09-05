@@ -257,7 +257,12 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       if (detail === 'workstation') setIsTrackWorkstationOpen((prev) => !prev);
       if (detail === 'songwriting' || detail === 'vocal') setIsSongwritingSuiteOpen((prev) => !prev);
       if (detail === 'lyric' || detail === 'vocaltolyric') setIsVocalToLyricOpen((prev) => !prev);
-      if (detail === 'voiceclone' || detail === 'voice') setIsVoiceCloneDrawerOpen((prev) => !prev);
+      // 'voice' used to open this as well as the command bar fourteen lines
+      // below, so one dispatch opened two surfaces and the cloning drawer
+      // landed on top of the command bar's own GO button -- a creator could
+      // type a command and not reach the control that runs it. The cloning
+      // studio is 'voiceclone'; 'voice' is the command bar.
+      if (detail === 'voiceclone') setIsVoiceCloneDrawerOpen((prev) => !prev);
       if (detail === 'hardware' || detail === 'midi') setIsHardwareMidiOpen((prev) => !prev);
       if (detail === 'intelligence') setIsStudioIntelligenceOpen((prev) => !prev);
       if (detail === 'nativebrain' || detail === 'brain') setIsNativeBrainOpen((prev) => !prev);
@@ -419,9 +424,16 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       const success = await detectionEngine.start();
       if (success) {
         setDetectionSettings((prev) => ({ ...prev, enabled: true, micConnected: true }));
+        // The capture row reads `isRecordingMic`, not the detection settings:
+        // its status line, its live visualizer and its own record button all
+        // hang off this flag. Arming from the transport opened the microphone
+        // and left the flag false, so notes landed while the bench said "LIVE
+        // TRANSIENT MONITOR READY" and the visualizer stayed still. The two
+        // record controls have to agree about whether recording is happening.
+        setDawState((prev) => ({ ...prev, isRecordingMic: true }));
       }
     }
-  }, [detectionSettings.enabled, setDetectionSettings, handleStopCapture]);
+  }, [detectionSettings.enabled, setDetectionSettings, setDawState, handleStopCapture]);
 
   /**
    * Runs a voice command and reports what it actually did.

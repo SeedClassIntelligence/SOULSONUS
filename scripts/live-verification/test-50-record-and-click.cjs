@@ -43,8 +43,13 @@ const STATE = `s => JSON.stringify({
 
   // ---- the empty start a creator needs ----
   console.log('-- starting from nothing --');
+  // The studio used to open on a demo pattern and this checked that BLANK
+  // CANVAS could clear it. The preset is empty by construction now -- channels
+  // and no performance -- which is the stronger version of the same point:
+  // nothing on screen is the creator's work until they play something.
   const arrival = await st();
-  check('the studio arrives with demo material', arrival.notes > 0, `${arrival.notes} notes on arrival`);
+  check('the studio arrives with nothing performed on it', arrival.notes === 0,
+    `${arrival.notes} notes on arrival`);
   await page.locator('#btn-blank-canvas').first().click();
   await page.waitForTimeout(1500);
   const blank = await st();
@@ -58,10 +63,20 @@ const STATE = `s => JSON.stringify({
   console.log('\n-- the record button --');
   check('it offers to record when the mic is off', (await recLabel()).includes('REC'), await recLabel());
 
-  await page.locator('[data-testid="capture-mouth"]').first().click();
+  // The capture row is modality tabs and one record control now: choosing a
+  // modality no longer opens the microphone, pressing record does. That is the
+  // fix this test was written about -- the two controls used to be the same
+  // one, so picking BEATBOX and then pressing record armed the mic and
+  // switched it straight back off. Both halves are checked separately.
+  await page.locator('[data-testid="capture-beatbox"]').first().click();
+  await page.waitForTimeout(600);
+  const picked = await st();
+  check('choosing a modality does not open the microphone by itself',
+    picked.micOn === false, `micOn=${picked.micOn}`);
+  await page.locator('#btn-mic-arm').first().click();
   await page.waitForTimeout(1200);
   const armed = await st();
-  check('BEATBOX opens the microphone', armed.micOn === true, `micOn=${armed.micOn}`);
+  check('pressing record opens the microphone', armed.micOn === true, `micOn=${armed.micOn}`);
   check(
     'and the record button now offers to stop, not to start',
     (await recLabel()).includes('STOP'),
@@ -92,26 +107,38 @@ const STATE = `s => JSON.stringify({
   // recording. Both halves of that are checked: what it says when the mic is
   // live, and what it says when the mic refuses.
   console.log('\n-- what the capture row says --');
-  const statusText = async () => (await page.locator('#capture-status').first().innerText()).replace(/\s+/g, ' ').trim();
+  // The capture row says it in different words now, on the live transient
+  // monitor rather than a separate status line: 'LIVE TRANSIENT MONITOR READY'
+  // with the mic closed, 'MIC RECORDING' with it open. The claim being checked
+  // is unchanged -- the studio has to say whether the microphone is actually
+  // open, because forty seconds of performing into a mic that never opened is
+  // what this test exists about.
+  const statusText = async () =>
+    (await page.locator('[data-testid="capture-status"]').first().innerText()).replace(/\s+/g, ' ').trim();
   check(
-    'with the mic closed it says nothing is recorded yet',
-    /Nothing is recorded until it does/.test(await statusText()),
+    'with the mic closed it does not claim to be recording',
+    /MONITOR READY|LOOP PLAYBACK/.test(await statusText()) && !/MIC RECORDING/.test(await statusText()),
     await statusText()
   );
 
-  await page.locator('[data-testid="capture-mouth"]').first().click();
-  await page.waitForTimeout(1200);
-  check('with the mic open it says it is listening', /LISTENING/.test(await statusText()), await statusText());
+  await page.locator('[data-testid="capture-beatbox"]').first().click();
+  await page.waitForTimeout(800);
+  await page.locator('#btn-mic-arm').first().click();
+  await page.waitForTimeout(2500);
+  check('with the mic open it says so', /MIC RECORDING/.test(await statusText()), await statusText());
 
-  const readings = [];
+  // The separate level readout became the live waveform beside this text, so
+  // "the meter moves" is now "the visualizer is drawing what it hears": three
+  // snapshots of the canvas during a performance must not be identical.
+  const frames = [];
   for (let i = 0; i < 6; i++) {
     await page.waitForTimeout(500);
-    readings.push(await statusText());
+    frames.push(await page.locator('canvas').first().evaluate((c) => c.toDataURL().slice(-120)));
   }
   check(
-    'and the level meter moves while a performance is happening',
-    new Set(readings).size >= 3,
-    `${new Set(readings).size} distinct readings in 3s — ${readings[1]}`
+    'and the live visualizer is drawing while a performance is happening',
+    new Set(frames).size >= 3,
+    `${new Set(frames).size} distinct frames in 3s`
   );
   await page.locator('#btn-mic-arm').first().click();
   await page.waitForTimeout(2000);

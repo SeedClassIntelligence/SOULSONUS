@@ -7,7 +7,7 @@
  * whether the result survives a room switch and a reload.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom } = require('./lib.cjs');
 
 let failures = 0;
 const errors = [];
@@ -33,7 +33,7 @@ const sections = async (page) => JSON.parse(await session(page, SECTIONS));
   // is behind either of its two controls -- the SECTIONS bench or the EDIT
   // SECTIONS button in the scope row -- and both are exercised here, because
   // both of them were left wired to nothing when the panel was removed.
-  await page.getByRole('button', { name: '1. CREATE', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(1400);
 
   const editorHidden = await page.locator('[data-testid="section-editor"]').count();
@@ -97,9 +97,9 @@ const sections = async (page) => JSON.parse(await session(page, SECTIONS));
 
   // ---- survives a room switch ----
   // The rooms were renumbered when Create and Build were fused.
-  await page.getByRole('button', { name: '3. MIX', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'MIX', { settle: 0 });
   await page.waitForTimeout(1200);
-  await page.getByRole('button', { name: '1. CREATE', exact: false }).first().click({ force: true });
+  await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(1500);
   const afterSwitch = await sections(page);
   check('sections survive a room switch',

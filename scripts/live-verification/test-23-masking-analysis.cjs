@@ -5,7 +5,7 @@
  * project and on an empty canvas. That is the first thing tested here.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom } = require('./lib.cjs');
 
 const STUDIO = `window.__studio = () => {
   const root = document.getElementById('root');
@@ -65,7 +65,7 @@ const show = (label, r) => {
   console.log(`  no fabricated confidence score      : ${noFakeConfidence ? 'PASS' : 'FAIL'}`);
 
   // 4. The panel itself renders the measurement.
-  await page.getByRole('button', { name: '4. MIX' }).first().click({ force: true });
+  await goToRoom(page, 'MIX', { settle: 0 });
   await page.waitForTimeout(1500);
   const advisor = page.getByRole('button', { name: 'AI ADVISOR' }).first();
   if (await advisor.count()) { await advisor.click({ force: true }); await page.waitForTimeout(600); }
