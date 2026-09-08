@@ -12,6 +12,7 @@ import { QuickInspectorDrawer } from './components/inspectors/QuickInspectorDraw
 import { TrackWorkstationDrawer } from './components/inspectors/TrackWorkstationDrawer';
 import { SongwritingSuiteDrawer } from './components/inspectors/SongwritingSuiteDrawer';
 import { VocalToLyricWorkstation } from './components/VocalToLyricWorkstation';
+import { PerformanceTakePads } from './components/PerformanceTakePads';
 import { InstrumentRoom } from './components/InstrumentRoom';
 import { VoiceCloneDrawer } from './components/inspectors/VoiceCloneDrawer';
 import { ExternalHardwareMidiDrawer } from './components/inspectors/ExternalHardwareMidiDrawer';
@@ -157,6 +158,8 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const [isSongwritingSuiteOpen, setIsSongwritingSuiteOpen] = useState(false);
   const [isVocalToLyricOpen, setIsVocalToLyricOpen] = useState(false);
+  /** The take slots, which used to live permanently on the create surface. */
+  const [isTakePadsOpen, setIsTakePadsOpen] = useState(false);
   /** The instrument's full Train / Play / Packs room, opened from the strip. */
   const [isHardwareMidiOpen, setIsHardwareMidiOpen] = useState(false);
   const [isNativeBrainOpen, setIsNativeBrainOpen] = useState(false);
@@ -257,6 +260,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       if (detail === 'workstation') setIsTrackWorkstationOpen((prev) => !prev);
       if (detail === 'songwriting' || detail === 'vocal') setIsSongwritingSuiteOpen((prev) => !prev);
       if (detail === 'lyric' || detail === 'vocaltolyric') setIsVocalToLyricOpen((prev) => !prev);
+      if (detail === 'takes' || detail === 'pads') setIsTakePadsOpen((prev) => !prev);
       // 'voice' used to open this as well as the command bar fourteen lines
       // below, so one dispatch opened two surfaces and the cloning drawer
       // landed on top of the command bar's own GO button -- a creator could
@@ -666,6 +670,11 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       <VocalToLyricWorkstation
         isOpen={isVocalToLyricOpen}
         onClose={() => setIsVocalToLyricOpen(false)}
+      />
+
+      <PerformanceTakePads
+        isOpen={isTakePadsOpen}
+        onClose={() => setIsTakePadsOpen(false)}
       />
 
       <SongwritingSuiteDrawer

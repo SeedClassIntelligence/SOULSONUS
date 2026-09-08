@@ -43,8 +43,8 @@ const benchOf = (page) =>
   console.log('-- what is still there --');
   const rail = await railLabels(page);
   const expected = ['🎹 PIANO', 'INSTRUMENT', 'SIGNATURE', 'SOURCING', 'COLLAB', 'NATIVE BRAIN',
-    'WORKSTATION', 'SONGWRITING', 'VOCAL TO LYRIC', 'MIDI HARDWARE', 'INSPECTOR', 'CALIBRATION',
-    'RADIAL RADAR', 'IMPORT AUDIO', 'PIPELINE'];
+    'WORKSTATION', 'TAKES', 'SONGWRITING', 'VOCAL TO LYRIC', 'MIDI HARDWARE', 'INSPECTOR',
+    'CALIBRATION', 'RADIAL RADAR', 'IMPORT AUDIO', 'PIPELINE'];
   const missing = expected.filter((e) => !rail.some((r) => r.includes(e)));
   check('every specialist utility is still on the rail', missing.length === 0,
     missing.join(', ') || `${rail.length} entries, none missing`);

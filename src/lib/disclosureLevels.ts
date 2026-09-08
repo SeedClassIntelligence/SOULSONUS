@@ -101,6 +101,10 @@ export const SURFACE_LEVELS = {
   trackWorkstation: 4,
   songwritingSuite: 4,
   importAudio: 4,
+  // The take slots. Level 2 by nature -- they follow the performing -- and
+  // level 4 by the creator's own reading: on the create surface they read as
+  // sampling and pulled attention off the waveform. Filed, one reach away.
+  takePads: 4,
 } as const satisfies Record<string, DisclosureLevel>;
 
 export type SurfaceName = keyof typeof SURFACE_LEVELS;

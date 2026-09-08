@@ -745,6 +745,64 @@ rail. Rather than relabel it to match where it happened to sit, the Write &
 Record room now offers it too. It is still on the rail: a second door, not a
 move.
 
+## The take pads, pulled out of the create surface - 2026-09-08
+
+The creator's own reading, which under Amendment B.v is the one that settles it:
+
+> "I wanna beatbox, create, and it go to the wave, in the DAW. The pads and
+> everything, that's what's throwing me off. That reminds me of sampling... It
+> doesn't remind me of, or give me the feel of, creation -- the freedom to do it
+> without having to go through that process. I'm paying attention to what it's
+> doing as well as what the DAW or the waveform below it is doing."
+
+That is a layout complaint, and a precise one: the pad grid sat between the
+interpretation the studio had just made and the waveform the creator was
+watching, so a pass split their attention three ways. It is not a capability
+complaint, so nothing was removed. Amendment D: organizing is not replacing.
+
+`components/PerformanceTakePads.tsx` is the grid, moved whole into a pulled-out
+tool on the utilities rail (**TAKES**, level 4 -- filed, not hidden). Every
+behaviour moved with it: selecting which slot the next pass lands on, the event
+count per slot, stopping the take from the slot that is recording, and adding
+another. Per CLAUDE.md §4 the handler sets were diffed: three `onClick`s left
+`LiveExpressionEngine` and the same three arrived in the new component, plus one
+for its close button. Nothing else on the create surface moved.
+
+**Recording never needed the pads open, and now says so.** The capture row arms
+and stops, the seed track is made by the performance, the channels below hold
+the takes and can be selected there, and the drawer's own empty state says a
+slot is made for you the moment you record.
+
+One defect fixed on the way. The slot writer set `events: []` -- not a field on
+`Track` -- so every pad it created reported "0 events" however much was
+performed onto it. That bug was fixed on the reading side earlier in this
+project; this was where it was written. It writes `noteEvents`, and the slot is
+a properly shaped `Track` rather than an `any` cast that hid four wrong fields.
+
+One behaviour deliberately changed rather than carried: the slot used to be
+typed by whichever modality tab was showing when ADD PAD was pressed, and that
+tab is state on the surface this no longer sits inside. Arming the microphone
+makes the seed track for whatever is actually performed, so the slot is made
+plain and the performance names it.
+
+Verified in the running app: `test-58` (all sixteen rail entries present, levels
+enforced), `test-50` (sitting down and recording, end to end) and `test-46` (the
+seed track keeps the performance) all pass.
+
+### Held for the owner: a Sampling room
+
+The creator's other sentence -- "I'm also considering creating a sampling room,
+because that's what that reminds me of" -- is a proposal, not an instruction, so
+it is proposed and held here rather than built.
+
+It is a coherent room, and the pieces already exist and are currently scattered:
+the take slots (now the TAKES tool), the Signature studio's My Sounds, the sound
+vault and sourcing, the root-seed store in IndexedDB, and Extract Stems. What
+they have in common is *keeping and shaping sound as material*, which is a
+different act from performing a song. If the owner wants it, the honest version
+is a room that gathers what exists rather than a new subsystem: one place to
+record a sound, keep it, name it, hear it, and reach for it later.
+
 ## Getting the engines connected, and getting a take recorded - 2026-09-05
 
 Two open-source services sit behind this platform and neither is bundled:

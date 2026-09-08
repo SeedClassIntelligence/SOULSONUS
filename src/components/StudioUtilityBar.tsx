@@ -8,6 +8,7 @@ import {
   Disc,
   Drum,
   Eye,
+  Grid3x3,
   Layers,
   Mic,
   Music2,
@@ -134,6 +135,14 @@ export const StudioUtilityBar: React.FC = () => {
           title: 'Open Songwriting Suite',
           onClick: () => openDrawer('songwriting'),
           tone: 'pink',
+        },
+        {
+          label: 'TAKES',
+          surface: 'takePads',
+          icon: Grid3x3,
+          title: 'Performance take slots — pick which one the next pass lands on',
+          onClick: () => openDrawer('takes'),
+          tone: 'cyan',
         },
         {
           label: 'VOCAL TO LYRIC',

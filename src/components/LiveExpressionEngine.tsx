@@ -243,40 +243,6 @@ export const LiveExpressionEngine: React.FC = () => {
     }
   };
 
-  const handleAddNewPadSlot = () => {
-    if (dawState.isRecordingMic) {
-      handleStopCapture();
-      return;
-    }
-    const newPadId = `track_pad_${Date.now()}`;
-    const padNumber = takes.length + 1;
-    let inst = 'oral_beatbox';
-    let modality: 'MOUTH' | 'BODY' | 'KEYS' = 'MOUTH';
-    if (activeModalityTab === 'CLAP_TAP') { inst = 'body_percussion'; modality = 'BODY'; }
-    if (activeModalityTab === 'HUM_VOICE') { inst = 'vocal_hum'; modality = 'MOUTH'; }
-    if (activeModalityTab === 'MIMIC') { inst = 'vocal_mimic'; modality = 'MOUTH'; }
-    if (activeModalityTab === 'SING') { inst = 'vocal_sing'; modality = 'MOUTH'; }
-    if (activeModalityTab === 'INSTRUMENT') { inst = 'vocal_synth'; modality = 'KEYS'; }
-
-    const newPadTrack: any = {
-      id: newPadId,
-      name: `Pad 0${padNumber}`,
-      instrument: inst,
-      color: '#06b6d4',
-      isMuted: false,
-      isSoloed: false,
-      volume: 0.8,
-      pan: 0,
-      isSourceTrack: true,
-      sourceModality: modality,
-      events: [],
-      audioClips: [],
-    };
-
-    setTracks((prev) => [...prev, newPadTrack]);
-    setSelectionContext((prev) => ({ ...prev, selectedTrackId: newPadId }));
-  };
-
   const [isDeckExpanded, setIsDeckExpanded] = useState(true);
 
   return (
@@ -619,72 +585,12 @@ export const LiveExpressionEngine: React.FC = () => {
           what to do when the creator acts on a reading. */}
       <InterpretationPanel onRealizeAs={realizeAs} />
 
-      {/* PERFORMANCE PAD GRID */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 pt-1">
-        {takes.map((takeTrack, i) => {
-          const isSelected = selectedTrackId === takeTrack.id;
-
-          return (
-            <div
-              key={takeTrack.id}
-              onClick={() => setSelectionContext((prev) => ({ ...prev, selectedTrackId: takeTrack.id }))}
-              className={`p-3 rounded-xl border flex flex-col justify-between h-24 transition cursor-pointer relative group ${
-                isSelected
-                  ? 'bg-gradient-to-b from-slate-800 to-slate-900 border-cyan-400 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-500/10'
-                  : 'bg-slate-950 border-slate-800 hover:border-slate-700'
-              }`}
-            >
-              <div className="flex items-center justify-between text-[10px] font-bold">
-                <span className="text-slate-500 uppercase tracking-wider">
-                  {takeTrack.sourceModality || 'MOUTH'}
-                </span>
-                {dawState.isRecordingMic && isSelected && (
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                )}
-              </div>
-
-              <div className="font-black text-xs text-white truncate">
-                {takeTrack.name || `Pad 0${i + 1}`}
-              </div>
-
-              <div className="flex items-center justify-between text-[9px] text-slate-400">
-                {/* `takeTrack.events` was never a field on Track, so every
-                    pad reported 0 events however much had been performed on
-                    it. The notes are on `noteEvents`. */}
-                <span>{takeTrack.noteEvents?.length || 0} events</span>
-                <span className="text-cyan-400 font-bold">READY</span>
-              </div>
-
-              {/* In-Card Stop Recording Trigger */}
-              {dawState.isRecordingMic && isSelected && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleStopCapture();
-                  }}
-                  className="absolute inset-0 bg-red-600/95 rounded-xl flex items-center justify-center space-x-1.5 text-white font-black text-xs z-20 animate-pulse cursor-pointer shadow-2xl"
-                  title="Click to stop recording"
-                >
-                  <Square className="w-4 h-4 fill-current" />
-                  <span>STOP</span>
-                </button>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Add Pad Slot Trigger */}
-        <button
-          type="button"
-          onClick={handleAddNewPadSlot}
-          className="p-3 rounded-xl border border-dashed border-slate-700 hover:border-cyan-400 bg-slate-950/50 hover:bg-cyan-500/10 flex flex-col items-center justify-center gap-1 h-24 transition cursor-pointer text-slate-400 hover:text-cyan-300"
-          title="Add another performance pad slot"
-        >
-          <Plus className="w-5 h-5 text-cyan-400" />
-          <span className="text-[10px] font-black uppercase">ADD PAD</span>
-        </button>
-      </div>
+      {/* The take slots used to sit here, between the interpretation and the
+          waveform the creator watches. They are a pulled-out tool now --
+          PERFORMANCE TAKES on the utilities rail -- because the creator read
+          this surface as sampling rather than creation: "I wanna beatbox,
+          create, and it go to the wave." Nothing was removed; every slot
+          behaviour moved with them, and recording never needed them open. */}
       </>
       )}
     </div>
