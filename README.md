@@ -37,17 +37,18 @@ npm run engines:check          # what is actually connected
 
 ## 🎛️ Studio Topology
 
-Five rooms, all sharing the same persistent multitrack state. Capture and
+Six rooms, all sharing the same persistent multitrack state. Capture and
 arrangement are one continuous screen — CREATE and the old BUILD room were fused,
 and the section editor, the pattern tools and the timeline all live in CREATE:
 
 ```
-┌──────────────┐     ┌────────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│  1. CREATE   │ ──► │ 2. WRITE&RECORD│ ──► │    3. MIX    │ ──► │  4. MASTER   │ ──► │  5. RELEASE  │
-│ Performance  │     │ 4-Layer Vocal  │     │ 32-Ch Console│     │ -14.0 LUFS   │     │ 24/48 WAV    │
-│ Capture,     │     │ Take Stacks &  │     │ Faders & DSP │     │ True Peak    │     │ Lossless FLAC│
-│ Arrangement  │     │ Comp Builder   │     │ Sub-Buses    │     │ Limiter      │     │ Manifest     │
-└──────────────┘     └────────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
+┌──────────────┐     ┌──────────────┐     ┌────────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  1. CREATE   │ ──► │  2. SOUNDS   │ ──► │ 3. WRITE&RECORD│ ──► │    4. MIX    │ ──► │  5. MASTER   │ ──► │  6. RELEASE  │
+│ Performance  │     │ Record a     │     │ 4-Layer Vocal  │     │ 32-Ch Console│     │ -14.0 LUFS   │     │ 24/48 WAV    │
+│ Capture,     │     │ sound, keep  │     │ Take Stacks &  │     │ Faders & DSP │     │ True Peak    │     │ Lossless FLAC│
+│ Arrangement  │     │ it, reach for│     │ Comp Builder   │     │ Sub-Buses    │     │ Limiter      │     │ Manifest     │
+│              │     │ it later     │     │                │     │              │     │              │     │              │
+└──────────────┘     └──────────────┘     └────────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
 ```
 
 ---

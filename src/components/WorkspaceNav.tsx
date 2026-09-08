@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { WorkspaceTab } from '../types/daw';
-import { Sparkles, Mic, Sliders, ShieldCheck, Activity } from 'lucide-react';
+import { Sparkles, Mic, Sliders, ShieldCheck, Activity, Disc3 } from 'lucide-react';
 
 interface WorkspaceNavProps {
   activeWorkspace: WorkspaceTab;
@@ -18,29 +18,36 @@ const getWorkspaces = (): { id: WorkspaceTab; label: string; icon: React.ReactNo
     desc: 'Capture, Beatbox, Arrangement & 64-Step Grid',
   },
   {
+    id: 'SOUNDS',
+    label: '2. SOUNDS',
+    icon: <Disc3 className="w-4 h-4 text-cyan-400" />,
+    color: 'cyan',
+    desc: 'Record a sound, keep it, name it, hear it, reach for it later',
+  },
+  {
     id: 'WRITE_RECORD',
-    label: '2. WRITE & RECORD',
+    label: '3. WRITE & RECORD',
     icon: <Mic className="w-4 h-4 text-pink-400" />,
     color: 'pink',
     desc: 'Lyrics, Cadence & Vocal Take Stack',
   },
   {
     id: 'MIX',
-    label: '3. MIX',
+    label: '4. MIX',
     icon: <Sliders className="w-4 h-4 text-emerald-400" />,
     color: 'emerald',
     desc: 'Dynamic Multi-Track Console & Bus FX',
   },
   {
     id: 'MASTER',
-    label: '4. MASTER',
+    label: '5. MASTER',
     icon: <Activity className="w-4 h-4 text-indigo-400" />,
     color: 'indigo',
     desc: '7-Stage Mastering Rack, LUFS & Reference A/B',
   },
   {
     id: 'RELEASE',
-    label: '5. RELEASE',
+    label: '6. RELEASE',
     icon: <ShieldCheck className="w-4 h-4 text-purple-400" />,
     color: 'purple',
     desc: 'Finalization Gate, SeedSignature & Export',

@@ -745,6 +745,41 @@ rail. Rather than relabel it to match where it happened to sit, the Write &
 Record room now offers it too. It is still on the rail: a second door, not a
 move.
 
+## The Sounds room - 2026-09-08
+
+Built on the owner's agreement to the version proposed rather than the version
+first imagined: "the honest version gathers all that exists into one place
+rather than building a new subsystem -- one room to record a sound, keep it,
+name it, hear it, and reach for it later."
+
+**It was already built, and it was buried.** The creator sound vault -- record a
+root seed, name it, tag it, hear it, keep it across reloads in IndexedDB, delete
+it, with the studio's own starter voices marked as the house's rather than the
+creator's -- has existed for some time as the *third tab of a drawer called
+Creator Training & My Sounds Studio*, reachable only from the utilities rail.
+That is why the pads read as sampling in the create surface: the sampling
+surface existed, somewhere else, and the create surface had a piece of it.
+
+So the room is that component with the overlay taken off. `PersonalTrainingModal`
+takes an `embedded` prop: rendered as a room it fills its container, rendered
+from the rail it is the modal it always was. **One component over one store, on
+purpose** -- two implementations over the vault is how a sound comes back in one
+place and not the other, and the room's test checks precisely that the vault is
+still reachable from the rail rather than forked.
+
+The rooms are six again: CREATE, **SOUNDS**, WRITE & RECORD, MIX, MASTER,
+RELEASE. Nothing else moved, and every utility is still reachable from every
+room including the new one (`test-25`, 9/9 in six rooms).
+
+`test-60-sounds-room.cjs` is the check: it is on the nav, going there changes
+the room, it renders in place rather than over the studio, nothing is covering
+the studio while it is open, it opens on the creator's own sounds, it offers a
+way to record one, and the same vault is still there behind the rail.
+
+What is deliberately *not* done: no new store, no second recorder, no duplicated
+card UI. If the room later needs to diverge from the training studio, the vault
+comes out into its own component then -- with a reason, rather than in advance.
+
 ## The take pads, pulled out of the create surface - 2026-09-08
 
 The creator's own reading, which under Amendment B.v is the one that settles it:

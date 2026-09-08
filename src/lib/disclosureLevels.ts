@@ -105,6 +105,9 @@ export const SURFACE_LEVELS = {
   // level 4 by the creator's own reading: on the create surface they read as
   // sampling and pulled attention off the waveform. Filed, one reach away.
   takePads: 4,
+  // The Sounds room: the creator's own recordings, kept and reachable. It is a
+  // room, so what it holds is the activity at hand while you are in it.
+  soundsRoom: 2,
 } as const satisfies Record<string, DisclosureLevel>;
 
 export type SurfaceName = keyof typeof SURFACE_LEVELS;
@@ -142,6 +145,7 @@ export const benchForRoom = (room: WorkspaceTab): BenchId | null => {
       return 'SECTIONS';
     case 'WRITE_RECORD':
       return 'PERFORM';
+    case 'SOUNDS':
     case 'MIX':
     case 'MASTER':
     case 'RELEASE':

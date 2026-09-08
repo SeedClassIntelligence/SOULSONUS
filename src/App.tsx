@@ -638,6 +638,24 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
             </div>
             <FinalizationGateAndSign />
           </div>
+        ) : activeWorkspace === 'SOUNDS' ? (
+          // The room the creator asked for: "one room to record a sound, keep
+          // it, name it, hear it, and reach for it later." It is not a new
+          // subsystem -- the creator sound vault already existed, buried as
+          // the third tab of a drawer called Creator Training. This is that
+          // same component with the overlay taken off, so a sound recorded in
+          // one place is the sound found in the other.
+          <PersonalTrainingModal
+            embedded
+            isOpen
+            initialTab="SOUND_VAULT"
+            creatorName={creatorName}
+            tracks={tracks}
+            calibratingTrackId={calibratingTrackId}
+            onCalibrateTrack={handleCalibrateTrack}
+            onSaveSignature={handleSaveCreatorSignature}
+            onClose={() => setActiveWorkspace('CREATE')}
+          />
         ) : activeWorkspace === 'WRITE_RECORD' ? (
           <WriteRecordWorkspace />
         ) : (

@@ -41,6 +41,15 @@ interface PersonalTrainingModalProps {
   calibratingTrackId?: string | null;
   onCalibrateTrack?: (trackId: string) => void;
   initialTab?: 'TRAINING_PILLARS' | 'VOICE_CLONING_LAB' | 'SOUND_VAULT';
+  /**
+   * Renders in place instead of over the studio.
+   *
+   * The Sounds room is this surface with the overlay taken off. It is one
+   * component either way on purpose: the vault holds the creator's own
+   * recordings, and two implementations over one store is how a sound comes
+   * back in one place and not the other.
+   */
+  embedded?: boolean;
 }
 
 import {
@@ -107,6 +116,7 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
   onClose,
   onSaveSignature,
   initialTab = 'TRAINING_PILLARS',
+  embedded = false,
 }) => {
   const {
     tracks,
@@ -641,9 +651,23 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
   // renders -- React reported "Expected static flag was missing" each time.
   if (!isOpen) return null;
 
+  const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) =>
+    embedded ? (
+      <div className="w-full select-none font-sans" data-testid="sounds-room">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full h-[78vh] shadow-2xl relative text-slate-100 flex flex-col justify-between overflow-hidden">
+          {children}
+        </div>
+      </div>
+    ) : (
+      <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 md:p-6 select-none font-sans">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-5xl w-full h-[90vh] shadow-2xl relative text-slate-100 flex flex-col justify-between overflow-hidden">
+          {children}
+        </div>
+      </div>
+    );
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 md:p-6 select-none font-sans">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-5xl w-full h-[90vh] shadow-2xl relative text-slate-100 flex flex-col justify-between overflow-hidden">
+    <Shell>
         
         {/* TOP SHELL HEADER */}
         <div className="p-4 md:px-6 border-b border-slate-800 bg-slate-950 flex flex-wrap items-center justify-between gap-3 shrink-0">
@@ -1378,7 +1402,6 @@ export const PersonalTrainingModal: React.FC<PersonalTrainingModalProps> = ({
             SAVE & CLOSE STUDIO
           </button>
         </div>
-      </div>
-    </div>
+    </Shell>
   );
 };

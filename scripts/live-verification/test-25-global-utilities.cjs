@@ -29,7 +29,7 @@ const triggerLocator = (page, t) =>
     : page.getByRole('button', { name: t.name, exact: false }).first();
 
 // BUILD was fused into CREATE; the room list is what the app actually has.
-const ROOMS = [['CREATE'], ['WRITE_RECORD'], ['MIX'], ['MASTER'], ['RELEASE']];
+const ROOMS = [['CREATE'], ['SOUNDS'], ['WRITE_RECORD'], ['MIX'], ['MASTER'], ['RELEASE']];
 
 const STUDIO = `window.__studio = () => {
   const root = document.getElementById('root');

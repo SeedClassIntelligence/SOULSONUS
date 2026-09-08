@@ -1009,7 +1009,7 @@ export const ENGINE_REGISTRY: EngineDescriptor[] = [
   { id: 'E16', name: 'Dataset Governance & Admission Engine', category: 'Governance', description: 'Open-source license compliance & dataset admission' },
 ];
 
-export type WorkspaceTab = 'CREATE' | 'BUILD' | 'WRITE_RECORD' | 'MIX' | 'MASTER' | 'RELEASE' | 'FINISH';
+export type WorkspaceTab = 'CREATE' | 'SOUNDS' | 'BUILD' | 'WRITE_RECORD' | 'MIX' | 'MASTER' | 'RELEASE' | 'FINISH';
 
 export interface SelectionContext {
   selectedTrackId: string | null;
