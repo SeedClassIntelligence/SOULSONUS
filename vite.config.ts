@@ -91,6 +91,21 @@ export default defineConfig(() => {
       __BUILD_ID__: JSON.stringify(buildId()),
     },
     plugins: [serveOrtRaw(), serveE05(), react(), tailwindcss()],
+    optimizeDeps: {
+      /**
+       * Kept out of the startup pre-bundle.
+       *
+       * `src/audio/soundFont.ts` imports these dynamically, the moment a
+       * sound bank is actually loaded. Left in the pre-bundle they would be
+       * read on launch anyway -- esbuild scans and rewrites every optimized
+       * dependency when the server starts -- which defeats the point of the
+       * dynamic import and, on a machine whose antivirus holds the Ogg
+       * decoder, stops the dev server before the studio can open at all.
+       *
+       * Excluding them means the browser fetches them on demand instead.
+       */
+      exclude: ['spessasynth_core', 'stb-vorbis'],
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

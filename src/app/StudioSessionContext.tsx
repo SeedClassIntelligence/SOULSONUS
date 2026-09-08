@@ -1272,7 +1272,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    */
   const handleLoadSoundBank = useCallback(async (file: File): Promise<LoadedSoundBank> => {
     const buffer = await file.arrayBuffer();
-    const loaded = soundFontEngine.load(buffer, file.name);
+    const loaded = await soundFontEngine.load(buffer, file.name);
     // A creator's own bank carries no key map, so the studio does not know
     // where its channels land on it. It renders as written, and the live
     // drum voices stay synthesised rather than guessing.
@@ -1306,7 +1306,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
         const res = await fetch(`/soundfonts/${entry.id}.sf2`);
         if (!res.ok) return { ok: false, message: `${entry.name} could not be fetched (${res.status}).` };
         const buffer = await res.arrayBuffer();
-        const loaded = soundFontEngine.load(buffer, entry.name);
+        const loaded = await soundFontEngine.load(buffer, entry.name);
         loadedFactoryEntryRef.current = entry;
         setLoadedSoundBank(loaded);
 

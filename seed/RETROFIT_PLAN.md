@@ -745,6 +745,49 @@ rail. Rather than relabel it to match where it happened to sit, the Write &
 Record room now offers it too. It is still on the rail: a second door, not a
 move.
 
+## The SoundFont engine, loaded on demand - 2026-09-08
+
+The creator's machine would not start the studio. Windows Defender holds
+`node_modules/stb-vorbis/dist/index.js` -- the Ogg decoder inside
+`spessasynth_core`, the SoundFont engine -- and refuses to let anything read it,
+so the dev server's dependency pre-bundle died on launch:
+
+> ERROR: Cannot read file "node_modules/stb-vorbis/dist/index.js": Operation did
+> not complete successfully because the file contains a virus or potentially
+> unwanted software.
+
+Almost certainly a false positive on a minified audio decoder, and the package
+is the published one -- the lockfile's sha512 was verified at install. But the
+studio does not get to overrule someone's antivirus, and **nobody should have to
+weaken their machine's defences to record a beatbox.** The owner chose the route
+that does not touch Defender.
+
+`spessasynth_core` is imported dynamically now, at the moment a sound bank is
+actually loaded, and `vite.config.ts` excludes it and `stb-vorbis` from the
+startup pre-bundle -- without that exclusion the dynamic import buys nothing,
+because esbuild scans and rewrites every optimized dependency when the server
+starts. Its type import stays, and is erased at build time.
+
+When the import fails, the engine says so and stops there:
+`SoundFontUnavailable` gains `ENGINE_UNAVAILABLE`, and the message is "The
+SoundFont engine could not be loaded, so sampled banks cannot play. The studio's
+own voices are unaffected," followed by what the loader actually said. Nothing
+is faked and nothing crashes.
+
+**Verified by reproducing the failure rather than reasoning about it.** The file
+was moved aside -- the same condition Defender creates -- and:
+
+- the dev server started clean, where before it exited on the read;
+- `test-50` passed in full: the studio opens, the microphone arms, a take lands,
+  the metronome sounds;
+- loading the factory kit failed with exactly the sentence above, and the drums
+  stayed synthesised (97 oscillator starts) rather than going silent.
+
+The file was then put back, and `test-48`, `test-43` and `test-47` all pass --
+the kit loads, plays live, renders and survives the bounce as before. So the
+change costs nothing when the engine is readable, and costs only sampled banks
+when it is not.
+
 ## The Sounds room - 2026-09-08
 
 Built on the owner's agreement to the version proposed rather than the version

@@ -64,8 +64,8 @@ const rms = (x: Float32Array) => {
 
   console.log('\n-- loading a real file --');
   const engine = new SoundFontEngine();
-  const file = SoundFontEngine.builtInSampleBank();
-  const loaded = engine.load(file, 'built-in sample bank');
+  const file = await SoundFontEngine.builtInSampleBank();
+  const loaded = await engine.load(file, 'built-in sample bank');
   check('a real sound bank file loads', engine.isLoaded, `${loaded.byteLength} bytes`);
   check(
     'the preset list comes out of the file',

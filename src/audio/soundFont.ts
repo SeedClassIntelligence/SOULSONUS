@@ -18,7 +18,49 @@
  * calling it a Steinway.
  */
 
-import { BasicSoundBank, SoundBankLoader, SpessaSynthProcessor } from 'spessasynth_core';
+/**
+ * Loaded on demand, not at startup.
+ *
+ * `spessasynth_core` and its Ogg decoder are the largest thing in this
+ * dependency tree and the only part of it a creator can work for an hour
+ * without touching: everything except playing a sampled bank runs without it.
+ * Importing it statically pulled it into the dev server's dependency
+ * pre-bundle, so it was read on launch whether a bank was ever loaded or not.
+ *
+ * It is also, on at least one creator's machine, a file their antivirus
+ * refuses to let anything read -- a false positive on a minified audio
+ * decoder, which is a shape heuristics dislike. The studio does not get to
+ * override someone's antivirus and should not need them to weaken it to
+ * record a beatbox. So this is a dynamic import: it happens the moment a
+ * sound bank is actually loaded, and when it cannot happen the studio says
+ * exactly that and keeps its own voices.
+ *
+ * The type import is erased at build time, so naming the type here costs
+ * nothing at runtime.
+ */
+import type { BasicSoundBank } from 'spessasynth_core';
+
+type SpessaCore = typeof import('spessasynth_core');
+
+let corePromise: Promise<SpessaCore> | null = null;
+
+async function core(): Promise<SpessaCore> {
+  if (!corePromise) {
+    corePromise = import('spessasynth_core').catch((err: unknown) => {
+      // Not cached: a machine that lets it through on a second attempt should
+      // get a second attempt.
+      corePromise = null;
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new SoundFontUnavailableError(
+        'ENGINE_UNAVAILABLE',
+        'The SoundFont engine could not be loaded, so sampled banks cannot play. ' +
+          'The studio\'s own voices are unaffected. ' +
+          `The loader said: ${detail}`
+      );
+    });
+  }
+  return corePromise;
+}
 
 /** A preset the loaded bank actually contains. Not a list we wrote down. */
 export interface SoundFontPreset {
@@ -41,7 +83,11 @@ export interface RenderedNote {
 }
 
 /** Why playback is not possible, as a state rather than an exception. */
-export type SoundFontUnavailable = 'NO_BANK_LOADED' | 'PRESET_NOT_IN_BANK';
+export type SoundFontUnavailable =
+  | 'NO_BANK_LOADED'
+  | 'PRESET_NOT_IN_BANK'
+  /** The engine itself could not be loaded on this machine. */
+  | 'ENGINE_UNAVAILABLE';
 
 export class SoundFontUnavailableError extends Error {
   constructor(
@@ -66,7 +112,8 @@ export class SoundFontEngine {
   private loaded: LoadedSoundBank | null = null;
 
   /** The bank the library ships for its own tests: one saw-wave preset, 890 bytes. */
-  static builtInSampleBank(): ArrayBuffer {
+  static async builtInSampleBank(): Promise<ArrayBuffer> {
+    const { BasicSoundBank } = await core();
     return BasicSoundBank.getSampleSoundBankFile();
   }
 
@@ -77,7 +124,8 @@ export class SoundFontEngine {
    * hand-written presets with names like "Concert Grand Piano" that no file
    * had ever been consulted for.
    */
-  load(buffer: ArrayBuffer, name = 'sound bank'): LoadedSoundBank {
+  async load(buffer: ArrayBuffer, name = 'sound bank'): Promise<LoadedSoundBank> {
+    const { SoundBankLoader } = await core();
     const bank = SoundBankLoader.fromArrayBuffer(buffer);
     this.bank = bank;
     this.loaded = {
@@ -177,6 +225,7 @@ export class SoundFontEngine {
       );
     }
 
+    const { SpessaSynthProcessor } = await core();
     const synth = new SpessaSynthProcessor(sampleRate, { eventsEnabled: false });
     await synth.processorInitialized;
     synth.soundBankManager.addSoundBank(this.bank, 'main');
@@ -244,6 +293,7 @@ export class SoundFontEngine {
     const right = new Float32Array(total);
     if (!opts.notes.length) return { left, right, sampleRate, notesRendered: 0 };
 
+    const { SpessaSynthProcessor } = await core();
     const synth = new SpessaSynthProcessor(sampleRate, { eventsEnabled: false });
     await synth.processorInitialized;
     synth.soundBankManager.addSoundBank(this.bank, 'main');
