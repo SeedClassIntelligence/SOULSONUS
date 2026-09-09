@@ -1719,3 +1719,93 @@ sit with the microphone. Both hold if the rooms that have no microphone render
 the same transport cluster inside their own surface — one component, placed by
 the room, rather than a second bar above the rooms. That is the proposal; it is
 not built, and it will not be until the owner says so.
+
+
+
+---
+
+## The rooms that only listen (2026-09-09)
+
+The held item from the entry above came back decided, and refined in the
+deciding. The owner's words:
+
+> "That same functionality needs to be put inside of the microphone, because
+> that's where you're operating from... if it's just about a play and record
+> button then you can just give them that option in the mix room or the master
+> release and sound rooms wherever they actually need the play button — but
+> just having record there without allowing me to set parameters like BPM,
+> tap, to be able to play it, reset and all of that stuff makes no sense."
+
+So the split is not "the transport, everywhere." It is:
+
+| | where it lives |
+|---|---|
+| RECORD, the click, tempo, **tap tempo**, master level, kit preset | the microphone, and nowhere else |
+| play / pause, stop, rewind, loop, the bar:beat counter | the microphone **and** every room without one |
+
+`components/PlaybackTransport.tsx` is that second row, and there is exactly one
+of it: the recording surface renders the same component the other rooms do, so
+there is a single implementation of play rather than two that drift. It carries
+no record button and no tempo field on purpose — **a control whose setup lives
+on another screen is worse than no control**, which is the sentence the owner
+actually wrote and the reason this is not just "put the old header bar back."
+
+`RoomPlaybackBar` wraps it with one line of orientation — *"MIX plays the
+project. Tempo, the click and recording live with the microphone, in CREATE"* —
+so a creator who reaches for the tempo in the mix room is told where it is
+rather than finding a gap. It sits inside the room, above that room's own
+surface. Not in the bar with the rooms, which is where it was told to leave.
+
+`disclosureLevels.ts` still declares `transport: 1`, and now that is true
+again in all six rooms rather than in one. The declaration was never loosened
+to match the code; the code came back to it.
+
+### Tap tempo, which did not exist
+
+Named in the instruction as a parameter the microphone should carry. It was not
+there to move — the tempo could only be typed as a number, which is not how
+anyone arrives at the tempo of a thing they are about to perform. Built, rather
+than reported as absent: taps are held in a ref so a tap does not re-render the
+surface before the next one lands, the run resets after a two-second gap so
+leaving and coming back starts a new count, and a reading outside the 40–240
+the field already accepts is treated as a mis-tap rather than a tempo.
+
+Verified by driving the taps from inside the page at a measured interval and
+comparing the result against the interval actually achieved: tapped at 119.9,
+read 120. The first attempt at that check drove the taps through Playwright and
+called 92 BPM a failure — it was a correct reading of a slower tempo, because
+click overhead had been added to every gap. The probe was wrong, not the
+arithmetic.
+
+### And the defect underneath: stop did not stop the playhead
+
+Found because the new bar made it visible in five rooms at once. Pressing stop
+left the counter somewhere other than 1:01.1, at random.
+
+`stopSequencer()` cleared the repeat event and stopped Tone's transport, but
+the playhead readout is driven from **Tone's draw queue**, which clearing the
+repeat event does not empty. Callbacks already scheduled for the next few
+sixteenths still fired after the transport had stopped, and each one wrote its
+own step back into the session — so `handleStopTransport` reset the counter to
+the top and then a straggler moved it, and the playhead came to rest wherever
+the last late callback happened to land. It drops the callback and cancels the
+draw queue now. `startSequencer` reinstates the callback immediately after
+calling it, so restarting is unaffected.
+
+This was never new. It has been true of every stop button this app has had; the
+old header's stop did the same thing, and one room's worth of it was easy to
+read as the playhead settling. Five rooms checked in one pass made it obvious.
+
+### The check that let it through
+
+`test-58` asserts Amendment A's level 1 — *"Always visible: project, transport,
+the rooms, Studio Intelligence"* — and tested it in exactly one room. The whole
+transport could leave five rooms and every check in the file still passed. It
+now asks each room in turn whether it can start and stop the song, and asks the
+other five whether a record button or a tempo field has wandered in.
+
+**Verified:** `tsc --noEmit` src errors 0; `npm run build` passes; seed audit
+104 honored / 0 partial / 2 absent / 0 violations / 25 unverified — unchanged.
+Play, stop and return-to-top exercised through the real controls in SOUNDS,
+WRITE & RECORD, MIX, MASTER and RELEASE, each confirmed against session state
+rather than against the button lighting up.

@@ -53,6 +53,35 @@ const railLabels = (page) =>
   check('level 1 is on screen: the rooms, the transport, the intelligence',
     level1.rooms && level1.intelligence && level1.transport, JSON.stringify(level1));
 
+  // "Always visible" is a claim about every room, and this file used to test it
+  // in exactly one. When the transport moved down to the microphone, mix,
+  // master, release, sounds and write lost the ability to press play at all
+  // and every check here still passed. So it is asked of each room now.
+  const noTransport = [];
+  for (const room of ['SOUNDS', 'WRITE_RECORD', 'MIX', 'MASTER', 'RELEASE', 'CREATE']) {
+    await goToRoom(page, room, { settle: 1300 });
+    const canPlay = await page.locator('button[title="Play (Space)"], button[title="Pause (Space)"]').count();
+    const canStop = await page.locator('button[title="Stop Playhead"]').count();
+    if (canPlay !== 1 || canStop !== 1) noTransport.push(`${room} (play ${canPlay}, stop ${canStop})`);
+  }
+  check('and the transport is level 1 in every room, not only where it is built',
+    noTransport.length === 0, noTransport.join(', ') || 'all six rooms can start and stop the song');
+
+  // The other half of the same ruling: the recording parameters are the
+  // recording room's. A record button in a room with no tempo, no click and no
+  // way to set them is a control whose setup lives on another screen.
+  const strays = [];
+  for (const room of ['SOUNDS', 'WRITE_RECORD', 'MIX', 'MASTER', 'RELEASE']) {
+    await goToRoom(page, room, { settle: 1200 });
+    const rec = await page.locator('[data-testid="record"]').count();
+    const bpm = await page.locator('[data-testid="bpm"]').count();
+    if (rec || bpm) strays.push(`${room} (record ${rec}, bpm ${bpm})`);
+  }
+  check('and the recording parameters stayed with the microphone',
+    strays.length === 0, strays.join(', ') || 'no record button or tempo field outside CREATE');
+
+  await goToRoom(page, 'CREATE', { settle: 1200 });
+
   // ---- §17: level 2 follows the work ----
   console.log('\n-- level 2 follows the activity --');
   // The microphone is not a bench: it is the room's own act, always on

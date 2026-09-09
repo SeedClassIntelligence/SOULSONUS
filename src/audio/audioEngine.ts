@@ -801,6 +801,17 @@ export class AudioEngine {
       Tone.getTransport().clear(this.loopEventId);
       this.loopEventId = null;
     }
+    // The playhead readout is driven from Tone's draw queue, and clearing the
+    // repeat event does not empty that queue: callbacks already scheduled for
+    // the next few sixteenths still fired after the transport stopped, and
+    // each one wrote its step back into the session. So pressing stop reset
+    // the counter to 1:01.1 and then a straggler moved it somewhere else --
+    // the playhead came to rest wherever the last late callback happened to
+    // land. Dropping the callback and cancelling the queue is what actually
+    // stops it. `startSequencer` reinstates the callback immediately after
+    // calling this, so restarting is unaffected.
+    this.stepCallback = null;
+    Tone.getDraw().cancel(0);
     Tone.getTransport().stop();
     Tone.getTransport().position = 0;
   }

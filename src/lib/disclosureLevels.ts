@@ -62,6 +62,14 @@ export const LEVEL_MEANING: Record<DisclosureLevel, string> = {
 export const SURFACE_LEVELS = {
   // Level 1 -- always visible.
   project: 1,
+  // Always visible, and it took a correction to keep it that way. The
+  // transport moved out of the header and down to the microphone, which lives
+  // on the CREATE screen -- and for one commit that meant mix, master,
+  // release, sounds and write had no way to press play, while this line went
+  // on declaring it level 1. The declaration was not loosened to match:
+  // PlaybackTransport is rendered by every room without a microphone, so what
+  // this says is true again. The tempo, the click and the record button are
+  // deliberately not part of it; those are the recording room's.
   transport: 1,
   rooms: 1,
   studioIntelligence: 1,

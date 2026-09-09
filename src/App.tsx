@@ -3,6 +3,7 @@ import { StudioSessionProvider, useStudioSession } from './app/StudioSessionCont
 import { Header } from './components/Header';
 import { WorkspaceNav } from './components/WorkspaceNav';
 import { StudioCanvas } from './components/StudioCanvas';
+import { RoomPlaybackBar } from './components/PlaybackTransport';
 import { barsToSeconds } from './utils/musicMath';
 import { buildIntentPolicy, roleKeyFor } from './lib/intentPolicy';
 import { queryStudioIntelligence, loadAiConfig } from './lib/studioIntelligenceService';
@@ -48,7 +49,7 @@ import { detectionEngine } from './audio/detectionEngine';
 import { VoiceCommandResult } from './audio/voiceCommands';
 import { VoiceCommandBar } from './components/VoiceCommandBar';
 import { SoulFlowOrchestratorBar } from './components/SoulFlowOrchestratorBar';
-import { Preset } from './types/daw';
+import { Preset, WorkspaceTab } from './types/daw';
 import { LandingPage } from './components/LandingPage';
 
 interface AppInnerProps {
@@ -58,6 +59,22 @@ interface AppInnerProps {
 // Input types that genuinely swallow an undo shortcut. A range, checkbox or
 // radio does not — undo must keep working while a fader has focus.
 const TEXT_INPUT_TYPES = new Set(['text', 'search', 'email', 'url', 'tel', 'password', 'number', 'date', 'time']);
+
+/**
+ * The rooms that carry no microphone, by the name the playback bar calls them.
+ *
+ * CREATE and BUILD are absent on purpose: they are the recording room, and the
+ * transport is already there with the record button and the parameters behind
+ * it. A room in this map gets play, stop, rewind, loop and the counter.
+ */
+const ROOMS_THAT_ONLY_LISTEN: Partial<Record<WorkspaceTab, string>> = {
+  SOUNDS: 'SOUNDS',
+  WRITE_RECORD: 'WRITE & RECORD',
+  MIX: 'MIX',
+  MASTER: 'MASTER',
+  RELEASE: 'RELEASE',
+  FINISH: 'FINISH',
+};
 
 const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const {
@@ -618,6 +635,21 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
 
         {/* Main Studio Canvas & 6-Workspace Room Switching */}
         <main className="flex-1 min-w-0 py-1 space-y-3">
+        {/* Every room that is not the recording room can still hear the song.
+            The transport moved down to the microphone, which lives on the
+            CREATE screen -- so mix, master, release, sounds and write were
+            left with no way to press play, and the mastering console drew a
+            playhead nothing could move.
+
+            This is the play half of the microphone's row and nothing else:
+            no record button, no tempo field. "Just having record there
+            without allowing me to set parameters like BPM, tap, to be able to
+            play it, reset and all of that stuff makes no sense." It is inside
+            the room, above that room's own surface -- not a bar in with the
+            rooms, which is where it was told to leave. */}
+        {!focusTrackId && !isInstrumentFull && ROOMS_THAT_ONLY_LISTEN[activeWorkspace] && (
+          <RoomPlaybackBar room={ROOMS_THAT_ONLY_LISTEN[activeWorkspace]} />
+        )}
         {focusTrackId ? (
           <FocusModeView />
         ) : isInstrumentFull ? (
