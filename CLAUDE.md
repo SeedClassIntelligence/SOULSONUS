@@ -52,6 +52,23 @@ Commits carry the repository owner's authorship and nothing else. No
 co-author trailers, no session links, no tool or vendor names in commit
 messages, code comments, or any pushed artifact. This code is not yours.
 
+## 3.5 The parts do the work
+
+`docs/PARTS.md` is the inventory: every open-source part this platform runs on,
+whether it is wired to a real code path, what is missing to make it work, and
+what has been hand-built where a part already had it.
+
+**Read it before writing any new function.** If a part already does the thing,
+wire it. If a part half does it, extend it. New code is the last resort. When
+nothing covers it, say so — naming what you checked — before writing a line.
+
+Two dependencies are installed and imported nowhere (`@xenova/transformers`,
+`@google/genai`). Anything added to `package.json` and left unwired is the same
+defect as re-implementing something already installed.
+
+Keep the file current. It exists so nobody re-derives it from the source, which
+is slow and is paid for by the owner.
+
 ## 4. Verification before any completion claim
 
 Per `CAS platform-audit-protocol.md`: "I wrote the code that should produce
