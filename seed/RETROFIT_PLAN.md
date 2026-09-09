@@ -745,6 +745,44 @@ rail. Rather than relabel it to match where it happened to sit, the Write &
 Record room now offers it too. It is still on the rail: a second door, not a
 move.
 
+## The recording surface, laid out as the owner drew it - 2026-09-09
+
+The owner sent the layout he wants and named what it has to say: a header
+reading STUDIO RECORDING with the microphone preset in the top right, and three
+columns -- **CURRENT DESTINATION** (armed track, playhead, recording path),
+the microphone itself with the record button under it, and **MICROPHONE /
+INPUT** (preset, monitoring, what the intelligence is doing). Then the ten
+words, then one line saying everything records to the armed track and the DAW
+timeline.
+
+Built to that. Two things in it had to become true rather than decorative:
+
+**The microphone presets are real settings.** `lib/micPresets` holds seven --
+Studio Vocal, Warm Vocal, Bright Vocal, Rap Presence, Intimate, Raw / Dry,
+Podcast / Spoken -- and each is a set of values, not an adjective: a low cut, a
+low shelf, a parametric mid, air, a compressor ratio and threshold, and the
+input gain the capture engine runs at. Choosing one writes that EQ and
+compression onto the **armed channel**, which the mixer and the bounce both
+honour -- `test-29` already proves an EQ move reaches live playback and the
+exported file. The card prints the numbers under the three words, so "warm" can
+be checked rather than believed, and Raw / Dry is the preset that applies
+nothing, said as such.
+
+**The microphone describes itself from the microphone.** `inputInfo()` reports
+the device label, the sample rate and whether automatic gain is on, read from
+the live stream and the audio context. Before the stream is open it says
+"Microphone opens when you press record" rather than printing "Input 1 · 48 kHz
+· Auto Gain" about a device nobody has asked. Auto gain is off by design here,
+and now says so: it rides over the transients a performance is made of.
+
+The recording path states what will actually happen with the chosen way: direct
+to the DAW timeline for Record Audio, played in for MIDI, and split onto
+instrument channels with the take kept whole for the interpreted ways. That last
+line is the honest one -- the interpreted ways do not yet land on the armed
+channel, and the surface says where they do land instead of implying otherwise.
+
+`test-50`, `test-52`, `test-58` and `test-46` pass against the new layout.
+
 ## The microphone is not a bench - 2026-09-09
 
 Shipped wrong and corrected the same day, on the owner's report: "I don't see

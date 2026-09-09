@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Mic, Circle, Square, Undo2, Plus, ChevronRight } from 'lucide-react';
+import { Mic, Circle, Square, Undo2, Plus, ChevronRight, ChevronDown } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { detectionEngine } from '../audio/detectionEngine';
+import { MIC_PRESETS, describePreset, presetById } from '../lib/micPresets';
 import { InterpretationPanel } from './InterpretationPanel';
 import { CreativeIntentPanel } from './CreativeIntentPanel';
 
@@ -112,6 +113,8 @@ export const StudioRecordingSurface: React.FC = () => {
     setIsAudioImportModalOpen,
     setMimicryTargetId,
     handleUndo,
+    handleUpdateTrack,
+    setDetectionSettings,
     canUndo,
     lastInterpretation,
     expressionState,
@@ -123,6 +126,19 @@ export const StudioRecordingSurface: React.FC = () => {
   const [audioTakeTrackId, setAudioTakeTrackId] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [presetId, setPresetId] = useState('warm_vocal');
+  const [presetOpen, setPresetOpen] = useState(false);
+  const [input, setInput] = useState<{ device: string | null; sampleRate: number | null; autoGain: boolean | null }>(
+    { device: null, sampleRate: null, autoGain: null }
+  );
+  const preset = presetById(presetId);
+
+  // What the microphone actually is, asked of the microphone. Polled rather
+  // than assumed, because it only becomes true once the stream is open.
+  useEffect(() => {
+    const id = window.setInterval(() => setInput(detectionEngine.inputInfo()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   /**
    * The input level, drawn from the microphone rather than from a formula.
@@ -271,6 +287,23 @@ export const StudioRecordingSurface: React.FC = () => {
     );
   };
 
+  /**
+   * Applies a preset for real: the input gain the capture engine runs at, and
+   * the armed channel's own EQ and compression, which the mixer and the bounce
+   * both honour. A preset that changed nothing but a label would be the thing
+   * this studio keeps having to take back out.
+   */
+  const applyPreset = (id: string) => {
+    const p = presetById(id);
+    setPresetId(id);
+    setPresetOpen(false);
+    setDetectionSettings((prev) => ({ ...prev, gain: p.gain }));
+    if (armed) handleUpdateTrack(armed.id, { dspSettings: { ...(armed.dspSettings || {}), ...p.dsp } });
+    setNote(
+      `${p.name} applied to ${armed ? armed.name : 'the armed channel'} — ${describePreset(p)}, input gain ${p.gain}×.`
+    );
+  };
+
   const choose = (id: ExpressionModality) => {
     setNote(null);
     if (id === 'SPEAK') {
@@ -284,71 +317,181 @@ export const StudioRecordingSurface: React.FC = () => {
     setModality(id);
   };
 
+  const destination =
+    modality === 'AUDIO'
+      ? 'Direct to DAW timeline'
+      : modality === 'MIDI'
+        ? 'Played in — notes land on the armed channel'
+        : 'Split onto instrument channels · the take is kept whole';
+
   return (
-    <div className="w-full bg-slate-900/90 border border-slate-800 rounded-2xl px-4 py-6 shadow-2xl mb-3 font-mono select-none flex flex-col items-center gap-4">
-      {/* Whether the microphone is actually open. Not a decoration: a mic that
-          says it is live and is not is the failure this studio was built out
-          of. */}
-      <div
-        data-testid="capture-status"
-        className={`flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase ${
-          recording ? 'text-rose-400' : 'text-slate-500'
-        }`}
-      >
-        <Circle className={`w-2 h-2 ${recording ? 'fill-current animate-pulse' : 'fill-current opacity-40'}`} />
-        <span>{recording ? 'LIVE' : detectionSettings.micConnected ? 'MIC READY' : 'INPUT READY'}</span>
-      </div>
-
-      <canvas
-        ref={canvasRef}
-        width={520}
-        height={44}
-        data-testid="input-level"
-        className="w-full max-w-lg h-9 opacity-90"
-        title="The microphone's own input level. An empty strip means the microphone is not open."
-      />
-
-      <div
-        className={`w-28 h-28 rounded-full border flex items-center justify-center transition ${
-          recording
-            ? 'border-rose-500/60 bg-rose-500/10 shadow-lg shadow-rose-500/20'
-            : 'border-slate-700 bg-slate-950'
-        }`}
-      >
-        <Mic className={`w-10 h-10 ${recording ? 'text-rose-300' : 'text-slate-300'}`} />
-      </div>
-
-      {/* The song underneath: which channel is armed, and where the playhead is
-          standing. Recording happens there, not on a pad and not on a second
-          timeline. */}
-      <div className="text-center">
-        <div className="text-sm font-black tracking-wide text-slate-100 uppercase" data-testid="armed-track">
-          {armed ? armed.name : 'no channel armed'}
+    <div className="w-full bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl mb-3 font-mono select-none">
+      {/* Header: what this is, whether it is live, and the microphone's preset. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-800">
+        <div className="flex items-center gap-2">
+          <Mic className="w-4 h-4 text-slate-300" />
+          <span className="text-xs font-black tracking-wide text-slate-100">STUDIO RECORDING</span>
+          <span
+            data-testid="capture-status"
+            className={`flex items-center gap-1 text-[9px] font-black tracking-widest uppercase ${
+              recording ? 'text-rose-400' : 'text-cyan-400'
+            }`}
+          >
+            <Circle className={`w-2 h-2 fill-current ${recording ? 'animate-pulse' : ''}`} />
+            {recording ? 'LIVE' : 'READY'}
+          </span>
         </div>
-        <div className="text-[10px] text-slate-400 mt-0.5">Studio Microphone</div>
-        <div className="text-[10px] font-mono text-slate-500 mt-1" data-testid="record-destination">
-          Bar {bar} · Beat {beat} · {dawState.bpm} BPM · records onto this channel
+
+        <div className="relative">
+          <button
+            type="button"
+            data-testid="mic-preset"
+            onClick={() => setPresetOpen((v) => !v)}
+            className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/40 text-amber-300 text-[10px] font-black tracking-wide flex items-center gap-1.5 hover:bg-amber-500/20 transition cursor-pointer"
+            title={describePreset(preset)}
+          >
+            MIC PRESET: {preset.name.toUpperCase()}
+            <ChevronDown className="w-3 h-3" />
+          </button>
+          {presetOpen && (
+            <div
+              data-testid="mic-preset-menu"
+              className="absolute right-0 top-full mt-1 w-72 z-40 rounded-xl border border-slate-800 bg-slate-950 shadow-2xl overflow-hidden"
+            >
+              {MIC_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  data-testid={`mic-preset-${p.id}`}
+                  onClick={() => applyPreset(p.id)}
+                  className={`w-full text-left px-3 py-2 border-b border-slate-900 last:border-0 transition cursor-pointer ${
+                    p.id === presetId ? 'bg-amber-500/10' : 'hover:bg-slate-900'
+                  }`}
+                >
+                  <div className="text-[11px] font-bold text-slate-100">{p.name}</div>
+                  <div className="text-[9px] text-slate-500">{describePreset(p)}</div>
+                </button>
+              ))}
+              <p className="px-3 py-2 text-[9px] leading-snug text-slate-500 border-t border-slate-800">
+                Each preset writes real EQ and compression onto the armed channel and sets the
+                input gain. The values are above, not a mood.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
-      <button
-        type="button"
-        data-testid="record"
-        onClick={() => void (recording ? stop() : start())}
-        disabled={!MIC_MODALITIES.includes(modality) && modality !== 'MIDI'}
-        className={`px-10 py-3 rounded-2xl font-black text-sm tracking-wide transition active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-          recording
-            ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30'
-            : 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20'
-        }`}
-      >
-        {recording ? <Square className="w-4 h-4 fill-current" /> : <Circle className="w-3.5 h-3.5 fill-current" />}
-        <span>{recording ? 'STOP' : 'RECORD'}</span>
-      </button>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 px-4 py-5">
+        {/* Where it is going. */}
+        <div className="space-y-2">
+          <div className="text-[9px] font-bold tracking-widest text-slate-500 uppercase">Current destination</div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5">
+            <div className="text-[9px] text-slate-500 uppercase tracking-wider">Armed track</div>
+            <div className="text-xs font-bold text-slate-100 mt-0.5" data-testid="armed-track">
+              {armed ? armed.name : 'No channel armed'}
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5">
+            <div className="text-[9px] text-slate-500 uppercase tracking-wider">Playhead</div>
+            <div className="text-xs font-bold text-slate-100 mt-0.5">Bar {bar} · Beat {beat}</div>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5">
+            <div className="text-[9px] text-slate-500 uppercase tracking-wider">Recording path</div>
+            <div className="text-xs font-bold text-cyan-300 mt-0.5" data-testid="record-destination">
+              {destination}
+            </div>
+          </div>
+        </div>
 
-      {/* The ten words. They are the product statement, so they are plain,
-          equal, and unexplained until one is chosen. */}
-      <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-3xl">
+        {/* The microphone. */}
+        <div className="flex flex-col items-center justify-start gap-2">
+          <div
+            className={`w-32 h-32 rounded-full border flex items-center justify-center transition ${
+              recording
+                ? 'border-rose-500/60 bg-rose-500/10 shadow-lg shadow-rose-500/20'
+                : 'border-slate-700 bg-slate-950'
+            }`}
+          >
+            <Mic className={`w-12 h-12 ${recording ? 'text-rose-300' : 'text-slate-200'}`} />
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase text-cyan-400">
+            <Circle className="w-2 h-2 fill-current" />
+            {recording ? 'RECORDING' : 'INPUT READY'}
+          </div>
+
+          <div className="text-sm font-black tracking-wide text-slate-100 uppercase text-center">
+            {armed ? armed.name : 'no channel armed'}
+          </div>
+
+          {/* Said only of a microphone that is open. */}
+          <div className="text-[10px] text-slate-400 text-center" data-testid="input-line">
+            {input.device
+              ? `${input.device} · ${input.sampleRate ? `${Math.round(input.sampleRate / 1000)} kHz` : 'rate unknown'} · auto gain ${input.autoGain ? 'on' : 'off'}`
+              : 'Microphone opens when you press record'}
+          </div>
+
+          <canvas
+            ref={canvasRef}
+            width={420}
+            height={36}
+            data-testid="input-level"
+            className="w-full max-w-xs h-8 opacity-90"
+            title="The microphone's own input level. An empty strip means it is not open."
+          />
+
+          <button
+            type="button"
+            data-testid="record"
+            onClick={() => void (recording ? stop() : start())}
+            className="px-10 py-3 rounded-2xl font-black text-sm tracking-wide transition active:scale-95 flex items-center gap-2 cursor-pointer bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30"
+          >
+            {recording ? <Square className="w-4 h-4 fill-current" /> : <Circle className="w-3.5 h-3.5 fill-current" />}
+            <span>{recording ? 'STOP' : 'RECORD'}</span>
+          </button>
+        </div>
+
+        {/* The microphone itself, described from the microphone. */}
+        <div className="space-y-2">
+          <div className="text-[9px] font-bold tracking-widest text-slate-500 uppercase">Microphone / input</div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5">
+            <div className="text-[9px] text-slate-500 uppercase tracking-wider">Preset</div>
+            <div className="text-xs font-bold text-slate-100 mt-0.5">{preset.says}</div>
+            <div className="text-[9px] font-mono text-slate-500 mt-0.5" data-testid="preset-values">
+              {describePreset(preset)}
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5">
+            <div className="text-[9px] text-slate-500 uppercase tracking-wider">Monitoring</div>
+            <div className="text-xs font-bold text-slate-100 mt-0.5">
+              {input.sampleRate ? `${Math.round(input.sampleRate / 1000)} kHz` : 'Not open yet'}
+              {detectionSettings.enabled ? ' · listening' : ''}
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5">
+            <div className="text-[9px] text-slate-500 uppercase tracking-wider">SoulSonus intelligence</div>
+            <div className="text-xs font-bold text-emerald-300 mt-0.5" data-testid="intelligence-line">
+              {modality === 'AUDIO'
+                ? 'Off — recorded as given'
+                : `Expression-aware capture · ${chosen.label}`}
+            </div>
+          </div>
+          <button
+            type="button"
+            data-testid="mic-setup"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'calibration' }))
+            }
+            className="text-[10px] font-mono text-slate-500 hover:text-slate-300 transition cursor-pointer flex items-center gap-1"
+            title="Input device, gain, monitoring, detection thresholds"
+          >
+            Mic setup <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* The ten words. */}
+      <div className="px-4 pb-2 flex flex-wrap items-center justify-center gap-2">
         {EXPRESSION_ENGINE.map((w) => {
           const active = modality === w.id;
           return (
@@ -358,7 +501,7 @@ export const StudioRecordingSurface: React.FC = () => {
               data-testid={`capture-${w.id.toLowerCase()}`}
               data-active={active}
               onClick={() => choose(w.id)}
-              className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer border ${
+              className={`px-3.5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wide transition cursor-pointer border ${
                 active
                   ? 'bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-600/30'
                   : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-100 hover:border-slate-700'
@@ -370,25 +513,28 @@ export const StudioRecordingSurface: React.FC = () => {
         })}
       </div>
 
-      <p className="text-[11px] text-slate-400 text-center max-w-xl leading-relaxed" data-testid="modality-says">
+      <p className="px-4 pb-3 text-[10px] text-slate-500 text-center leading-relaxed">
+        Choose <span className="text-slate-300 font-bold">how SoulSonus should understand your input</span>.
+        Everything records to the armed track and the DAW timeline.
+      </p>
+
+      <p className="px-4 pb-4 text-[11px] text-slate-400 text-center leading-relaxed" data-testid="modality-says">
         {chosen.says}
       </p>
 
       {captureError && (
-        <p id="capture-error" className="text-[10px] text-rose-300 text-center max-w-xl leading-relaxed">
+        <p id="capture-error" className="px-4 pb-3 text-[10px] text-rose-300 text-center leading-relaxed">
           {captureError}
         </p>
       )}
       {note && (
-        <p className="text-[10px] text-amber-300 text-center max-w-xl leading-relaxed" data-testid="record-note">
+        <p className="px-4 pb-3 text-[10px] text-amber-300 text-center leading-relaxed" data-testid="record-note">
           {note}
         </p>
       )}
 
-      {/* Everything that only means something once there is a take. It does not
-          stand open in front of a creator who has not performed yet. */}
       {passes > 0 && (
-        <div className="flex flex-wrap items-center justify-center gap-2 pt-1 border-t border-slate-800 w-full">
+        <div className="flex flex-wrap items-center justify-center gap-2 px-4 py-3 border-t border-slate-800">
           <span className="text-[10px] font-mono text-slate-500" data-testid="pass-count">
             {passes} pass{passes === 1 ? '' : 'es'} recorded
           </span>
@@ -415,22 +561,7 @@ export const StudioRecordingSurface: React.FC = () => {
         </div>
       )}
 
-      {/* The microphone's own settings live where a creator would look for
-          them, and the deep ones stay one reach further in rather than on this
-          surface: input device, gain, monitoring and thresholds are the
-          calibration drawer's job and it already does it. */}
-      <button
-        type="button"
-        data-testid="mic-setup"
-        onClick={() =>
-          window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'calibration' }))
-        }
-        className="text-[10px] font-mono text-slate-500 hover:text-slate-300 transition cursor-pointer flex items-center gap-1"
-        title="Input device, gain, monitoring, detection thresholds"
-      >
-        Mic setup <ChevronRight className="w-3 h-3" />
-      </button>
-
+      <div className="px-4 pb-4">
       {/* What the studio made of the take, when there is a take to talk about.
           Before a pass this is not collapsed -- it is absent, because there is
           nothing it could honestly say. Creative intent sits with it, and
@@ -443,6 +574,7 @@ export const StudioRecordingSurface: React.FC = () => {
           <CreativeIntentPanel />
         </div>
       )}
+      </div>
     </div>
   );
 };

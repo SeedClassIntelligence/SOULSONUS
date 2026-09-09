@@ -236,6 +236,25 @@ export class DetectionEngine {
     return Math.sqrt(sum / buf.length);
   }
 
+  /**
+   * What the microphone actually is, for a surface that claims to describe it.
+   *
+   * Every field here is read from the live stream or the audio context. A
+   * surface that printed "Input 1 · 48 kHz · Auto Gain" without asking would be
+   * describing a microphone it had never opened.
+   */
+  public inputInfo(): { device: string | null; sampleRate: number | null; autoGain: boolean | null } {
+    const track = this.mediaStream?.getAudioTracks()[0] || null;
+    const settings = track?.getSettings?.() as MediaTrackSettings | undefined;
+    return {
+      device: track?.label || null,
+      sampleRate: this.audioContext?.sampleRate ?? settings?.sampleRate ?? null,
+      // Deliberately off when this engine opens the microphone: automatic gain
+      // rides over the transients a performance is made of.
+      autoGain: track ? (settings?.autoGainControl ?? false) : null,
+    };
+  }
+
   public isActive(): boolean {
     return this.isListening;
   }
