@@ -10,7 +10,7 @@
  * This drives those controls and reads the session state they claim to change.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session, goToRoom } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom, openUtility } = require('./lib.cjs');
 
 let failures = 0;
 const errors = [];
@@ -42,8 +42,9 @@ const state = async (page) => JSON.parse(await session(page, STATE));
   // longer exists and timed out before touching a control.
   await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(1400);
-  await page.locator('[data-testid="bench-PATTERN"]').first().click();
-  await page.waitForTimeout(900);
+  // The grid tools are on the utilities rail with the other tools now, not a
+  // bench tab between the microphone and the song.
+  await openUtility(page, 'PATTERN');
 
   const before = await state(page);
   console.log(`  start: ${before.total} active steps across ${before.steps.length} tracks`);

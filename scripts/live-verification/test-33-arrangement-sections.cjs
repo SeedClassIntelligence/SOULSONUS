@@ -40,15 +40,11 @@ const sections = async (page) => JSON.parse(await session(page, SECTIONS));
   check('the section editor is not in the way until it is asked for', editorHidden === 0,
         `${editorHidden} on screen`);
 
-  await page.locator('[data-testid="bench-SECTIONS"]').first().click();
-  await page.waitForTimeout(900);
-  check('the SECTIONS bench opens it', (await page.locator('[data-testid="section-editor"]').count()) === 1);
-  await page.locator('[data-testid="bench-SECTIONS"]').first().click();
-  await page.waitForTimeout(600);
-
+  // One door now, and it is beside the section list it edits. The SECTIONS
+  // bench tab is gone with the rest of the bench row.
   await page.getByRole('button', { name: 'EDIT SECTIONS', exact: false }).first().click();
   await page.waitForTimeout(900);
-  check('and so does EDIT SECTIONS', (await page.locator('[data-testid="section-editor"]').count()) === 1);
+  check('EDIT SECTIONS opens it', (await page.locator('[data-testid="section-editor"]').count()) === 1);
 
   const start = await sections(page);
   console.log(`  start: ${start.map((s) => s.name).join(' | ')}`);

@@ -137,6 +137,14 @@ export const StudioUtilityBar: React.FC = () => {
           tone: 'pink',
         },
         {
+          label: 'PATTERN',
+          surface: 'patternControls',
+          icon: Layers,
+          title: 'Grid tools — clone, nudge, invert, randomise, clear',
+          onClick: () => openDrawer('pattern'),
+          tone: 'amber',
+        },
+        {
           label: 'TAKES',
           surface: 'takePads',
           icon: Grid3x3,

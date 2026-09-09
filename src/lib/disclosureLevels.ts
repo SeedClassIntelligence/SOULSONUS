@@ -70,7 +70,9 @@ export const SURFACE_LEVELS = {
   // Level 2 -- the activity at hand.
   recordingSurface: 2,
   performInstrument: 2,
-  patternControls: 2,
+  // Moved out of the bench row and onto the utilities rail: they are tools,
+  // and they edit the timeline rather than accompany the microphone.
+  patternControls: 4,
   sectionBuilder: 2,
   lyricCadenceStudio: 2,
   vocalToLyric: 2,
@@ -129,32 +131,32 @@ export const surfacesAt = (level: DisclosureLevel): SurfaceName[] =>
  * which is not a bench -- it is always there, above the DAW, because it is the
  * act the room exists for.
  */
+/**
+ * There are no benches any more.
+ *
+ * The three tabs that sat between the microphone and the song are gone: the
+ * instrument and the grid tools are on the utilities rail with the other
+ * tools, and the section editor opens from the section list it edits. Kept as
+ * a type so a saved project carrying an old value still resolves.
+ */
 export type BenchId = 'PERFORM' | 'PATTERN' | 'SECTIONS';
 
 /**
- * What Level 2 opens on when a creator arrives in a room.
+ * Kept, and it now suggests nothing in every room.
  *
- * Amendment A §17 gives the mapping by example -- "If you're beatboxing:
- * Expression Engine + Beatbox controls. If you're writing: Lyrics + melody +
- * structure" -- and this is that, for the rooms this build has.
- *
- * A suggestion, and only ever a suggestion. The bench selector still offers all
- * four everywhere, and a creator who picks one has picked it: `benchForRoom` is
- * consulted when they have not chosen, never to override them. A level that
- * moved a creator's own choice out from under them would be the organizing
- * layer entering the room, which Amendment D forbids.
+ * Amendment A §17 asks Level 2 to follow the work -- "if you're beatboxing:
+ * Expression Engine + Beatbox controls" -- and the rooms do that themselves
+ * now: CREATE opens on the microphone, WRITE & RECORD on writing, SOUNDS on the
+ * creator's own sounds, MIX on the console. There is no bench row left for a
+ * level to choose between, so this chooses nothing rather than pretending to.
+ * It stays because a saved project can still carry an old bench value, and
+ * because the day a room needs a default surface again, this is where it goes.
  */
 export const benchForRoom = (room: WorkspaceTab): BenchId | null => {
   switch (room) {
     case 'CREATE':
-      // Nothing. The microphone is already on screen and does not need to be
-      // opened; suggesting a bench on top of it would be the organizing layer
-      // deciding what the creator is doing.
-      return null;
     case 'BUILD':
-      return 'SECTIONS';
     case 'WRITE_RECORD':
-      return 'PERFORM';
     case 'SOUNDS':
     case 'MIX':
     case 'MASTER':

@@ -66,7 +66,11 @@ export const Header: React.FC<HeaderProps> = ({
   // `useState(true)` here that nothing else could see -- so the button looked
   // lit on arrival, and switching it changed a boolean nobody read.
   const metronomeOn = dawState.metronomeOn;
-  const [quantizeSetting, setQuantizeSetting] = useState<'1/16' | '1/8' | 'OFF'>('1/16');
+  // The Q: grid selector that used to sit here was local state that nothing
+  // read -- three options, a state setter, and no consumer anywhere in the
+  // app. It is not recreated at the microphone: what actually decides how a
+  // take is treated against the grid is the timing mode on the take itself
+  // (literal / assisted / groove), which is real and already applied per pass.
 
   // Compute Bar:Beat.Tick time counter (e.g. 1:01.00)
   const bar = Math.floor(dawState.currentStep / 16) + 1;
@@ -297,26 +301,11 @@ export const Header: React.FC<HeaderProps> = ({
             <Square className="w-3.5 h-3.5" />
           </button>
 
-          {/* The mic, and what pressing this will do to it.
-              It read "● REC" whether the microphone was live or not, and it is
-              the same control the capture row's BEATBOX button uses. So the
-              obvious order -- pick BEATBOX, then press record -- armed the mic
-              and then switched it off, and the button looked identical either
-              way. Reproduced: BEATBOX, REC, six seconds of performing, zero
-              onsets captured. The label now says what the next press does. */}
-          <button
-            id="btn-mic-arm"
-            onClick={onToggleMic}
-            className={`px-2.5 h-8 rounded-lg font-mono text-xs font-black flex items-center space-x-1.5 transition border ${
-              isMicActive
-                ? 'bg-rose-600 text-white border-rose-500 shadow-sm shadow-rose-600/40 animate-pulse'
-                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-rose-400'
-            }`}
-            title={isMicActive ? 'The microphone is live and capturing. Click to stop and keep the take.' : 'Arm the microphone and start capturing'}
-          >
-            <div className={`w-2 h-2 rounded-full ${isMicActive ? 'bg-white' : 'bg-rose-500'}`} />
-            <span>{isMicActive ? '■ STOP' : '● REC'}</span>
-          </button>
+          {/* The record button is at the microphone, where the recording
+              happens. It used to be here as well -- two record controls at two
+              ends of the screen for one microphone, which is how "pick BEATBOX,
+              then press record" ended up arming the mic and switching it off
+              again. There is one now. */}
 
           {/* Loop Mode */}
           <button
@@ -339,56 +328,9 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Center: BPM & Quantize */}
-        <div className="flex items-center space-x-3 font-mono text-xs">
-          {/* BPM Tap & Input */}
-          <div
-            className="flex items-center space-x-1.5 bg-slate-950 px-3 h-8 rounded-lg border border-slate-800"
-            title="Master Project Tempo in Beats Per Minute (40 - 240 BPM)"
-          >
-            <span className="text-slate-500 font-bold">BPM:</span>
-            <input
-              type="number"
-              min={40}
-              max={240}
-              value={dawState.bpm}
-              onChange={(e) => onStateChange({ bpm: Number(e.target.value) })}
-              className="w-12 bg-transparent text-slate-100 font-black focus:outline-none text-center"
-              title="Enter exact tempo in BPM"
-            />
-          </div>
-
-          {/* Metronome */}
-          <button
-            id="btn-metronome"
-            onClick={() => void handleToggleMetronome()}
-            className={`px-2.5 h-8 rounded-lg font-bold border transition ${
-              metronomeOn
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                : 'bg-slate-950 text-slate-500 border-slate-800'
-            }`}
-            title="Toggle Audible Metronome Click Guide (on quarter beats 1, 2, 3, 4)"
-          >
-            METRO
-          </button>
-
-          {/* Quantize Setting */}
-          <div
-            className="hidden sm:flex items-center space-x-1 bg-slate-950 px-2 h-8 rounded-lg border border-slate-800 text-[11px]"
-            title="Input Quantization Grid: Snap live beatbox & step recordings to 1/16, 1/8, or OFF"
-          >
-            <span className="text-slate-500">Q:</span>
-            <select
-              value={quantizeSetting}
-              onChange={(e) => setQuantizeSetting(e.target.value as any)}
-              className="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer"
-            >
-              <option value="1/16" className="bg-slate-900 text-slate-100">1/16</option>
-              <option value="1/8" className="bg-slate-900 text-slate-100">1/8</option>
-              <option value="OFF" className="bg-slate-900 text-slate-100">OFF</option>
-            </select>
-          </div>
-        </div>
+        {/* Tempo, the click and the input grid live with the microphone now:
+            they are the recording setup, and the recording setup belongs where
+            the record button is. This row is the song's transport. */}
 
         {/* Right: Master Output Volume & Live Detection Status */}
         <div className="flex items-center space-x-3 font-mono text-xs">

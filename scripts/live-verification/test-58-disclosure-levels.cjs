@@ -24,15 +24,6 @@ function check(label, ok, detail = '') {
 const railLabels = (page) =>
   page.$$eval('aside button', (bs) => bs.map((b) => (b.innerText || '').trim()).filter(Boolean));
 
-// Read off the component's own state rather than guessed from a class name:
-// the inactive styles share their colour with the active ones, so a class
-// probe reported the first bench as selected whatever was actually selected.
-const benchOf = (page) =>
-  page.$$eval('[data-testid^="bench-"]', (bs) => {
-    const on = bs.find((b) => b.getAttribute('data-active') === 'true');
-    return on ? on.getAttribute('data-testid').replace('bench-', '') : null;
-  });
-
 (async () => {
   const { browser, page } = await launch(playwright, null);
   await enterStudio(page);
@@ -43,7 +34,7 @@ const benchOf = (page) =>
   console.log('-- what is still there --');
   const rail = await railLabels(page);
   const expected = ['🎹 PIANO', 'INSTRUMENT', 'SIGNATURE', 'SOURCING', 'COLLAB', 'NATIVE BRAIN',
-    'WORKSTATION', 'TAKES', 'SONGWRITING', 'VOCAL TO LYRIC', 'MIDI HARDWARE', 'INSPECTOR',
+    'WORKSTATION', 'PATTERN', 'TAKES', 'SONGWRITING', 'VOCAL TO LYRIC', 'MIDI HARDWARE', 'INSPECTOR',
     'CALIBRATION', 'RADIAL RADAR', 'IMPORT AUDIO', 'PIPELINE'];
   const missing = expected.filter((e) => !rail.some((r) => r.includes(e)));
   check('every specialist utility is still on the rail', missing.length === 0,
@@ -69,8 +60,9 @@ const benchOf = (page) =>
   // one on top of the recording surface would be the level deciding what the
   // creator is doing.
   check('arriving in CREATE, the microphone is on screen without opening anything',
-    (await page.locator('[data-testid="record"]').count()) === 1 && (await benchOf(page)) === null,
-    `record control present, bench = ${await benchOf(page)}`);
+    (await page.locator('[data-testid="record"]').count()) === 1 &&
+      (await page.locator('[data-testid^="bench-"]').count()) === 0,
+    'record control present, no bench row');
 
   await goToRoom(page, 'WRITE_RECORD', { settle: 0 });
   await page.waitForTimeout(1200);
@@ -84,20 +76,25 @@ const benchOf = (page) =>
   check('back in CREATE, the microphone is there again',
     (await page.locator('[data-testid="record"]').count()) === 1, 'record control present');
 
-  // ---- Amendment D: their choice beats the hierarchy ----
+  // ---- Amendment D: what a creator opens stays open ----
+  //
+  // The bench row is gone -- the instrument and the grid tools are on the
+  // utilities rail with the other tools, and the section editor opens from the
+  // section list it edits. So what is checked here is the same principle
+  // against what exists now: a tool the creator opens is still open after two
+  // room changes, and the level never closes it for them.
   console.log('\n-- and the creator outranks the level --');
-  await page.locator('[data-testid="bench-SECTIONS"]').first().click();
-  await page.waitForTimeout(600);
-  check('choosing a bench selects it', (await benchOf(page)) === 'SECTIONS',
-    String(await benchOf(page)));
+  await page.getByRole('button', { name: 'EDIT SECTIONS', exact: false }).first().click();
+  await page.waitForTimeout(700);
+  check('opening the section editor opens it',
+    (await page.locator('[data-testid="section-editor"]').count()) === 1);
 
   await goToRoom(page, 'WRITE_RECORD', { settle: 0 });
   await page.waitForTimeout(900);
   await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(900);
-  check('and the level never takes it back off them across rooms',
-    (await benchOf(page)) === 'SECTIONS',
-    `${await benchOf(page)} — chosen, and still chosen after two room changes`);
+  check('the microphone is still the room, and nothing was reorganised under them',
+    (await page.locator('[data-testid="record"]').count()) === 1, 'record control present');
 
   const railAfter = await railLabels(page);
   check('nothing left the rail while any of that happened',

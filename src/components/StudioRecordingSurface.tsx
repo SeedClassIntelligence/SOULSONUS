@@ -113,6 +113,8 @@ export const StudioRecordingSurface: React.FC = () => {
     setIsAudioImportModalOpen,
     setMimicryTargetId,
     handleUndo,
+    handleToggleMetronome,
+    setDawState,
     handleUpdateTrack,
     setDetectionSettings,
     canUndo,
@@ -440,8 +442,45 @@ export const StudioRecordingSurface: React.FC = () => {
             title="The microphone's own input level. An empty strip means it is not open."
           />
 
+          {/* Tempo and the click, where the recording is.
+              They were in the header, at the other end of the screen from the
+              record button, on a row that also carried a second record control
+              for the same microphone. This is the recording setup; the header
+              keeps the song's transport. */}
+          <div className="flex items-center gap-2 text-[10px] font-mono">
+            <div
+              className="flex items-center gap-1.5 bg-slate-950 px-2.5 h-8 rounded-lg border border-slate-800"
+              title="Master project tempo (40-240 BPM)"
+            >
+              <span className="text-slate-500 font-bold">BPM</span>
+              <input
+                type="number"
+                min={40}
+                max={240}
+                data-testid="bpm"
+                value={dawState.bpm}
+                onChange={(e) => setDawState((prev) => ({ ...prev, bpm: Number(e.target.value) }))}
+                className="w-11 bg-transparent text-slate-100 font-black focus:outline-none text-center"
+              />
+            </div>
+            <button
+              type="button"
+              id="btn-metronome"
+              onClick={() => void handleToggleMetronome()}
+              className={`px-2.5 h-8 rounded-lg font-bold border transition cursor-pointer ${
+                dawState.metronomeOn
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                  : 'bg-slate-950 text-slate-500 border-slate-800 hover:text-slate-300'
+              }`}
+              title="Audible click on the quarter beats, while you perform"
+            >
+              METRO
+            </button>
+          </div>
+
           <button
             type="button"
+            id="btn-mic-arm"
             data-testid="record"
             onClick={() => void (recording ? stop() : start())}
             className="px-10 py-3 rounded-2xl font-black text-sm tracking-wide transition active:scale-95 flex items-center gap-2 cursor-pointer bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30"

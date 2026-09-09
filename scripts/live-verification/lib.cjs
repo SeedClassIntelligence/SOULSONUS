@@ -127,6 +127,8 @@ const UTILITY_TITLE = {
   RADAR: 'Open Radial Radar Drawer',
   IMPORT_AUDIO: 'Import audio or separate mix into stems',
   PIPELINE: 'Open SoulFlow Governance Pipeline',
+  PATTERN: 'Grid tools — clone, nudge, invert, randomise, clear',
+  TAKES: 'Performance take slots — pick which one the next pass lands on',
   SAY_IT: 'Speak or type a command, or just say what you want in your own words',
   VOCAL_TO_LYRIC:
     'Read a sung or hummed take as a lyric seed and fit words to its cadence',

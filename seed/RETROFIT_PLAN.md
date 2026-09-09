@@ -745,6 +745,40 @@ rail. Rather than relabel it to match where it happened to sit, the Write &
 Record room now offers it too. It is still on the rail: a second door, not a
 move.
 
+## One recording surface, and tools with the tools - 2026-09-09
+
+Two instructions, both about the same thing -- a creator clicking something and
+being taken into another dynamic.
+
+**"If they're tools, they should be where the other tools are."** The bench row
+between the microphone and the song is gone. PERFORM was the instrument, which
+the utilities rail already opened by another door; PATTERN was the grid tools,
+which now sit on that rail with every other tool; SECTIONS was the section
+editor, which opens from EDIT SECTIONS beside the section list it edits.
+Nothing was removed and every surface still has a door -- there is just no row
+of tabs standing between the record button and the timeline any more.
+
+**"There's no need to have two top-level recording sessions that do the same
+exact thing."** There were. The header carried a second record control for the
+same microphone -- the very duplication that once armed the mic and switched it
+off again -- along with the tempo and the metronome. The record button is at the
+microphone now, and the tempo and the click moved down with it: that is the
+recording setup, and it belongs where the recording happens. The header keeps
+the song's transport: rewind, play, stop, loop, position.
+
+One control did not move, because moving it would have carried a decoration
+across. The header's `Q:` grid selector was local state that nothing in the app
+read -- three options, a setter, no consumer. What actually decides how a take
+sits against the grid is the timing mode on the take itself (literal / assisted
+/ groove), which is real and applied per pass. So the selector is gone rather
+than relocated, and this is the record of that.
+
+`test-58` states the new shape: arriving in CREATE the record control is on
+screen and there is no bench row at all; a tool the creator opens is still open
+after two room changes. `test-33` and `test-34` reach the section editor and the
+grid tools through their new doors. `test-25` still opens every utility from
+every room. `test-50`, `test-35` and `test-37` pass.
+
 ## The recording surface, laid out as the owner drew it - 2026-09-09
 
 The owner sent the layout he wants and named what it has to say: a header

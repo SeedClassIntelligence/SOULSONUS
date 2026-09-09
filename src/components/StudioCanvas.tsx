@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { Track, PianoRollTool } from '../types/daw';
-import { benchForRoom, type BenchId } from '../lib/disclosureLevels';
 import { UnifiedTrackLane } from './UnifiedTrackLane';
 import { SectionBuilder } from './SectionBuilder';
 import { ShootAroundControls } from './ShootAroundControls';
@@ -280,40 +279,23 @@ export const StudioCanvas: React.FC = () => {
   // not here: this component unmounts on a room switch, so a bench they picked
   // was forgotten the moment they looked at the mix and the level put its own
   // suggestion back in its place.
-  const activeBench = editorPrefs.activeBench;
-  const setActiveBench = (next: BenchId | null) => updateEditorPrefs({ activeBench: next });
-  const [isScopeExpanded, setIsScopeExpanded] = useState(true);
-
   /**
-   * Level 2, following the work.
+   * The grid tools, opened from the utilities rail like every other tool.
    *
-   * "If you're beatboxing: Expression Engine + Beatbox controls. If you're
-   * writing: Lyrics + melody + structure." The bench selector still offers all
-   * four in every room -- nothing is removed from it, and a room the mapping
-   * has no opinion about is left exactly as the creator left it.
+   * They used to be a bench tab above the timeline they edit. "If they're
+   * tools, they should be where the other tools are" -- and a creator who
+   * clicks something between the microphone and their song should not be taken
+   * into another dynamic.
    */
+  const [isScopeExpanded, setIsScopeExpanded] = useState(true);
+  const [isPatternToolsOpen, setIsPatternToolsOpen] = useState(false);
   useEffect(() => {
-    if (editorPrefs.benchChosen) return;
-    const suggested = benchForRoom(activeWorkspace);
-    if (suggested) updateEditorPrefs({ activeBench: suggested });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeWorkspace, editorPrefs.benchChosen]);
-
-  // Other rooms open the instrument through the app-wide drawer event; it is
-  // the PERFORM bench that carries it.
-  useEffect(() => {
-    if (isInstrumentOpen) setActiveBench('PERFORM');
-  }, [isInstrumentOpen]);
-
-  // A re-read from a track lane used to have to open a bench, because the
-  // reading was shown on one. The recording surface is always on screen now
-  // and carries the interpretation with it, so the reading arrives where the
-  // creator is already looking and nothing has to be opened for them.
-
-  // Closing the bench releases the shared flag, so the next external open fires.
-  useEffect(() => {
-    if (activeBench !== 'PERFORM' && isInstrumentOpen) setIsInstrumentOpen(false);
-  }, [activeBench, isInstrumentOpen, setIsInstrumentOpen]);
+    const onDrawer = (e: Event) => {
+      if ((e as CustomEvent).detail === 'pattern') setIsPatternToolsOpen((v) => !v);
+    };
+    window.addEventListener('soulsonus:openDrawer', onDrawer as EventListener);
+    return () => window.removeEventListener('soulsonus:openDrawer', onDrawer as EventListener);
+  }, []);
 
   // Universal Arranger Toolbar State
 
@@ -532,39 +514,12 @@ export const StudioCanvas: React.FC = () => {
               <StudioRecordingSurface />
             </div>
 
-            {/* 1. BENCH SELECTOR TABS */}
-            <div className="flex flex-wrap items-center gap-1.5 mb-2">
-              {([
-                { id: 'PERFORM' as const, label: 'PERFORM', icon: <Mic className="w-3.5 h-3.5" />, on: 'bg-orange-500 text-slate-950 border-orange-400', off: 'bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border-orange-500/40' },
-                { id: 'PATTERN' as const, label: 'PATTERN', icon: <Layers className="w-3.5 h-3.5" />, on: 'bg-amber-500 text-slate-950 border-amber-400', off: 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40' },
-                { id: 'SECTIONS' as const, label: 'SECTIONS', icon: <Compass className="w-3.5 h-3.5" />, on: 'bg-cyan-500 text-slate-950 border-cyan-400', off: 'bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/40' },
-              ]).map((bench) => {
-                const active = activeBench === bench.id;
-                return (
-                  <button
-                    key={bench.id}
-                    type="button"
-                    data-testid={`bench-${bench.id}`}
-                    data-active={active}
-                    onClick={() =>
-                      // Their choice from here on, including closing one.
-                      updateEditorPrefs({
-                        activeBench: active ? null : bench.id,
-                        benchChosen: true,
-                      })
-                    }
-                    aria-expanded={active}
-                    className={`px-3 py-2 rounded-xl border font-bold text-[11px] flex items-center space-x-1.5 transition cursor-pointer active:scale-95 shrink-0 ${
-                      active ? bench.on : bench.off
-                    }`}
-                  >
-                    {bench.icon}
-                    <span>{bench.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
+            {/* The bench row is gone. Three tabs sat between the microphone and
+                the song: PERFORM (an instrument, which the rail already opens),
+                PATTERN (grid tools, now on the rail with the other tools) and
+                SECTIONS (opened by EDIT SECTIONS, which sits with the section
+                list where it belongs). Nothing was removed -- every surface has
+                a door, and none of them is in the way of recording. */}
             {captureError && (
               <div id="capture-status" className="text-[9px] text-rose-300 max-w-md leading-relaxed mb-2">
                 {captureError}
@@ -573,16 +528,16 @@ export const StudioCanvas: React.FC = () => {
 
 
 
-            {activeBench === 'PERFORM' && !isInstrumentFull && (
+            {isInstrumentOpen && !isInstrumentFull && (
               <div className="mb-2">
                 <InstrumentStrip
                   onExpand={() => setIsInstrumentFull(true)}
-                  onClose={() => setActiveBench(null)}
+                  onClose={() => setIsInstrumentOpen(false)}
                 />
               </div>
             )}
 
-            {activeBench === 'PATTERN' && (
+            {isPatternToolsOpen && (
               <div className="mb-2">
                 <ShootAroundControls
                   onCloneBar1ToAll={() => handleCloneBarToAll(0)}
@@ -770,7 +725,7 @@ export const StudioCanvas: React.FC = () => {
                 their song right up until the moment they clicked either
                 control, and then nothing happened. Restored where it was
                 deleted from, on both of its original conditions. */}
-            {(isSectionEditorOpen || activeBench === 'SECTIONS') && (
+            {isSectionEditorOpen && (
               <div className="mb-2" data-testid="section-editor">
                 <SectionBuilder
                   sections={sections}
