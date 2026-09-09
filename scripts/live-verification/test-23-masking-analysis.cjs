@@ -5,7 +5,7 @@
  * project and on an empty canvas. That is the first thing tested here.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session, goToRoom } = require('./lib.cjs');
+const { launch, enterStudio, session, goToRoom, seedPattern } = require('./lib.cjs');
 
 const STUDIO = `window.__studio = () => {
   const root = document.getElementById('root');
@@ -36,7 +36,29 @@ const show = (label, r) => {
   await enterStudio(page);
   await page.evaluate(STUDIO);
 
-  // 1. Full project.
+  // 1. A project with something in it.
+  //
+  // This used to analyse whatever the studio opened on. The studio opened on a
+  // demo pattern once and opens empty now, so "full project" was two silent
+  // channels and the analysis correctly reported nothing to compare -- which
+  // this file then read as the analyser failing. Masking needs at least two
+  // audible tracks, so two audible tracks are what it gets.
+  await seedPattern(page);
+  // And a bass sitting on the kick, because that is the thing being measured.
+  // Kick, snare and hats alone occupy three different bands and genuinely do
+  // not mask each other -- an analyser that found something there would be the
+  // old panel inventing findings again. A sub-bass under the kick is the
+  // canonical clash, and the one the Mix room is asked about most.
+  await page.evaluate(`(() => {
+    const s = window.__studio();
+    const bass = s.tracks.find((t) => t.instrument === 'bass');
+    if (!bass) return 0;
+    [0, 480, 960, 1440].forEach((tick) =>
+      s.handleAddNote(bass.id, { startTick: tick, durationTicks: 460, midiNote: 31, velocity: 110 })
+    );
+    return 4;
+  })()`);
+  await page.waitForTimeout(1200);
   const full = await page.evaluate('window.__studio().handleAnalyzeMasking()');
   show('full project', full);
 

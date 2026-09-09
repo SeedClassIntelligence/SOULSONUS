@@ -501,8 +501,13 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
                 </span>
               </div>
 
+              {/* The drawer is fixed to the right edge above everything, so
+                  the button that opened it is underneath it once it is open.
+                  This is how it closes, and it is named so that says so. */}
               <button
                 onClick={onClose}
+                data-testid="intelligence-close"
+                title="Close Studio Intelligence"
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition cursor-pointer"
               >
                 <X className="w-4 h-4" />

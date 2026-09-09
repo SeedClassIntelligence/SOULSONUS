@@ -1579,3 +1579,143 @@ So:
 Anything `text2music` produces enters labelled as AI-originated (clause
 XVIII.3), so the creator can always tell which parts of a project came from
 them. That labelling is what makes the offer honest instead of dilutive.
+
+
+---
+
+## The transport moved to the microphone (2026-09-09)
+
+The owner's instruction, in their words: *"The record play button, loop, the
+timing, key, all of that should be where the microphone is. It shouldn't be in
+the same bar with create, sounds, write, record, mix, master, and release. So
+volume presets, that has to go in the recording workstation where the
+microphone is... Nothing should be in that bar but create, sounds, write,
+record, mix, master, and release. And you should also pull Studio Intelligence
+behind release, blank canvas behind release."*
+
+Done, exactly:
+
+| | was | is |
+|---|---|---|
+| play / pause, stop, rewind, loop, metronome, bar:beat counter, tempo, master level, kit preset | the header's transport row | the recording workstation, beside the RECORD button they drive |
+| BLANK CANVAS, ✦ STUDIO INTELLIGENCE | header chrome | the end of the room bar, after RELEASE |
+| the room bar | rooms + a status label | CREATE · SOUNDS · WRITE · RECORD · MIX · MASTER · RELEASE, and the two acts behind RELEASE |
+
+The header keeps what identifies the session rather than what drives it:
+project name, key and transpose, time signature, PROJECTS, the revision tree,
+the engine badge, TOUR, MANUAL, EXPORT.
+
+`handleTogglePlay`, `handleStopTransport` and `handleSelectPreset` moved from
+`App` into `StudioSessionContext`, where the state they change already lives.
+Two components reaching for one transport through props is how a second
+recording surface gets built by accident, which is the thing being undone here.
+
+### What this exposed: a session that was playing never autosaved
+
+Moving the transport renamed one button's tooltip, `Stop Playhead` became
+`Stop playhead`, and `test-21-persistence` — which clicks that title to stop
+before reloading — silently stopped stopping. The reload then reported the
+whole session gone: 19 notes to 0, 9 tracks to 8, bpm 132 to 110, the project
+name back to the factory default.
+
+That was not the rename. The rename only stopped hiding it. The autosave effect
+listed `dawState` among its dependencies and debounced 1200 ms. `currentStep`
+is part of `dawState` and moves every sixteenth note — about 113 ms at 132 BPM
+— so while the transport rolled, the timer was cleared and re-armed forever and
+**the session autosaved not once.** Anything done while playing was lost on
+reload, which is precisely what Amendment F says may not happen.
+
+The playhead is not part of what is saved: `applySnapshot` forces
+`isPlaying: false`, `isRecordingMic: false`, `currentStep: 0` on every restore,
+because a reopened project starts stopped at bar one. So the fix is to key the
+debounce on the persisted fields of `dawState` and leave the transport's own
+position out of it.
+
+Reproduced before fixing, and confirmed after — a probe that starts playback,
+renames the project and changes the tempo *without ever stopping*, then
+reloads:
+
+| | before the fix | after |
+|---|---|---|
+| project name | `Rolling Probe` → `Dubler Vocal Beatbox Master` | `Rolling Probe` → `Rolling Probe` |
+| bpm | 141 → 110 | 141 → 141 |
+
+`test-21-persistence` now passes all thirteen of its checks.
+
+### Two harness repairs, in the harness rather than in five tests
+
+**Studio Intelligence could not be closed by clicking its own button.** The
+drawer is fixed to the right edge at `z-50`; the button that opens it now sits
+at the right end of the room bar, underneath it. Clicking it a second time to
+close was clicking the drawer. This is not a defect in the app — a drawer has a
+close control and that is what a creator reaches for — so the drawer's X is
+named (`data-testid="intelligence-close"`, `title="Close Studio Intelligence"`)
+and `lib.cjs` gained `openIntelligence` / `closeIntelligence`.
+
+**A fixed sleep was reading the answer before it arrived.** Both `test-52` and
+`test-57` asked the intelligence a question and slept 1500 ms. Long enough for
+the first question of a session; not for the fourth. `test-57`'s check that the
+studio refuses to invent an audience was failing against a build that answers
+it correctly and verbatim. `lib.cjs`'s `askIntelligence` waits for a new turn to
+appear in the transcript instead of for a clock.
+
+**A second microphone control that no longer exists.** `test-09` and `test-22`
+stopped the capture engine by clicking the header's `Toggle Mic Recording
+Engine` — the duplicate the owner asked to be removed. With it gone the mic
+kept running underneath every "other channels intact" check, notes kept
+arriving, and `test-09` reported six failures against an app that was editing
+channels independently and correctly. Both now call `stopCapture`, which
+presses the one microphone there is.
+
+**`test-23` was analysing an empty project.** It asked for a masking report on
+whatever the studio opened on. The studio opened on a demo pattern once and
+opens empty now, so "full project" was silence, the analyser correctly said
+there was nothing to compare, and the file read that as the analyser failing.
+This is the same rot as the earlier sweep and it was missed there. It now seeds
+a kick/snare/hat pattern *and a sub-bass under the kick* — three tracks in
+three different bands genuinely do not mask each other, and an analyser that
+found something in them would be the old panel inventing findings again. With
+a real clash present it reports three: 49 Hz, 177 Hz and 456 Hz, kick against
+808, with the proportion of the take each pair is both active for.
+
+**The stem stub wrote into the repository.** `stem-service-stub.py` read its
+output directory from `sys.argv[1]`, which under the start command this file
+documents (`python -m uvicorn stem-service-stub:app ...`) is the string
+`stem-service-stub:app` — so running it as written created a directory by that
+name inside `scripts/live-verification/` and filled it with wav files. It reads
+`STUB_STEM_DIR` now, which uvicorn's own arguments cannot be mistaken for.
+
+`scripts/test_comprehensive_platform_verification.ts` still asserted
+`benchForRoom('CREATE') === 'UNIFIED'` against a bench row that was removed when
+the microphone stopped being a bench. It now checks the stronger thing: every
+room carries its own surface, so arriving opens nothing on top of it.
+
+**Verified:** `tsc --noEmit` src errors 0; `npm run build` passes; seed audit
+104 honored / 0 partial / 2 absent / 0 violations / 25 unverified — unchanged,
+no clause regressed. All 60 live checks run and pass, including
+`test-21-persistence` 13/13, `test-57-analytics` 15/15, `test-09` 12/12,
+`test-23` 8/8, `test-56` 12/12 and `test-58-disclosure-levels`. `test-14`,
+`test-22` and `test-56` need their services up, as this file already records:
+the stem transport stub on :8010 and `ace-stub.mjs` on :8099 with the dev
+server started against it.
+
+### Held for the owner: the transport is now only in CREATE
+
+Stating it rather than deciding it, per Amendment E. Play, stop and the click
+used to sit in the header, which renders in every room, so a creator could
+start playback while mixing or mastering. They are with the microphone now,
+and the microphone is on the CREATE screen — so **MIX, MASTER, RELEASE, SOUNDS
+and WRITE carry no way to start the transport.** MASTER still draws a moving
+playhead it has no button to move.
+
+`disclosureLevels.ts` declares `transport: 1`, and Amendment A §17's own words
+for level 1 are *"Always visible: project, transport, the rooms, Studio
+Intelligence"* — so the code and the seed text now disagree, and §16 is
+explicit that the professional controls are not what gets removed for calm.
+The declaration is not being loosened to match the code.
+
+The instruction was that the transport must not sit in the room bar and must
+sit with the microphone. Both hold if the rooms that have no microphone render
+the same transport cluster inside their own surface — one component, placed by
+the room, rather than a second bar above the rooms. That is the proposal; it is
+not built, and it will not be until the owner says so.

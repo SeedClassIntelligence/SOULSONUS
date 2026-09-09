@@ -1840,16 +1840,22 @@ async function runComprehensiveVerification() {
       'DISCLOSURE', 'a level 4 surface is described as filed, never as hidden',
       whereToFind('piano'));
 
-    // Level 2 follows the activity, by the amendment's own examples.
-    check(benchForRoom('CREATE') === 'UNIFIED', 'DISCLOSURE',
-      'arriving to create opens the expression engine');
-    check(benchForRoom('WRITE_RECORD') === 'PERFORM', 'DISCLOSURE',
-      'arriving to write opens the room for writing in');
-    check(benchForRoom('BUILD') === 'SECTIONS', 'DISCLOSURE',
-      'and arriving to build opens the structure');
-    check(benchForRoom('MIX') === null && benchForRoom('MASTER') === null, 'DISCLOSURE',
-      'a room that carries its own surfaces gets no opinion, rather than a guess at one',
-      `${benchForRoom('MIX')}`);
+    // Level 2 follows the activity -- but the bench row that used to carry it
+    // is gone. A room carries its own surface now: CREATE is the microphone,
+    // WRITE_RECORD is the writing room, BUILD is the section list. So the
+    // check is no longer "which bench does arriving open" but the stronger
+    // one: arriving opens nothing on top of what the room already is. A
+    // suggested bench over the recording surface would be the organizing
+    // layer deciding what the creator is doing, which Amendment D forbids.
+    check(
+      (['CREATE', 'BUILD', 'WRITE_RECORD', 'SOUNDS', 'MIX', 'MASTER', 'RELEASE', 'FINISH'] as const)
+        .every((room) => benchForRoom(room) === null),
+      'DISCLOSURE',
+      'every room carries its own surface, so arriving opens nothing over it',
+      `CREATE -> ${benchForRoom('CREATE')}`);
+    check(levelOf('recordingSurface') === 2, 'DISCLOSURE',
+      'and the microphone is that level-2 surface in CREATE, not a bench suggested on top of it',
+      `level ${levelOf('recordingSurface')}`);
   }
 
   console.log('\n========================================================================');

@@ -2,6 +2,8 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { WorkspaceTab } from '../types/daw';
 import { Sparkles, Mic, Sliders, ShieldCheck, Activity, Disc3 } from 'lucide-react';
+import { useStudioSession } from '../app/StudioSessionContext';
+import { PRESETS } from '../data/presets';
 
 interface WorkspaceNavProps {
   activeWorkspace: WorkspaceTab;
@@ -55,6 +57,7 @@ const getWorkspaces = (): { id: WorkspaceTab; label: string; icon: React.ReactNo
 ];
 
 export const WorkspaceNav: React.FC<WorkspaceNavProps> = ({ activeWorkspace, onSelectWorkspace }) => {
+  const { handleSelectPreset } = useStudioSession();
   const workspaces = getWorkspaces();
   return (
     <div className="w-full bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2 shadow-lg relative z-30 select-none font-mono">
@@ -92,12 +95,33 @@ export const WorkspaceNav: React.FC<WorkspaceNavProps> = ({ activeWorkspace, onS
         })}
       </div>
 
-      <div className="flex items-center space-x-3 text-xs text-slate-400 font-mono">
-        <span className="flex items-center space-x-1">
-          <Activity className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-          <span className="hidden sm:inline">Studio Workspace Engine</span>
-        </span>
-      </div>
+      <div className="flex items-center gap-2">
+          {/* Behind RELEASE, as asked: session-level acts, not rooms, and not
+              chrome in a bar above the rooms either. */}
+          <button
+            type="button"
+            id="btn-blank-canvas"
+            onClick={() => {
+              const empty = PRESETS.find((p) => p.id === 'empty');
+              if (empty) handleSelectPreset(empty);
+            }}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold transition cursor-pointer"
+            title="Start a clean, empty multi-track canvas"
+          >
+            <span>✦ BLANK CANVAS</span>
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'intelligence' }))
+            }
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-mono font-black text-xs transition cursor-pointer shadow-md shadow-amber-500/20 active:scale-95"
+            title="Open Studio Intelligence (co-producer, engineer, tutor, guide)"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-slate-950 animate-pulse" />
+            <span>✦ STUDIO INTELLIGENCE</span>
+          </button>
+        </div>
     </div>
   );
 };

@@ -18,8 +18,8 @@ answers /health but cannot separate.
 """
 import io
 import math
+import os
 import struct
-import sys
 import uuid
 import wave
 from pathlib import Path
@@ -28,7 +28,12 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
-OUT = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/stub-stems")
+# Where the band-split files are written. This read sys.argv[1], which under
+# the documented start command (`python -m uvicorn stem-service-stub:app ...`)
+# is the string "stem-service-stub:app" -- so running it as the README says
+# created a directory by that name inside the repository and wrote stems into
+# it. An environment variable cannot be confused with uvicorn's own arguments.
+OUT = Path(os.environ.get("STUB_STEM_DIR") or "/tmp/stub-stems")
 OUT.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Stem separation transport stub")

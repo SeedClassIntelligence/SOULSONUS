@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Mic, Circle, Square, Undo2, Plus, ChevronRight, ChevronDown } from 'lucide-react';
+import {
+  Mic, Circle, Square, Undo2, Plus, ChevronRight, ChevronDown,
+  Play, Pause, RotateCcw, Repeat, Clock, Volume2,
+} from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 import { detectionEngine } from '../audio/detectionEngine';
 import { MIC_PRESETS, describePreset, presetById } from '../lib/micPresets';
+import { PRESETS } from '../data/presets';
 import { InterpretationPanel } from './InterpretationPanel';
 import { CreativeIntentPanel } from './CreativeIntentPanel';
 
@@ -114,6 +118,9 @@ export const StudioRecordingSurface: React.FC = () => {
     setMimicryTargetId,
     handleUndo,
     handleToggleMetronome,
+    handleTogglePlay,
+    handleStopTransport,
+    handleSelectPreset,
     setDawState,
     handleUpdateTrack,
     setDetectionSettings,
@@ -442,12 +449,103 @@ export const StudioRecordingSurface: React.FC = () => {
             title="The microphone's own input level. An empty strip means it is not open."
           />
 
-          {/* Tempo and the click, where the recording is.
-              They were in the header, at the other end of the screen from the
-              record button, on a row that also carried a second record control
-              for the same microphone. This is the recording setup; the header
-              keeps the song's transport. */}
-          <div className="flex items-center gap-2 text-[10px] font-mono">
+          {/* The transport, where the recording is.
+              Rewind, play, stop, record, loop, the click, the bar:beat
+              counter, tempo, master level and the genre preset. All of it used
+              to sit in a bar above the rooms -- a second recording surface at
+              the other end of the screen from the microphone it drove. */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5 text-[10px] font-mono">
+            <button
+              type="button"
+              id="btn-rewind"
+              onClick={() => handleStopTransport()}
+              className="w-8 h-8 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer"
+              title="Rewind to Start"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
+              id="btn-play-pause"
+              onClick={() => void handleTogglePlay()}
+              className={`w-10 h-8 rounded-lg font-black flex items-center justify-center transition cursor-pointer ${
+                dawState.isPlaying
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                  : 'bg-slate-800 text-slate-100 hover:bg-slate-700'
+              }`}
+              title={dawState.isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+            >
+              {dawState.isPlaying ? (
+                <Pause className="w-4 h-4 fill-slate-950" />
+              ) : (
+                <Play className="w-4 h-4 fill-slate-100 ml-0.5" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              id="btn-stop"
+              onClick={() => handleStopTransport()}
+              className="w-8 h-8 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer"
+              title="Stop Playhead"
+            >
+              <Square className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
+              id="btn-mic-arm"
+              data-testid="record"
+              onClick={() => void (recording ? stop() : start())}
+              className={`px-4 h-8 rounded-lg font-black flex items-center gap-1.5 border transition cursor-pointer ${
+                recording
+                  ? 'bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-600/40 animate-pulse'
+                  : 'bg-rose-600/90 hover:bg-rose-500 text-white border-rose-500'
+              }`}
+              title={recording ? 'Stop and keep the take' : 'Record onto the armed channel'}
+            >
+              {recording ? <Square className="w-3 h-3 fill-current" /> : <Circle className="w-2.5 h-2.5 fill-current" />}
+              <span>{recording ? 'STOP' : 'RECORD'}</span>
+            </button>
+
+            <button
+              type="button"
+              id="btn-loop"
+              onClick={() => setDawState((prev) => ({ ...prev, isLooping: !prev.isLooping }))}
+              className={`px-2.5 h-8 rounded-lg font-bold border transition cursor-pointer flex items-center gap-1 ${
+                dawState.isLooping
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  : 'bg-slate-950 text-slate-500 border-slate-800 hover:text-slate-300'
+              }`}
+              title="Toggle Continuous Loop Mode"
+            >
+              <Repeat className="w-3 h-3" />
+              LOOP
+            </button>
+
+            <button
+              type="button"
+              id="btn-metronome"
+              onClick={() => void handleToggleMetronome()}
+              className={`px-2.5 h-8 rounded-lg font-bold border transition cursor-pointer ${
+                dawState.metronomeOn
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                  : 'bg-slate-950 text-slate-500 border-slate-800 hover:text-slate-300'
+              }`}
+              title="Audible click on the quarter beats"
+            >
+              METRO
+            </button>
+
+            <div
+              className="bg-slate-950 px-2.5 h-8 rounded-lg border border-slate-800 flex items-center gap-1.5 text-amber-300 font-bold tracking-widest"
+              title="Bar : beat . tick"
+            >
+              <Clock className="w-3 h-3 text-amber-400" />
+              <span data-testid="transport-time">{`${bar}:${String(beat).padStart(2, '0')}.${String(step % 4 + 1)}`}</span>
+            </div>
+
             <div
               className="flex items-center gap-1.5 bg-slate-950 px-2.5 h-8 rounded-lg border border-slate-800"
               title="Master project tempo (40-240 BPM)"
@@ -463,31 +561,41 @@ export const StudioRecordingSurface: React.FC = () => {
                 className="w-11 bg-transparent text-slate-100 font-black focus:outline-none text-center"
               />
             </div>
-            <button
-              type="button"
-              id="btn-metronome"
-              onClick={() => void handleToggleMetronome()}
-              className={`px-2.5 h-8 rounded-lg font-bold border transition cursor-pointer ${
-                dawState.metronomeOn
-                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                  : 'bg-slate-950 text-slate-500 border-slate-800 hover:text-slate-300'
-              }`}
-              title="Audible click on the quarter beats, while you perform"
-            >
-              METRO
-            </button>
-          </div>
 
-          <button
-            type="button"
-            id="btn-mic-arm"
-            data-testid="record"
-            onClick={() => void (recording ? stop() : start())}
-            className="px-10 py-3 rounded-2xl font-black text-sm tracking-wide transition active:scale-95 flex items-center gap-2 cursor-pointer bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30"
-          >
-            {recording ? <Square className="w-4 h-4 fill-current" /> : <Circle className="w-3.5 h-3.5 fill-current" />}
-            <span>{recording ? 'STOP' : 'RECORD'}</span>
-          </button>
+            <div
+              className="flex items-center gap-1.5 bg-slate-950 px-2.5 h-8 rounded-lg border border-slate-800"
+              title={`Master bus output level: ${Math.round(dawState.masterVolume * 100)}%`}
+            >
+              <Volume2 className="w-3 h-3 text-slate-400" />
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                data-testid="master-volume"
+                value={dawState.masterVolume}
+                onChange={(e) => setDawState((prev) => ({ ...prev, masterVolume: Number(e.target.value) }))}
+                className="w-16 accent-amber-500 cursor-pointer"
+              />
+            </div>
+
+            <select
+              data-testid="kit-preset"
+              onChange={(e) => {
+                const p = PRESETS.find((preset) => preset.id === e.target.value);
+                if (p) handleSelectPreset(p);
+              }}
+              className="bg-slate-950 border border-slate-800 text-[10px] text-slate-300 font-mono h-8 px-2 rounded-lg focus:outline-none focus:border-amber-500 cursor-pointer"
+              title="Load a production genre kit"
+            >
+              <option value="">Kit preset…</option>
+              {PRESETS.map((p) => (
+                <option key={p.id} value={p.id} className="bg-slate-900 text-slate-100">
+                  {p.name} ({p.bpm} BPM)
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* The microphone itself, described from the microphone. */}

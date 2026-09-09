@@ -3,7 +3,7 @@
  * move notes, change velocity, mute/solo — without disturbing the others.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session, armCapture } = require('./lib.cjs');
+const { launch, enterStudio, session, armCapture, stopCapture } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 const SNAP = `s => Object.fromEntries(s.tracks
@@ -25,8 +25,10 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   await page.waitForTimeout(11000);
   // Stop the transport AND the mic engine, so the take is stable while we edit.
   await page.locator('button[title="Stop Playhead"]').first().click().catch(() => {});
-  await page.locator('button[title="Toggle Mic Recording Engine"]').first().click().catch(() => {});
-  await page.waitForTimeout(1500);
+  // Stop the microphone too, or notes keep arriving under every "intact"
+  // check below. There used to be a second mic control in the header; there is
+  // one microphone now, and stopCapture presses it.
+  await stopCapture(page, { settle: 1500 });
 
   const before = await session(page, SNAP);
   console.log('=== INDEPENDENT EDITING ===');

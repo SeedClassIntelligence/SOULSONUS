@@ -590,10 +590,6 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       <Header
         dawState={dawState}
         onStateChange={(updates) => setDawState((prev) => ({ ...prev, ...updates }))}
-        onTogglePlay={handleTogglePlay}
-        onStop={handleStop}
-        onToggleMic={handleToggleMic}
-        onSelectPreset={handleSelectPreset}
         onOpenHelp={() => setIsHelpOpen(true)}
         onOpenTour={() => {
           setTourInitialAspect('OVERVIEW');

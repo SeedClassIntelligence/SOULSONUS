@@ -247,6 +247,51 @@ async function seedMelody(page, { trackInstrument = 'melody', settle = 1200 } = 
   return wrote;
 }
 
+/**
+ * Studio Intelligence, opened and closed.
+ *
+ * The button that opens it moved out of the header and onto the end of the
+ * room bar, behind RELEASE. The drawer it opens is fixed to the right edge at
+ * z-50, so once it is open that button is underneath it -- clicking it a
+ * second time to close was clicking the drawer, and Playwright waited thirty
+ * seconds for a hit target that was never going to be free. Closing goes
+ * through the drawer's own X, which is what a creator reaches for anyway.
+ */
+async function openIntelligence(page) {
+  await page.getByRole('button', { name: '✦ STUDIO INTELLIGENCE' }).first().click({ force: true });
+  await page.waitForTimeout(800);
+}
+
+async function closeIntelligence(page) {
+  const x = page.locator('[data-testid="intelligence-close"]').first();
+  if (await x.count()) await x.click({ force: true });
+  await page.waitForTimeout(500);
+}
+
+/**
+ * Asks Studio Intelligence and waits for the answer, rather than for a clock.
+ *
+ * Both callers slept 1500 ms and read the page. That is long enough for the
+ * first question of a session and not for the fourth: the check that the
+ * studio refuses to invent an audience failed against a build that answers it
+ * correctly, because the reply landed after the read. This waits for a new
+ * turn to appear in the transcript.
+ */
+async function askIntelligence(page, text) {
+  const panel = page.locator('div.fixed.right-0').first();
+  const turns = async () =>
+    (await panel.innerText().catch(() => '')).split('SOULSONUS INTELLIGENCE').length;
+  const before = await turns();
+  await page.fill('#intelligence-input', text);
+  await page.click('#intelligence-ask');
+  for (let i = 0; i < 60; i++) {
+    if ((await turns()) > before) break;
+    await page.waitForTimeout(250);
+  }
+  await page.waitForTimeout(300);
+  return page.evaluate(() => document.body.innerText);
+}
+
 module.exports = {
   CHROME,
   READ_SESSION,
@@ -262,4 +307,7 @@ module.exports = {
   goToRoom,
   openUtility,
   UTILITY_TITLE,
+  openIntelligence,
+  closeIntelligence,
+  askIntelligence,
 };

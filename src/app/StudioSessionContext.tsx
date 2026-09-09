@@ -817,6 +817,18 @@ export interface StudioSessionState {
   setCaptureError: React.Dispatch<React.SetStateAction<string | null>>;
   /** Turns the click on or off, and starts it if nothing else is running the clock. */
   handleToggleMetronome: () => Promise<boolean>;
+  /**
+   * The song's transport, owned where its state is.
+   *
+   * These lived in App and were handed to the header. The recording surface
+   * needs them too -- the creator asked for the transport to sit with the
+   * microphone rather than in the room bar -- and two components reaching for
+   * one transport through props is how a second recording surface gets built
+   * by accident.
+   */
+  handleTogglePlay: () => Promise<void>;
+  handleStopTransport: () => void;
+  handleSelectPreset: (preset: { id: string; name: string; bpm: number; tracks: Track[] }) => void;
   /** Ends capture: classifier off, modality cleared, take kept, microphone released. */
   handleStopCapture: () => Promise<{ trackId: string; seconds: number } | null>;
   /**
@@ -3615,6 +3627,47 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
    */
   const [captureError, setCaptureError] = useState<string | null>(null);
 
+  const handleTogglePlay = useCallback(async () => {
+    if (dawStateRef.current.isPlaying) {
+      audioEngine.stopSequencer();
+      audioEngine.clearAudioClips();
+      setDawState((prev) => ({ ...prev, isPlaying: false }));
+    } else {
+      await audioEngine.init();
+      // Clips are scheduled before the transport rolls, since a player synced
+      // after the start would miss its own cue.
+      await audioEngine.syncAudioClips(tracksRef.current, audioAssetsRef.current, dawStateRef.current.bpm || 110);
+      audioEngine.startSequencer(
+        () => tracksRef.current,
+        (step) => handleStepChange(step),
+        () => (dawStateRef.current.songBars || 4) * 16
+      );
+      setDawState((prev) => ({ ...prev, isPlaying: true }));
+    }
+  }, [handleStepChange]);
+
+  const handleStopTransport = useCallback(() => {
+    audioEngine.stopSequencer();
+    audioEngine.clearAudioClips();
+    handleStepChange(0);
+    setDawState((prev) => ({ ...prev, isPlaying: false }));
+  }, [handleStepChange]);
+
+  const handleSelectPreset = useCallback(
+    (preset: { id: string; name: string; bpm: number; tracks: Track[] }) => {
+      audioEngine.stopSequencer();
+      setTracks(preset.tracks);
+      setDawState((prev) => ({
+        ...prev,
+        bpm: preset.bpm,
+        isPlaying: false,
+        currentStep: 0,
+        projectName: preset.name,
+      }));
+    },
+    []
+  );
+
   const handleToggleMetronome = useCallback(async (): Promise<boolean> => {
     const next = !dawStateRef.current.metronomeOn;
     await audioEngine.init();
@@ -5507,6 +5560,23 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [applySnapshot]);
 
   // Rolling autosave. Debounced so a drag does not write on every frame.
+  //
+  // The playhead is deliberately not part of what re-arms that debounce. A
+  // reopened project starts stopped at bar one -- `applySnapshot` above forces
+  // exactly that -- so the transport's position is never restored and has no
+  // business triggering a write. Left in the dependency list it did worse than
+  // nothing: playing at 132 BPM moves `currentStep` every ~113 ms, well inside
+  // the 1200 ms debounce, so the timer was cleared and re-armed forever and a
+  // session that was playing autosaved *not once*. A reload came back to
+  // factory defaults with the take gone, which is the one thing Amendment F
+  // says may not happen.
+  const persistedDawKey = JSON.stringify({
+    ...dawState,
+    isPlaying: undefined,
+    isRecordingMic: undefined,
+    currentStep: undefined,
+    currentBar: undefined,
+  });
   const snapshotRef = useRef(buildSnapshot);
   snapshotRef.current = buildSnapshot;
   useEffect(() => {
@@ -5526,7 +5596,7 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
     activeMasterCandidateId, buses, mixSnapshots, referenceTrack, acceptedMixPrint,
     seedRecords, lineageRecords, decisionRecords, relayGaps, intentPreserve, intentStrictness, trackTimingModes, genreId,
       measuredExpression, creatorExpressionReadings, detectionSettings, activeWorkspace,
-    editorPrefs, writeRoomDraft, dawState, vocalState.audioBlob,
+    editorPrefs, writeRoomDraft, persistedDawKey, vocalState.audioBlob,
   ]);
 
   const handleSaveProjectAs = useCallback(
@@ -6027,6 +6097,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       captureError,
       setCaptureError,
       handleToggleMetronome,
+      handleTogglePlay,
+      handleStopTransport,
+      handleSelectPreset,
       handleCallSessionPlayer,
       handleLoadFactoryInstrument,
       isMidiCaptureArmed,
@@ -6256,6 +6329,9 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       captureError,
       setCaptureError,
       handleToggleMetronome,
+      handleTogglePlay,
+      handleStopTransport,
+      handleSelectPreset,
       handleCallSessionPlayer,
       handleLoadFactoryInstrument,
       isMidiCaptureArmed,

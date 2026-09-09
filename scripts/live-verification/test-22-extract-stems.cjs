@@ -6,7 +6,7 @@
  * seed with nothing in it says so rather than inventing a pattern.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session, armCapture } = require('./lib.cjs');
+const { launch, enterStudio, session, armCapture, stopCapture } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 const STUDIO = `window.__studio = () => {
@@ -52,7 +52,7 @@ async function run(clip, seconds, label) {
     await page.locator('button[title="Stop Playhead"]').first().click({ force: true }).catch(() => {});
   }
   if (clip) {
-    await page.locator('button[title="Toggle Mic Recording Engine"]').first().click({ force: true }).catch(() => {});
+    await stopCapture(page, { settle: 0 });
     await page.waitForTimeout(900);
   }
 

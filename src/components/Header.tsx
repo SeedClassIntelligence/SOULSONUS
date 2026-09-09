@@ -29,10 +29,6 @@ import { useStudioSession } from '../app/StudioSessionContext';
 interface HeaderProps {
   dawState: DAWState;
   onStateChange: (updates: Partial<DAWState>) => void;
-  onTogglePlay: () => void;
-  onStop: () => void;
-  onToggleMic: () => void;
-  onSelectPreset: (preset: Preset) => void;
   onOpenHelp: () => void;
   onOpenTour?: () => void;
   onOpenSoundLibrary: () => void;
@@ -47,10 +43,6 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   dawState,
   onStateChange,
-  onTogglePlay,
-  onStop,
-  onToggleMic,
-  onSelectPreset,
   onOpenHelp,
   onOpenTour,
   onOpenSoundLibrary,
@@ -170,20 +162,6 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Blank Canvas Creator Button */}
-          <button
-            type="button"
-            id="btn-blank-canvas"
-            onClick={() => {
-              const emptyPreset = PRESETS.find((p) => p.id === 'empty');
-              if (emptyPreset) onSelectPreset(emptyPreset);
-            }}
-            className="hidden sm:flex items-center space-x-1 px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold transition cursor-pointer"
-            title="Start a clean, empty multi-track canvas for live mic recording"
-          >
-            <span>✦ BLANK CANVAS</span>
-          </button>
-
           {/* Projects: save, open, start new */}
           <button
             type="button"
@@ -220,16 +198,9 @@ export const Header: React.FC<HeaderProps> = ({
 
           <EngineStatusBadge />
 
-          {/* Studio Intelligence (Co-Producer & Autonomous Engineer Hub) */}
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail: 'intelligence' }))}
-            className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-mono font-black text-xs transition cursor-pointer shadow-md shadow-amber-500/20 active:scale-95"
-            title="Open Studio Intelligence Hub (Co-Producer, Autonomous Engineer, Tutor, Guide & Manager)"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-slate-950 animate-pulse" />
-            <span>✦ STUDIO INTELLIGENCE</span>
-          </button>
-
+          {/* Blank Canvas and Studio Intelligence moved to the room bar, after
+              RELEASE: they are session-level acts rather than chrome, and the
+              creator asked for them there. */}
           {/* Modal Portals */}
           <button
             onClick={() => (onOpenTour ? onOpenTour() : window.dispatchEvent(new CustomEvent('soulsonus:openTour', { detail: { aspectId: 'OVERVIEW' } })))}
@@ -260,121 +231,13 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* 2. MAIN TRANSPORT ROW: ◀◀ ▶ ■ ● LOOP | 1:01 | BPM | METRO | QUANTIZE | MIC | MASTER */}
-      <div className="px-4 py-2 flex flex-wrap items-center justify-between gap-3 bg-slate-900/90">
-        {/* Left Transport Cluster */}
-        <div className="flex items-center space-x-2">
-          {/* Rewind */}
-          <button
-            onClick={onStop}
-            className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition"
-            title="Rewind to Start"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Play / Pause */}
-          <button
-            id="btn-play-pause"
-            onClick={onTogglePlay}
-            className={`w-10 h-8 rounded-lg font-black flex items-center justify-center transition-all ${
-              dawState.isPlaying
-                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30 scale-105'
-                : 'bg-slate-800 text-slate-100 hover:bg-slate-700 hover:text-white'
-            }`}
-            title={dawState.isPlaying ? 'Pause (Space)' : 'Play (Space)'}
-          >
-            {dawState.isPlaying ? (
-              <Pause className="w-4 h-4 fill-slate-950" />
-            ) : (
-              <Play className="w-4 h-4 fill-slate-100 ml-0.5" />
-            )}
-          </button>
-
-          {/* Stop */}
-          <button
-            id="btn-stop"
-            onClick={onStop}
-            className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition"
-            title="Stop Playhead"
-          >
-            <Square className="w-3.5 h-3.5" />
-          </button>
-
-          {/* The record button is at the microphone, where the recording
-              happens. It used to be here as well -- two record controls at two
-              ends of the screen for one microphone, which is how "pick BEATBOX,
-              then press record" ended up arming the mic and switching it off
-              again. There is one now. */}
-
-          {/* Loop Mode */}
-          <button
-            onClick={() => setIsLooping(!isLooping)}
-            className={`px-2.5 h-8 rounded-lg font-mono text-xs font-bold border transition flex items-center space-x-1 ${
-              isLooping
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                : 'bg-slate-900 text-slate-500 border-slate-800'
-            }`}
-            title="Toggle Continuous Loop Mode"
-          >
-            <Repeat className="w-3.5 h-3.5" />
-            <span>LOOP</span>
-          </button>
-
-          {/* Precision Bar:Beat.Tick Counter */}
-          <div className="bg-slate-950 px-3 h-8 rounded-lg border border-slate-800 flex items-center font-mono text-xs text-amber-300 font-bold tracking-widest">
-            <Clock className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
-            <span>{timeFormatted}</span>
-          </div>
-        </div>
-
-        {/* Tempo, the click and the input grid live with the microphone now:
-            they are the recording setup, and the recording setup belongs where
-            the record button is. This row is the song's transport. */}
-
-        {/* Right: Master Output Volume & Live Detection Status */}
-        <div className="flex items-center space-x-3 font-mono text-xs">
-          {/* Master Output Volume */}
-          <div
-            className="flex items-center space-x-2 bg-slate-950 px-3 h-8 rounded-lg border border-slate-800"
-            title={`Master Bus Output Level: ${Math.round(dawState.masterVolume * 100)}%`}
-          >
-            <Volume2 className="w-3.5 h-3.5 text-slate-400" />
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={dawState.masterVolume}
-              onChange={(e) => onStateChange({ masterVolume: Number(e.target.value) })}
-              className="w-20 accent-amber-500 cursor-pointer"
-              title={`Master Volume Fader: ${Math.round(dawState.masterVolume * 100)}%`}
-            />
-            <span className="text-[10px] text-slate-400 w-7 text-right">
-              {Math.round(dawState.masterVolume * 100)}%
-            </span>
-          </div>
-
-          {/* Presets Menu */}
-          <div className="hidden lg:flex items-center" title="Load Production Genre Kit Preset">
-            <select
-              onChange={(e) => {
-                const p = PRESETS.find((preset) => preset.id === e.target.value);
-                if (p) onSelectPreset(p);
-              }}
-              className="bg-slate-950 border border-slate-800 text-xs text-slate-300 font-mono py-1.5 px-2.5 rounded-lg focus:outline-none focus:border-amber-500 cursor-pointer"
-              title="Choose Production Genre Kit Preset (Dubler Vocal Beatbox, Melodic Trap, etc.)"
-            >
-              <option value="">Choose Preset...</option>
-              {PRESETS.map((p) => (
-                <option key={p.id} value={p.id} className="bg-slate-900 text-slate-100">
-                  {p.name} ({p.bpm} BPM)
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+      {/* The transport row is gone from here.
+          "The record, play button, loop, the timing, key, all of that should be
+          where the microphone is. It shouldn't be in the same bar with create,
+          sounds, write, record, mix, master and release." So play, stop,
+          rewind, loop, the bar:beat counter, the master volume and the genre
+          preset all moved into the recording workstation, with the record
+          button they belong beside. */}
     </header>
   );
 };

@@ -10,7 +10,7 @@
  * than a decision.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session, recordTake } = require('./lib.cjs');
+const { launch, enterStudio, session, recordTake, openIntelligence, closeIntelligence, askIntelligence: ask } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -18,13 +18,6 @@ function check(label, ok, detail = '') {
   if (!ok) failures++;
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${label.padEnd(58)} ${detail}`);
 }
-
-const ask = async (page, text) => {
-  await page.fill('#intelligence-input', text);
-  await page.click('#intelligence-ask');
-  await page.waitForTimeout(1500);
-  return page.evaluate(() => document.body.innerText);
-};
 
 const A = `s => JSON.stringify({
   known: [s.creativeAnalytics.iterationFrequency, s.creativeAnalytics.sectionsRevised,
@@ -58,14 +51,12 @@ const A = `s => JSON.stringify({
     (before.notMeasured.find((n) => /completion/.test(n)) || '').slice(0, 90));
   check('no question is raised off nothing', before.recs.length === 0, `${before.recs.length}`);
 
-  await page.getByRole('button', { name: '✦ STUDIO INTELLIGENCE' }).first().click();
-  await page.waitForTimeout(800);
+  await openIntelligence(page);
   const emptyAnswer = await ask(page, 'what have you noticed about how I am working?');
   check('and asked, it says there is no record to read rather than inventing one',
     /not enough has happened yet|there is no record to read/.test(emptyAnswer),
     (emptyAnswer.match(/[^\n]*(no record to read|not enough has happened)[^\n]*/) || [''])[0].slice(0, 90));
-  await page.getByRole('button', { name: '✦ STUDIO INTELLIGENCE' }).first().click();
-  await page.waitForTimeout(400);
+  await closeIntelligence(page);
 
   // ---- do some work, so there is something to count ----
   console.log('\n-- after actually working --');
@@ -113,8 +104,7 @@ const A = `s => JSON.stringify({
 
   // ---- asked ----
   console.log('\n-- asked --');
-  await page.getByRole('button', { name: '✦ STUDIO INTELLIGENCE' }).first().click();
-  await page.waitForTimeout(800);
+  await openIntelligence(page);
   const answer = await ask(page, 'what patterns have you noticed?');
   check('the answer carries the counts it read', /revisions over/.test(answer),
     (answer.match(/[^\n]*revisions over[^\n]*/) || [''])[0].slice(0, 90));

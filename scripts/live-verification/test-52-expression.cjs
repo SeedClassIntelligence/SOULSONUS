@@ -14,7 +14,7 @@
  *      apply it says it cannot apply.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session, recordTake } = require('./lib.cjs');
+const { launch, enterStudio, session, recordTake, openIntelligence, closeIntelligence, askIntelligence: ask } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -28,14 +28,6 @@ const STATE = `s => JSON.stringify({
   said: s.creatorExpressionReadings || {},
   notes: s.tracks.reduce((n, t) => n + (t.noteEvents || []).length, 0),
 })`;
-
-async function ask(page, text) {
-  await page.fill('#intelligence-input', text);
-  await page.click('#intelligence-ask');
-  await page.waitForTimeout(1500);
-  const bubbles = await page.$$eval('#intelligence-log, .intelligence-message, body', () => null).catch(() => null);
-  return page.evaluate(() => document.body.innerText);
-}
 
 (async () => {
   const { browser, page } = await launch(playwright, `${SP}/hum_melody.wav`);
@@ -52,14 +44,12 @@ async function ask(page, text) {
   check('nothing performed reads as no state at all', fresh.expression === null,
     JSON.stringify(fresh.expression));
 
-  await page.getByRole('button', { name: '✦ STUDIO INTELLIGENCE' }).first().click();
-  await page.waitForTimeout(800);
+  await openIntelligence(page);
   const beforeAnswer = await ask(page, 'what did you hear in the feel of this?');
   check('and the intelligence says so rather than reading a creator nobody took',
     /Nothing yet/.test(beforeAnswer) && !/valence|arousal/.test(beforeAnswer.split('Nothing yet')[1] || ''),
     (beforeAnswer.match(/Nothing yet[^\n]*/) || [''])[0].slice(0, 90));
-  await page.getByRole('button', { name: '✦ STUDIO INTELLIGENCE' }).first().click();
-  await page.waitForTimeout(500);
+  await closeIntelligence(page);
 
   // ---- a hummed take: pitch and spectrum both present ----
   console.log('\n-- a hummed take --');
@@ -123,8 +113,7 @@ async function ask(page, text) {
 
   // ---- a change explained in those terms ----
   console.log('\n-- a change explained in those terms --');
-  await page.getByRole('button', { name: '✦ STUDIO INTELLIGENCE' }).first().click();
-  await page.waitForTimeout(800);
+  await openIntelligence(page);
   const answer = await ask(page, 'what does this take feel like?');
   check('the answer names the dimensions it read', read.some((d) => answer.includes(ex[d].reads)),
     read.map((d) => ex[d].reads).join(', ').slice(0, 80));
@@ -148,8 +137,7 @@ async function ask(page, text) {
   // SRT-1 V lists their own emotional intent as an input in its own right --
   // so the row has to be theirs to fill, not only theirs to correct.
   console.log('\n-- a dimension the studio could not read --');
-  await page.getByRole('button', { name: '✦ STUDIO INTELLIGENCE' }).first().click();
-  await page.waitForTimeout(500);
+  await closeIntelligence(page);
   await page.locator('#btn-blank-canvas').first().click();
   await page.waitForTimeout(1200);
   await recordTake(page, 'Oral Beatbox', 8);
