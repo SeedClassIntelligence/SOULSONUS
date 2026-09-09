@@ -64,8 +64,13 @@ const benchOf = (page) =>
 
   // ---- §17: level 2 follows the work ----
   console.log('\n-- level 2 follows the activity --');
-  check('arriving in CREATE, the expression engine is the activity',
-    (await benchOf(page)) === 'UNIFIED', String(await benchOf(page)));
+  // The microphone is not a bench: it is the room's own act, always on
+  // screen. Arriving in CREATE therefore opens no bench at all -- suggesting
+  // one on top of the recording surface would be the level deciding what the
+  // creator is doing.
+  check('arriving in CREATE, the microphone is on screen without opening anything',
+    (await page.locator('[data-testid="record"]').count()) === 1 && (await benchOf(page)) === null,
+    `record control present, bench = ${await benchOf(page)}`);
 
   await goToRoom(page, 'WRITE_RECORD', { settle: 0 });
   await page.waitForTimeout(1200);
@@ -76,8 +81,8 @@ const benchOf = (page) =>
 
   await goToRoom(page, 'CREATE', { settle: 0 });
   await page.waitForTimeout(1000);
-  check('back in CREATE, the activity is the expression engine again',
-    (await benchOf(page)) === 'UNIFIED', String(await benchOf(page)));
+  check('back in CREATE, the microphone is there again',
+    (await page.locator('[data-testid="record"]').count()) === 1, 'record control present');
 
   // ---- Amendment D: their choice beats the hierarchy ----
   console.log('\n-- and the creator outranks the level --');

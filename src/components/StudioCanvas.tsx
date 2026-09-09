@@ -299,24 +299,20 @@ export const StudioCanvas: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeWorkspace, editorPrefs.benchChosen]);
 
-  // Other rooms open the instrument through the app-wide drawer event; that
-  // has to land on the UNIFIED bench rather than on a flag nothing reads.
+  // Other rooms open the instrument through the app-wide drawer event; it is
+  // the PERFORM bench that carries it.
   useEffect(() => {
-    if (isInstrumentOpen) setActiveBench('UNIFIED');
+    if (isInstrumentOpen) setActiveBench('PERFORM');
   }, [isInstrumentOpen]);
 
-  // A re-read from a track lane produces a reading that is shown on the
-  // UNIFIED bench. Opening the bench is what makes the affordance permanent
-  // rather than decorative: the button would otherwise do its work into a
-  // panel the creator cannot see. A reading from a capture pass has no
-  // subject track and does not move the bench.
-  useEffect(() => {
-    if (lastInterpretation && interpretationSubjectId) setActiveBench('UNIFIED');
-  }, [lastInterpretation, interpretationSubjectId]);
+  // A re-read from a track lane used to have to open a bench, because the
+  // reading was shown on one. The recording surface is always on screen now
+  // and carries the interpretation with it, so the reading arrives where the
+  // creator is already looking and nothing has to be opened for them.
 
   // Closing the bench releases the shared flag, so the next external open fires.
   useEffect(() => {
-    if (activeBench !== 'UNIFIED' && activeBench !== 'PERFORM' && isInstrumentOpen) setIsInstrumentOpen(false);
+    if (activeBench !== 'PERFORM' && isInstrumentOpen) setIsInstrumentOpen(false);
   }, [activeBench, isInstrumentOpen, setIsInstrumentOpen]);
 
   // Universal Arranger Toolbar State
@@ -525,10 +521,20 @@ export const StudioCanvas: React.FC = () => {
       {/* FULL-SCREEN FULL-WIDTH MULTI-TRACK INTEGRATED ARRANGER (100% Edge-to-Edge) */}
       <div className="w-full bg-slate-950 p-4 flex flex-col justify-between space-y-3 min-h-[600px]">
         <div>
+            {/* THE RECORDING ENVIRONMENT.
+                Not a bench, and not one of four things a creator might have
+                open: "The top becomes the recording environment... and directly
+                underneath that is the DAW. That's it." It was gated behind the
+                UNIFIED bench for one commit, which meant a creator who had
+                closed that bench -- or chosen another one, since the choice is
+                remembered -- arrived to a studio with no microphone in it. */}
+            <div className="mb-3">
+              <StudioRecordingSurface />
+            </div>
+
             {/* 1. BENCH SELECTOR TABS */}
             <div className="flex flex-wrap items-center gap-1.5 mb-2">
               {([
-                { id: 'UNIFIED' as const, label: 'UNIFIED DECK', icon: <Zap className="w-3.5 h-3.5" />, on: 'bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-600/30', off: 'bg-blue-600/15 hover:bg-blue-600/25 text-blue-300 border-blue-500/40' },
                 { id: 'PERFORM' as const, label: 'PERFORM', icon: <Mic className="w-3.5 h-3.5" />, on: 'bg-orange-500 text-slate-950 border-orange-400', off: 'bg-orange-500/15 hover:bg-orange-500/25 text-orange-300 border-orange-500/40' },
                 { id: 'PATTERN' as const, label: 'PATTERN', icon: <Layers className="w-3.5 h-3.5" />, on: 'bg-amber-500 text-slate-950 border-amber-400', off: 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40' },
                 { id: 'SECTIONS' as const, label: 'SECTIONS', icon: <Compass className="w-3.5 h-3.5" />, on: 'bg-cyan-500 text-slate-950 border-cyan-400', off: 'bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/40' },
@@ -565,11 +571,7 @@ export const StudioCanvas: React.FC = () => {
               </div>
             )}
 
-            {activeBench === 'UNIFIED' && (
-              <div className="mb-2">
-                <StudioRecordingSurface />
-              </div>
-            )}
+
 
             {activeBench === 'PERFORM' && !isInstrumentFull && (
               <div className="mb-2">

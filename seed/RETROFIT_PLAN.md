@@ -745,6 +745,34 @@ rail. Rather than relabel it to match where it happened to sit, the Write &
 Record room now offers it too. It is still on the rail: a second door, not a
 move.
 
+## The microphone is not a bench - 2026-09-09
+
+Shipped wrong and corrected the same day, on the owner's report: "I don't see
+the microphone. You consolidated and removed the pads, but I do not see the
+microphone or any of that stuff."
+
+The recording surface was rendered behind the UNIFIED bench, in the slot the old
+deck had occupied. Benches are a creator's choice and the choice is remembered
+-- so anyone who had closed that bench, or picked PATTERN or SECTIONS in an
+earlier session, arrived in CREATE to a studio with no microphone in it. The
+level system was doing exactly what it was told, and what it was told was wrong.
+
+The owner's own sentence is the rule I should have built to the first time:
+"The top becomes the recording environment... and directly underneath that is
+the DAW. That's it." So the microphone is not a bench. It is always on screen in
+CREATE, above the bench tabs, and the UNIFIED bench is gone because the deck it
+opened no longer exists. `benchForRoom('CREATE')` suggests nothing now:
+proposing a bench on top of the recording surface would be the organizing layer
+deciding what the creator is doing, which Amendment D forbids.
+
+Two effects that used to force a bench open are gone with it. The instrument
+lands on PERFORM, where it lives. A re-read from a track lane no longer has to
+open anything -- the reading arrives on the surface the creator is already
+looking at.
+
+`test-58` states the new rule as a check: arriving in CREATE, the record control
+is on screen and no bench is open at all.
+
 ## The microphone replaces the expression engine - 2026-09-09
 
 The owner's diagnosis, which is the sharpest statement of this product yet:

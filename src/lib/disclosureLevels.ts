@@ -68,7 +68,7 @@ export const SURFACE_LEVELS = {
   export: 1,
 
   // Level 2 -- the activity at hand.
-  liveExpressionEngine: 2,
+  recordingSurface: 2,
   performInstrument: 2,
   patternControls: 2,
   sectionBuilder: 2,
@@ -122,7 +122,14 @@ export const surfacesAt = (level: DisclosureLevel): SurfaceName[] =>
  *
  * Not a new vocabulary: these are the four the bench selector has always had.
  */
-export type BenchId = 'UNIFIED' | 'PERFORM' | 'PATTERN' | 'SECTIONS';
+/**
+ * The benches a creator can open beside the recording environment.
+ *
+ * UNIFIED is gone: the deck it named was replaced by the microphone surface,
+ * which is not a bench -- it is always there, above the DAW, because it is the
+ * act the room exists for.
+ */
+export type BenchId = 'PERFORM' | 'PATTERN' | 'SECTIONS';
 
 /**
  * What Level 2 opens on when a creator arrives in a room.
@@ -140,7 +147,10 @@ export type BenchId = 'UNIFIED' | 'PERFORM' | 'PATTERN' | 'SECTIONS';
 export const benchForRoom = (room: WorkspaceTab): BenchId | null => {
   switch (room) {
     case 'CREATE':
-      return 'UNIFIED';
+      // Nothing. The microphone is already on screen and does not need to be
+      // opened; suggesting a bench on top of it would be the organizing layer
+      // deciding what the creator is doing.
+      return null;
     case 'BUILD':
       return 'SECTIONS';
     case 'WRITE_RECORD':
