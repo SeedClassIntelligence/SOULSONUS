@@ -16,7 +16,7 @@
  * a performance is not a measurement.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session } = require('./lib.cjs');
+const { launch, enterStudio, session, armCapture, stopCapture } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -82,12 +82,12 @@ const WRITTEN = [480, 490, 535, 960];
   console.log('-- recording a take --');
   await page.locator('#btn-blank-canvas').first().click();
   await page.waitForTimeout(1200);
-  await page.getByRole('button', { name: 'Oral Beatbox' }).first().click();
-  await page.waitForTimeout(400);
-  await page.getByRole('button', { name: '● RECORD LOOP' }).first().click();
+  // Through the shared helpers: the capture row is one microphone with the ten
+  // ways under it now, and the record control does not move when the way
+  // changes.
+  await armCapture(page, 'BEATBOX');
   await page.waitForTimeout(9000);
-  await page.getByRole('button', { name: /STOP RECORDING/ }).first().click();
-  await page.waitForTimeout(2000);
+  await stopCapture(page, { settle: 2000 });
   const rec = JSON.parse(await session(page, `s => JSON.stringify({ rec: s.dawState.isRecordingMic, mic: s.detectionSettings.enabled })`));
   check('the mic is off before anything is measured', !rec.rec && !rec.mic, JSON.stringify(rec));
 

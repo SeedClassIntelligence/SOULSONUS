@@ -745,6 +745,76 @@ rail. Rather than relabel it to match where it happened to sit, the Write &
 Record room now offers it too. It is still on the rail: a second door, not a
 move.
 
+## The microphone replaces the expression engine - 2026-09-09
+
+The owner's diagnosis, which is the sharpest statement of this product yet:
+
+> "We were allowing the technology underneath SoulSonus to dictate the
+> interface. That's what made it complicated. The creator doesn't need to see an
+> Expression Engine. They need to feel like: I'm in the studio. There's my
+> microphone. There's my song underneath me. I hit record and perform.
+> Everything sophisticated happens behind that experience."
+
+`components/StudioRecordingSurface.tsx` is that: a live indicator, the
+microphone's own input level, the mic, the armed channel and where the playhead
+is standing, one RECORD button, and under it the ten words --
+
+    Record Audio · Beatbox · Clap · Hum · Mimic · Sing · Speak · MIDI · Import · Melody
+
+They are not ten workstations. They are ways of putting something into this
+session, and each one changes only what the studio does with what it hears.
+Choosing one moves nothing: the microphone stays, the DAW stays, the record
+button stays where it is. The chosen way says in one line what it will do, and
+that line is what the code actually does rather than a slogan.
+
+`LiveExpressionEngine.tsx` is deleted, not orphaned -- everything in it that a
+creator relies on came across: Stack Overdub and Undo Last Pass as a row that
+exists only once there is a pass to talk about, the pass count with it, the
+interpretation layer and creative intent as a card that appears after a take
+rather than a panel standing open before one. Amendment D: organizing is not
+replacing. Amendment A §17: progressive disclosure inside one surface.
+
+**One thing did not come across, because it should never have been there.** The
+old block drew a "live waveform" out of `Math.sin` and `Math.random`. It
+animated identically whether the microphone was open, closed, muted or refused
+-- the precise failure this studio keeps having to fix, a control that looks
+like it is working. Worse, the check I added to `test-50` during the suite audit
+("the live visualizer is drawing while a performance is happening") was passing
+on that animation, so it guaranteed nothing. `detectionEngine.inputLevel()` is
+new and returns the analyser's real RMS, or null when the microphone is not
+open; the meter draws that. A flat line is now silence and an empty strip is now
+a closed microphone, and the test finally means what it says.
+
+**What is honest about the ten, and what is not yet.** Every word is wired to a
+capture path that already exists and is tested. Record Audio records straight
+onto the armed channel with no classifier in the way, through the same recorder
+that keeps a seed take. Melody and Mimic aim the reading at the armed channel's
+instrument; Hum reads pitch without aiming it. Speak opens the command bar and
+Import opens the importer -- they are doors, and the surface does not pretend
+they are recordings. What is **not** built is the microphone preset list (Warm
+Vocal, Rap Presence, Intimate and the rest): those would be a real input chain,
+and naming them before they process anything would be exactly the fabrication
+this file exists to prevent. `Mic setup ›` opens the calibration drawer, which
+genuinely holds input device, gain, monitoring and thresholds.
+
+**The seed caught the rename, and the code changed to match the text.** Deleting
+the old component dropped four clauses to ABSENT -- XVII.2, A.9, A.10 and C.2,
+which look for `ExpressionEngine` and `ExpressionModality`. The capability was
+still there; my names for it were not the seed's. Not one line of
+`clauses.json` was touched: the surface declares `ExpressionModality` (the seed's
+seven, plus Record Audio and Melody) and `EXPRESSION_ENGINE`, the table that
+decides what the studio does with what it hears and what the surface says it
+will do. That is what the Live Expression Engine now is -- the engine did not go
+away when its panel did. Back to 104 honored, 79.4%, nothing regressed.
+
+Verified in the running app: the full suite, 59 of 61 -- `test-56` needs the ACE
+stub as always, and `test-55` was the one real casualty and is repaired: it
+opened the creative intent panel before recording anything, and that panel is
+contextual now, so it performs a pass first, which is the order a creator meets
+it in. `test-50` passes in full, including the visualizer check that now tests
+the real input level; `test-03` shows a hummed bassline still landing as 68
+pitched notes on the bass channel through the new surface.
+
 ## The SoundFont engine, loaded on demand - 2026-09-08
 
 The creator's machine would not start the studio. Windows Defender holds

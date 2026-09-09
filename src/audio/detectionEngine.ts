@@ -217,6 +217,25 @@ export class DetectionEngine {
     }
   }
 
+  /**
+   * The microphone's current input level, or null when it is not open.
+   *
+   * Added because the capture surface used to draw a "live waveform" out of
+   * `Math.sin` and `Math.random`: it animated identically whether the
+   * microphone was open, closed, muted or refused, which is the precise shape
+   * of the failure this studio keeps having to fix -- a control that looks
+   * like it is working. This is the real signal, so a flat line means silence
+   * and nothing means the microphone is not open.
+   */
+  public inputLevel(): number | null {
+    if (!this.analyser) return null;
+    const buf = new Float32Array(this.analyser.fftSize);
+    this.analyser.getFloatTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+    return Math.sqrt(sum / buf.length);
+  }
+
   public isActive(): boolean {
     return this.isListening;
   }

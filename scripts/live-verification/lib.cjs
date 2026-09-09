@@ -63,15 +63,27 @@ async function session(page, projector) {
  * `tab` is the tab's own label: 'Oral Beatbox', 'Clap / Tap', 'Hum / Voice',
  * 'Mimic', 'Sing', 'MIDI Keys'.
  */
+const WAY_FOR_LABEL = {
+  'Oral Beatbox': 'BEATBOX',
+  'Clap / Tap': 'CLAP',
+  'Hum / Voice': 'HUM',
+  Mimic: 'MIMIC',
+  Sing: 'SING',
+  'MIDI Keys': 'MIDI',
+};
+
 async function recordTake(page, tab, seconds, { play = false } = {}) {
-  await page.getByRole('button', { name: tab }).first().click();
+  const way = WAY_FOR_LABEL[tab] || tab;
+  await page.locator(`[data-testid="${MODALITY_TAB[way] || `capture-${String(way).toLowerCase()}`}"]`)
+    .first()
+    .click({ force: true });
   await page.waitForTimeout(400);
-  await page.getByRole('button', { name: '\u25cf RECORD LOOP' }).first().click();
+  await page.locator('[data-testid="record"]').first().click({ force: true });
   if (play) {
     await page.locator('button[title="Play (Space)"]').first().click().catch(() => {});
   }
   await page.waitForTimeout(seconds * 1000);
-  await page.getByRole('button', { name: /STOP RECORDING/ }).first().click();
+  await page.locator('[data-testid="record"]').first().click({ force: true });
   // Longer than the history grouping window, so the next edit cannot join
   // this take's entry.
   await page.waitForTimeout(2600);
@@ -138,15 +150,25 @@ async function openUtility(page, key, { settle = 1200 } = {}) {
  * for a control that no longer exists and then reported the studio broken.
  */
 const MODALITY_TAB = {
+  // The ten words under the microphone. The old row of modality tabs is gone;
+  // these are ways of being understood, not modes to enter, and the record
+  // control is one button that does not move when you change your mind.
+  AUDIO: 'capture-audio',
   BEATBOX: 'capture-beatbox',
   MOUTH: 'capture-beatbox',
-  CLAP_TAP: 'capture-clap_tap',
-  BODY: 'capture-clap_tap',
-  HUM_VOICE: 'capture-hum_voice',
-  VOICE: 'capture-hum_voice',
+  CLAP: 'capture-clap',
+  CLAP_TAP: 'capture-clap',
+  BODY: 'capture-clap',
+  HUM: 'capture-hum',
+  HUM_VOICE: 'capture-hum',
+  VOICE: 'capture-hum',
   MIMIC: 'capture-mimic',
   SING: 'capture-sing',
-  INSTRUMENT: 'capture-instrument',
+  SPEAK: 'capture-speak',
+  MIDI: 'capture-midi',
+  INSTRUMENT: 'capture-midi',
+  IMPORT: 'capture-import',
+  MELODY: 'capture-melody',
 };
 
 /** Chooses a modality and starts recording. Leaves the microphone open. */
@@ -155,14 +177,15 @@ async function armCapture(page, modality = 'BEATBOX', { settle = 1200 } = {}) {
   if (!tab) throw new Error(`No capture modality called ${modality}. Known: ${Object.keys(MODALITY_TAB).join(', ')}`);
   await page.locator(`[data-testid="${tab}"]`).first().click({ force: true });
   await page.waitForTimeout(400);
-  await page.getByRole('button', { name: '\u25cf RECORD LOOP' }).first().click({ force: true });
+  await page.locator('[data-testid="record"]').first().click({ force: true });
   await page.waitForTimeout(settle);
 }
 
 /** Ends capture from whichever control is on screen, and keeps the take. */
 async function stopCapture(page, { settle = 2600 } = {}) {
-  const bench = page.getByRole('button', { name: /STOP RECORDING/ }).first();
-  if (await bench.count()) await bench.click({ force: true });
+  const surface = page.locator('[data-testid="record"]').first();
+  const label = (await surface.count()) ? (await surface.innerText()).trim() : '';
+  if (/STOP/i.test(label)) await surface.click({ force: true });
   else await page.locator('#btn-mic-arm').first().click({ force: true });
   await page.waitForTimeout(settle);
 }

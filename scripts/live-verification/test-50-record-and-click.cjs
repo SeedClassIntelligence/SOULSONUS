@@ -117,7 +117,7 @@ const STATE = `s => JSON.stringify({
     (await page.locator('[data-testid="capture-status"]').first().innerText()).replace(/\s+/g, ' ').trim();
   check(
     'with the mic closed it does not claim to be recording',
-    /MONITOR READY|LOOP PLAYBACK/.test(await statusText()) && !/MIC RECORDING/.test(await statusText()),
+    /READY/.test(await statusText()) && !/LIVE/.test(await statusText()),
     await statusText()
   );
 
@@ -125,11 +125,13 @@ const STATE = `s => JSON.stringify({
   await page.waitForTimeout(800);
   await page.locator('#btn-mic-arm').first().click();
   await page.waitForTimeout(2500);
-  check('with the mic open it says so', /MIC RECORDING/.test(await statusText()), await statusText());
+  check('with the mic open it says so', /LIVE/.test(await statusText()), await statusText());
 
-  // The separate level readout became the live waveform beside this text, so
-  // "the meter moves" is now "the visualizer is drawing what it hears": three
-  // snapshots of the canvas during a performance must not be identical.
+  // The meter is the microphone's own input level now, not an animation --
+  // the surface this replaced drew a "waveform" out of Math.sin and
+  // Math.random, which moved identically whether the microphone was open or
+  // refused. So this check finally means what it says: the frames differ
+  // because the level differs.
   const frames = [];
   for (let i = 0; i < 6; i++) {
     await page.waitForTimeout(500);

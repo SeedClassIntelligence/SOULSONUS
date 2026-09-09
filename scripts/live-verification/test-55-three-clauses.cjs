@@ -12,7 +12,7 @@
  * under them.
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session, recordTake } = require('./lib.cjs');
+const { launch, enterStudio, session, recordTake, armCapture, stopCapture } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 let failures = 0;
@@ -28,7 +28,14 @@ function check(label, ok, detail = '') {
   console.log('=== III.4, XIV.1, XVIII.4 ===\n');
 
   // ---- XIV.1: genre as a parameter ----
+  //
+  // Creative intent is contextual now: it appears with the reading of a take
+  // rather than standing open in front of a creator who has not performed yet.
+  // So a pass comes first, which is also the order a creator meets it in.
   console.log('-- genre is named, never classified --');
+  await armCapture(page, 'HUM');
+  await page.waitForTimeout(7000);
+  await stopCapture(page);
   await page.locator('[data-testid="creative-intent-toggle"]').first().click();
   await page.waitForTimeout(400);
   const before = JSON.parse(await session(page, `s => JSON.stringify(s.genreId)`));
