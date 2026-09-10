@@ -9,10 +9,8 @@
 #   ./preflight.sh
 set -uo pipefail
 
-INSTANCE_NAME="${INSTANCE_NAME:-soulsonus-inference}"
-ZONE="${ZONE:-us-central1-a}"
-REGION="${ZONE%-*}"
-GPU_METRIC="${GPU_METRIC:-NVIDIA_T4_GPUS}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SCRIPT_DIR/config.sh"
 
 G="\033[32m"; R="\033[31m"; A="\033[33m"; D="\033[2m"; B="\033[1m"; O="\033[0m"
 problems=0

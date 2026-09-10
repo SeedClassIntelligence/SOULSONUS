@@ -4,8 +4,8 @@
 # fail silently once the VM is stopped -- harmless either way.)
 set -euo pipefail
 
-INSTANCE_NAME="soulsonus-inference"
-ZONE="us-central1-a"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SCRIPT_DIR/config.sh"
 
 gcloud compute instances stop "$INSTANCE_NAME" --zone="$ZONE"
 

@@ -56,6 +56,26 @@ which is the worst place to find out.
 
 On Windows run these from Git Bash or WSL.
 
+All four scripts read `gcp/config.sh`, so the zone, machine type and quota
+metric are set in one place. Change them per-machine in `gcp/.env`, which is
+gitignored — this matters because **GPU quota is granted per region**, and a
+quota approved somewhere other than `us-central1` means moving the VM:
+
+```bash
+# gcp/.env
+ZONE=us-west1-b
+```
+
+An L4 instead of a T4 — 2–3× faster, roughly double the hourly rate, and it
+needs its own quota:
+
+```bash
+# gcp/.env
+MACHINE_TYPE=g2-standard-4
+ACCELERATOR=type=nvidia-l4,count=1
+GPU_METRIC=NVIDIA_L4_GPUS
+```
+
 `start.sh` opens IAP tunnels so the services appear on **your** machine at
 `localhost:8001` and `localhost:8010` — the addresses SoulSonus already uses.
 Nothing in the app needs reconfiguring, and the inference API is never exposed

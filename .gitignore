@@ -25,3 +25,6 @@ disclosure_*.png
 
 # Built by npm run build:server (see server/index.ts)
 server.js
+
+# Local Google Cloud settings (zone, machine type). Personal to a machine.
+inference-server/gcp/.env

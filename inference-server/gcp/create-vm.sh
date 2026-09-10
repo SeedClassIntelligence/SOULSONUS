@@ -6,27 +6,21 @@
 #
 # Defaults to a T4 GPU (n1-standard-4 + 1x T4), the cheapest GCP GPU tier
 # that comfortably covers ACE-Step's ~4GB minimum VRAM requirement plus
-# Demucs. If generation feels too slow, edit ACCELERATOR below to
-# "type=nvidia-l4,count=1" and MACHINE_TYPE to "g2-standard-4" for roughly
-# 2-3x the speed at roughly double the hourly cost (see README.md for
-# current pricing references -- GPU pricing changes, verify at
-# https://cloud.google.com/compute/gpus-pricing before relying on any
-# number here).
+# Demucs. Every setting lives in config.sh, which all four scripts read --
+# so a zone or machine change is one edit, not three files and a missed one.
+#
+# For roughly 2-3x the speed at roughly double the hourly cost, put this in
+# gcp/.env (and request the matching quota first -- see preflight.sh):
+#   MACHINE_TYPE=g2-standard-4
+#   ACCELERATOR=type=nvidia-l4,count=1
+#   GPU_METRIC=NVIDIA_L4_GPUS
+#
+# GPU pricing changes; verify at https://cloud.google.com/compute/gpus-pricing
+# before relying on any number in this repository.
 set -euo pipefail
 
-INSTANCE_NAME="soulsonus-inference"
-ZONE="us-central1-a"            # T4 and L4 are both available here
-MACHINE_TYPE="n1-standard-4"
-ACCELERATOR="type=nvidia-tesla-t4,count=1"
-BOOT_DISK_SIZE="100GB"          # model weights (~10GB) + Docker images + headroom
-# The disk bills whether or not the VM is running. At us-central1 list price
-# 100GB is about $17/month on pd-ssd and about $10/month on pd-balanced. If
-# this VM will sit stopped between sessions -- which is the whole point of
-# start.sh / stop.sh -- pd-balanced is the cheaper default and the speed
-# difference only shows up while loading weights at boot.
-BOOT_DISK_TYPE="pd-ssd"         # pd-balanced to halve the idle cost
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SCRIPT_DIR/config.sh"
 
 gcloud compute instances create "$INSTANCE_NAME" \
   --zone="$ZONE" \

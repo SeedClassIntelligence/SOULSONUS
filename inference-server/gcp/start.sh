@@ -4,8 +4,8 @@
 # reach the inference services without exposing them to the public internet.
 set -euo pipefail
 
-INSTANCE_NAME="soulsonus-inference"
-ZONE="us-central1-a"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SCRIPT_DIR/config.sh"
 
 echo "Starting $INSTANCE_NAME (GPU billing begins now)..."
 gcloud compute instances start "$INSTANCE_NAME" --zone="$ZONE"
