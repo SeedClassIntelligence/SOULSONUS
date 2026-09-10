@@ -41,30 +41,41 @@ once generation speed actually matters to your workflow.
 gcloud auth login
 gcloud config set project YOUR_PROJECT_ID
 cd inference-server/gcp
+./preflight.sh          # first. Checks everything the next line assumes
 ./create-vm.sh          # once. n1-standard-4 + 1x NVIDIA T4, us-central1-a
 ./start.sh              # before a session. Starts the VM and tunnels 8001/8010
 ./stop.sh               # after. Stops GPU and CPU billing
 ```
+
+`preflight.sh` changes nothing. It checks sign-in, project, billing link, the
+compute and IAP APIs, your GPU quota in the region, whether the VM already
+exists, and whether your account holds the IAM role `start.sh`'s tunnels need
+— and for anything missing it prints the single command that fixes it. Each of
+those otherwise surfaces as a raw gcloud error partway through creating a VM,
+which is the worst place to find out.
+
+On Windows run these from Git Bash or WSL.
 
 `start.sh` opens IAP tunnels so the services appear on **your** machine at
 `localhost:8001` and `localhost:8010` — the addresses SoulSonus already uses.
 Nothing in the app needs reconfiguring, and the inference API is never exposed
 to the open internet.
 
-### Check this before anything else
+### The GPU quota gate
 
-**A Google Cloud free trial account cannot get GPU quota.** The credits are
-real and usable, but GPU quota requires a billing account upgraded to paid.
-Upgrading does not spend your remaining credits — they stay and are consumed
-first. Verify your actual limit before creating a VM that cannot start:
+**A free trial billing account cannot hold GPU quota at all**, and a paid one
+still starts at zero in most regions until it is requested. Upgrading to paid
+does not spend leftover trial credits — they remain and are consumed before
+any charge. `preflight.sh` reads the real number; on its own that is:
 
 ```bash
 gcloud compute regions describe us-central1 \
-  --format="table(quotas.metric,quotas.limit,quotas.usage)" | grep -i gpu
+  --flatten="quotas[]" --format="value(quotas.metric,quotas.limit)" | grep -i gpu
 ```
 
-A limit of `0` means quota, not billing, is the blocker. Request more at
-IAM & Admin → Quotas → "NVIDIA T4 GPUs".
+A limit of `0` means quota, not billing, is the blocker. Request it at
+IAM & Admin → Quotas → filter `NVIDIA_T4_GPUS` → your region → Edit Quotas.
+Approval is usually minutes, occasionally a day.
 
 ### What it costs while it runs
 
