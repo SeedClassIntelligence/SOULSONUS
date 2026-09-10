@@ -56,6 +56,31 @@ which is the worst place to find out.
 
 On Windows run these from Git Bash or WSL.
 
+### Cloud Shell is fine for creating the VM. It cannot carry the tunnel.
+
+`preflight.sh` and `create-vm.sh` are happiest in Cloud Shell — gcloud is
+already there and already signed in:
+
+```bash
+gh auth login                       # once, for a private repo
+gh repo clone SeedClassIntelligence/SOULSONUS
+cd SOULSONUS
+git checkout claude/soulsonus-original-conception-8p7ypq
+cd inference-server/gcp
+./preflight.sh
+./create-vm.sh
+./start.sh --vm-only                # boots the VM, opens no tunnel
+```
+
+**The tunnel has to run on the computer where SoulSonus itself runs.**
+`start.sh` terminates the tunnel on `localhost`, and Cloud Shell's localhost is
+not your desktop — run it there and the studio keeps reporting both engines
+unreachable while a GPU bills by the minute. `start.sh` detects Cloud Shell and
+refuses to open a tunnel that would go nowhere, printing the two commands to
+run on your own machine instead.
+
+`stop.sh` works from anywhere. It talks to the API, not to a tunnel.
+
 All four scripts read `gcp/config.sh`, so the zone, machine type and quota
 metric are set in one place. Change them per-machine in `gcp/.env`, which is
 gitignored — this matters because **GPU quota is granted per region**, and a
