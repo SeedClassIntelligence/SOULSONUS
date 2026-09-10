@@ -95,12 +95,20 @@ async function askRoute() {
     const body = await res.json().catch(() => null);
     if (!body) return { ok: false, why: 'The route answered, but not with JSON.', fix: '' };
     if (body.available) return { ok: true, why: 'The app can reach realization.' };
+    // The route answering "ACE is down" is the route WORKING. Reporting that
+    // as "service route not reachable" put a third red line under two others
+    // for one missing engine, and read as though nothing in the app was up.
+    if (body.reason === 'NOT_CONFIGURED') {
+      return {
+        ok: false,
+        why: 'The route is up. It has no realization endpoint configured.',
+        fix: 'Start the server with the endpoint set: ACE_STEP_ENDPOINT=http://localhost:8001 npm start',
+      };
+    }
     return {
-      ok: false,
-      why: `${body.reason}: ${body.detail}`,
-      fix: body.reason === 'NOT_CONFIGURED'
-        ? 'Start the server with the endpoint set: ACE_STEP_ENDPOINT=http://localhost:8001 npm start'
-        : '',
+      ok: true,
+      why: `The route is up, and reports realization ${String(body.reason).toLowerCase()}: ${body.detail}`,
+      note: 'The line above is the engine to fix, not this one.',
     };
   } catch {
     return { ok: false, why: 'No SoulSonus server is running at that address.', fix: `npm run build && ACE_STEP_ENDPOINT=${ACE} npm start`, soft: true };
@@ -112,6 +120,7 @@ const line = (name, addr, r) => {
   console.log(`  ${name.padEnd(22)} ${mark}`);
   console.log(`  ${''.padEnd(22)}${DIM}${addr}${OFF}`);
   console.log(`  ${''.padEnd(22)}${r.why}`);
+  if (r.note) console.log(`  ${''.padEnd(22)}${DIM}${r.note}${OFF}`);
   if (!r.ok && r.fix) console.log(`  ${''.padEnd(22)}${DIM}${r.fix}${OFF}`);
   console.log('');
 };

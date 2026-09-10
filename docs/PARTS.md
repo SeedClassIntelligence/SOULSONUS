@@ -23,6 +23,18 @@ not a feature.
 `audio/offlinePerformanceAnalysis.ts` runs the same onset detection over a
 decoded buffer, so an imported file and a live take are read by one taxonomy.
 
+## Bringing it up
+
+```
+npm run studio          the app plus both engines, and a report of what answered
+npm run studio -- --app the app only
+```
+
+It starts nothing new: `docker compose` for the services, `vite` for the app,
+and `engines:check` for the report — each of which already existed and each of
+which had to be known about separately. Anything that did not answer prints the
+command that fixes it.
+
 ## Services — wired, and each needs a host running
 
 | Part | Does | Attached | Missing |

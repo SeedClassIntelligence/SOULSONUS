@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/copy-ort.cjs && vite --port=3000 --host=0.0.0.0",
+    "studio": "node scripts/studio.mjs",
     "build": "node scripts/copy-ort.cjs && vite build && npm run build:server",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
