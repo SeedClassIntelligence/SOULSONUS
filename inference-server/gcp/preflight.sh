@@ -79,7 +79,25 @@ QUOTA=$(gcloud compute regions describe "$REGION" \
 case "$QUOTA" in
   "")      warn "could not read $GPU_METRIC quota for $REGION." "Check IAM & Admin → Quotas in the console." ;;
   0|0.0)   bad "$GPU_METRIC quota in $REGION is 0 — the VM will not start." \
-              "IAM & Admin → Quotas → filter '$GPU_METRIC' → region $REGION → Edit Quotas → request 1." ;;
+              "IAM & Admin → Quotas → filter '$GPU_METRIC' → region $REGION → Edit Quotas → request 1."
+           # A quota request can take hours and can be refused. Before asking
+           # for one, look at every other region: quota is granted per region
+           # and an account often already holds some somewhere else, in which
+           # case the fix is one line in .env rather than a support ticket.
+           printf "    ${D}checking every other region for existing %s quota...${O}\n" "$GPU_METRIC"
+           ELSEWHERE=$(gcloud compute regions list \
+             --flatten="quotas[]" \
+             --filter="quotas.metric=$GPU_METRIC AND quotas.limit>0" \
+             --format="value(name,quotas.limit)" 2>/dev/null)
+           if [ -n "$ELSEWHERE" ]; then
+             printf "    ${G}You already have %s quota here — no request needed:${O}\n" "$GPU_METRIC"
+             while read -r r lim; do
+               [ -z "$r" ] && continue
+               printf "      ${G}%s${O}  limit %s   ${D}put 'ZONE=%s-a' in gcp/.env${O}\n" "$r" "${lim%.*}" "$r"
+             done <<< "$ELSEWHERE"
+           else
+             printf "    ${D}none in any region — the quota request above is the only way through.${O}\n"
+           fi ;;
   *)       ok "$GPU_METRIC quota in $REGION: ${QUOTA%.*}" ;;
 esac
 
