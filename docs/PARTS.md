@@ -69,6 +69,26 @@ The list this file exists to keep short.
 |---|---|---|
 | **Tap tempo** (`StudioRecordingSurface`, `tapTempo`) — averages finger-clicks | `expressionState.ts:159` already computes the intervals between the onsets of a real take; `analyzePerformanceBuffer` does the same offline | **open.** The only BPM *producer* in the codebase is that button. Fourteen other sites consume a typed number. The tempo should be read off the performance; TAP stays as the override for when there is nothing to hear yet. |
 
+### Open, and not a reason to fork ACE
+
+`realizationRouter.ts` already maps all six of ACE's tasks onto SoulSonus
+routes — `cover` → performance transfer, `extract` → stem isolation, `repaint`
+→ bar-scoped region edit (clause XI.6), `complete` → extension. ACE's own API
+already speaks this platform's language.
+
+The one route marked `UNREALIZED` is **ACE_GENERATIVE_EXTENSION**, and the
+reason is on our side: `RealizationRequest` carries no target duration, so
+nothing can tell ACE how long the extension should be. ACE accepts
+`audio_duration`; `toAceTaskBody` only sends it for `text2music`. A field and
+one condition, not a fork.
+
+**Nothing here has been measured against a real ACE.** Every `test-56` result
+is against `ace-stub.mjs`, which returns a fixed tone. Any claim about what
+ACE preserves or loses is unfounded until it runs on real hardware against a
+real take. That measurement — the preservation scores on the creator's own
+performance — is what a decision to fork should be made from, and it does not
+exist yet.
+
 ### Not yet checked
 
 Named so the boundary is visible rather than implied. Nothing below has been
