@@ -44,6 +44,21 @@ function dockerReady() {
   return { ok: true };
 }
 
+/**
+ * Is there an NVIDIA GPU docker can actually hand to a container?
+ *
+ * This decides whether ace-step is worth starting at all. Its image is a
+ * multi-gigabyte CUDA build and its compose entry reserves an nvidia device,
+ * so on a machine without one the build burns ten minutes and disk to produce
+ * a container that cannot start. Demucs has no such requirement and is the
+ * one that should always come up.
+ */
+function gpuAvailable() {
+  if (spawnSync('nvidia-smi', ['-L'], { encoding: 'utf8' }).status === 0) return true;
+  const info = spawnSync('docker', ['info', '--format', '{{json .Runtimes}}'], { encoding: 'utf8' });
+  return info.status === 0 && /nvidia/i.test(info.stdout || '');
+}
+
 function startEngines() {
   if (!existsSync(COMPOSE)) {
     line(`  ${RED}✗${OFF} inference-server/docker-compose.yml is missing.`);
@@ -56,19 +71,36 @@ function startEngines() {
     line(`    ${DIM}see inference-server/README.md "Native install"${OFF}`);
     return;
   }
-  line(`  ${DIM}docker compose up -d${OFF}`);
-  const up = spawnSync('docker', ['compose', '-f', COMPOSE, 'up', '-d'], {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
+  // Only what this machine can actually run. Naming the services matters:
+  // a bare `up -d` also builds ace-step, whose CUDA image is multiple
+  // gigabytes and whose compose entry reserves an NVIDIA device -- so on a
+  // machine without one it spends ten minutes building a container that then
+  // refuses to start.
+  const gpu = gpuAvailable();
+  const services = gpu ? ['demucs', 'ace-step'] : ['demucs'];
+  if (!gpu) {
+    line(`  ${DIM}No NVIDIA GPU visible to Docker — starting demucs only.${OFF}`);
+    line(`  ${DIM}ace-step needs one; rent it with inference-server/gcp, or force a`);
+    line(`  CPU build with: docker compose -f inference-server/docker-compose.yml up -d ace-step${OFF}`);
+  }
+  line('');
+  line(`  ${DIM}docker compose up -d ${services.join(' ')}${OFF}`);
+  line(`  ${DIM}The first run builds the image and downloads the model. That is`);
+  line(`  several minutes, and the output below is Docker's, not a hang.${OFF}`);
+  line('');
+  // Inherited, not captured. This used to pipe both streams and print them
+  // only at the end, so a ten-minute first build looked like a frozen script.
+  const up = spawnSync('docker', ['compose', '-f', COMPOSE, 'up', '-d', ...services], {
+    stdio: 'inherit',
   });
+  line('');
   if (up.status !== 0) {
-    line(`  ${AMBER}•${OFF} Compose did not bring everything up:`);
-    for (const l of (up.stderr || '').trim().split('\n').slice(-6)) line(`    ${DIM}${l}${OFF}`);
-    line(`    ${DIM}A machine with no NVIDIA GPU cannot start ace-step; demucs runs on CPU:${OFF}`);
-    line(`    ${DIM}docker compose -f inference-server/docker-compose.yml up -d demucs${OFF}`);
+    line(`  ${AMBER}•${OFF} Compose exited ${up.status}. The reason is in Docker's output above.`);
+    line(`    ${DIM}Retry just the one that matters: docker compose -f inference-server/docker-compose.yml up -d demucs${OFF}`);
     return;
   }
-  line(`  ${GREEN}✓${OFF} Containers requested. First ACE-Step call downloads ~10GB of weights.`);
+  line(`  ${GREEN}✓${OFF} ${services.join(' and ')} requested.`);
+  if (gpu) line(`  ${DIM}The first ACE-Step call downloads ~10GB of weights.${OFF}`);
 }
 
 function run(cmd, args, env = {}) {
