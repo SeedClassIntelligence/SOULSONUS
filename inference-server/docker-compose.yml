@@ -22,7 +22,12 @@ version: "3.8"
 
 services:
   ace-step:
-    build: ./ace-step
+    build:
+      context: ./ace-step
+      args:
+        # Upstream by default. Override in .env to build a fork instead.
+        ACE_STEP_REPO: ${ACE_STEP_REPO:-https://github.com/ace-step/ACE-Step-1.5.git}
+        ACE_STEP_REF: ${ACE_STEP_REF:-main}
     ports:
       - "${ACE_STEP_PORT:-8001}:8001"
     environment:

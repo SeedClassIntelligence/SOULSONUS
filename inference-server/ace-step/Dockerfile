@@ -24,8 +24,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:${PATH}"
 
+# Which ACE-Step to build. Defaults to the official upstream project; point
+# it at a fork by setting ACE_STEP_REPO in inference-server/.env. Nothing
+# here needs a fork -- upstream is the right default, and this exists so
+# choosing otherwise is one line rather than an edit to this file.
+ARG ACE_STEP_REPO=https://github.com/ace-step/ACE-Step-1.5.git
+ARG ACE_STEP_REF=main
+
 WORKDIR /app
-RUN git clone --depth 1 https://github.com/ace-step/ACE-Step-1.5.git .
+RUN git clone --depth 1 --branch "$ACE_STEP_REF" "$ACE_STEP_REPO" .
 RUN uv sync
 
 # Model weights (~10GB) are NOT baked into this image on purpose -- that

@@ -31,6 +31,27 @@ default to CPU-only for anyone testing this out or running it casually —
 it costs nothing and genuinely works, just slower. Add a cheap GPU only
 once generation speed actually matters to your workflow.
 
+## Where the model weights actually live
+
+**Not in any git repository, including a fork of ACE-Step.** Cloning
+ACE-Step gets you the code; the ~10GB of weights download from HuggingFace
+(or ModelScope) on the first request and land in `checkpoints/`. So:
+
+- A copy of the ACE-Step repo on your own machine almost certainly has **no**
+  weights. Check: `du -sh checkpoints/` inside it — a few hundred KB or a
+  missing directory means code only.
+- You do **not** need to upload anything to the VM. It downloads them itself
+  over Google's network in minutes; pushing 10GB up from a home connection
+  takes hours.
+- A **fork changes nothing about weights.** Build upstream unless you have
+  actually modified ACE-Step. If you have, say so once in
+  `inference-server/.env` and never think about it again:
+
+  ```bash
+  ACE_STEP_REPO=https://github.com/YOUR_USER/ACE-Step-1.5.git
+  ACE_STEP_REF=main
+  ```
+
 ## No GPU of your own? Rent one — the scripts are already here
 
 `gcp/` has the whole path and nothing in this file used to point at it.
