@@ -40,7 +40,7 @@ command that fixes it.
 | Part | Does | Attached | Missing |
 |---|---|---|---|
 | **Demucs v4** | Full mix → four stems | yes, via the app's import path | a host on `:8010`. `cd inference-server && docker compose up -d demucs` (CPU, no GPU) |
-| **ACE-Step 1.5** | Realization: take + instruction → audio | yes, via `server/e05Route.ts` → `/api/e05` | a host on `:8001`. `docker compose up -d ace-step` (~10GB weights, GPU) |
+| **ACE-Step 1.5** | Realization: take + instruction → audio | yes, via `server/e05Route.ts` → `/api/e05` | a host on `:8001`. Locally: `docker compose up -d ace-step` (~10GB weights, NVIDIA GPU). No GPU: `inference-server/gcp/` creates a rented one and tunnels it to `localhost:8001` — see `inference-server/README.md` |
 
 Both are proven end to end against transport stubs that speak the real wire
 protocol — `test-14`, `test-22`, `test-56` all pass. What is unproven is

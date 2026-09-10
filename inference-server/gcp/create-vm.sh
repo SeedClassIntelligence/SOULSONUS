@@ -19,6 +19,12 @@ ZONE="us-central1-a"            # T4 and L4 are both available here
 MACHINE_TYPE="n1-standard-4"
 ACCELERATOR="type=nvidia-tesla-t4,count=1"
 BOOT_DISK_SIZE="100GB"          # model weights (~10GB) + Docker images + headroom
+# The disk bills whether or not the VM is running. At us-central1 list price
+# 100GB is about $17/month on pd-ssd and about $10/month on pd-balanced. If
+# this VM will sit stopped between sessions -- which is the whole point of
+# start.sh / stop.sh -- pd-balanced is the cheaper default and the speed
+# difference only shows up while loading weights at boot.
+BOOT_DISK_TYPE="pd-ssd"         # pd-balanced to halve the idle cost
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -30,7 +36,7 @@ gcloud compute instances create "$INSTANCE_NAME" \
   --image-family=ubuntu-2204-lts \
   --image-project=ubuntu-os-cloud \
   --boot-disk-size="$BOOT_DISK_SIZE" \
-  --boot-disk-type=pd-ssd \
+  --boot-disk-type="$BOOT_DISK_TYPE" \
   --metadata-from-file=startup-script="$SCRIPT_DIR/startup-script.sh" \
   --tags=soulsonus-inference
 
@@ -45,5 +51,6 @@ echo "the recommended way to connect (SSH tunnel / IAP), which avoids"
 echo "exposing an unauthenticated inference API to the open internet."
 echo ""
 echo "This VM is billing GPU time RIGHT NOW that it's running. Use stop.sh"
-echo "when you're done with a session -- a stopped VM only bills for its"
-echo "boot disk (a few cents/month), not GPU or CPU time."
+echo "when you're done with a session -- a stopped VM bills for its boot disk"
+echo "only, not GPU or CPU time. That disk is not free: 100GB of pd-ssd is"
+echo "about \$17/month. stop.sh says how to reduce or remove it."

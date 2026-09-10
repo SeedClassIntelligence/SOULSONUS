@@ -31,6 +31,63 @@ default to CPU-only for anyone testing this out or running it casually —
 it costs nothing and genuinely works, just slower. Add a cheap GPU only
 once generation speed actually matters to your workflow.
 
+## No GPU of your own? Rent one — the scripts are already here
+
+`gcp/` has the whole path and nothing in this file used to point at it.
+**You do not upload anything.** The VM clones this repo and downloads the
+~10GB of ACE-Step weights itself on first boot.
+
+```bash
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+cd inference-server/gcp
+./create-vm.sh          # once. n1-standard-4 + 1x NVIDIA T4, us-central1-a
+./start.sh              # before a session. Starts the VM and tunnels 8001/8010
+./stop.sh               # after. Stops GPU and CPU billing
+```
+
+`start.sh` opens IAP tunnels so the services appear on **your** machine at
+`localhost:8001` and `localhost:8010` — the addresses SoulSonus already uses.
+Nothing in the app needs reconfiguring, and the inference API is never exposed
+to the open internet.
+
+### Check this before anything else
+
+**A Google Cloud free trial account cannot get GPU quota.** The credits are
+real and usable, but GPU quota requires a billing account upgraded to paid.
+Upgrading does not spend your remaining credits — they stay and are consumed
+first. Verify your actual limit before creating a VM that cannot start:
+
+```bash
+gcloud compute regions describe us-central1 \
+  --format="table(quotas.metric,quotas.limit,quotas.usage)" | grep -i gpu
+```
+
+A limit of `0` means quota, not billing, is the blocker. Request more at
+IAM & Admin → Quotas → "NVIDIA T4 GPUs".
+
+### What it costs while it runs
+
+Approximate us-central1 list prices — **verify at
+https://cloud.google.com/compute/gpus-pricing before relying on any number
+here**, because GPU pricing changes:
+
+| | rough hourly | what $229 of credit buys |
+|---|---|---|
+| n1-standard-4 + 1× T4 | ~$0.55/hr | ~400 hours of session time |
+| g2-standard-4 + 1× L4 (2–3× faster) | ~$0.85/hr | ~270 hours |
+| Same, as a Spot VM | 60–70% less | proportionally more, can be preempted mid-job |
+
+Those are *running* hours, not wall-clock. Started before a session and
+stopped after, a few hours a day makes this last months.
+
+The one cost that accrues whether or not you are working is the boot disk:
+100GB of pd-ssd is roughly **$17/month**, pd-balanced roughly $10. `stop.sh`
+prints how to shrink or delete it.
+
+Free trial credits expire — check the expiry date in Billing → Credits, since
+that is what decides whether to spend them now or later.
+
 ## Quick start (Linux/Windows with an NVIDIA GPU, via Docker)
 
 ```bash
