@@ -31,10 +31,12 @@ gcloud compute instances create "$INSTANCE_NAME" \
   --image-project=ubuntu-os-cloud \
   --boot-disk-size="$BOOT_DISK_SIZE" \
   --boot-disk-type="$BOOT_DISK_TYPE" \
+  --metadata="soulsonus-branch=$SOULSONUS_BRANCH" \
   --metadata-from-file=startup-script="$SCRIPT_DIR/startup-script.sh" \
   --tags=soulsonus-inference
 
 echo ""
+echo "Branch checked out on the VM: $SOULSONUS_BRANCH"
 echo "VM created. It will take several minutes to finish booting, install"
 echo "drivers/Docker, and pull model weights on first boot -- watch progress with:"
 echo "  gcloud compute instances get-serial-port-output $INSTANCE_NAME --zone=$ZONE"

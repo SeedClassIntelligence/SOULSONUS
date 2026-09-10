@@ -35,10 +35,26 @@ fi
 
 # --- 3. Pull the SoulSonus inference stack and start it ---
 REPO_DIR=/opt/soulsonus
+
+# Which branch to run. Set by create-vm.sh from SOULSONUS_BRANCH in config.sh
+# and read back from the metadata server, so a rebuild does not silently fall
+# back to the default branch.
+BRANCH=$(curl -sf -H "Metadata-Flavor: Google" \
+  "http://metadata.google.internal/computeMetadata/v1/instance/attributes/soulsonus-branch" || true)
+BRANCH="${BRANCH:-main}"
+log "Branch: $BRANCH"
+
 if [ ! -d "$REPO_DIR" ]; then
   log "Cloning SoulSonus repo..."
   git clone https://github.com/SeedClassIntelligence/SOULSONUS.git "$REPO_DIR"
 fi
+
+# Every boot, not just the first: a VM started next month should be running
+# what the repository says today, not what it said when it was created.
+cd "$REPO_DIR"
+git fetch --all --prune || log "WARNING: fetch failed -- running whatever is already on disk"
+git checkout "$BRANCH" || log "WARNING: could not check out $BRANCH"
+git pull --ff-only origin "$BRANCH" || log "WARNING: could not fast-forward $BRANCH"
 
 cd "$REPO_DIR/inference-server"
 [ -f .env ] || cp .env.example .env

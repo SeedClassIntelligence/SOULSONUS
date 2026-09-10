@@ -26,6 +26,12 @@ ACCELERATOR="${ACCELERATOR:-type=nvidia-tesla-t4,count=1}"
 # both together: an L4 needs NVIDIA_L4_GPUS and a g2- machine type.
 GPU_METRIC="${GPU_METRIC:-NVIDIA_T4_GPUS}"
 
+# Which branch the VM checks out. The startup script clones this repository
+# onto the VM; without this it took whatever the default branch happened to
+# be, so a VM built while work sat on a branch quietly ran different code
+# from the studio talking to it.
+SOULSONUS_BRANCH="${SOULSONUS_BRANCH:-main}"
+
 BOOT_DISK_SIZE="${BOOT_DISK_SIZE:-100GB}"
 # The disk bills whether or not the VM is running. At us-central1 list price
 # 100GB is about $17/month on pd-ssd and about $10/month on pd-balanced. If

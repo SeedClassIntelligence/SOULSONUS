@@ -62,15 +62,20 @@ On Windows run these from Git Bash or WSL.
 already there and already signed in:
 
 ```bash
-gh auth login                       # once, for a private repo
-gh repo clone SeedClassIntelligence/SOULSONUS
-cd SOULSONUS
-git checkout claude/soulsonus-original-conception-8p7ypq
-cd inference-server/gcp
+git clone https://github.com/SeedClassIntelligence/SOULSONUS.git
+cd SOULSONUS/inference-server/gcp
+
+# Run a branch instead of main -- the VM checks out whatever this says.
+echo "SOULSONUS_BRANCH=main" > .env
+
 ./preflight.sh
 ./create-vm.sh
 ./start.sh --vm-only                # boots the VM, opens no tunnel
 ```
+
+The VM re-checks-out that branch on **every** boot, not just the first, so a
+machine started next month runs what the repository says then. It is passed as
+instance metadata; nothing about it is baked into the disk image.
 
 **The tunnel has to run on the computer where SoulSonus itself runs.**
 `start.sh` terminates the tunnel on `localhost`, and Cloud Shell's localhost is
