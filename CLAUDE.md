@@ -69,6 +69,62 @@ defect as re-implementing something already installed.
 Keep the file current. It exists so nobody re-derives it from the source, which
 is slow and is paid for by the owner.
 
+### The part that does each job - binding
+
+If the job is on this table, the answer is the part named. Not a new
+implementation of it.
+
+| Job | The part | Where |
+|---|---|---|
+| Onsets, and classifying a percussive hit | the spectral classifier | `audio/detectionEngine.ts` live, `audio/offlinePerformanceAnalysis.ts` for a file |
+| Audio to pitched notes | Basic Pitch (ONNX) | `audio/basicPitch.ts` |
+| Tempo read off a performance | the onset intervals already measured | `audio/expressionState.ts` |
+| Stem separation | Demucs v4 | the service on `:8010` |
+| Realization, transformation, region edit, extraction | ACE-Step 1.5 | `server/e05Route.ts` to `:8001` |
+| Transport, scheduling, DSP, mastering | Tone.js | `audio/audioEngine.ts`, `audio/masterRender.ts` |
+| SoundFont playback | SpessaSynth | `audio/soundFont.ts` |
+| Provenance and signing | the signature service | `lib/seedSignature.ts` |
+
+Writing a new FFT, envelope follower, beat tracker, limiter or resampler where
+a row above covers it is a defect however good the code is. The tap-tempo
+button is the worked example: the intervals between a take's onsets were
+already measured one file away, and a button that averages finger-clicks got
+written instead.
+
+### Adding a dependency
+
+Allowed, and better than writing a substitute. One condition: **it is wired in
+the same change that adds it.** A package in `package.json` that nothing
+imports is the same defect as re-implementing something already installed.
+
+## 3.6 The runtime, as it actually is
+
+Stated so that nothing invents a server that does not exist.
+
+| | |
+|---|---|
+| the studio | Vite on `http://localhost:3000` - `npm run studio` |
+| the service route | `/api/e05`, same origin, held by `server/e05Route.ts` |
+| ACE-Step 1.5 | `http://localhost:8001` - not bundled, not started by the app |
+| Demucs v4 | `http://localhost:8010` - same |
+| what is actually up | `npm run engines:check` |
+
+There is no FastAPI here and no port 8000. Analysis, DSP and mastering run in
+the browser's audio graph on purpose: a fader the creator cannot hear move is
+not a studio, and a network round trip per knob is what moving that layer into
+a service would cost.
+
+### Whose machine, and which shell
+
+The owner works on Windows, in PowerShell. `&&` and `||` are not statement
+separators there, and a block written for bash dies on its first line. Google
+Cloud Shell is a third place again and is only for creating and managing the
+rented GPU - it is ephemeral and has no microphone, so neither the studio nor
+the engines ever belong in it.
+
+Give commands for the machine the last output came from. Hours have gone into
+this one.
+
 ## 4. Verification before any completion claim
 
 Per `CAS platform-audit-protocol.md`: "I wrote the code that should produce
