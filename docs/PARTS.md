@@ -69,6 +69,28 @@ The list this file exists to keep short.
 |---|---|---|
 | **Tap tempo** (`StudioRecordingSurface`, `tapTempo`) — averages finger-clicks | `expressionState.ts:159` already computes the intervals between the onsets of a real take; `analyzePerformanceBuffer` does the same offline | **open.** The only BPM *producer* in the codebase is that button. Fourteen other sites consume a typed number. The tempo should be read off the performance; TAP stays as the override for when there is nothing to hear yet. |
 
+### Open: the lyrics the creator wrote never reach the model
+
+`E05Request` declares `lyrics`. `toAceTaskBody` sends it when present
+(`e05Contract.ts:181`). **Nothing in the application ever sets it** — every
+`realize()` call passes `task` and `instruction` only, verified by grep across
+`src/`. The field is plumbed at both ends and permanently empty.
+
+Meanwhile the creator writes lyrics in the Write room (`writeRoomDraft.lyrics`,
+session state, persisted), and the project carries named sections — Intro Beat,
+Verse Pocket, Chorus Lead Hook, Outro Resolving Tail — that map onto the
+structure tags ACE documents: `[verse]`, `[chorus]`, `[bridge]`, `[outro]`.
+
+ACE's own documentation on audio-to-audio editing: *"Providing lyrics is very
+important for audio editing."* So on every sung realization we are asking the
+model to edit a vocal while withholding the words, which the creator already
+typed one room away.
+
+The decision this needs, and why it is not just wired: lyrics belong on a
+`cover` of a sung take and would be noise on a drum kit. That is a judgement
+about which roles and tasks carry them, and it belongs to the owner. It also
+cannot be measured until ACE has actually run.
+
 ### Open, and not a reason to fork ACE
 
 `realizationRouter.ts` already maps all six of ACE's tasks onto SoulSonus
