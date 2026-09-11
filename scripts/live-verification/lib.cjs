@@ -1,5 +1,18 @@
 // Shared helpers for the SoulSonus live verification harness.
-const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const fs = require('node:fs');
+
+/**
+ * The browser, wherever it is on this machine.
+ *
+ * This was one hardcoded Linux path. On any other machine every check in this
+ * directory failed on its first line with "Executable doesn't exist" -- which
+ * reads as a broken harness rather than a browser that lives somewhere else,
+ * and is not a thing the creator can be asked to debug. The pinned path is
+ * still preferred where it exists; otherwise Playwright uses the browser it
+ * installed itself (`npx playwright install chromium`).
+ */
+const PINNED = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROME = process.env.SOULSONUS_CHROME || (fs.existsSync(PINNED) ? PINNED : null);
 
 // Injected into the page: walks the React fiber tree to find the
 // StudioSessionContext.Provider value so tests can read real session state.
@@ -33,8 +46,23 @@ async function launch(playwright, audioFile) {
     '--use-fake-ui-for-media-stream',
     '--autoplay-policy=no-user-gesture-required',
   ];
-  if (audioFile) args.push(`--use-file-for-fake-audio-capture=${audioFile}`);
-  const browser = await playwright.chromium.launch({ executablePath: CHROME, args });
+  if (audioFile) {
+    if (!fs.existsSync(audioFile)) {
+      throw new Error(
+        `No test audio at ${audioFile}.\n` +
+          `  Generate it first, into a directory this machine has:\n` +
+          `    node scripts/live-verification/generate-test-audio.cjs <dir>\n` +
+          `    then set SOULSONUS_VERIFY_DIR to that same <dir>.\n` +
+          `  Chromium given a path that does not exist opens a microphone that hears\n` +
+          `  nothing, and the empty take gets reported as a fault in the studio.`
+      );
+    }
+    args.push(`--use-file-for-fake-audio-capture=${audioFile}`);
+  }
+  const browser = await playwright.chromium.launch({
+    ...(CHROME ? { executablePath: CHROME } : {}),
+    args,
+  });
   const ctx = await browser.newContext({ permissions: ['microphone'], viewport: { width: 1600, height: 950 } });
   const page = await ctx.newPage();
   page.on('pageerror', e => console.log('  [pageerror]', e.message.slice(0, 200)));
