@@ -76,24 +76,20 @@ function check(label, ok, detail = '') {
     { id: takes[0].id }
   );
 
-  // The stub holds a job running for one poll, so this exercises the real
-  // polling loop rather than a synchronous answer.
-  await page.waitForFunction(
-    `(() => {
-      const root = document.getElementById('root');
-      const key = Object.keys(root).find(k => k.startsWith('__reactContainer$'));
-      const fr = root[key] && root[key].stateNode;
-      const stack = [(fr && fr.current) || root[key]]; const seen = new Set();
-      while (stack.length) {
-        const f = stack.pop(); if (!f || seen.has(f)) continue; seen.add(f);
-        const v = f.memoizedProps && f.memoizedProps.value;
-        if (v && Array.isArray(v.tracks) && v.activeCandidate) return true;
-        if (f.child) stack.push(f.child); if (f.sibling) stack.push(f.sibling);
-      }
-      return false;
-    })()`,
-    { timeout: 90000 }
-  ).catch(() => {});
+  // Waits for the scorecard, which is what the creator sees.
+  //
+  // This used to poll the fiber tree for `activeCandidate` on a context value.
+  // That state lives in App's own useState and is on no context, so the
+  // predicate could never become true -- and `waitForFunction(fn, {timeout})`
+  // passes its second positional as the ARGUMENT, not as options, so it ran on
+  // the 30s default and the `.catch` swallowed the timeout. Thirty seconds of
+  // waiting for something that was never going to be true, once per run.
+  for (let i = 0; i < 45; i++) {
+    const id = await page.locator('#preservation-scorecard').first()
+      .getAttribute('data-candidate-id').catch(() => null);
+    if (id) break;
+    await page.waitForTimeout(2000);
+  }
 
   // The candidate lives in App's own state rather than the session, so it is
   // read where a creator reads it: the drawer it opens.

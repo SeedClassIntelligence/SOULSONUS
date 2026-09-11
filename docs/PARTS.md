@@ -104,6 +104,13 @@ nothing can tell ACE how long the extension should be. ACE accepts
 `audio_duration`; `toAceTaskBody` only sends it for `text2music`. A field and
 one condition, not a fork.
 
+`scripts/live-verification/test-61-three-routes-real-ace.cjs` is the harness
+that takes that measurement. It drives cover, extract and repaint through the
+app against whatever host answers on `:8001`, proves each returned its own
+candidate for the route requested, and prints the preservation scores without
+asserting a threshold on them - because no one has seen one yet, and a number
+invented in a test file is the defect this repository keeps finding.
+
 **Nothing here has been measured against a real ACE.** Every `test-56` result
 is against `ace-stub.mjs`, which returns a fixed tone. Any claim about what
 ACE preserves or loses is unfounded until it runs on real hardware against a

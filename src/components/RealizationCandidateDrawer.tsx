@@ -280,7 +280,19 @@ export const RealizationCandidateDrawer: React.FC<RealizationCandidateDrawerProp
         </div>
 
         {/* Intent Preservation Scorecard */}
-        <div id="preservation-scorecard" className="mt-5 p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
+        {/* The candidate's identity, on the element that shows its scores.
+            Nothing renders it, and nothing should -- but without it no check
+            outside this app can tell a fresh candidate from the previous one
+            still on screen, and "three routes returned identical scores" and
+            "one candidate was read three times" are opposite findings that
+            look the same. */}
+        <div
+          id="preservation-scorecard"
+          data-candidate-id={candidate.candidateId}
+          data-route={candidate.realizationRoute}
+          data-basis={candidate.scoreBasis}
+          className="mt-5 p-4 rounded-2xl bg-slate-900/80 border border-slate-800"
+        >
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
             <span>Intent Preservation</span>
             <span className="text-[10px] font-mono text-slate-500">
