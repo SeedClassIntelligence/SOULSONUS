@@ -74,6 +74,7 @@ import {
 } from '../utils/musicMath';
 
 import { PRESETS } from '../data/presets';
+import { createRouteSyncTransport } from '../lib/collab/routeSyncTransport';
 import { audioEngine } from '../audio/audioEngine';
 import { productionHistory } from '../lib/productionOperations';
 import { detectionEngine, CaptureEvent } from '../audio/detectionEngine';
@@ -3239,6 +3240,14 @@ export const StudioSessionProvider: React.FC<{ children: React.ReactNode }> = ({
       projectId: `proj_${dawState.projectName.toLowerCase().replace(/\s+/g, '_')}`,
       projectName: dawState.projectName,
       self: { participantId: 'p_self', name: creatorName, role: 'owner' },
+      // The relay, which reports itself unconfigured when no shared session is
+      // set up -- exactly as `unconfiguredTransport` did, and for the same
+      // reason. Nothing about the screen changes until a server has REDIS_URL.
+      // The state is read through the ref because the transport needs what the
+      // store owns and neither is constructed first.
+      transport: createRouteSyncTransport({
+        getLocalState: () => collaborationStoreRef.current?.getState() ?? null,
+      }),
     });
   }
   const collaborationStore = collaborationStoreRef.current;

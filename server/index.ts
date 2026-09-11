@@ -15,6 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { configFromEnv, handleE05 } from './e05Route';
+import { collabConfigFromEnv, handleCollab } from './collabRoute';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(dirname, 'dist');
@@ -22,12 +23,19 @@ const PORT = Number(process.env.PORT || 8080);
 
 const app = express();
 const cfg = configFromEnv();
+const collabCfg = collabConfigFromEnv();
 
 // The realization route first, so no static handler or SPA fallback can
 // answer it with index.html -- which is exactly the failure the provider's
 // own guard was written to catch.
 app.use(async (req, res, next) => {
   const handled = await handleE05(req, res, cfg);
+  if (!handled) next();
+});
+
+// The shared-session relay, for the same reason and before the same fallback.
+app.use(async (req, res, next) => {
+  const handled = await handleCollab(req, res, collabCfg);
   if (!handled) next();
 });
 

@@ -701,8 +701,15 @@ export function createCollaborationStore(opts: StoreOptions): CollaborationStore
         summary: `Named ${name} as ${role}`,
         at,
       });
-      state = admit(state, op).state;
+      const invited = admit(state, op);
+      state = invited.state;
       announce();
+      // Published for the same reason `record` publishes. Until a transport
+      // existed this was invisible: nothing was ever sent, so a mutation that
+      // forgot to send looked identical to one that did. With a relay behind
+      // the seam it is the difference between naming someone and naming them
+      // only to yourself.
+      if (invited.admitted) publishIfConfigured([op]);
     },
     setRole(participantId, role) {
       const at = now();
@@ -718,12 +725,17 @@ export function createCollaborationStore(opts: StoreOptions): CollaborationStore
         if (held) state = upsertParticipant(state, { ...held, role, statedAt: at });
       }
       announce();
+      if (result.admitted) publishIfConfigured([op]);
       return { ...result, state };
     },
     rename(name) {
       if (name === state.project.name) return;
       state = { ...state, project: { ...state.project, name, namedAt: now() } };
       announce();
+      // No operation: renaming the project is not a ledger entry, and adding
+      // one here would put a row in the history nobody asked for. The state
+      // still goes out, because the other session is looking at the old name.
+      publishIfConfigured([]);
     },
     receive(remote) {
       state = mergeStates(state, remote);

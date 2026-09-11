@@ -33,6 +33,7 @@
     "onnxruntime-web": "^1.27.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "redis": "^5.10.0",
     "spessasynth_core": "^4.3.17",
     "tone": "^15.1.22"
   },

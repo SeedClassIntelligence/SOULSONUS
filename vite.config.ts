@@ -68,6 +68,33 @@ const serveE05 = (): Plugin => ({
 });
 
 /**
+ * The shared-session relay, in dev, by the same mechanism as the realization
+ * route: one implementation in `server/`, reached identically whether the app
+ * is running from `npm run dev` or from the built server.
+ */
+const serveCollab = (): Plugin => ({
+  name: 'soulsonus-collab-route',
+  configureServer(server) {
+    server.middlewares.use(async (req, res, next) => {
+      if (!(req.url || '').startsWith('/api/collab')) return next();
+      try {
+        const mod = await server.ssrLoadModule('/server/collabRoute.ts');
+        const handled = await mod.handleCollab(req, res, mod.collabConfigFromEnv());
+        if (!handled) next();
+      } catch (err) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(
+          JSON.stringify({
+            error: `The shared-session route failed to load: ${err instanceof Error ? err.message : String(err)}`,
+          })
+        );
+      }
+    });
+  },
+});
+
+/**
  * The commit this bundle was built from, stamped into the page.
  *
  * Without it there is no way to tell a stale deploy from a broken change:
@@ -90,7 +117,7 @@ export default defineConfig(() => {
     define: {
       __BUILD_ID__: JSON.stringify(buildId()),
     },
-    plugins: [serveOrtRaw(), serveE05(), react(), tailwindcss()],
+    plugins: [serveOrtRaw(), serveE05(), serveCollab(), react(), tailwindcss()],
     optimizeDeps: {
       /**
        * Kept out of the startup pre-bundle.

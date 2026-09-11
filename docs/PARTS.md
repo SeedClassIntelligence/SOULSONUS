@@ -49,12 +49,29 @@ quality, which is the model's job, not ours.
 `npm run engines:check` reports which of these answered. The app's own badge
 (`lib/engineStatus.ts`) probes four engines and says which are live.
 
+## The shared session
+
+| Part | Does | Attached | Missing |
+|---|---|---|---|
+| **Redis** (`redis` npm) | Fans a project's state out to the other people in it | yes, behind `SyncTransport` — `server/collabRoute.ts` relays, `lib/collab/routeSyncTransport.ts` speaks to it | a `REDIS_URL` on the server. Without one the transport reports itself unconfigured and publishes nothing, which is the correct state for a single-machine build |
+
+Redis speaks TCP; a browser does not. So the address and any credential stay on
+the server, the same way the realization endpoint does, and the status handed
+to the page names `/api/collab` and never Redis. Proven by
+`test-62-collab-transport`, against a real `redis-server`.
+
+The relay holds no model. A session publishes its own state; `mergeStates` and
+`admit` stay in `collaborativeState.ts`. A server that merged would be a second
+implementation of the rules, free to drift from the first.
+
 ## Installed and used by nothing
 
 | Package | Status |
 |---|---|
 | `@xenova/transformers` | **zero imports** in `src/`, `server/`, `scripts/` |
 | `@google/genai` | **zero imports** anywhere |
+
+(`redis` was added and wired in the same change, per the rule in `CLAUDE.md`.)
 
 Either they get wired to something or they come out of `package.json`. Right
 now they are weight in the install with no path to them.
