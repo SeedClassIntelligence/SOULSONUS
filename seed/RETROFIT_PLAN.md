@@ -1809,3 +1809,81 @@ other five whether a record button or a tempo field has wandered in.
 Play, stop and return-to-top exercised through the real controls in SOUNDS,
 WRITE & RECORD, MIX, MASTER and RELEASE, each confirmed against session state
 rather than against the button lighting up.
+
+
+
+---
+
+## ACE is a backend, not a room - the owner's directive (2026-09-11)
+
+Recorded verbatim, because it governs the next several steps and more than one
+agent works in this repository:
+
+> Do not redesign the Studio UI. Do not add an ACE-Step page, panel, or
+> permanent creator-facing control. Wire ACE-Step 1.5 as a subordinate
+> realization backend behind SoulSonus E05/SoulFlow. SoulSonus owns intent,
+> state, selection, governance, lineage, and creator approval. ACE owns only
+> admitted generation/transformation execution.
+
+The pipeline every capability passes through:
+
+    studio operation -> SoulFlow intent -> capability admission -> ACE adapter
+    -> candidate -> preservation verification -> audition -> creator
+    acceptance -> atomic commit -> lineage -> SeedSignature
+
+And the correction the owner makes to the popular description of ACE: it is
+not a single planner -> DiT -> VAE pipeline in every mode. It has task-specific
+paths, and some of them bypass the LM planning phase entirely.
+
+### Measured against the code, 2026-09-11
+
+Three of the eight capabilities in the owner's table reach ACE today.
+
+| The creator says | ACE task | Route in `realizationRouter` | State |
+|---|---|---|---|
+| "turn my mouth performance into this instrument" | cover | `ACE_PERFORMANCE_TRANSFER` | **calls the provider** |
+| "pull the bass out of this recording" | extract | `ACE_STEM_EXTRACTION` | **calls the provider** |
+| "change this section" | repaint | `ACE_REPAINT` | **calls the provider**, bar-scoped per XI.6 |
+| "finish the instrumentation here" | complete | `ACE_GENERATIVE_EXTENSION` | declared, `UNREALIZED` - blocked by a missing target-duration field on our side, not by ACE |
+| "put strings behind this hook" | lego | none | `lego` is in `E05_TASKS`; no route reaches it |
+| "make this kick beefier" | Flow-Edit | none | not modelled |
+| "give me another version of this" | Retake | none | not modelled |
+| "build music around this vocal" | Vocal2BGM | none | not modelled |
+
+What already matches the directive, rather than needing building:
+
+- **There is no ACE surface.** No page, panel or workspace names it. The
+  creator presses AI REALIZATION on a track; the drawer that opens is scoped
+  to that track. ACE is named only in provenance.
+- **Intent already selects the capability.** `selectRouteForPrompt` maps what
+  the creator said to a route - "keep my phrasing" to performance transfer,
+  "just the bass" to extraction. Primitive, but it is the admission step and
+  it exists.
+- **GENERATE is not COMMIT, and that is wired.** A candidate is auditioned;
+  `handleRejectCandidate` keeps the refusal *in the creator's own words*; and
+  `handleCommitCandidateTransaction` is what writes, carrying a lineage
+  record, a decision record and a SeedSignature record together.
+- **The base-model constraint is already encoded.** `e05Contract` records that
+  extract, lego and complete reach only `acestep-v15-base` and
+  `acestep-v15-xl-base`, and that a deployment swapping in Turbo for speed
+  loses them silently.
+
+### The one place engineering judgment differs from the stated order
+
+Stated: Flow-Edit -> Retake -> Repaint -> Extract -> Lego -> Complete ->
+Vocal2BGM.
+
+Flow-Edit and Retake are the two that do not exist at all, and Repaint and
+Extract are already written. So that order builds new adapters before anything
+proves the adapter pattern works - and **nothing here has ever run against a
+real ACE.** Every green check in `test-56` is against `ace-stub.mjs`, which
+returns a fixed tone.
+
+The cheaper first step is to run the three wired routes against real ACE on
+real hardware and read the preservation scores. That either validates the
+pattern before it is replicated five more times, or it surfaces a problem now
+that would otherwise be built into every adapter after it. Then the stated
+order stands, with `complete` moved earlier since it is one field from
+working.
+
+Stated, not acted on. The order is the owner's.
