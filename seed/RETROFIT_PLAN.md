@@ -1887,3 +1887,54 @@ order stands, with `complete` moved earlier since it is one field from
 working.
 
 Stated, not acted on. The order is the owner's.
+
+
+---
+
+## The first attempt at a real ACE measurement (2026-09-12)
+
+It did not produce preservation scores. What it produced is worth more than
+nothing, and is written here so the next session does not spend an evening
+re-deriving it.
+
+**The machine.** Intel UHD Graphics 630, no NVIDIA card. ACE-Step reported it
+honestly at startup: `GPU Memory: 0.00 GB`, `Configuration Tier: tier1`,
+`Available LM Models: None`. CPU was the only device available to it.
+
+**What ran, and what it proved.** Everything on this side of the wire did its
+job:
+
+| | |
+|---|---|
+| the studio | captured an 8-second beatbox take and kept it as audio |
+| the router | mapped it to `cover` and reached `/api/e05` |
+| the route | reached a real ACE-Step host on `:8001` |
+| ACE | downloaded its weights — **9.4 GB across 57 files**, confirmed on disk |
+
+**What did not happen.** The `cover` job ran for **3618 seconds** — the full
+hour it was given — and returned no candidate. Shortly after, nothing was
+listening on `:8001` any more: the ACE process was gone.
+
+**What is not established, and must not be written down as though it were.**
+The reason it died was never captured. The console holding it was lost before
+the traceback was read, and the machine's total RAM was never checked. A 3.5B
+model in fp32 is roughly 14 GB of weights before it computes anything, so
+memory is the obvious suspect — but that is a hypothesis, not a measurement,
+and the next person should treat it as one. Relaunching with the output teed
+to a file is how to settle it:
+
+```
+uv run acestep-api 2>&1 | Tee-Object -FilePath $HOME\ace.log
+```
+
+**What it settles anyway.** A CPU-only machine of this class is not a
+configuration the three wired routes can run on. Whether the cause is memory
+or arithmetic, an eight-second cover that does not finish in an hour is not a
+workflow, and the host could not answer a status ping while trying. So the
+rented GPU is not an optimisation of this path — it is the path.
+`inference-server/gcp/` is written and preflighted for it, and the one thing
+standing in front of it is a T4 quota request.
+
+**Nothing about the platform is waiting on that.** Capture, editing,
+arrangement, mixing, mastering and export need no service at all, and Demucs
+needs no GPU. Realization is the only capability the quota gates.
