@@ -23,7 +23,7 @@
  *   node scripts/live-verification/test-61-three-routes-real-ace.cjs
  */
 const playwright = require('playwright');
-const { launch, enterStudio, session, recordTake } = require('./lib.cjs');
+const { launch, enterStudio, session, recordTake, findStudio } = require('./lib.cjs');
 const SP = process.env.SOULSONUS_VERIFY_DIR || '/tmp/soulsonus-verify';
 
 /** Generous: a 3.5B model on a consumer card is not a stub. */
@@ -108,12 +108,23 @@ const waitForScorecard = async (page, ms, previousId) => {
 
   // Is there actually a host? Said plainly, because "no candidate came back"
   // reads as a broken route when it is a missing deployment.
-  const status = await fetch('http://localhost:3000/api/e05?action=status')
-    .then((r) => r.json())
-    .catch(() => null);
+  let base;
+  try {
+    base = await findStudio();
+  } catch (err) {
+    console.log(`  ${err.message}\n`);
+    process.exit(1);
+  }
+  const status = await fetch(`${base}/api/e05?action=status`).then((r) => r.json()).catch(() => null);
   if (!status || status.available !== true) {
-    console.log(`  No ACE host answering.  ${status ? status.reason + ': ' + status.detail : 'the studio is not running'}\n`);
-    console.log('  Start it, then run this again:\n    uv run acestep-api      (:8001)\n    npm run studio\n');
+    // Two different failures, said as two different things: the studio not
+    // being up, and the studio being up while ACE is not.
+    console.log(
+      status
+        ? `  The studio is up at ${base}. ACE is not: ${status.reason} — ${status.detail}\n`
+        : `  The studio at ${base} did not answer its own route.\n`
+    );
+    console.log('  Start ACE, then run this again:\n    uv run acestep-api      (:8001)\n');
     process.exit(1);
   }
   console.log('  A host is answering. Measuring.\n');

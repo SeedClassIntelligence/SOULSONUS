@@ -69,8 +69,49 @@ async function launch(playwright, audioFile) {
   return { browser, page };
 }
 
+/**
+ * Where the studio actually is.
+ *
+ * Every check here hardcoded port 3000. Vite takes the next free port when
+ * 3000 is held -- by a studio from an earlier session, most often -- and then
+ * the harness reports "the studio is not running" while it is running one port
+ * over. That reads as a broken app and costs a round trip every time.
+ *
+ * Cached after the first probe so a run does not re-scan per check.
+ */
+let studioUrl = null;
+async function findStudio() {
+  if (studioUrl) return studioUrl;
+  if (process.env.SOULSONUS_URL) {
+    studioUrl = process.env.SOULSONUS_URL.replace(/\/+$/, '');
+    return studioUrl;
+  }
+  for (const port of [3000, 3001, 3002, 3003, 3004, 3005]) {
+    const candidate = `http://localhost:${port}`;
+    try {
+      const res = await fetch(`${candidate}/api/e05?action=status`, {
+        signal: AbortSignal.timeout(2500),
+      });
+      // The route answering at all identifies the studio. What it says about
+      // ACE is a separate question and not this function's business.
+      if (res.ok && !(res.headers.get('content-type') || '').includes('text/html')) {
+        studioUrl = candidate;
+        if (port !== 3000) console.log(`  (the studio is on ${candidate}, not 3000)`);
+        return studioUrl;
+      }
+    } catch {
+      // Nothing there. Next port.
+    }
+  }
+  throw new Error(
+    'No studio answering on ports 3000-3005.\n' +
+      '  Start it with `npm run studio`, or set SOULSONUS_URL to where it is.'
+  );
+}
+
 async function enterStudio(page) {
-  await page.goto('http://localhost:3000/', { waitUntil: 'networkidle' });
+  const base = await findStudio();
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: 'ENTER THE STUDIO' }).first().click();
   await page.waitForTimeout(2500);
 }
@@ -325,6 +366,7 @@ module.exports = {
   READ_SESSION,
   launch,
   enterStudio,
+  findStudio,
   session,
   recordTake,
   armCapture,
