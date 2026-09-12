@@ -86,26 +86,41 @@ async function findStudio() {
     studioUrl = process.env.SOULSONUS_URL.replace(/\/+$/, '');
     return studioUrl;
   }
+  // Both spellings of the loopback. On Windows, Node resolves `localhost` to
+  // ::1 first while Vite bound to 0.0.0.0 is listening on IPv4 only -- the
+  // browser tries both and succeeds, Node's fetch tries one and does not.
+  const hosts = ['127.0.0.1', 'localhost'];
+  // Long enough for a cold route: the dev server compiles server/e05Route.ts
+  // on the first request that reaches it, which is not a 2.5-second operation
+  // on every machine.
+  const timeout = Number(process.env.SOULSONUS_PROBE_TIMEOUT_MS || 10000);
+  const tried = [];
   for (const port of [3000, 3001, 3002, 3003, 3004, 3005]) {
-    const candidate = `http://localhost:${port}`;
-    try {
-      const res = await fetch(`${candidate}/api/e05?action=status`, {
-        signal: AbortSignal.timeout(2500),
-      });
-      // The route answering at all identifies the studio. What it says about
-      // ACE is a separate question and not this function's business.
-      if (res.ok && !(res.headers.get('content-type') || '').includes('text/html')) {
-        studioUrl = candidate;
-        if (port !== 3000) console.log(`  (the studio is on ${candidate}, not 3000)`);
-        return studioUrl;
+    for (const host of hosts) {
+      const candidate = `http://${host}:${port}`;
+      try {
+        const res = await fetch(`${candidate}/api/e05?action=status`, {
+          signal: AbortSignal.timeout(timeout),
+        });
+        const type = res.headers.get('content-type') || '';
+        if (res.ok && !type.includes('text/html')) {
+          studioUrl = candidate;
+          if (candidate !== 'http://localhost:3000') console.log(`  (the studio is at ${candidate})`);
+          return studioUrl;
+        }
+        tried.push(`${candidate} → ${res.status} ${type || 'no content-type'}`);
+      } catch (err) {
+        const why = err && err.name === 'TimeoutError' ? `no answer in ${timeout}ms` : String(err.cause?.code || err.message || err);
+        tried.push(`${candidate} → ${why}`);
       }
-    } catch {
-      // Nothing there. Next port.
     }
   }
+  // Every address, and what each one actually said. Guessing across a machine
+  // you cannot see is what this list exists to stop.
   throw new Error(
-    'No studio answering on ports 3000-3005.\n' +
-      '  Start it with `npm run studio`, or set SOULSONUS_URL to where it is.'
+    'No studio answered its own /api/e05 route.\n' +
+      tried.map((t) => `    ${t}`).join('\n') +
+      '\n  Start it with `npm run studio`, or set SOULSONUS_URL to where it is.'
   );
 }
 
