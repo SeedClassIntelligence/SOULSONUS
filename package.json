@@ -18,7 +18,8 @@
     "start": "node server.js",
     "engines:check": "node scripts/engines-check.mjs",
     "verify:ace": "node scripts/live-verification/test-61-three-routes-real-ace.cjs",
-    "verify:collab": "node scripts/live-verification/test-62-collab-transport.cjs"
+    "verify:collab": "node scripts/live-verification/test-62-collab-transport.cjs",
+    "brand:render": "node scripts/render-brand.cjs"
   },
   "overrides": {
     "protobufjs": "^7.4.0"

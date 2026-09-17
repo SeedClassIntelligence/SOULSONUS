@@ -1,0 +1,38 @@
+{
+  "note": "Measured from the source, not chosen. Counts are occurrences of each token across src/ at the time this file was written.",
+  "core": {
+    "slate-950": { "hex": "#020617", "role": "The studio floor. Page and panel background.", "uses": 550 },
+    "slate-900": { "hex": "#0f172a", "role": "Raised panel, header, rail.", "uses": 461 },
+    "slate-800": { "hex": "#1e293b", "role": "Every border and divider. The most used token in the app.", "uses": 918 },
+    "slate-700": { "hex": "#334155", "role": "Hover border, secondary control edge.", "uses": 154 },
+    "slate-600": { "hex": "#475569", "role": "Group labels, faint text.", "uses": 57 },
+    "slate-500": { "hex": "#64748b", "role": "Muted text.", "uses": 310 },
+    "slate-400": { "hex": "#94a3b8", "role": "Body text at rest.", "uses": 490 },
+    "slate-300": { "hex": "#cbd5e1", "role": "Active body text.", "uses": 195 },
+    "slate-200": { "hex": "#e2e8f0", "role": "Emphasis text.", "uses": 211 },
+    "slate-100": { "hex": "#f1f5f9", "role": "Highest-contrast text, wordmark centre.", "uses": 114 }
+  },
+  "signature": {
+    "amber-500": { "hex": "#f59e0b", "role": "SoulSonus primary. Record, export, the creator's own actions.", "uses": 319 },
+    "amber-400": { "hex": "#fbbf24", "role": "Primary icon and hover.", "uses": 272 },
+    "amber-300": { "hex": "#fcd34d", "role": "Primary text on dark.", "uses": 161 },
+    "orange-500": { "hex": "#f97316", "role": "Mark gradient midpoint. SONUS in the two-tone wordmark.", "uses": 26 }
+  },
+  "systems": {
+    "cyan-500": { "hex": "#06b6d4", "role": "Instrument, MIDI, workstation.", "uses": 151 },
+    "cyan-400": { "hex": "#22d3ee", "role": "Same, icon weight.", "uses": 150 },
+    "cyan-300": { "hex": "#67e8f9", "role": "Same, text weight. Wordmark tail.", "uses": 98 },
+    "emerald-500": { "hex": "#10b981", "role": "Ready, healthy, sourcing, pipeline.", "uses": 144 },
+    "emerald-400": { "hex": "#34d399", "role": "Same, icon weight.", "uses": 136 },
+    "purple-500": { "hex": "#a855f7", "role": "Collaboration, native brain, vocal material.", "uses": 89 },
+    "pink-500": { "hex": "#ec4899", "role": "Songwriting, lyric.", "uses": 80 },
+    "rose-500": { "hex": "#f43f5e", "role": "Failure, violation, destructive.", "uses": 81 },
+    "blue-500": { "hex": "#3b82f6", "role": "Hardware and I/O.", "uses": 30 }
+  },
+  "gradients": {
+    "mark": ["#f59e0b", "#f97316", "#22d3ee"],
+    "wordmark": ["#fcd34d", "#f1f5f9", "#67e8f9"],
+    "wordmarkTwoTone": { "soul": "#f1f5f9", "sonus": "#f59e0b" },
+    "activeControl": ["#06b6d4", "#3b82f6"]
+  }
+}

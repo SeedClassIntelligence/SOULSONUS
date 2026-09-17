@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="170" viewBox="0 0 700 170" role="img" aria-label="SOULSONUS">
+  <title>SoulSonus wordmark</title>
+  <defs>
+    <linearGradient id="wordEdge" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fcd34d"/>
+      <stop offset="50%" stop-color="#f1f5f9"/>
+      <stop offset="100%" stop-color="#67e8f9"/>
+    </linearGradient>
+  </defs>
+  <text x="350" y="85" fill="url(#wordEdge)"
+        font-family="ui-monospace, 'DejaVu Sans Mono', 'Liberation Mono', Menlo, Consolas, monospace"
+        font-size="104" font-weight="900" letter-spacing="10" text-anchor="middle" dominant-baseline="central">SOULSONUS</text>
+</svg>
