@@ -362,7 +362,11 @@ async function closeIntelligence(page) {
  * turn to appear in the transcript.
  */
 async function askIntelligence(page, text) {
-  const panel = page.locator('div.fixed.right-0').first();
+  // Addressed by its own test id rather than by 'div.fixed.right-0'. Studio
+  // Intelligence is a column in the page now, not a panel fixed over it, and
+  // a helper that finds it by its positioning class stops finding it the
+  // moment the layout changes -- which is exactly what happened.
+  const panel = page.locator('[data-testid="intelligence-panel"]').first();
   const turns = async () =>
     (await panel.innerText().catch(() => '')).split('SOULSONUS INTELLIGENCE').length;
   const before = await turns();

@@ -178,11 +178,23 @@ does make it unreachable — Amendment D. Either keep them or decide out loud.
 | PRODUCER / ENGINEER + prompt + PROPOSE CHANGESET | `StudioIntelligenceDrawer` — `#intelligence-input`, `#intelligence-ask`. PROPOSE CHANGESET is the existing changeset flow (`data-testid="changeset"`, `cs-apply`, `cs-reject`, `cs-alternative`). |
 | SOURCE → INTENT → REALIZATION | `realizationRouter` + the preservation contract |
 | PROVENANCE / RIGHTS | `lib/seedSignature.ts` + lineage and decision records |
-| CAPABILITY ORCHESTRATOR | **The only genuinely new panel.** The pipeline it lists is real — capability contract, provider resolution, adapter, engine, normalize, validate, changeset — but nothing renders those seven steps as a panel today. It is a **view over state that exists**, not a new runtime. |
+| CAPABILITY ORCHESTRATOR | Built. `StudioIntelligenceColumn.tsx`, over `lib/capabilityRegistry.ts`. The seven steps are read from `REQUEST_PIPELINE` so the panel cannot drift from the contract it draws. It **describes**; dispatch still goes through the realization router, and the panel says so on its own face. |
 
-The whole right column is currently a **drawer** (`intelligence`). Making it a
-persistent third column is layout work. It adds no capability and should not
-add a second intelligence implementation.
+**Built.** The column is `StudioIntelligenceColumn`, in the page's flow —
+`flex-col xl:flex-row`, so three columns wide and three stacked blocks narrow.
+There is still exactly **one** `StudioIntelligenceDrawer` mounted: it takes an
+`embedded` prop that swaps the shell and nothing else, because two mounts would
+mean two transcripts and two `#intelligence-input`s.
+
+Three things to know about it:
+
+- `data-testid="intelligence-panel"` is how the harness finds it. It used to
+  be found by `div.fixed.right-0`, which stopped being true the moment it
+  became a column — `lib.cjs` was updated with it.
+- `openDrawer('intelligence')` now **opens**; it used to toggle, so the button
+  labelled open closed it every other press. The X collapses it.
+- It starts open, and the transcript's autoscroll is `block: 'nearest'` — the
+  default scrolled the whole studio down on arrival.
 
 ### Status bar
 
@@ -226,12 +238,14 @@ Short, on purpose:
 - **Session player display names.** Roles exist; "Marcus", "Jay", "Elena" do
   not. `SessionBandPanel` renders the roles' own labels, instruments and
   listening priorities rather than inventing people.
-- **A persistent right column.** The Studio Intelligence content exists, as a
-  913-line fixed-position drawer. Making it a column is layout work on that
-  file, not a second intelligence.
-
 Built since this file was written: the transport row, the four-group rail,
-`SessionBandPanel`. The section tab row already existed — SCOPE & SECTIONS,
-under the band.
+`SessionBandPanel`, the right column, and `lib/capabilityRegistry.ts` under
+it. The section tab row already existed — SCOPE & SECTIONS, under the band.
+
+Still open, and it is a backend job rather than a layout one: the registry
+**describes** who satisfies each capability; nothing resolves a request by
+asking it. Provider licences are unverified, so nothing rendered through ACE,
+Demucs, Basic Pitch or SpessaSynth is cleared for release yet — the panel says
+that out loud rather than showing a green tick.
 
 Everything else in the mockup is a move, a rename, or a regrouping.

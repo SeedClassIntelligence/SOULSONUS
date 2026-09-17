@@ -330,7 +330,7 @@ is here.
 | Background vocals | the `BACKING_VOCALS` role — not a separate system | — |
 | Provenance / rights | `lib/seedSignature.ts`, `lib/revisionTree.ts`, `AudioClipProvenance`, `NoteProvenance` | — |
 | Real-time class | `audio/audioEngine.ts`, `detectionEngine.ts`, `masterRender.ts` — in the browser graph on purpose | — |
-| Capability registry | **not built.** The routes are a dispatcher, not a registry; there is no provider table and no license/hardware metadata | the genuine gap |
+| Capability registry | `lib/capabilityRegistry.ts` — 13 capabilities, 8 providers, each with where it runs, its latency class, its hardware and the code path that performs it | **describes, does not dispatch.** Requests still go through `realizationRouter` / `e05Provider`; resolving through the registry is the remaining half. Licence fields are `UNVERIFIED` because nobody has read them — not guessed |
 | SMIR | **not built as one object.** Its fields exist scattered across `ExpressionState`, `NoteExpression`, `RoleHypothesis`, `intentPolicy` and `RealizationRequest` | the genuine gap |
 
 Two gaps, named. Everything above them is a wiring or presentation job, and

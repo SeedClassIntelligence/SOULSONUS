@@ -71,6 +71,17 @@ import * as Tone from 'tone';
 interface StudioIntelligenceDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  /**
+   * Render in the page's own column instead of as a panel fixed over it.
+   *
+   * Same component, same handlers, same ids. There is exactly one of these
+   * mounted at a time -- `#intelligence-input` appearing twice would mean two
+   * transcripts and two `handleSendPrompt`s, and whichever one a test or a
+   * creator reached first would be the one that worked. The shell is the only
+   * difference: no slide-in, no backdrop, no focus grab on arrival, because a
+   * column that is always there has not just been opened.
+   */
+  embedded?: boolean;
 }
 
 interface ProposalOption {
@@ -129,6 +140,7 @@ const getStudioEmphases = (): { id: StudioEmphasis; label: string; icon: React.R
 export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> = ({
   isOpen,
   onClose,
+  embedded = false,
 }) => {
   const studioEmphases = getStudioEmphases();
   const {
@@ -190,7 +202,12 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
   const [isThinking, setIsThinking] = useState(false);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // `block: 'nearest'` because this panel is in the page's flow now, not
+    // fixed over it. The default is 'start', which scrolled the whole studio
+    // down to bring the transcript's end into view -- so opening the session
+    // put the creator below the transport, the microphone and the band,
+    // looking at the timeline, with no idea why.
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [messages, isOpen]);
 
   const handleSelectEmphasis = (newEmphasis: StudioEmphasis) => {
@@ -466,15 +483,8 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
 
   if (!isOpen) return null;
 
-  return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
-        transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-        className="fixed inset-y-0 right-0 w-full sm:w-[540px] md:w-[620px] bg-slate-950/98 border-l border-slate-800 shadow-2xl z-50 flex flex-col justify-between overflow-hidden font-mono text-xs select-none"
-      >
+  const body = (
+    <>
         {/* 1. TOP HEADER & PROMINENT QUESTION INPUT (Directly at Top - No Scrolling Required) */}
         <div className="p-3.5 border-b border-slate-800 space-y-2.5 bg-slate-950">
           <div className="flex items-center justify-between">
@@ -501,13 +511,14 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
                 </span>
               </div>
 
-              {/* The drawer is fixed to the right edge above everything, so
+              {/* As a column this collapses it and gives the width back to
+                  the song; as a fixed panel it is the only way out, because
                   the button that opened it is underneath it once it is open.
-                  This is how it closes, and it is named so that says so. */}
+                  Either way it is named so that says so. */}
               <button
                 onClick={onClose}
                 data-testid="intelligence-close"
-                title="Close Studio Intelligence"
+                title={embedded ? 'Collapse Studio Intelligence' : 'Close Studio Intelligence'}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -527,7 +538,7 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
               }}
               placeholder={`Ask ${config.emphasis} or issue a production directive...`}
               className="flex-1 bg-transparent px-2.5 py-1.5 text-xs text-white placeholder-slate-500 font-mono focus:outline-none"
-              autoFocus
+              autoFocus={!embedded}
             />
 
             <button
@@ -907,6 +918,38 @@ export const StudioIntelligenceDrawer: React.FC<StudioIntelligenceDrawerProps> =
           })}
           <div ref={chatEndRef} />
         </div>
+    </>
+  );
+
+  const shell =
+    'bg-slate-950/98 border-slate-800 flex flex-col justify-between overflow-hidden font-mono text-xs select-none';
+
+  if (embedded) {
+    return (
+      <aside
+        data-testid="intelligence-panel"
+        /* Bounded, and not sticky. Sticky made it float over the three
+           readouts below it the moment the page scrolled, so the capability
+           table was being drawn behind the transcript. The column scrolls
+           with the song; the transcript scrolls inside this height. */
+        className={`${shell} w-full border rounded-2xl shadow-xl max-h-[78vh]`}
+      >
+        {body}
+      </aside>
+    );
+  }
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+        data-testid="intelligence-panel"
+        className={`${shell} fixed inset-y-0 right-0 w-full sm:w-[540px] md:w-[620px] border-l shadow-2xl z-50`}
+      >
+        {body}
       </motion.div>
     </AnimatePresence>
   );

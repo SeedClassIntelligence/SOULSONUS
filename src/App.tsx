@@ -20,7 +20,7 @@ import { ExternalHardwareMidiDrawer } from './components/inspectors/ExternalHard
 import { CalibrationDrawer } from './components/inspectors/CalibrationDrawer';
 import { VisualizationDrawer } from './components/inspectors/VisualizationDrawer';
 import { RealizationCandidateDrawer } from './components/RealizationCandidateDrawer';
-import { StudioIntelligenceDrawer } from './components/StudioIntelligenceDrawer';
+import { StudioIntelligenceColumn } from './components/StudioIntelligenceColumn';
 import { NativeBrainDrawer } from './components/inspectors/NativeBrainDrawer';
 import { MixWorkspace } from './components/mix/MixWorkspace';
 import { FinishMasterWorkspace } from './components/finish/FinishMasterWorkspace';
@@ -166,7 +166,10 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const [isVoiceBarOpen, setIsVoiceBarOpen] = useState(false);
 
   // Drawers
-  const [isStudioIntelligenceOpen, setIsStudioIntelligenceOpen] = useState(false);
+  // Open. It is a column in the page now rather than a panel over it, and
+  // the arrangement this layout was built to match has it on screen while you
+  // work. Its own X collapses it and gives the width back to the song.
+  const [isStudioIntelligenceOpen, setIsStudioIntelligenceOpen] = useState(true);
   const [isTrackWorkstationOpen, setIsTrackWorkstationOpen] = useState(false);
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const [isSongwritingSuiteOpen, setIsSongwritingSuiteOpen] = useState(false);
@@ -281,7 +284,7 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
       // studio is 'voiceclone'; 'voice' is the command bar.
       if (detail === 'voiceclone') setIsVoiceCloneDrawerOpen((prev) => !prev);
       if (detail === 'hardware' || detail === 'midi') setIsHardwareMidiOpen((prev) => !prev);
-      if (detail === 'intelligence') setIsStudioIntelligenceOpen((prev) => !prev);
+      if (detail === 'intelligence') setIsStudioIntelligenceOpen(true);
       if (detail === 'nativebrain' || detail === 'brain') setIsNativeBrainOpen((prev) => !prev);
       if (detail === 'calibration') setIsCalibrationOpen((prev) => !prev);
       if (detail === 'visualization' || detail === 'radar') setIsVisualizationOpen((prev) => !prev);
@@ -629,10 +632,12 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         soulFlowStageLabel={dawState.soulFlowState}
       />
 
-      {/* Consolidated workstations rail beside the studio canvas. The rail
-          holds the same 14 launchers the horizontal bar held, firing the same
-          events, so every drawer and modal opens exactly as before. */}
-      <div className="flex-1 flex w-full max-w-[1440px] mx-auto gap-3 px-3 md:px-4 pt-2 items-start">
+      {/* Rail, song, intelligence. Three columns on a wide screen and three
+          stacked blocks on a narrow one, which is why the column is in the
+          flow rather than fixed over it: there is exactly one Studio
+          Intelligence mounted, so there is one transcript and one
+          #intelligence-input however the page is sized. */}
+      <div className="flex-1 flex flex-col xl:flex-row w-full max-w-[1800px] mx-auto gap-3 px-3 md:px-4 pt-2 items-stretch xl:items-start">
         <StudioUtilityBar />
 
         {/* Main Studio Canvas & 6-Workspace Room Switching */}
@@ -682,6 +687,11 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
           <StudioCanvas />
         )}
         </main>
+
+        <StudioIntelligenceColumn
+          isOpen={isStudioIntelligenceOpen}
+          onClose={() => setIsStudioIntelligenceOpen(false)}
+        />
       </div>
 
       {/* Bottom Master Studio Telemetry & Status Bar */}
@@ -733,11 +743,6 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         selectedTrack={tracks.find((t) => t.id === selectionContext.selectedTrackId) || tracks[0] || null}
         activeWorkspace={activeWorkspace}
         sections={sections}
-      />
-
-      <StudioIntelligenceDrawer
-        isOpen={isStudioIntelligenceOpen}
-        onClose={() => setIsStudioIntelligenceOpen(false)}
       />
 
       <NativeBrainDrawer

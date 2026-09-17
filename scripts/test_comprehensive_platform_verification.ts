@@ -1806,13 +1806,26 @@ async function runComprehensiveVerification() {
   {
     // §16 is the fence: "the professional DAW controls should NOT disappear".
     // So the first thing asserted is that nothing left.
+    // The rail, entry for entry, in its four groups.
     const RAIL = [
-      'piano', 'instrumentRoom', 'seedSignature', 'sourcing', 'collaboration', 'nativeBrain',
-      'trackWorkstation', 'songwritingSuite', 'vocalToLyric', 'midiHardware', 'inspector',
-      'calibration', 'radar', 'importAudio', 'soulFlow',
+      // Tools & workstations
+      'recordingSurface', 'piano', 'instrumentRoom', 'patternControls', 'sourcing',
+      'trackWorkstation',
+      // Band & collaboration
+      'sessionPlayers', 'collaboration',
+      // Creative utilities
+      'songwritingSuite', 'vocalToLyric', 'takePads', 'training', 'midiHardware', 'importAudio',
+      // Studio systems
+      'inspector', 'calibration', 'radar', 'soulFlow', 'nativeBrain', 'seedSignature',
     ];
-    const CANVAS = ['liveExpressionEngine', 'performInstrument', 'patternControls', 'sectionBuilder',
-      'timeline', 'trackLanes', 'clips', 'sections'];
+    // 'liveExpressionEngine' was in the canvas list and had been failing the
+    // check above for as long as it took anyone to read the name: that block
+    // was replaced by the recording surface, so the app stopped putting it on
+    // screen and the table stopped declaring it, while this list went on
+    // asserting a level for a surface that does not exist. The assertion was
+    // right; the list was stale.
+    const CANVAS = ['recordingSurface', 'sessionPlayers', 'performInstrument', 'patternControls',
+      'sectionBuilder', 'timeline', 'trackLanes', 'clips', 'sections'];
     const CHROME = ['project', 'transport', 'rooms', 'studioIntelligence', 'export'];
     check(unreachableSurfaces([...RAIL, ...CANVAS, ...CHROME]).length === 0, 'DISCLOSURE',
       'every surface the app puts on screen has a declared level',
@@ -1823,13 +1836,25 @@ async function runComprehensiveVerification() {
     check(surfacesAt(1).length >= 4 && surfacesAt(4).length >= 10, 'DISCLOSURE',
       'the levels are populated as the amendment describes them',
       `L1 ${surfacesAt(1).length}, L2 ${surfacesAt(2).length}, L3 ${surfacesAt(3).length}, L4 ${surfacesAt(4).length}`);
-    // The rail is a filing cabinet, not the definition of a level. Everything
-    // on it is reachable there; most of it is level 4, and a surface that is
-    // level 2 because it IS an activity has to be reachable from that activity
-    // too, or the table is describing something the app does not do.
-    check(RAIL.filter((r) => levelOf(r as any) !== 4).length <= 1, 'DISCLOSURE',
-      'the rail is level 4 but for the surfaces that are an activity in their own right',
-      RAIL.filter((r) => levelOf(r as any) !== 4).join(', ') || 'all level 4');
+    // The rail is a filing cabinet, not the definition of a level. Most of it
+    // is level 4 -- filed, one reach away, never in the way.
+    //
+    // The exceptions are doors rather than drawers: pressing STUDIO RECORDING
+    // or SESSION PLAYERS does not open a utility over the room, it takes the
+    // creator to the activity, which is what the owner asked the rail to do
+    // ("when it says write on the left panel that should go to write and
+    // record"). So the assertion is not a count -- a count only says how many
+    // exceptions have accumulated. It is that every exception is level 2, an
+    // activity in its own right. A level 1 or level 3 surface filed on the
+    // rail would mean something always-visible, or the song itself, had been
+    // put in a drawer, and that is the failure worth catching.
+    const railExceptions = RAIL.filter((r) => levelOf(r as any) !== 4);
+    check(railExceptions.every((r) => levelOf(r as any) === 2), 'DISCLOSURE',
+      'everything on the rail is filed at level 4 unless it is an activity, and then it is level 2',
+      railExceptions.map((r) => `${r}=${levelOf(r as any)}`).join(', ') || 'all level 4');
+    check(railExceptions.length * 2 < RAIL.length, 'DISCLOSURE',
+      'and the rail is still mostly filing rather than mostly doors',
+      `${railExceptions.length} of ${RAIL.length}`);
     check(levelOf('vocalToLyric') === 2 && levelOf('lyricCadenceStudio') === 2, 'DISCLOSURE',
       'reading a take as lyrics is writing, which the amendment puts at level 2');
     check(levelOf('timeline') === 3 && levelOf('trackLanes') === 3, 'DISCLOSURE',
