@@ -62,14 +62,17 @@ export const LEVEL_MEANING: Record<DisclosureLevel, string> = {
 export const SURFACE_LEVELS = {
   // Level 1 -- always visible.
   project: 1,
-  // Always visible, and it took a correction to keep it that way. The
-  // transport moved out of the header and down to the microphone, which lives
-  // on the CREATE screen -- and for one commit that meant mix, master,
-  // release, sounds and write had no way to press play, while this line went
-  // on declaring it level 1. The declaration was not loosened to match:
-  // PlaybackTransport is rendered by every room without a microphone, so what
-  // this says is true again. The tempo, the click and the record button are
-  // deliberately not part of it; those are the recording room's.
+  // Always visible, and now true by construction rather than by each room
+  // remembering. This took two corrections. The transport moved out of the
+  // header down to the microphone, which lives on CREATE -- so for one commit
+  // mix, master, release, sounds and write had no way to press play while
+  // this line still said level 1. That was patched by giving each of those
+  // rooms its own playback bar: five copies of one button, none of them next
+  // to the tempo they played at. StudioTransportBar is one row under the
+  // project header, above every room, and carries the tempo, tap, key,
+  // signature and the click with it, because a play button whose settings are
+  // on another screen is the thing the owner objected to in the first place.
+  // Record is not part of it; that stays at the microphone with the arming.
   transport: 1,
   rooms: 1,
   studioIntelligence: 1,
@@ -118,6 +121,10 @@ export const SURFACE_LEVELS = {
   // The Sounds room: the creator's own recordings, kept and reachable. It is a
   // room, so what it holds is the activity at hand while you are in it.
   soundsRoom: 2,
+  // The band. Level 2 rather than 4: the players are part of the act of
+  // making the take, not a utility filed beside it, and the panel sits
+  // between the microphone and the timeline on the create screen.
+  sessionPlayers: 2,
 } as const satisfies Record<string, DisclosureLevel>;
 
 export type SurfaceName = keyof typeof SURFACE_LEVELS;

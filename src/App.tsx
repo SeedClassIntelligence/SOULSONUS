@@ -3,7 +3,7 @@ import { StudioSessionProvider, useStudioSession } from './app/StudioSessionCont
 import { Header } from './components/Header';
 import { WorkspaceNav } from './components/WorkspaceNav';
 import { StudioCanvas } from './components/StudioCanvas';
-import { RoomPlaybackBar } from './components/PlaybackTransport';
+import { StudioTransportBar } from './components/StudioTransportBar';
 import { barsToSeconds } from './utils/musicMath';
 import { buildIntentPolicy, roleKeyFor } from './lib/intentPolicy';
 import { queryStudioIntelligence, loadAiConfig } from './lib/studioIntelligenceService';
@@ -67,14 +67,10 @@ const TEXT_INPUT_TYPES = new Set(['text', 'search', 'email', 'url', 'tel', 'pass
  * transport is already there with the record button and the parameters behind
  * it. A room in this map gets play, stop, rewind, loop and the counter.
  */
-const ROOMS_THAT_ONLY_LISTEN: Partial<Record<WorkspaceTab, string>> = {
-  SOUNDS: 'SOUNDS',
-  WRITE_RECORD: 'WRITE & RECORD',
-  MIX: 'MIX',
-  MASTER: 'MASTER',
-  RELEASE: 'RELEASE',
-  FINISH: 'FINISH',
-};
+/* The rooms with no microphone used to each draw their own playback bar,
+   because the transport lived on the CREATE screen and they had no way to
+   press play. StudioTransportBar is above every room now, so that list and
+   the bar it drove are both gone -- one transport, not six. */
 
 const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
   const {
@@ -620,6 +616,12 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
         isMicActive={detectionSettings.enabled}
       />
 
+      {/* Project / transport / lifecycle. Its own row, above the rooms and
+          below the project header -- not in with create, sounds, write,
+          record, mix, master and release, which is what the objection to the
+          old bar was actually about. */}
+      <StudioTransportBar />
+
       {/* 5 Creator Workspace Navigation Tabs */}
       <WorkspaceNav
         activeWorkspace={activeWorkspace}
@@ -635,21 +637,6 @@ const AppInner: React.FC<AppInnerProps> = ({ onBackToLanding }) => {
 
         {/* Main Studio Canvas & 6-Workspace Room Switching */}
         <main className="flex-1 min-w-0 py-1 space-y-3">
-        {/* Every room that is not the recording room can still hear the song.
-            The transport moved down to the microphone, which lives on the
-            CREATE screen -- so mix, master, release, sounds and write were
-            left with no way to press play, and the mastering console drew a
-            playhead nothing could move.
-
-            This is the play half of the microphone's row and nothing else:
-            no record button, no tempo field. "Just having record there
-            without allowing me to set parameters like BPM, tap, to be able to
-            play it, reset and all of that stuff makes no sense." It is inside
-            the room, above that room's own surface -- not a bar in with the
-            rooms, which is where it was told to leave. */}
-        {!focusTrackId && !isInstrumentFull && ROOMS_THAT_ONLY_LISTEN[activeWorkspace] && (
-          <RoomPlaybackBar room={ROOMS_THAT_ONLY_LISTEN[activeWorkspace]} />
-        )}
         {focusTrackId ? (
           <FocusModeView />
         ) : isInstrumentFull ? (

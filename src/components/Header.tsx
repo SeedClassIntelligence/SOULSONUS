@@ -1,30 +1,9 @@
 import { SoulSonusMark, SoulSonusWordmark } from './brand/SoulSonusLogo';
-import React, { useState } from 'react';
-import {
-  Play,
-  Pause,
-  Square,
-  Mic,
-  Volume2,
-  HelpCircle,
-  Sliders,
-  Search,
-  Download,
-  RotateCcw,
-  Repeat,
-  Radio,
-  Clock,
-  Music2,
-  Lock,
-  BookOpen,
-  Compass,
-  Sparkles,
-} from 'lucide-react';
-import { DAWState, Preset } from '../types/daw';
+import React from 'react';
+import { Download, BookOpen, Compass } from 'lucide-react';
+import { DAWState } from '../types/daw';
 import { EngineStatusBadge } from './EngineStatusBadge';
 import { RevisionTreePanel } from './RevisionTreePanel';
-import { PRESETS } from '../data/presets';
-import { useStudioSession } from '../app/StudioSessionContext';
 
 interface HeaderProps {
   dawState: DAWState;
@@ -52,24 +31,6 @@ export const Header: React.FC<HeaderProps> = ({
   onBackToLanding,
   isMicActive,
 }) => {
-  const { handleTransposeAllTracks, handleToggleMetronome } = useStudioSession();
-  const [isLooping, setIsLooping] = useState(true);
-  // Read from the project rather than from this component. It used to be a
-  // `useState(true)` here that nothing else could see -- so the button looked
-  // lit on arrival, and switching it changed a boolean nobody read.
-  const metronomeOn = dawState.metronomeOn;
-  // The Q: grid selector that used to sit here was local state that nothing
-  // read -- three options, a state setter, and no consumer anywhere in the
-  // app. It is not recreated at the microphone: what actually decides how a
-  // take is treated against the grid is the timing mode on the take itself
-  // (literal / assisted / groove), which is real and already applied per pass.
-
-  // Compute Bar:Beat.Tick time counter (e.g. 1:01.00)
-  const bar = Math.floor(dawState.currentStep / 16) + 1;
-  const beat = Math.floor((dawState.currentStep % 16) / 4) + 1;
-  const tick = (dawState.currentStep % 4) + 1;
-  const timeFormatted = `${bar}:${beat < 10 ? `0${beat}` : beat}.${tick}`;
-
   return (
     <header className="bg-slate-950 border-b border-slate-900 text-slate-100 flex flex-col select-none shadow-2xl">
       {/* 1. TOP UTILITY ROW: Brand • Song Name • Key • Save • Modal Portals */}
@@ -116,52 +77,9 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Global Musical Metadata & Modal Launchers */}
         <div className="flex items-center space-x-2">
-          {/* Interactive Project Key Signature & Transpose */}
-          <div
-            className="flex items-center space-x-1 bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-800 text-xs font-mono"
-            title="Project Root Key & Global Transposition"
-          >
-            <Music2 className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-slate-400 text-[10px]">KEY:</span>
-            <span className="text-cyan-300 font-bold text-xs">C MIN</span>
-
-            {/* Quick Transpose Steppers for All Tracks */}
-            <div className="flex items-center space-x-0.5 ml-1 border-l border-slate-800 pl-1">
-              <button
-                type="button"
-                onClick={() => handleTransposeAllTracks(-1)}
-                className="px-1 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-amber-300 text-[9px] font-bold cursor-pointer"
-                title="Transpose all melodic notes down 1 semitone (-1 st)"
-              >
-                -1
-              </button>
-              <button
-                type="button"
-                onClick={() => handleTransposeAllTracks(1)}
-                className="px-1 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-amber-300 text-[9px] font-bold cursor-pointer"
-                title="Transpose all melodic notes up 1 semitone (+1 st)"
-              >
-                +1
-              </button>
-              <button
-                type="button"
-                onClick={() => handleTransposeAllTracks(-12)}
-                className="px-1 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-amber-300 text-[9px] font-bold cursor-pointer"
-                title="Transpose all melodic notes down 1 octave (-12 st)"
-              >
-                -8ve
-              </button>
-              <button
-                type="button"
-                onClick={() => handleTransposeAllTracks(12)}
-                className="px-1 py-0.5 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-amber-300 text-[9px] font-bold cursor-pointer"
-                title="Transpose all melodic notes up 1 octave (+12 st)"
-              >
-                +8ve
-              </button>
-            </div>
-          </div>
-
+          {/* Key, time signature and the transpose steppers moved down one
+              row, into the transport bar, with the tempo and the click. They
+              are what a take is played against, not chrome. */}
           {/* Projects: save, open, start new */}
           <button
             type="button"
@@ -176,15 +94,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <span>💾 PROJECTS</span>
           </button>
-
-          {/* Time Signature */}
-          <div
-            className="hidden sm:flex items-center space-x-1 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 text-xs font-mono"
-            title="Project Time Signature (4 quarter-note beats per measure)"
-          >
-            <span className="text-slate-400">SIG:</span>
-            <span className="text-slate-200 font-bold">4/4</span>
-          </div>
 
           <div className="h-4 w-px bg-slate-800 hidden md:block" />
 
@@ -231,13 +140,12 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* The transport row is gone from here.
-          "The record, play button, loop, the timing, key, all of that should be
-          where the microphone is. It shouldn't be in the same bar with create,
-          sounds, write, record, mix, master and release." So play, stop,
-          rewind, loop, the bar:beat counter, the master volume and the genre
-          preset all moved into the recording workstation, with the record
-          button they belong beside. */}
+      {/* The transport is not in this row and is not in with the rooms
+          either. It has a row of its own directly below this one --
+          StudioTransportBar -- carrying play, stop, rewind, loop, the counter,
+          the tempo, tap, key, signature and the click together, so no control
+          here has its setup on another screen. RECORD stays at the microphone
+          with the arming and the input meaning that decide what it does. */}
     </header>
   );
 };

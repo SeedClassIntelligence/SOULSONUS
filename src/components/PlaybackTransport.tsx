@@ -3,24 +3,17 @@ import { Play, Pause, Square, RotateCcw, Repeat, Clock } from 'lucide-react';
 import { useStudioSession } from '../app/StudioSessionContext';
 
 /**
- * The song's playback controls, and only those.
+ * The song's playback controls, and only those. Play, pause, return to the
+ * top, loop, and where the playhead is.
  *
- * The transport moved out of the bar above the rooms and down to the
- * microphone, where the creator is operating from. That left every room
- * without a microphone -- mix, master, release, sounds, write -- with no way
- * to start the song at all, and the mastering console drawing a playhead it
- * had no button to move.
+ * There is exactly one of these on screen, inside StudioTransportBar, which
+ * every room sits under. It was briefly the other way round -- the transport
+ * at the microphone, and a second bar drawn by each room that had no
+ * microphone -- and that is the arrangement this replaced: five copies of the
+ * play button, none of them next to the tempo they play at.
  *
- * The owner's ruling on that: the parameters stay at the microphone, and the
- * rooms that only need to hear the song get the part that plays it. "Just
- * having record there without allowing me to set parameters like BPM, tap, to
- * be able to play it, reset and all of that stuff makes no sense." So there is
- * no record button here and no tempo field here: a control whose setup lives
- * on another screen is worse than no control. Play, pause, return to the top,
- * loop, and where the playhead is.
- *
- * One component. The microphone renders it too, so there is a single
- * implementation of play rather than two that drift.
+ * No record button here. Record belongs with the arming and the input meaning
+ * that decide what it does, which is the booth.
  */
 export const PlaybackTransport: React.FC<{ className?: string }> = ({ className = '' }) => {
   const { dawState, setDawState, handleTogglePlay, handleStopTransport } = useStudioSession();
@@ -95,27 +88,3 @@ export const PlaybackTransport: React.FC<{ className?: string }> = ({ className 
     </div>
   );
 };
-
-/**
- * The same controls, introduced, for a room that is not the recording room.
- *
- * The label says where the rest of it is rather than leaving a creator to
- * hunt: tempo, the click and recording are one screen away, in CREATE, and
- * that is deliberate rather than missing.
- */
-export const RoomPlaybackBar: React.FC<{ room: string }> = ({ room }) => (
-  <div
-    data-testid="room-playback-bar"
-    className="w-full bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-2 font-mono"
-  >
-    <div className="flex items-center gap-2 min-w-0">
-      <span className="text-[10px] font-black text-slate-300 tracking-wider whitespace-nowrap">
-        HEAR THE SONG
-      </span>
-      <span className="hidden md:inline text-[9.5px] text-slate-500 truncate">
-        {room} plays the project. Tempo, the click and recording live with the microphone, in CREATE.
-      </span>
-    </div>
-    <PlaybackTransport />
-  </div>
-);

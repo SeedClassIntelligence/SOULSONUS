@@ -6,6 +6,7 @@ import { SectionBuilder } from './SectionBuilder';
 import { ShootAroundControls } from './ShootAroundControls';
 import { InstrumentStrip } from './InstrumentStrip';
 import { StudioRecordingSurface } from './StudioRecordingSurface';
+import { SessionBandPanel } from './SessionBandPanel';
 import { TICKS_PER_16TH, TICKS_PER_BEAT } from '../utils/musicMath';
 import {
   Layers,
@@ -512,6 +513,15 @@ export const StudioCanvas: React.FC = () => {
                 remembered -- arrived to a studio with no microphone in it. */}
             <div className="mb-3">
               <StudioRecordingSurface />
+            </div>
+
+            {/* The band, between the booth and the control room, which is
+                where it is in the room being described: you perform, the
+                players answer, and what they play arrives on the timeline
+                below. They were reachable only by typing a musician's name
+                into Studio Intelligence before this. */}
+            <div className="mb-3">
+              <SessionBandPanel />
             </div>
 
             {/* The bench row is gone. Three tabs sat between the microphone and

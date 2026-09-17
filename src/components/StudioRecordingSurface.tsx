@@ -3,7 +3,6 @@ import { Mic, Circle, Square, Undo2, Plus, ChevronRight, ChevronDown, Volume2 } 
 import { useStudioSession } from '../app/StudioSessionContext';
 import { detectionEngine } from '../audio/detectionEngine';
 import { MIC_PRESETS, describePreset, presetById } from '../lib/micPresets';
-import { PlaybackTransport } from './PlaybackTransport';
 import { PRESETS } from '../data/presets';
 import { InterpretationPanel } from './InterpretationPanel';
 import { CreativeIntentPanel } from './CreativeIntentPanel';
@@ -115,7 +114,6 @@ export const StudioRecordingSurface: React.FC = () => {
     setIsAudioImportModalOpen,
     setMimicryTargetId,
     handleUndo,
-    handleToggleMetronome,
     handleSelectPreset,
     setDawState,
     handleUpdateTrack,
@@ -217,32 +215,6 @@ export const StudioRecordingSurface: React.FC = () => {
   const step = dawState.currentStep || 0;
   const bar = Math.floor(step / 16) + 1;
   const beat = Math.floor((step % 16) / 4) + 1;
-
-  /**
-   * Tap tempo.
-   *
-   * The tempo could only be typed as a number, which is not how anyone
-   * arrives at the tempo of a thing they are about to perform. Taps are held
-   * in a ref rather than state so a tap does not re-render the surface before
-   * the next one lands; the run resets after a two-second gap, so leaving and
-   * coming back starts a new count instead of averaging across the pause.
-   */
-  const tapsRef = useRef<number[]>([]);
-  const [tapCount, setTapCount] = useState(0);
-  const tapTempo = () => {
-    const now = performance.now();
-    const taps = tapsRef.current;
-    if (taps.length && now - taps[taps.length - 1] > 2000) taps.length = 0;
-    taps.push(now);
-    if (taps.length > 5) taps.shift();
-    setTapCount(taps.length);
-    if (taps.length < 2) return;
-    const gaps = taps.slice(1).map((t, i) => t - taps[i]);
-    const mean = gaps.reduce((a, b) => a + b, 0) / gaps.length;
-    const bpm = Math.round(60000 / mean);
-    // Outside the field's own range it is a mis-tap, not a tempo.
-    if (bpm >= 40 && bpm <= 240) setDawState((prev) => ({ ...prev, bpm }));
-  };
 
   const passes = revisions.filter((r) => r.origin === 'capture').length;
 
@@ -473,19 +445,23 @@ export const StudioRecordingSurface: React.FC = () => {
             title="The microphone's own input level. An empty strip means it is not open."
           />
 
-          {/* The transport, where the recording is.
-              RECORD, then play/stop/loop and the counter, then the parameters
-              that decide what a take is measured against: the click, the
-              tempo, tap tempo, the master level and the genre kit. All of it
-              used to sit in a bar above the rooms -- a second recording
-              surface at the other end of the screen from the microphone it
-              drove.
+          {/* RECORD, and the two settings that belong to the take rather
+              than to the song.
 
-              The parameters stay here and only here. The rooms that have no
-              microphone get PlaybackTransport, which is the play half of this
-              row and nothing else: "just having record there without allowing
+              Play, stop, loop, the counter, the tempo, tap, key, signature
+              and the click all moved up into StudioTransportBar, which is
+              always on screen -- so they are one row away from here instead
+              of a room away from every other room, and the objection that
+              produced this layout ("just having record there without allowing
               me to set parameters like BPM, tap, to be able to play it, reset
-              and all of that stuff makes no sense." */}
+              and all of that stuff makes no sense") is answered by them
+              travelling together rather than by them living down here.
+
+              RECORD did not move. What recording means on a given pass is
+              decided by the armed channel and the input meaning, both of
+              which are on this surface and neither of which is visible from
+              the mix room. A record button in a room that cannot show you
+              what it is pointed at is worse than no record button. */}
           <div className="flex flex-wrap items-center justify-center gap-1.5 text-[10px] font-mono">
             <button
               type="button"
@@ -501,58 +477,6 @@ export const StudioRecordingSurface: React.FC = () => {
             >
               {recording ? <Square className="w-3 h-3 fill-current" /> : <Circle className="w-2.5 h-2.5 fill-current" />}
               <span>{recording ? 'STOP' : 'RECORD'}</span>
-            </button>
-
-            <PlaybackTransport />
-
-            <button
-              type="button"
-              id="btn-metronome"
-              onClick={() => void handleToggleMetronome()}
-              className={`px-2.5 h-8 rounded-lg font-bold border transition cursor-pointer ${
-                dawState.metronomeOn
-                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                  : 'bg-slate-950 text-slate-500 border-slate-800 hover:text-slate-300'
-              }`}
-              title="Audible click on the quarter beats"
-            >
-              METRO
-            </button>
-
-            <div
-              className="flex items-center gap-1.5 bg-slate-950 px-2.5 h-8 rounded-lg border border-slate-800"
-              title="Master project tempo (40-240 BPM)"
-            >
-              <span className="text-slate-500 font-bold">BPM</span>
-              <input
-                type="number"
-                min={40}
-                max={240}
-                data-testid="bpm"
-                value={dawState.bpm}
-                onChange={(e) => setDawState((prev) => ({ ...prev, bpm: Number(e.target.value) }))}
-                className="w-11 bg-transparent text-slate-100 font-black focus:outline-none text-center"
-              />
-            </div>
-
-            {/* Tap tempo. New: the tempo could only be typed as a number
-                before, which is not how anyone arrives at the tempo of
-                something they are about to perform. Four taps is enough to
-                read one; the run resets after a two-second gap so a stray
-                click does not drag the average. */}
-            <button
-              type="button"
-              id="btn-tap-tempo"
-              data-testid="tap-tempo"
-              onClick={tapTempo}
-              className={`px-2.5 h-8 rounded-lg font-bold border transition cursor-pointer ${
-                tapCount > 0
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                  : 'bg-slate-950 text-slate-500 border-slate-800 hover:text-slate-300'
-              }`}
-              title="Tap the tempo you hear. Four taps reads it; a two-second gap starts a new count."
-            >
-              TAP{tapCount > 1 ? ` ${tapCount}` : ''}
             </button>
 
             <div

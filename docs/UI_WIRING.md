@@ -100,13 +100,16 @@ region, 1-indexed and inclusive — clause XI.6, "only change bar eight".
 `handleUndo` — all on the session context. The counter is
 `dawState.currentStep` read as bar:beat.
 
-> **Conflict, flagged not resolved.** The owner previously moved the transport
-> *out* of the top bar and down to the microphone: *"The record play button,
-> loop, the timing, key, all of that should be where the microphone is."* The
-> mockup puts it back at the top. Both cannot be true. Ask before moving it —
-> and note `disclosureLevels.ts` declares `transport: 1`, "always visible",
-> which is currently honoured by `PlaybackTransport` appearing in every room
-> without a microphone.
+> **Resolved, and built.** `StudioTransportBar` is its own row between the
+> project header and the room tabs. The earlier instruction — *"the record play
+> button, loop, the timing, key, all of that should be where the microphone
+> is. It shouldn't be in the same bar with create, sounds, write, record, mix,
+> master and release"* — was about the transport sharing a bar with the rooms,
+> and about a play button with no way to set what it plays against. Neither is
+> true here: it has its own row, and the tempo, tap, key, signature and click
+> travel with it. RECORD stayed at the microphone, with the arming and the
+> input meaning that decide what it does. `RoomPlaybackBar` and
+> `ROOMS_THAT_ONLY_LISTEN` are gone — one transport, not six.
 
 ### Room tabs
 
@@ -135,7 +138,7 @@ renames them.
 | Studio Recording | — | `StudioRecordingSurface`, already the top of CREATE |
 | Piano / Keys | `piano` | |
 | Instrument | `capture` | |
-| Beat Machine | `takes` **or** `pattern` | **Owner must pick.** `takes` is `PerformanceTakePads`; `pattern` is the grid tools. Neither is new. |
+| Beat Machine | `pattern` | The grid tools. `Takes` is a separate entry in the arrangement, so Beat Machine is not the pads. Neither is new. |
 | Sourcing | — | **See gotcha 1.** |
 | **BAND & COLLABORATION** | | |
 | Session Players (4) | — | `lib/sessionBand.ts` — 7 roles: BASS, DRUMS, KEYS, GUITAR, STRINGS, BACKING_VOCALS, TEXTURE. Called with `handleCallSessionPlayer`. |
@@ -190,11 +193,12 @@ SeedSignature state and rights. It is at the bottom of the app today.
 
 ## 4. Gotchas that will cost someone a day
 
-1. **SOURCING is the one rail item not on the event bus.** It opens a modal held
-   in `StudioUtilityBar`'s own `useState` (`setIsVaultModalOpen`). Rebuild the
-   rail as a new component and SOURCING dies silently. Either move the modal
-   with it, or give it a key on the bus like everything else — the second is
-   better and is a five-line change.
+1. **SOURCING and IMPORT AUDIO are not on the event bus.** They call
+   `setIsVaultModalOpen` / `setIsAudioImportModalOpen`, which are on the
+   session context rather than on the drawer event. That is fine where they
+   are; it is a trap only for a rail rebuilt somewhere that has no session
+   context around it. (An earlier draft of this file called it local component
+   state. It is not — it is context.)
 
 2. **`data-testid` values are load-bearing.** `room-<ID>`, `record`,
    `capture-<modality>`, `preservation-scorecard`, `transport-time`, `bpm`,
@@ -219,9 +223,15 @@ SeedSignature state and rights. It is at the bottom of the app today.
 Short, on purpose:
 
 - **The Capability Orchestrator panel.** A view over existing state. No runtime.
-- **Session player display names.** Roles exist; "Marcus", "Jay", "Elena" do not.
-- **The section tab row.** Sections exist; this row is a new view of them.
-- **A persistent right column.** The content exists as a drawer.
-- **Whether "Beat Machine" means the pads or the grid tools.** Owner decides.
+- **Session player display names.** Roles exist; "Marcus", "Jay", "Elena" do
+  not. `SessionBandPanel` renders the roles' own labels, instruments and
+  listening priorities rather than inventing people.
+- **A persistent right column.** The Studio Intelligence content exists, as a
+  913-line fixed-position drawer. Making it a column is layout work on that
+  file, not a second intelligence.
+
+Built since this file was written: the transport row, the four-group rail,
+`SessionBandPanel`. The section tab row already existed — SCOPE & SECTIONS,
+under the band.
 
 Everything else in the mockup is a move, a rename, or a regrouping.

@@ -27,14 +27,16 @@ const openDrawer = (detail: string) =>
   window.dispatchEvent(new CustomEvent('soulsonus:openDrawer', { detail }));
 
 /**
- * The 14 workstations, unchanged. Each entry keeps the exact trigger the
- * horizontal bar used, so every drawer and modal opens as it always did.
+ * The rail. Every entry fires the trigger it always fired, so every drawer and
+ * modal opens as it always did; what changed is which group it is filed under
+ * and what it is called.
  */
 export const StudioUtilityBar: React.FC = () => {
   const {
     setIsAudioImportModalOpen,
     setIsVaultModalOpen,
     activeWorkspace,
+    setActiveWorkspace,
     isInspectorOpen,
     setIsInspectorOpen,
   } = useStudioSession();
@@ -51,6 +53,22 @@ export const StudioUtilityBar: React.FC = () => {
    * here without a declared level does not compile, and cannot end up in a
    * rail that no level accounts for.
    */
+  /**
+   * Four groups, in the order a session actually reaches for them: the thing
+   * you are playing, the people playing with you, the writing, and the
+   * systems underneath.
+   *
+   * Amendment A §17 puts these here -- "available instantly, but not
+   * permanently demanding attention" -- and §16 is why none of them is gone:
+   * "the professional DAW controls should NOT disappear." The regroup renamed
+   * and reordered; it removed nothing. TRAINING, RADAR and SAY IT are not in
+   * the new arrangement's picture and are kept anyway, because a rail entry
+   * taken away is a surface made unreachable, which is Amendment D.
+   *
+   * The `surface` field is not a label. It is typed against the level table,
+   * so a utility added here without a declared level does not compile, and
+   * cannot end up in a rail that no level accounts for.
+   */
   const tools: {
     group: string;
     items: {
@@ -64,10 +82,19 @@ export const StudioUtilityBar: React.FC = () => {
     }[];
   }[] = [
     {
-      group: 'PERFORMANCE & SOUND',
+      group: 'TOOLS & WORKSTATIONS',
       items: [
         {
-          label: '🎹 PIANO',
+          label: 'STUDIO RECORDING',
+          surface: 'recordingSurface',
+          icon: Mic,
+          title: 'The booth: the microphone, what it is pointed at, and how to understand what you play',
+          onClick: () => setActiveWorkspace('CREATE'),
+          tone: 'amber',
+          active: activeWorkspace === 'CREATE',
+        },
+        {
+          label: '🎹 PIANO / KEYS',
           surface: 'piano',
           icon: Music2,
           title: 'Open Interactive Virtual Piano Keyboard',
@@ -83,11 +110,11 @@ export const StudioUtilityBar: React.FC = () => {
           tone: 'orange',
         },
         {
-          label: 'SIGNATURE',
-          surface: 'seedSignature',
-          icon: Sparkles,
-          title: 'Open Creator Training & My Sounds Studio',
-          onClick: () => openDrawer('training'),
+          label: 'BEAT MACHINE',
+          surface: 'patternControls',
+          icon: Grid3x3,
+          title: 'Grid tools — clone, nudge, invert, randomise, clear',
+          onClick: () => openDrawer('pattern'),
           tone: 'amber',
         },
         {
@@ -99,34 +126,46 @@ export const StudioUtilityBar: React.FC = () => {
           tone: 'emerald',
         },
         {
-          label: 'COLLAB',
-          surface: 'collaboration',
-          icon: Users,
-          title: 'Open Real-Time Collaboration',
-          onClick: () => openDrawer('collab'),
-          tone: 'purple',
-        },
-        {
-          label: 'NATIVE BRAIN',
-          surface: 'nativeBrain',
-          icon: Brain,
-          title: 'Open Native Studio Brain',
-          onClick: () => openDrawer('nativebrain'),
-          tone: 'purple',
-        },
-        {
           label: 'WORKSTATION',
           surface: 'trackWorkstation',
           icon: Layers,
           title: 'Open Track Workstation',
           onClick: () => openDrawer('workstation'),
           tone: 'cyan',
-          active: activeWorkspace === 'CREATE',
         },
       ],
     },
     {
-      group: 'WRITING, SIGNAL & I/O',
+      group: 'BAND & COLLABORATION',
+      items: [
+        {
+          label: 'SESSION PLAYERS',
+          surface: 'sessionPlayers',
+          icon: Users,
+          title: 'The band — call a player; their take lands on its own channel beside yours',
+          onClick: () => setActiveWorkspace('CREATE'),
+          tone: 'purple',
+        },
+        {
+          label: 'BACKGROUND VOCALS',
+          surface: 'sessionPlayers',
+          icon: Music2,
+          title: 'Background vocals are one of the band roles, not a separate system — called from the same panel',
+          onClick: () => setActiveWorkspace('CREATE'),
+          tone: 'pink',
+        },
+        {
+          label: 'COLLABORATION',
+          surface: 'collaboration',
+          icon: Users,
+          title: 'Open Real-Time Collaboration',
+          onClick: () => openDrawer('collab'),
+          tone: 'purple',
+        },
+      ],
+    },
+    {
+      group: 'CREATIVE UTILITIES',
       items: [
         {
           label: 'SONGWRITING',
@@ -137,12 +176,12 @@ export const StudioUtilityBar: React.FC = () => {
           tone: 'pink',
         },
         {
-          label: 'PATTERN',
-          surface: 'patternControls',
-          icon: Layers,
-          title: 'Grid tools — clone, nudge, invert, randomise, clear',
-          onClick: () => openDrawer('pattern'),
-          tone: 'amber',
+          label: 'VOCAL TO LYRIC',
+          surface: 'vocalToLyric',
+          icon: Type,
+          title: 'Read a sung or hummed take as a lyric seed and fit words to its cadence',
+          onClick: () => openDrawer('lyric'),
+          tone: 'purple',
         },
         {
           label: 'TAKES',
@@ -153,12 +192,12 @@ export const StudioUtilityBar: React.FC = () => {
           tone: 'cyan',
         },
         {
-          label: 'VOCAL TO LYRIC',
-          surface: 'vocalToLyric',
-          icon: Type,
-          title: 'Read a sung or hummed take as a lyric seed and fit words to its cadence',
-          onClick: () => openDrawer('lyric'),
-          tone: 'purple',
+          label: 'MY SOUNDS',
+          surface: 'training',
+          icon: Sparkles,
+          title: 'Open Creator Training & My Sounds Studio',
+          onClick: () => openDrawer('training'),
+          tone: 'amber',
         },
         {
           label: 'MIDI HARDWARE',
@@ -168,6 +207,27 @@ export const StudioUtilityBar: React.FC = () => {
           onClick: () => openDrawer('hardware'),
           tone: 'blue',
         },
+        {
+          label: 'IMPORT AUDIO',
+          surface: 'importAudio',
+          icon: Disc,
+          title: 'Import audio or separate mix into stems',
+          onClick: () => setIsAudioImportModalOpen(true),
+          tone: 'blue',
+        },
+        {
+          label: 'SAY IT',
+          surface: 'nativeBrain',
+          icon: Mic,
+          title: 'Speak or type a command, or just say what you want in your own words',
+          onClick: () => openDrawer('voice'),
+          tone: 'amber',
+        },
+      ],
+    },
+    {
+      group: 'STUDIO SYSTEMS',
+      items: [
         {
           label: 'INSPECTOR',
           surface: 'inspector',
@@ -194,14 +254,6 @@ export const StudioUtilityBar: React.FC = () => {
           tone: 'slate',
         },
         {
-          label: 'IMPORT AUDIO',
-          surface: 'importAudio',
-          icon: Disc,
-          title: 'Import audio or separate mix into stems',
-          onClick: () => setIsAudioImportModalOpen(true),
-          tone: 'blue',
-        },
-        {
           label: 'PIPELINE',
           surface: 'soulFlow',
           icon: Compass,
@@ -210,11 +262,19 @@ export const StudioUtilityBar: React.FC = () => {
           tone: 'emerald',
         },
         {
-          label: 'SAY IT',
+          label: 'NATIVE BRAIN',
           surface: 'nativeBrain',
-          icon: Mic,
-          title: 'Speak or type a command, or just say what you want in your own words',
-          onClick: () => openDrawer('voice'),
+          icon: Brain,
+          title: 'Open Native Studio Brain',
+          onClick: () => openDrawer('nativebrain'),
+          tone: 'purple',
+        },
+        {
+          label: 'SEEDSIGNATURE',
+          surface: 'seedSignature',
+          icon: Sparkles,
+          title: 'Open the SeedSignature inspector — creator origin, provenance and rights',
+          onClick: () => openDrawer('seedsignature'),
           tone: 'amber',
         },
       ],
